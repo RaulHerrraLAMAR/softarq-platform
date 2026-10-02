@@ -67,6 +67,10 @@ python scripts/skills/instalar_skills.py --reemplazar          # actualiza (sobr
 - `~/.claude/commands/` contiene `caveman.md`, `grill-me.md` y `ui-ux-pro-max.md`, con contenido de otro proyecto.
 - La documentación de Claude Code establece que una skill tiene prioridad sobre un comando del mismo nombre, así que en este repositorio se usan las skills. Las pruebas de la §6 lo confirman: las respuestas citan el texto de las skills, no el de los comandos.
 - Los archivos personales **no** se modificaron.
+- **Observación del módulo 4 (02/10/2026):**
+  - la herramienta Skill de Claude Code, invocada con `ui-ux-pro-max`, devolvió el contenido del comando **personal** `~/.claude/commands/ui-ux-pro-max.md`, una lista de comprobación de otro proyecto que menciona «Accept/Refer/Decline», y no el `SKILL.md` del repositorio;
+  - la prioridad descrita arriba no se cumplió en ese caso. Para el diseño se usó directamente la skill del repositorio (`python .claude/skills/ui-ux-pro-max/scripts/search.py …`), y del comando ajeno solo se tomaron los criterios generales de accesibilidad que coinciden con este proyecto;
+  - si se quiere evitar la ambigüedad, el propietario puede renombrar o retirar sus comandos personales; el agente no los modifica.
 
 ## 5. Adaptaciones (mínimas y documentadas)
 

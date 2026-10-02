@@ -13,6 +13,7 @@
     "typecheck": "pnpm -r run typecheck",
     "test": "pnpm -r run test",
     "verificar": "pnpm run build && pnpm run typecheck && pnpm run test",
-    "verificar:integracion": "pnpm --filter @softarq/api run test:integracion"
+    "verificar:integracion": "pnpm --filter @softarq/api run test:integracion",
+    "verificar:e2e": "pnpm --filter @softarq/contracts run build && pnpm --filter @softarq/api run build:e2e && pnpm --filter @softarq/web run e2e"
   }
 }

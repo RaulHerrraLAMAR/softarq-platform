@@ -1,7 +1,7 @@
 /**
  * CR-01: números generadores (Word maestro §3.3; modCalculo.CR01_Renglon y modMedicion.Med_Guardar).
  */
-import type { RenglonMedicion, TipoFormula } from "@softarq/contracts";
+import { DIMENSIONES_POR_FORMULA, type RenglonMedicion, type TipoFormula } from "@softarq/contracts";
 import { CERO, Dec, dec, sumar } from "./decimal.js";
 
 type Dimension = "largo" | "ancho" | "alto";
@@ -59,12 +59,7 @@ export function validarRenglon(
   if (!piezas.isInteger() || piezas.lte(0)) {
     errores.push({ campo: "piezas", mensaje: "Las piezas deben ser un entero mayor que cero." });
   }
-  const usadas: Record<TipoFormula, readonly Dimension[]> = {
-    CONTEO: [],
-    LONGITUD: ["largo"],
-    AREA: ["largo", "ancho", "alto"],
-    VOLUMEN: ["largo", "ancho", "alto"],
-  };
+  const usadas: Record<TipoFormula, readonly Dimension[]> = DIMENSIONES_POR_FORMULA;
   for (const d of ["largo", "ancho", "alto"] as const) {
     const v = renglon[d];
     if (v === null) continue;

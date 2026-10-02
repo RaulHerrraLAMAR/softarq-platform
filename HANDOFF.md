@@ -2,7 +2,7 @@
 
 > Léelo al empezar. Actualízalo al terminar cada tarea (sección por sección, sin borrar el historial de la tabla 4). Reglas de trabajo: [`AGENTS.md`](AGENTS.md).
 
-**Última actualización:** 02/10/2026 · Claude Code (Opus 5.5) · módulo 3 (API HTTP local con NestJS) terminado y verificado
+**Última actualización:** 02/10/2026 · Claude Code (Opus 5.5) · módulo 4 (cliente web DEMO con React y Vite) terminado y verificado
 
 ## 1. Estado actual
 
@@ -17,12 +17,17 @@
   - catálogo DEMO cargado en `softarq_dev`;
   - ensamblador que arma la entrada del motor desde la base;
   - los 4 escenarios principales se reproducen desde PostgreSQL con los totales de referencia.
-- **Módulo 3, API HTTP local (este commit):**
+- **Módulo 3, API HTTP local** (`185fd26`):
   - NestJS 12 en `127.0.0.1:3000`;
   - catálogos para preparar una cotización DEMO y `POST /api/v1/calculos/demo` con datos de PostgreSQL;
   - devuelve solo la proyección comercial;
   - los 4 escenarios principales se reproducen por HTTP.
-- **Todavía no existen:** autenticación, usuarios, clientes, proyectos, cotizaciones persistidas, revisión, emisión, PDF, web ni móvil.
+- **Módulo 4, cliente web DEMO (este commit):**
+  - React 19 y Vite 8 en `http://localhost:5173` (escucha en `127.0.0.1`);
+  - cuatro ejemplos verificados y captura propia, con selección explícita de opciones y costos adicionales;
+  - el cálculo lo hace la API, y la web muestra el resultado comercial, los avisos y los bloqueos;
+  - cada cambio deja el resultado pendiente de recalcular.
+- **Todavía no existen:** autenticación, usuarios, clientes, proyectos, cotizaciones persistidas, revisión, emisión, PDF ni móvil.
 
 ## 2. Decisiones vigentes
 
@@ -33,6 +38,7 @@
 | ADR-0003 | Motor puro; decimal.js; decimales como texto; Vitest; ESM | [`docs/adr/0003-motor-de-calculo.md`](docs/adr/0003-motor-de-calculo.md) |
 | ADR-0004 | Prisma 7.10 con adaptador `pg`; roles migrador y aplicación; base sombra; `NUMERIC` por clase de dato; DATE; FK compuestas por organización; CHECK y exclusión; carga DEMO sin sobrescribir ni borrar; pruebas solo en `softarq_test` | [`docs/adr/0004-persistencia-catalogos.md`](docs/adr/0004-persistencia-catalogos.md) |
 | ADR-0005 | API HTTP local: NestJS 12 ESM compilado con `tsc`; Zod en `contracts` como definición única (validación, tipos y OpenAPI); sobre de error único (400/404/413/415/422/429/503/500); solo `127.0.0.1`; CORS con lista explícita; rate limit en memoria; contexto DEMO fijo (no es autenticación); fecha de cálculo del servidor | [`docs/adr/0005-api-http-local.md`](docs/adr/0005-api-http-local.md) |
+| ADR-0006 | Web DEMO: React 19 + Vite 8 sin router ni librería de estado; solo `@softarq/contracts`; captura en reducer con decimales como texto; huella para «pendiente de recalcular»; sin duplicados ni respuestas atrasadas (abort + número de solicitud); sin preselección; `DIMENSIONES_POR_FORMULA` en contracts; Vite solo en loopback con `strictPort`, sin proxy, CSP y fuentes locales; Playwright con Edge contra la web compilada, la API real y `softarq_test` con `RelojFijo` | [`docs/adr/0006-cliente-web-demo.md`](docs/adr/0006-cliente-web-demo.md) |
 | Propietario | Libro oficial `entrega\Cotizador_Estructuras_F1.xlsm`; COT-2026-00016/00017 y la persona en turno se conservan; evidencias citadas por archivo, escenario y caso | [`docs/fase1-estado-verificado.md`](docs/fase1-estado-verificado.md) §4 |
 | Entorno | Trabajo en `D:\Proyecto_SoftArq`; temporales y cachés en `_work`; sin remoto ni push | `AGENTS.md` §1 |
 
@@ -80,7 +86,8 @@ Credenciales: `apps/api/.env` y `.env.test` (locales, excluidos de Git). La cred
 | 02/10/2026 | Módulo 2: esquema, migración, scripts de base de datos, repositorio, ensamblador, carga DEMO, pruebas, ADR-0004 | Ver §5 y §8 |
 | 02/10/2026 | Aprovisionamiento y verificación contra PostgreSQL real | Commit `2543baa` |
 | 02/10/2026 | Skills del proyecto (ui-ux-pro-max, caveman, grill-me + grilling) para Claude Code y Codex, con reglas de uso | Commit `fdcc8f4`; ver §9 |
-| 02/10/2026 | Módulo 3: API HTTP local (NestJS 12, contratos Zod, catálogos, cálculo DEMO, errores, transporte, OpenAPI, ADR-0005) | Ver §5, §10 y §8 |
+| 02/10/2026 | Módulo 3: API HTTP local (NestJS 12, contratos Zod, catálogos, cálculo DEMO, errores, transporte, OpenAPI, ADR-0005) | Commit `185fd26` |
+| 02/10/2026 | Módulo 4: cliente web DEMO (React + Vite), sistema visual, pruebas de componentes y de navegador, ADR-0006 | Ver §5, §11 y §8 |
 
 ## 5. Comandos y resultados reales (02/10/2026)
 
@@ -113,7 +120,35 @@ Credenciales: `apps/api/.env` y `.env.test` (locales, excluidos de Git). La cred
 | SIGINT al servidor compilado (simulado en el mismo proceso, porque Windows no envía SIGINT entre procesos) | «Conexiones con PostgreSQL cerradas (SIGINT)»; puerto liberado |
 | MD5 del libro oficial | Sin cambios |
 
-**Escenarios desde PostgreSQL** (módulo 2; por HTTP en el módulo 3), comparados con los totales de las fuentes, no con el cálculo:
+**Módulo 4 (web DEMO).** Todas las comprobaciones son **automatizadas**; la prueba en persona sigue pendiente (ver [`docs/web/guia-prueba-manual.md`](docs/web/guia-prueba-manual.md)).
+
+| Comando | Resultado |
+|---|---|
+| `pnpm install` | React 19.3.0, Vite 8.3.2, plugin-react 6.1.1, Zod 4.6.5, Fira 5.3.0, Vitest 5.0.3 + jsdom 30.1.1, Testing Library y Playwright 1.63.0; sin excepciones de antigüedad ni scripts de instalación nuevos |
+| `pnpm verificar` | Build (contracts, api y web), typecheck y **374/374 pruebas unitarias**: 275 de la API (sin cambios) y 99 de la web (8 archivos: formato es-MX sin `number`, configuración, ejemplos frente a `docs/api/ejemplos`, contraste de tokens, reducer, solicitud y huella, cliente HTTP, componentes, ausencia de claves internas) |
+| `pnpm verificar:integracion` | **94/94** en `softarq_test` (sin cambios tras mover `DIMENSIONES_POR_FORMULA`) |
+| `pnpm verificar:e2e` (2 corridas completas) | **21/21** en Edge 154, con 1 worker: web compilada en `127.0.0.1:4173` y API real en `127.0.0.1:3101` sobre `softarq_test`, fecha fija 2026-09-25 |
+| Recorrido en desarrollo: API compilada con `softarq_dev` y `vite` en 5173 | Ejemplo 1 = $54,190.68 con la fecha real; sin errores de consola; `netstat`: solo `127.0.0.1:5173` y `127.0.0.1:3000`. Un segundo `vite` falla con «Port 5173 is already in use» (`strictPort`); `VITE_API_URL=http://192.168.1.5:3000` hace fallar la compilación |
+| Revisión del bundle (`dist/assets/*.js`) | Sin claves internas (consumo, rendimiento, desperdicio, margen, recargo, tarifa) ni URL de CDN; «costo» aparece solo en los textos de «costo adicional» |
+| MD5 del libro oficial | Sin cambios |
+
+Las 21 pruebas de navegador comprueban:
+- **los 4 ejemplos:** $54,190.68, $43,312.16, $22,405.28 y $4,911.79;
+- **cambios:** modificar una medida deja el resultado pendiente y sin importes, y al recalcular cambia el total (volver a 10 da otra vez $54,190.68);
+- **captura propia:** búsqueda sin resultados, captura incompleta, opciones sin preselección, agregar y quitar renglones, conceptos y adicionales; termina en $4,911.79;
+- **bloqueos reales sin importes:** BL-11 (monto 0), BL-08 (proveedor desactivado en la base) y BL-13 (impuesto vacío y luego restaurado);
+- **opciones que dejan de estar disponibles:** la de un ejemplo se avisa y se elige otra; tras un BL-08, «Actualizar opciones disponibles» marca la que ya no vale;
+- **robustez:** piezas 1.5 rechazadas junto al campo; doble clic y Enter dan un solo POST; red caída y «Reintentar»; 503 y 429 con mensaje humano; respuesta incompatible sin mostrar; respuestas atrasadas de cálculo y de búsqueda descartadas;
+- **accesibilidad:** teclado completo con foco visible, objetivos de 44 px o más y movimiento reducido;
+- **pantalla de 390 px:** sin desbordes.
+
+**Evidencias visuales** (fuera de Git): `D:\Proyecto_SoftArq\_work\evidencias\modulo4\`, con capturas `escritorio-*` (1440 × 900), `movil-*` (390 × 844) y `desarrollo-ejemplo1-softarq_dev.png`. Se revisaron una por una. Defectos encontrados y corregidos:
+- selects recortados;
+- campos numéricos de 41 px;
+- la tabla de detalle ensanchaba el panel y recortaba el total (ahora se apila con una *container query*);
+- el aviso de opción no disponible quedaba bajo el pliegue (ahora también se resume en la cabecera).
+
+**Escenarios desde PostgreSQL** (módulo 2; por HTTP en el módulo 3; en la web en el módulo 4), comparados con los totales de las fuentes, no con el cálculo:
 
 | Escenario | Total |
 |---|---|
@@ -141,28 +176,36 @@ En los cuatro, el resultado completo es idéntico al calculado con los fixtures 
 9. **Rate limiting en memoria:** vale para una instancia; con varias hará falta un almacén compartido.
 10. **Avisos:** AV-01 y AV-03 se publican reescritos sin importes. AV-02, AV-04 y AV-05 corresponden a la revisión y la emisión.
 11. **Cierre por señal en Windows:** solo se comprobó dentro del mismo proceso; con Ctrl+C en la terminal funciona el mismo gancho (`enableShutdownHooks`).
+12. **Web DEMO:**
+    - la captura no se guarda (se pierde al recargar);
+    - solo admite punto decimal;
+    - hasta 20 conceptos distintos por consulta de opciones;
+    - sin autenticación: la organización sigue fija en el servidor.
+13. **Pruebas de navegador:**
+    - `pnpm verificar:e2e` vacía y recarga `softarq_test`, así que no debe ejecutarse a la vez que `verificar:integracion`;
+    - usa el Edge instalado (canal `msedge`); con otro equipo sin Edge habría que configurar otro canal o descargar Chromium en `_work`.
+14. **Skill UI UX Pro Max:** la herramienta Skill cargó el comando personal homónimo de otro proyecto; se usó directamente `search.py` del repositorio (ver `docs/herramientas/skills.md` §4).
+15. **Prueba en persona pendiente:** las comprobaciones del módulo 4 son automatizadas; falta la prueba en persona con la guía de `docs/web/`.
 
 ## 7. Siguiente tarea
 
-**Módulo 4 propuesto: cliente web DEMO (React + TypeScript) sobre la API local.**
+1. **Prueba en persona de la web** con [`docs/web/guia-prueba-manual.md`](docs/web/guia-prueba-manual.md) y registro de observaciones (no cuenta como PR-41 ni PR-44).
+2. **Módulo 5 propuesto: usuarios, autenticación y cotizaciones con versiones.**
+   - autenticación local y sustitución del contexto DEMO fijo (`ContextoSolicitud`) por el contexto autenticado;
+   - clientes y proyectos;
+   - guardado de borradores y versiones (D-17), con folios que no se reutilizan (D-14);
+   - después, revisión, aprobación, emisión y PDF comercial (D-16).
 
-1. Inicializar `apps/web` (Vite) con origen `http://localhost:5173`, ya permitido en CORS. Comprobar antes las rutas de caché.
-2. Pantallas:
-   - captura de partidas y renglones con los conceptos de `/catalogos/conceptos`;
-   - selección explícita de precios con `/catalogos/opciones-precio`;
-   - cálculo y vista comercial con la leyenda DEMO.
+   Requiere un ADR de autenticación (sesiones o tokens, almacenamiento de contraseñas, CSRF y CORS con credenciales) antes de exponer nada fuera de `127.0.0.1`.
 
-   Usar los tipos y esquemas de `@softarq/contracts`; los decimales se muestran y envían como texto.
-3. Aplicar UI UX Pro Max (interfaz y accesibilidad) según `AGENTS.md` §11.
-4. Pruebas de componentes y de extremo a extremo contra la API local.
-
-Alternativa, si se prioriza el dominio: usuarios y autenticación, clientes y proyectos, y cotizaciones con versiones (folios y emisión).
+Alternativa más corta: mejoras de la web DEMO (coma decimal, conservar el borrador en la sesión, más de 20 conceptos por consulta de opciones).
 
 ## 8. Último commit
 
 - `2543baa`: Módulo 2, persistencia de catálogos (sobre `f0a34da`).
 - `fdcc8f4`: skills de proyecto y reglas de uso.
-- A continuación, el commit del módulo 3 (API HTTP local): ver `git log --oneline -3`.
+- `185fd26`: Módulo 3, API HTTP local.
+- A continuación, el commit del módulo 4 (cliente web DEMO): ver `git log --oneline -3`.
 
 Rama `main`. Sin remoto ni push.
 
@@ -207,3 +250,21 @@ pnpm --filter @softarq/api openapi:generar   # tras cambiar un contrato (una pru
   - casos de uso sin Nest en `src/modules/*/aplicacion/`;
   - contratos en `packages/contracts/src/api/esquemas.ts`.
 - **Pruebas de integración:** `api-http`, `calculo-desde-base` y `catalogos` usan organizaciones DEMO distintas (`DEMO-HTTP`, `DEMO-CALCULO` y `DEMO`), así que no dependen del orden de ejecución.
+
+## 11. Web DEMO (módulo 4)
+
+Detalle: [`apps/web/README.md`](apps/web/README.md). Diseño: [`docs/web/sistema-visual.md`](docs/web/sistema-visual.md). Decisiones: [ADR-0006](docs/adr/0006-cliente-web-demo.md).
+
+```
+# Terminal 1: API (softarq_dev)
+pnpm --filter @softarq/api build && pnpm --filter @softarq/api start
+# Terminal 2: web → http://localhost:5173
+pnpm --filter @softarq/contracts build && pnpm --filter @softarq/web dev
+
+pnpm --filter @softarq/web test     # Vitest (estado, cliente HTTP, componentes)
+pnpm verificar:e2e                  # Playwright: web compilada + API real + softarq_test
+```
+
+- **Escenarios implementados:** Ejemplo 1 (faldones de 10 m), Ejemplo 2 (espesor 0.12), Ejemplo 3 (sin la ventana), cotización propia de referencia (CON-00001) y captura propia libre.
+- **Arranque de pruebas de la API:** `apps/api/src/pruebas-e2e/` (`servidor-e2e.ts`, `ajustar-base.ts`), compilado con `pnpm --filter @softarq/api build:e2e` en `dist-e2e/` (no versionado). Solo `softarq_test`, con la fecha fija mediante `RelojFijo`.
+- **Salidas:** `D:\Proyecto_SoftArq\_work\playwright\` (informe y trazas) y `_work\evidencias\modulo4\` (capturas).

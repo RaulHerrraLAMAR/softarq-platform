@@ -10,7 +10,10 @@
 | [`adr/0003-motor-de-calculo.md`](adr/0003-motor-de-calculo.md) | decimal.js, Vitest, precisión, dominio puro y persistencia aplazada. |
 | [`adr/0004-persistencia-catalogos.md`](adr/0004-persistencia-catalogos.md) | PostgreSQL + Prisma: roles, precisión, migraciones, aislamiento por organización y pruebas. |
 | [`adr/0005-api-http-local.md`](adr/0005-api-http-local.md) | API HTTP local con NestJS: contratos Zod, errores, límites, CORS, rate limit, contexto DEMO y fecha. |
+| [`adr/0006-cliente-web-demo.md`](adr/0006-cliente-web-demo.md) | Cliente web DEMO (React + Vite): estado, huella, sin preselección, configuración, pruebas de navegador. |
 | [`api/README.md`](api/README.md) | Endpoints, errores, límites y ejemplos `curl` de la API v1 ([`openapi.json`](api/openapi.json)). |
+| [`web/sistema-visual.md`](web/sistema-visual.md) | Sistema visual de la web: tokens, contraste medido, componentes y estados. |
+| [`web/guia-prueba-manual.md`](web/guia-prueba-manual.md) | Guía para probar la web en persona (distinta de las pruebas automatizadas). |
 | [`herramientas/skills.md`](herramientas/skills.md) | Skills de Claude Code y Codex: fuentes, versiones, activación, adaptaciones y comprobaciones. |
 
 La especificación funcional completa sigue siendo el Word maestro v1.3 de la fase 1 (fuera del repositorio). Aquí se enlaza por sección; no se copia.

@@ -16,7 +16,9 @@
     "db:nueva-migracion": "node scripts/db/nueva-migracion.mjs",
     "db:cargar-demo": "pnpm run build && node dist/modules/catalogos/demo/ejecutar-carga-demo.js",
     "start": "node dist/main.js",
-    "openapi:generar": "pnpm run build && node dist/http/generar-openapi.js"
+    "openapi:generar": "pnpm run build && node dist/http/generar-openapi.js",
+    "build:e2e": "pnpm run prisma:generar && tsc -p tsconfig.e2e.json",
+    "e2e:servidor": "node dist-e2e/pruebas-e2e/servidor-e2e.js"
   },
   "dependencies": {
     "@nestjs/common": "12.1.2",

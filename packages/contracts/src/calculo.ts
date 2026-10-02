@@ -12,6 +12,21 @@ import type { DecimalTexto, FechaISO } from "./decimal.js";
 export const TIPOS_FORMULA = ["CONTEO", "LONGITUD", "AREA", "VOLUMEN"] as const;
 export type TipoFormula = (typeof TIPOS_FORMULA)[number];
 
+/**
+ * Dimensiones que se capturan en un renglón según la fórmula (Word §3.3; Med_Guardar).
+ * Es una regla de captura (qué campos existen), no una fórmula de importes:
+ * - CONTEO: ninguna; LONGITUD: largo; VOLUMEN: largo, ancho y alto;
+ * - AREA: largo y una segunda medida, ancho **o** alto (nunca ambos).
+ * Las dimensiones fuera de la lista van en `null`. La comparten el motor y los clientes.
+ */
+export const DIMENSIONES_POR_FORMULA = {
+  CONTEO: [],
+  LONGITUD: ["largo"],
+  AREA: ["largo", "ancho", "alto"],
+  VOLUMEN: ["largo", "ancho", "alto"],
+} as const satisfies Record<TipoFormula, readonly ("largo" | "ancho" | "alto")[]>;
+export type DimensionMedicion = "largo" | "ancho" | "alto";
+
 export const MODALIDADES_MANO_OBRA = ["UNIDAD", "JORNADA", "SUBCONTRATO"] as const;
 export type ModalidadManoObra = (typeof MODALIDADES_MANO_OBRA)[number];
 

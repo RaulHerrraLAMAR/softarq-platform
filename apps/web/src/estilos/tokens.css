@@ -1,0 +1,55 @@
+/*
+ * Sistema visual SoftArq DEMO (docs/web/sistema-visual.md).
+ * Estilo «Minimalism & Swiss» (UI UX Pro Max): sobrio, denso, alto contraste.
+ * Cada par texto/fondo usado cumple contraste ≥ 4.5:1 (prueba: src/estilos/__tests__/contraste.test.ts).
+ */
+:root {
+  /* Color */
+  --color-primario: #0f172a;
+  --color-secundario: #334155;
+  --color-accion: #0369a1;
+  --color-accion-hover: #075985;
+  --color-sobre-accion: #ffffff;
+  --color-fondo: #f8fafc;
+  --color-tarjeta: #ffffff;
+  --color-texto: #0f172a;
+  --color-texto-atenuado: #475569;
+  --color-borde: #cbd5e1;
+  --color-borde-fuerte: #64748b;
+  --color-superficie-suave: #f1f5f9;
+  --color-error: #b91c1c;
+  --color-error-fondo: #fef2f2;
+  --color-aviso: #92400e;
+  --color-aviso-fondo: #fef3c7;
+  --color-info: #075985;
+  --color-info-fondo: #e0f2fe;
+  --color-correcto: #166534;
+  --color-correcto-fondo: #dcfce7;
+  --color-demo: #7c2d12;
+  --color-demo-fondo: #ffedd5;
+  --color-foco: #0369a1;
+
+  /* Tipografía */
+  --fuente-texto: "Fira Sans", system-ui, "Segoe UI", Arial, sans-serif;
+  --fuente-codigo: "Fira Code", ui-monospace, Consolas, monospace;
+  --texto-xs: 0.8125rem; /* 13 px: solo etiquetas secundarias */
+  --texto-sm: 0.875rem; /* 14 px */
+  --texto-md: 1rem; /* 16 px */
+  --texto-lg: 1.25rem; /* 20 px */
+  --texto-xl: 1.5rem; /* 24 px */
+  --texto-2xl: 2rem; /* 32 px */
+
+  /* Espaciado (base 4 px) */
+  --esp-1: 0.25rem;
+  --esp-2: 0.5rem;
+  --esp-3: 0.75rem;
+  --esp-4: 1rem;
+  --esp-6: 1.5rem;
+  --esp-8: 2rem;
+
+  /* Forma */
+  --radio: 6px;
+  --sombra: 0 1px 2px rgb(15 23 42 / 0.08);
+  --objetivo-minimo: 44px;
+  --transicion: 150ms ease-out;
+}

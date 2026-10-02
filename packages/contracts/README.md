@@ -1,11 +1,11 @@
 # packages/contracts — Contratos compartidos
 
-**Estado (02/10/2026):** contratos del motor de cálculo. Paquete ESM que se compila a `dist/` con `pnpm --filter @softarq/contracts run build`.
+**Estado (02/10/2026):** contratos del motor de cálculo y de la API HTTP; los usan la API y la web. Paquete ESM que se compila a `dist/` con `pnpm --filter @softarq/contracts run build`.
 
 | Archivo | Contenido |
 |---|---|
 | `src/decimal.ts` | `DecimalTexto` (formato documentado), `PATRON_DECIMAL_TEXTO`, `esDecimalTexto`, `FechaISO` |
-| `src/calculo.ts` | `EntradaCalculo`, `ResultadoCalculo` (`CALCULADO`, `BLOQUEADO` o `ENTRADA_INVALIDA`), fórmulas, modalidades, códigos BL/AV y `LIMITES_ENTRADA_CALCULO` |
+| `src/calculo.ts` | `EntradaCalculo`, `ResultadoCalculo` (`CALCULADO`, `BLOQUEADO` o `ENTRADA_INVALIDA`), fórmulas, modalidades, códigos BL/AV, `LIMITES_ENTRADA_CALCULO` y `DIMENSIONES_POR_FORMULA` (qué medidas se capturan por fórmula; la usan el motor y la web, ADR-0006) |
 | `src/vista-comercial.ts` | `CotizacionComercial` y `LEYENDA_DEMO`: lo que pueden recibir web y móvil |
 | `src/api/esquemas.ts` | Contratos HTTP v1 como **esquemas Zod** (definición única: tipos con `z.infer`, validación en la API y OpenAPI): solicitud de cálculo DEMO, consultas, respuestas, sobre de error y `LIMITES_API`. `RenglonMedicion` y `CotizacionComercial` se derivan de aquí |
 
