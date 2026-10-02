@@ -1,20 +1,31 @@
 {
   "name": "@softarq/api",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
-  "description": "API de SoftArq (NestJS + TypeScript, PostgreSQL). Por ahora solo contiene el dominio de calculo.",
+  "description": "API de SoftArq (NestJS + TypeScript, PostgreSQL). Hoy: dominio de calculo y persistencia de catalogos (Prisma).",
   "type": "module",
   "scripts": {
-    "build": "tsc -p tsconfig.build.json",
-    "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test": "vitest run"
+    "prisma:generar": "node scripts/db/prisma-generar.mjs",
+    "build": "pnpm run prisma:generar && tsc -p tsconfig.build.json",
+    "typecheck": "pnpm run prisma:generar && tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "test:integracion": "pnpm run prisma:generar && vitest run --config vitest.integracion.config.ts",
+    "db:credenciales": "node scripts/db/generar-credenciales.mjs",
+    "db:migrar": "node scripts/db/migrar.mjs",
+    "db:migrar:test": "node scripts/db/migrar.mjs --test",
+    "db:nueva-migracion": "node scripts/db/nueva-migracion.mjs",
+    "db:cargar-demo": "pnpm run build && node dist/modules/catalogos/demo/ejecutar-carga-demo.js"
   },
   "dependencies": {
+    "@prisma/adapter-pg": "7.10.0",
+    "@prisma/client": "7.10.0",
     "@softarq/contracts": "workspace:*",
-    "decimal.js": "10.6.0"
+    "decimal.js": "10.6.0",
+    "pg": "8.23.1"
   },
   "devDependencies": {
     "@types/node": "24.19.0",
+    "prisma": "7.10.0",
     "typescript": "7.0.2",
     "vite": "8.3.2",
     "vitest": "5.0.3"

@@ -1,0 +1,269 @@
+// Esquema de persistencia de SoftArq — módulo 2: catálogos para el motor de cálculo.
+// Ver docs/adr/0004-persistencia-catalogos.md.
+//
+// Convenciones:
+// - Tablas y columnas en snake_case (@@map/@map); modelos en español.
+// - Toda entidad propia de una organización lleva organizacion_id, UNIQUE(organizacion_id, id)
+//   y UNIQUE(organizacion_id, codigo). Las FK entre entidades propias son COMPUESTAS
+//   (organizacion_id, x_id), de modo que PostgreSQL impide relacionar organizaciones distintas.
+// - Importes y cantidades en NUMERIC con precisión por clase de dato (nunca Float).
+// - Vigencias en DATE (sin hora ni zona horaria).
+// - Los CHECK y la restricción de exclusión de precios están en el SQL de la migración
+//   (Prisma no los representa; ver prisma/migrations/*/migration.sql).
+
+generator client {
+  provider            = "prisma-client"
+  output              = "../src/generated/prisma"
+  moduleFormat        = "esm"
+  importFileExtension = "js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+/// Referencia común (catálogo de unidades de la fase 1, modBuild.bas). Se carga en la migración.
+model Unidad {
+  clave    String @id @db.VarChar(10)
+  nombre   String @db.VarChar(60)
+  magnitud String @db.VarChar(20)
+
+  insumos                 Insumo[]
+  conversionesOrigen      Conversion[]     @relation("ConversionOrigen")
+  conversionesDestino     Conversion[]     @relation("ConversionDestino")
+  productosCompra         Producto[]
+  tarifas                 TarifaManoObra[]
+  conceptos               Concepto[]
+  componentesRendimiento  Componente[]
+  tiposAdicional          TipoAdicional[]
+
+  @@map("unidad")
+}
+
+model Organizacion {
+  id       String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  codigo   String   @unique @db.VarChar(40)
+  nombre   String   @db.VarChar(200)
+  esDemo   Boolean  @map("es_demo")
+  creadoEn DateTime @default(now()) @map("creado_en") @db.Timestamptz(3)
+
+  parametros     ParametrosCalculo?
+  insumos        Insumo[]
+  conversiones   Conversion[]
+  proveedores    Proveedor[]
+  productos      Producto[]
+  precios        Precio[]
+  tarifas        TarifaManoObra[]
+  conceptos      Concepto[]
+  componentes    Componente[]
+  tiposAdicional TipoAdicional[]
+
+  @@map("organizacion")
+}
+
+/// Parámetros de venta de la organización. NULL = no definido (bloquea: BL-12, BL-13); "0" es un valor definido.
+model ParametrosCalculo {
+  organizacionId      String   @id @map("organizacion_id") @db.Uuid
+  ambiente            String   @db.VarChar(12)
+  moneda              String   @default("MXN") @db.VarChar(3)
+  recargoSobreCosto   Decimal? @map("recargo_sobre_costo") @db.Decimal(7, 6)
+  impuestoTasa        Decimal? @map("impuesto_tasa") @db.Decimal(7, 6)
+  impuestoBase        String?  @map("impuesto_base") @db.VarChar(30)
+  impuestoTratamiento String?  @map("impuesto_tratamiento") @db.VarChar(500)
+  impuestoNombre      String?  @map("impuesto_nombre") @db.VarChar(100)
+  vigenciaDias        Int?     @map("vigencia_dias")
+
+  organizacion Organizacion @relation(fields: [organizacionId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+
+  @@map("parametros_calculo")
+}
+
+model Insumo {
+  id             String  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organizacionId String  @map("organizacion_id") @db.Uuid
+  codigo         String  @db.VarChar(40)
+  descripcion    String  @db.VarChar(500)
+  unidadBase     String  @map("unidad_base") @db.VarChar(10)
+  activo         Boolean @default(true)
+
+  organizacion Organizacion @relation(fields: [organizacionId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  unidad       Unidad       @relation(fields: [unidadBase], references: [clave], onDelete: Restrict, onUpdate: Restrict)
+  conversiones Conversion[]
+  productos    Producto[]
+  componentes  Componente[]
+
+  @@unique([organizacionId, id])
+  @@unique([organizacionId, codigo])
+  @@map("insumo")
+}
+
+model Conversion {
+  id             String  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organizacionId String  @map("organizacion_id") @db.Uuid
+  insumoId       String  @map("insumo_id") @db.Uuid
+  unidadOrigen   String  @map("unidad_origen") @db.VarChar(10)
+  unidadDestino  String  @map("unidad_destino") @db.VarChar(10)
+  /// Unidades de destino por unidad de origen (> 0).
+  factor         Decimal @db.Decimal(20, 10)
+  fuente         String  @db.VarChar(500)
+
+  organizacion Organizacion @relation(fields: [organizacionId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  insumo       Insumo       @relation(fields: [organizacionId, insumoId], references: [organizacionId, id], onDelete: Restrict, onUpdate: Restrict)
+  origen       Unidad       @relation("ConversionOrigen", fields: [unidadOrigen], references: [clave], onDelete: Restrict, onUpdate: Restrict)
+  destino      Unidad       @relation("ConversionDestino", fields: [unidadDestino], references: [clave], onDelete: Restrict, onUpdate: Restrict)
+
+  @@unique([insumoId, unidadOrigen, unidadDestino])
+  @@map("conversion")
+}
+
+model Proveedor {
+  id             String  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organizacionId String  @map("organizacion_id") @db.Uuid
+  codigo         String  @db.VarChar(40)
+  nombre         String  @db.VarChar(200)
+  activo         Boolean @default(true)
+
+  organizacion Organizacion @relation(fields: [organizacionId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  precios      Precio[]
+
+  @@unique([organizacionId, id])
+  @@unique([organizacionId, codigo])
+  @@map("proveedor")
+}
+
+model Producto {
+  id               String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organizacionId   String   @map("organizacion_id") @db.Uuid
+  codigo           String   @db.VarChar(40)
+  insumoId         String   @map("insumo_id") @db.Uuid
+  descripcion      String   @db.VarChar(500)
+  presentacion     String   @db.VarChar(200)
+  unidadCompra     String   @map("unidad_compra") @db.VarChar(10)
+  /// Contenido de una unidad de compra en la unidad base del insumo (> 0).
+  contenido        Decimal  @db.Decimal(20, 6)
+  fraccionable     Boolean
+  /// Obligatorio (> 0) si es fraccionable; NULL si no.
+  incrementoMinimo Decimal? @map("incremento_minimo") @db.Decimal(20, 6)
+  activo           Boolean  @default(true)
+
+  organizacion Organizacion @relation(fields: [organizacionId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  insumo       Insumo       @relation(fields: [organizacionId, insumoId], references: [organizacionId, id], onDelete: Restrict, onUpdate: Restrict)
+  unidad       Unidad       @relation(fields: [unidadCompra], references: [clave], onDelete: Restrict, onUpdate: Restrict)
+  precios      Precio[]
+
+  @@unique([organizacionId, id])
+  @@unique([organizacionId, codigo])
+  @@map("producto")
+}
+
+/// Precio de un producto por proveedor. No se edita: se registra uno nuevo o se anula (Val_Precio).
+model Precio {
+  id             String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organizacionId String   @map("organizacion_id") @db.Uuid
+  codigo         String   @db.VarChar(40)
+  productoId     String   @map("producto_id") @db.Uuid
+  proveedorId    String   @map("proveedor_id") @db.Uuid
+  precioUnitario Decimal  @map("precio_unitario") @db.Decimal(18, 6)
+  vigenteDesde   DateTime @map("vigente_desde") @db.Date
+  vigenteHasta   DateTime @map("vigente_hasta") @db.Date
+  anulado        Boolean  @default(false)
+  fuente         String   @db.VarChar(500)
+
+  organizacion Organizacion @relation(fields: [organizacionId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  producto     Producto     @relation(fields: [organizacionId, productoId], references: [organizacionId, id], onDelete: Restrict, onUpdate: Restrict)
+  proveedor    Proveedor    @relation(fields: [organizacionId, proveedorId], references: [organizacionId, id], onDelete: Restrict, onUpdate: Restrict)
+
+  @@unique([organizacionId, codigo])
+  @@map("precio")
+}
+
+model TarifaManoObra {
+  id                 String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organizacionId     String   @map("organizacion_id") @db.Uuid
+  codigo             String   @db.VarChar(40)
+  modalidad          String   @db.VarChar(12)
+  descripcion        String   @db.VarChar(500)
+  unidad             String   @db.VarChar(10)
+  importe            Decimal  @db.Decimal(18, 6)
+  /// Solo en JORNADA (> 0); NULL en las demás modalidades.
+  rendimientoJornada Decimal? @map("rendimiento_jornada") @db.Decimal(20, 6)
+  vigenteDesde       DateTime @map("vigente_desde") @db.Date
+  vigenteHasta       DateTime @map("vigente_hasta") @db.Date
+  activa             Boolean  @default(true)
+  fuente             String   @db.VarChar(500)
+
+  organizacion Organizacion @relation(fields: [organizacionId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  unidadRef    Unidad       @relation(fields: [unidad], references: [clave], onDelete: Restrict, onUpdate: Restrict)
+  conceptos    Concepto[]
+
+  @@unique([organizacionId, id])
+  @@unique([organizacionId, codigo])
+  @@map("tarifa_mano_obra")
+}
+
+model Concepto {
+  id               String  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organizacionId   String  @map("organizacion_id") @db.Uuid
+  codigo           String  @db.VarChar(40)
+  descripcion      String  @db.VarChar(500)
+  unidad           String  @db.VarChar(10)
+  tipoFormula      String  @map("tipo_formula") @db.VarChar(10)
+  permiteDescuento Boolean @map("permite_descuento")
+  clase            String  @db.VarChar(15)
+  estado           String  @db.VarChar(10)
+  tarifaId         String? @map("tarifa_id") @db.Uuid
+  activo           Boolean @default(true)
+
+  organizacion Organizacion    @relation(fields: [organizacionId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  unidadRef    Unidad          @relation(fields: [unidad], references: [clave], onDelete: Restrict, onUpdate: Restrict)
+  tarifa       TarifaManoObra? @relation(fields: [organizacionId, tarifaId], references: [organizacionId, id], onDelete: Restrict, onUpdate: Restrict)
+  componentes  Componente[]
+
+  @@unique([organizacionId, id])
+  @@unique([organizacionId, codigo])
+  @@map("concepto")
+}
+
+/// Componente de un concepto. `orden` conserva el orden del libro: define el remanente del prorrateo (CR-08).
+model Componente {
+  id                String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organizacionId    String   @map("organizacion_id") @db.Uuid
+  codigo            String   @db.VarChar(40)
+  conceptoId        String   @map("concepto_id") @db.Uuid
+  insumoId          String   @map("insumo_id") @db.Uuid
+  orden             Int
+  rendimiento       Decimal  @db.Decimal(20, 6)
+  unidadRendimiento String   @map("unidad_rendimiento") @db.VarChar(10)
+  desperdicio       Decimal  @db.Decimal(7, 6)
+  factorTraslape    Decimal? @map("factor_traslape") @db.Decimal(9, 6)
+  fuente            String   @db.VarChar(500)
+  fecha             DateTime @db.Date
+  responsable       String   @db.VarChar(200)
+  activo            Boolean  @default(true)
+
+  organizacion Organizacion @relation(fields: [organizacionId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  concepto     Concepto     @relation(fields: [organizacionId, conceptoId], references: [organizacionId, id], onDelete: Restrict, onUpdate: Restrict)
+  insumo       Insumo       @relation(fields: [organizacionId, insumoId], references: [organizacionId, id], onDelete: Restrict, onUpdate: Restrict)
+  unidad       Unidad       @relation(fields: [unidadRendimiento], references: [clave], onDelete: Restrict, onUpdate: Restrict)
+
+  @@unique([organizacionId, codigo])
+  @@unique([conceptoId, orden])
+  @@map("componente")
+}
+
+model TipoAdicional {
+  id             String  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organizacionId String  @map("organizacion_id") @db.Uuid
+  codigo         String  @db.VarChar(40)
+  categoria      String  @db.VarChar(40)
+  descripcion    String  @db.VarChar(500)
+  unidad         String  @db.VarChar(10)
+  regla          String  @db.VarChar(20)
+  activo         Boolean @default(true)
+
+  organizacion Organizacion @relation(fields: [organizacionId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  unidadRef    Unidad       @relation(fields: [unidad], references: [clave], onDelete: Restrict, onUpdate: Restrict)
+
+  @@unique([organizacionId, codigo])
+  @@map("tipo_adicional")
+}

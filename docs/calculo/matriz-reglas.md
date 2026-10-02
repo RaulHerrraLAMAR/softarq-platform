@@ -43,6 +43,10 @@ Los identificadores CR-01 a CR-16 están presentes en W v1.3 (§3.3 a §3.7) y e
 | BL-05 Rendimiento ≤ 0 o desperdicio fuera de [0,1) (rangos) | W §3.11; VBA `modValidacion:102` | `motor.ts` | `bloqueos.test.ts` |
 | BL-06 Conversión faltante, tarifa en otra unidad o unidad del concepto que no corresponde a la fórmula | W §3.11; VBA `Calc_Ejecutar`, `Motor_Modelo`, `modValidacion:97`; unidades de `fuentes\build\modBuild.bas` | `motor.ts`, `unidades.ts` | `bloqueos.test.ts` |
 | BL-08 Insumo sin selección | W §3.11; VBA `Calc_Ejecutar` | `motor.ts` | `bloqueos.test.ts` |
+| BL-08 Selección inválida (precio anulado, producto o proveedor inactivo), sin sustituirla | W §3.11; VBA `modCompras.Sel_Estado`, `modValidacion` | `calculo/aplicacion/construir-entrada.ts` (módulo 2) | `calculo-desde-base.integracion.test.ts` |
+| BL-04 Concepto no aprobado o inactivo | W §3.11; VBA `modValidacion` | `calculo/aplicacion/construir-entrada.ts` (módulo 2) | `calculo-desde-base.integracion.test.ts` |
+| CR-07 Menor precio vigente para AV-01 (no elige) | W §3.4; VBA `Compras_MenorPrecio` | `repositorio-catalogos.ts` (`obtenerPreciosVigentesDeProductos`) y `construir-entrada.ts` | `calculo-desde-base.integracion.test.ts` (TI-309) |
+| Precios sin vigencias solapadas por producto y proveedor | VBA `modCatalogos.Val_Precio` | Restricción de exclusión en la migración 0001 | `catalogos.integracion.test.ts` |
 | BL-10 Tarifa faltante, inactiva o no vigente a `fechaCalculo` | W §3.11; VBA `Motor_Modelo` | `motor.ts` | `bloqueos.test.ts` |
 | BL-11 Adicional sin monto | W §3.11; VBA `Calc_Ejecutar` | `motor.ts` | `bloqueos.test.ts` |
 | BL-12 Recargo no definido o fuera de [0,1]; el 0 es válido | W §3.6 y §3.11; VBA `Calc_Ejecutar`, `modConfig:208` | `motor.ts` (`parametrosDeVenta`) | PC-40; `bloqueos.test.ts` |
@@ -75,7 +79,7 @@ Las medidas, precios y parámetros completos de cada escenario están en `domain
 
 | Regla | Módulo previsto |
 |---|---|
-| BL-01 y BL-02 (cliente y proyecto), BL-04 (estado del concepto, personalizados) y BL-07 (producto activo) | Catálogos y armado de la entrada |
+| BL-01 y BL-02 (cliente y proyecto), BL-04 para conceptos personalizados con excepción autorizada y BL-07 (producto activo) | Cotizaciones y revisión (BL-04 de estado y BL-08 de selección inválida ya están en el ensamblador del módulo 2) |
 | BL-05 en su parte de trazabilidad (fuente, fecha y responsable técnico) | Catálogos (aprobación de conceptos) |
 | BL-09 (vigencia del precio a la emisión, con excepción autorizada) y AV-02 | Emisión |
 | BL-14 (vigencia comercial), BL-15 (emisor), BL-17 (revisor ≠ preparador), BL-19 (estado) y BL-20 (textos) | Revisión y emisión |

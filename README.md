@@ -2,13 +2,13 @@
 
 Plataforma de **cotización de estructuras de construcción** (fase 2 del proyecto SoftArq). Sucede al libro de Excel de la fase 1 (`Cotizador_Estructuras_F1.xlsm`, versión 1.0.0-F1), que sigue siendo la referencia funcional.
 
-> **Estado (02/10/2026):** módulo 1 terminado: **motor de cálculo del servidor** (CR-01 a CR-16) en `apps/api` y sus contratos en `packages/contracts`, verificado con 163 pruebas. Todavía no hay endpoints, persistencia, autenticación ni pantallas. Todo dato de ejemplo es **DEMO** y no tiene validez comercial.
+> **Estado (02/10/2026):** módulos 1 y 2 terminados: **motor de cálculo del servidor** (CR-01 a CR-16) y **persistencia de catálogos en PostgreSQL con Prisma**, aislada por organización, con el catálogo DEMO conectado al motor. Verificado con 200 pruebas unitarias y 46 de integración contra PostgreSQL local. Todavía no hay endpoints, autenticación ni pantallas. Todo dato de ejemplo es **DEMO** y no tiene validez comercial.
 
 ## Estructura
 
 | Ruta | Contenido | Tecnología prevista |
 |---|---|---|
-| `apps/api` | API: cálculos, permisos, reglas de negocio y validación. Hoy: dominio de cálculo | NestJS + TypeScript, PostgreSQL (previstos); decimal.js y Vitest (en uso) |
+| `apps/api` | API: cálculos, permisos, reglas de negocio y validación. Hoy: dominio de cálculo y persistencia de catálogos | NestJS (previsto); decimal.js, Prisma 7.10 + PostgreSQL 18 y Vitest (en uso) |
 | `apps/web` | Cliente web | React + TypeScript |
 | `apps/mobile` | App móvil | React Native con Expo |
 | `packages/contracts` | Contratos compartidos (tipos y constantes), sin lógica. Hoy: contratos del cálculo | TypeScript (ESM) |
@@ -36,13 +36,20 @@ Cachés y almacenes de paquetes van a `D:\Proyecto_SoftArq\_work` (configurado e
 
 ## Configuración
 
-1. Copia `.env.example` como `.env` y completa los valores locales. `.env` no se versiona (el motor de cálculo no lo necesita).
-2. Instala y verifica desde la raíz del repositorio:
+1. Instala y verifica desde la raíz del repositorio:
 
 ```
 pnpm install --frozen-lockfile
 pnpm verificar          # build + typecheck + test de todos los paquetes
 ```
+
+2. Prepara PostgreSQL local (credenciales locales, roles, bases, migraciones y catálogo DEMO): sigue [`apps/api/README.md`](apps/api/README.md#preparar-el-entorno-desde-cero). Después:
+
+```
+pnpm verificar:integracion   # pruebas contra softarq_test (la única base que pueden vaciar)
+```
+
+`.env.example` documenta las variables; los archivos reales (`apps/api/.env`, `.env.test`) los genera `db:credenciales` y no se versionan.
 
 Para mantener los temporales fuera de `C:`, en la sesión de terminal:
 

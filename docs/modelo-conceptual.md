@@ -1,7 +1,9 @@
 # Modelo conceptual de SoftArq (DEMO)
 
 - **Fecha:** 02/10/2026
-- **Estado:** documentado. **Sin implementar:** no hay autenticación, suscripciones, CRUD de clientes ni persistencia.
+- **Estado:**
+  - **Implementado (módulo 2, ADR-0004):** `organizacion` y los catálogos que alimentan el cálculo, persistidos en PostgreSQL y aislados por organización (ver §4).
+  - **Sin implementar:** usuarios, autenticación, clientes, proyectos, cotizaciones, versiones ni suscripciones.
 
 ## 1. Entidades y relaciones
 
@@ -47,7 +49,21 @@ Versión      1 ── N Excepción      (rendimiento, precio vencido, concepto 
 5. Todo dato de la organización DEMO lleva marca DEMO y las salidas llevan la leyenda de demostración.
 6. Los costos internos, proveedores y márgenes solo los ven usuarios de la organización con el permiso correspondiente; nunca el cliente.
 
-## 4. Pendiente de decidir (módulos posteriores)
+## 4. Qué es común y qué pertenece a cada organización (módulo 2)
+
+| Datos | Alcance | Tabla | Motivo |
+|---|---|---|---|
+| Unidades y su magnitud | **Común** | `unidad` | Referencia fija del sistema (modBuild.bas); la aplicación solo la lee. Se carga en la migración. |
+| Parámetros de venta: ambiente, moneda, recargo, impuesto y vigencia | Propio | `parametros_calculo` | Política comercial y fiscal de cada organización. NULL = no definido. |
+| Insumos y conversiones | Propio | `insumo`, `conversion` | Rendimientos y factores con fuente y responsable propios. |
+| Proveedores, productos y precios | Propio | `proveedor`, `producto`, `precio` | Costos internos: nunca salen del servidor ni se comparten. |
+| Tarifas de mano de obra | Propio | `tarifa_mano_obra` | Costos internos. |
+| Conceptos y componentes | Propio | `concepto`, `componente` | Reglas técnicas aprobadas por cada organización. |
+| Tipos de costo adicional | Propio | `tipo_adicional` | Catálogo de cada organización. |
+
+Toda relación entre datos propios es una FK compuesta con `organizacion_id`, de modo que la base impide mezclar organizaciones. Inicialmente solo existe la organización `DEMO`; las pruebas crean otras para comprobar el aislamiento.
+
+## 5. Pendiente de decidir (módulos posteriores)
 
 - Mecanismo de autenticación y modelo de permisos.
 - Si los catálogos se comparten entre organizaciones o son siempre propios.

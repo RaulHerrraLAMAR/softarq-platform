@@ -7,3 +7,10 @@ packages:
 storeDir: ../_work/pnpm-store
 cacheDir: ../_work/pnpm-cache
 stateDir: ../_work/pnpm-state
+
+# Scripts de instalación revisados y autorizados por versión exacta (strictDepBuilds sigue activo):
+# - prisma: preinstall que comprueba la versión de Node;
+# - @prisma/engines: postinstall que descarga el motor de migraciones (schema-engine).
+allowBuilds:
+  prisma@7.10.0: true
+  "@prisma/engines@7.10.0": true
