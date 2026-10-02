@@ -1,0 +1,15 @@
+{
+  "consolidarCompras": true,
+  "partidas": [
+    {
+      "id": "P001",
+      "tipo": "CONCEPTO",
+      "conceptoCodigo": "CON-00001",
+      "descripcion": "[DEMO] Concepto X (ilustrativo, m2)",
+      "mediciones": [
+        { "descripcion": "Renglón propio", "signo": "+", "piezas": "1", "largo": "4", "ancho": "2.5", "alto": null }
+      ]
+    }
+  ],
+  "preciosElegidos": ["PRE-000001", "PRE-000002"]
+}

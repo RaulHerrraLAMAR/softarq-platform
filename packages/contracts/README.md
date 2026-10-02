@@ -7,6 +7,9 @@
 | `src/decimal.ts` | `DecimalTexto` (formato documentado), `PATRON_DECIMAL_TEXTO`, `esDecimalTexto`, `FechaISO` |
 | `src/calculo.ts` | `EntradaCalculo`, `ResultadoCalculo` (`CALCULADO`, `BLOQUEADO` o `ENTRADA_INVALIDA`), fórmulas, modalidades, códigos BL/AV y `LIMITES_ENTRADA_CALCULO` |
 | `src/vista-comercial.ts` | `CotizacionComercial` y `LEYENDA_DEMO`: lo que pueden recibir web y móvil |
+| `src/api/esquemas.ts` | Contratos HTTP v1 como **esquemas Zod** (definición única: tipos con `z.infer`, validación en la API y OpenAPI): solicitud de cálculo DEMO, consultas, respuestas, sobre de error y `LIMITES_API`. `RenglonMedicion` y `CotizacionComercial` se derivan de aquí |
+
+Dependencia de ejecución: `zod` (4.6.5). Ninguna dependencia del servidor (Nest, Prisma, Express).
 
 ## Qué va aquí
 

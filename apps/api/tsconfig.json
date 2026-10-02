@@ -12,6 +12,8 @@
     "verbatimModuleSyntax": true,
     "isolatedModules": true,
     "skipLibCheck": true,
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true,
     "types": ["node"]
   },
   "include": ["src", "vitest.config.ts", "vitest.integracion.config.ts", "prisma.config.ts"]

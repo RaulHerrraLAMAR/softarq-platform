@@ -118,6 +118,29 @@ export interface PrecioLeido {
   proveedor: { codigo: string; activo: boolean };
 }
 
+export interface ConceptoDisponible {
+  codigo: string;
+  descripcion: string;
+  unidad: string;
+  tipoFormula: "CONTEO" | "LONGITUD" | "AREA" | "VOLUMEN";
+  permiteDescuento: boolean;
+  insumos: { codigo: string; descripcion: string; unidadBase: string }[];
+}
+
+/** Opción de precio leída. `precioUnitario` es interno: solo se usa para marcar el menor. */
+export interface OpcionPrecioLeida {
+  precioCodigo: string;
+  precioUnitario: string;
+  vigenteHasta: string;
+  insumoCodigo: string;
+  productoCodigo: string;
+  producto: string;
+  presentacion: string;
+  unidadCompra: string;
+  proveedorCodigo: string;
+  proveedor: string;
+}
+
 export interface TipoAdicionalLeido {
   codigo: string;
   categoria: string;
@@ -571,6 +594,112 @@ export class RepositorioCatalogos {
   async obtenerTiposAdicional(ctx: ContextoOrganizacion, codigos: readonly string[]): Promise<TipoAdicionalLeido[]> {
     const filas = await this.db.tipoAdicional.findMany({
       where: { organizacionId: ctx.organizacionId, codigo: { in: [...codigos] } },
+    });
+    return filas.map((f) => ({
+      codigo: f.codigo,
+      categoria: f.categoria,
+      descripcion: f.descripcion,
+      unidad: f.unidad,
+      activo: f.activo,
+    }));
+  }
+
+  // --------------------- consultas para la API (módulo 3) ---------------------
+
+  /**
+   * Conceptos activos y aprobados, con los insumos de sus componentes activos.
+   * Búsqueda por código o descripción; `limite` acota el resultado (la API lo limita a 100).
+   */
+  async listarConceptosDisponibles(
+    ctx: ContextoOrganizacion,
+    opciones: { buscar?: string; codigos?: readonly string[]; limite: number },
+  ): Promise<ConceptoDisponible[]> {
+    const filas = await this.db.concepto.findMany({
+      where: {
+        organizacionId: ctx.organizacionId,
+        activo: true,
+        estado: "Aprobado",
+        ...(opciones.codigos ? { codigo: { in: [...opciones.codigos] } } : {}),
+        ...(opciones.buscar
+          ? {
+              OR: [
+                { codigo: { contains: opciones.buscar, mode: "insensitive" as const } },
+                { descripcion: { contains: opciones.buscar, mode: "insensitive" as const } },
+              ],
+            }
+          : {}),
+      },
+      orderBy: { codigo: "asc" },
+      take: opciones.limite,
+      include: {
+        componentes: {
+          where: { organizacionId: ctx.organizacionId, activo: true },
+          orderBy: { orden: "asc" },
+          include: { insumo: { select: { codigo: true, descripcion: true, unidadBase: true } } },
+        },
+      },
+    });
+    return filas.map((f) => ({
+      codigo: f.codigo,
+      descripcion: f.descripcion,
+      unidad: f.unidad,
+      tipoFormula: f.tipoFormula as ConceptoDisponible["tipoFormula"],
+      permiteDescuento: f.permiteDescuento,
+      insumos: f.componentes.map((c) => ({
+        codigo: c.insumo.codigo,
+        descripcion: c.insumo.descripcion,
+        unidadBase: c.insumo.unidadBase,
+      })),
+    }));
+  }
+
+  /**
+   * Opciones de precio elegibles a `fecha` para los insumos indicados: no anuladas, vigentes,
+   * con producto y proveedor activos. Incluye el precio SOLO para que el servidor marque el menor;
+   * la capa HTTP no lo publica.
+   */
+  async obtenerOpcionesPrecio(
+    ctx: ContextoOrganizacion,
+    insumoCodigos: readonly string[],
+    fecha: string,
+    limite: number,
+  ): Promise<OpcionPrecioLeida[]> {
+    const dia = fechaParaColumna(fecha, "fecha");
+    const filas = await this.db.precio.findMany({
+      where: {
+        organizacionId: ctx.organizacionId,
+        anulado: false,
+        vigenteDesde: { lte: dia },
+        vigenteHasta: { gte: dia },
+        producto: { activo: true, insumo: { codigo: { in: [...insumoCodigos] } } },
+        proveedor: { activo: true },
+      },
+      include: {
+        producto: { include: { insumo: { select: { codigo: true } } } },
+        proveedor: { select: { codigo: true, nombre: true } },
+      },
+      orderBy: { codigo: "asc" },
+      take: limite,
+    });
+    return filas.map((f) => ({
+      precioCodigo: f.codigo,
+      precioUnitario: textoDeDecimal(f.precioUnitario),
+      vigenteHasta: fechaDeColumna(f.vigenteHasta),
+      insumoCodigo: f.producto.insumo.codigo,
+      productoCodigo: f.producto.codigo,
+      producto: f.producto.descripcion,
+      presentacion: f.producto.presentacion,
+      unidadCompra: f.producto.unidadCompra,
+      proveedorCodigo: f.proveedor.codigo,
+      proveedor: f.proveedor.nombre,
+    }));
+  }
+
+  async listarTiposAdicional(ctx: ContextoOrganizacion, limite: number): Promise<TipoAdicionalLeido[]> {
+    const filas = await this.db.tipoAdicional.findMany({
+      where: { organizacionId: ctx.organizacionId, activo: true },
+      orderBy: { codigo: "asc" },
+      take: limite,
     });
     return filas.map((f) => ({
       codigo: f.codigo,

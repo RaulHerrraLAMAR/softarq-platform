@@ -5,6 +5,8 @@
  * El resultado `ResultadoCalculado` es INTERNO (costos, proveedores, consumos, margen):
  * los clientes web y móvil deben recibir `CotizacionComercial` (ver vista-comercial.ts).
  */
+import type { z } from "zod";
+import type { EsquemaRenglonMedicion } from "./api/esquemas.js";
 import type { DecimalTexto, FechaISO } from "./decimal.js";
 
 export const TIPOS_FORMULA = ["CONTEO", "LONGITUD", "AREA", "VOLUMEN"] as const;
@@ -70,16 +72,11 @@ export interface ConversionCalculo {
   factor: DecimalTexto;
 }
 
-/** Renglón de números generadores (CR-01). Las dimensiones que la fórmula no usa van en `null`. */
-export interface RenglonMedicion {
-  descripcion: string;
-  signo: Signo;
-  /** Entero mayor que cero. */
-  piezas: DecimalTexto;
-  largo: DecimalTexto | null;
-  ancho: DecimalTexto | null;
-  alto: DecimalTexto | null;
-}
+/**
+ * Renglón de números generadores (CR-01). Las dimensiones que la fórmula no usa van en `null`.
+ * Definición única: el esquema `EsquemaRenglonMedicion` de la API (api/esquemas.ts).
+ */
+export type RenglonMedicion = z.infer<typeof EsquemaRenglonMedicion>;
 
 export interface ConceptoCalculo {
   id: string;

@@ -1,0 +1,1038 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "SoftArq API (DEMO local)",
+    "version": "1.0.0",
+    "description": "API local de SoftArq: catálogos DEMO y cálculo de cotizaciones con datos de PostgreSQL. Solo escucha en 127.0.0.1. Sin autenticación (contexto fijo de la organización DEMO; ver ADR-0005). Los importes y cantidades viajan como texto decimal. Todos los datos son DEMO y no tienen validez comercial."
+  },
+  "servers": [
+    {
+      "url": "http://127.0.0.1:3000"
+    }
+  ],
+  "paths": {
+    "/health": {
+      "get": {
+        "summary": "Salud del servicio y de PostgreSQL",
+        "responses": {
+          "200": {
+            "description": "Servicio y base de datos disponibles.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaSalud"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "DEMASIADAS_SOLICITUDES (cabecera Retry-After).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Base de datos no disponible.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaSalud"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/catalogos/conceptos": {
+      "get": {
+        "summary": "Conceptos activos y aprobados (sin costos internos)",
+        "parameters": [
+          {
+            "name": "buscar",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 60
+            }
+          },
+          {
+            "name": "limite",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d{1,3}$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Conceptos.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaConceptos"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "SOLICITUD_INVALIDA: no cumple el contrato (campos con su ruta) o JSON mal formado.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "DEMASIADAS_SOLICITUDES (cabecera Retry-After).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "ERROR_INTERNO.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "SERVICIO_NO_DISPONIBLE: PostgreSQL no disponible.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/catalogos/opciones-precio": {
+      "get": {
+        "summary": "Opciones de precio vigentes por insumo de los conceptos indicados (sin precios)",
+        "parameters": [
+          {
+            "name": "conceptos",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Opciones por insumo.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaOpcionesPrecio"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "SOLICITUD_INVALIDA: no cumple el contrato (campos con su ruta) o JSON mal formado.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "NO_ENCONTRADO: ruta o códigos inexistentes en la organización.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "DEMASIADAS_SOLICITUDES (cabecera Retry-After).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "ERROR_INTERNO.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "SERVICIO_NO_DISPONIBLE: PostgreSQL no disponible.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/catalogos/tipos-adicional": {
+      "get": {
+        "summary": "Tipos de costo adicional",
+        "parameters": [
+          {
+            "name": "limite",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d{1,3}$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Tipos.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaTiposAdicional"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "SOLICITUD_INVALIDA: no cumple el contrato (campos con su ruta) o JSON mal formado.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "DEMASIADAS_SOLICITUDES (cabecera Retry-After).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "ERROR_INTERNO.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "SERVICIO_NO_DISPONIBLE: PostgreSQL no disponible.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/calculos/demo": {
+      "post": {
+        "summary": "Calcula una cotización DEMO con datos de PostgreSQL y devuelve la proyección comercial",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SolicitudCalculoDemo"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Cotización calculada (solo vista comercial).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaCalculoDemo"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "SOLICITUD_INVALIDA: no cumple el contrato (campos con su ruta) o JSON mal formado.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "NO_ENCONTRADO: ruta o códigos inexistentes en la organización.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "CUERPO_DEMASIADO_GRANDE.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "TIPO_DE_CONTENIDO_NO_ADMITIDO: el cuerpo debe ser application/json.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "CALCULO_BLOQUEADO: bloqueos de negocio (códigos BL), sin importes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "DEMASIADAS_SOLICITUDES (cabecera Retry-After).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "ERROR_INTERNO.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "SERVICIO_NO_DISPONIBLE: PostgreSQL no disponible.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/openapi.json": {
+      "get": {
+        "summary": "Esta especificación",
+        "responses": {
+          "200": {
+            "description": "Documento OpenAPI 3.1."
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "SolicitudCalculoDemo": {
+        "type": "object",
+        "properties": {
+          "consolidarCompras": {
+            "type": "boolean"
+          },
+          "partidas": {
+            "maxItems": 100,
+            "type": "array",
+            "items": {
+              "oneOf": [
+                {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "pattern": "^[A-Z0-9][A-Z0-9_-]{0,39}$"
+                    },
+                    "tipo": {
+                      "type": "string",
+                      "const": "CONCEPTO"
+                    },
+                    "conceptoCodigo": {
+                      "type": "string",
+                      "pattern": "^[A-Z0-9][A-Z0-9_-]{0,39}$"
+                    },
+                    "descripcion": {
+                      "type": "string",
+                      "maxLength": 200
+                    },
+                    "mediciones": {
+                      "maxItems": 200,
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "descripcion": {
+                            "type": "string",
+                            "maxLength": 200
+                          },
+                          "signo": {
+                            "type": "string",
+                            "enum": [
+                              "+",
+                              "-"
+                            ]
+                          },
+                          "piezas": {
+                            "type": "string",
+                            "pattern": "^-?(0|[1-9]\\d{0,14})(\\.\\d{1,10})?$"
+                          },
+                          "largo": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "pattern": "^-?(0|[1-9]\\d{0,14})(\\.\\d{1,10})?$"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "ancho": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "pattern": "^-?(0|[1-9]\\d{0,14})(\\.\\d{1,10})?$"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "alto": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "pattern": "^-?(0|[1-9]\\d{0,14})(\\.\\d{1,10})?$"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          }
+                        },
+                        "required": [
+                          "descripcion",
+                          "signo",
+                          "piezas",
+                          "largo",
+                          "ancho",
+                          "alto"
+                        ],
+                        "additionalProperties": false
+                      }
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "tipo",
+                    "conceptoCodigo",
+                    "mediciones"
+                  ],
+                  "additionalProperties": false
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "pattern": "^[A-Z0-9][A-Z0-9_-]{0,39}$"
+                    },
+                    "tipo": {
+                      "type": "string",
+                      "const": "ADICIONAL"
+                    },
+                    "tipoAdicionalCodigo": {
+                      "type": "string",
+                      "pattern": "^[A-Z0-9][A-Z0-9_-]{0,39}$"
+                    },
+                    "descripcion": {
+                      "type": "string",
+                      "maxLength": 200
+                    },
+                    "cantidad": {
+                      "type": "string",
+                      "pattern": "^-?(0|[1-9]\\d{0,14})(\\.\\d{1,10})?$"
+                    },
+                    "monto": {
+                      "type": "string",
+                      "pattern": "^-?(0|[1-9]\\d{0,14})(\\.\\d{1,10})?$"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "tipo",
+                    "tipoAdicionalCodigo",
+                    "descripcion",
+                    "cantidad",
+                    "monto"
+                  ],
+                  "additionalProperties": false
+                }
+              ]
+            }
+          },
+          "preciosElegidos": {
+            "maxItems": 100,
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^[A-Z0-9][A-Z0-9_-]{0,39}$"
+            }
+          }
+        },
+        "required": [
+          "consolidarCompras",
+          "partidas",
+          "preciosElegidos"
+        ],
+        "additionalProperties": false
+      },
+      "RespuestaSalud": {
+        "type": "object",
+        "properties": {
+          "estado": {
+            "type": "string",
+            "enum": [
+              "ok",
+              "degradado"
+            ]
+          },
+          "baseDeDatos": {
+            "type": "string",
+            "enum": [
+              "disponible",
+              "no disponible"
+            ]
+          }
+        },
+        "required": [
+          "estado",
+          "baseDeDatos"
+        ],
+        "additionalProperties": false
+      },
+      "RespuestaConceptos": {
+        "type": "object",
+        "properties": {
+          "conceptos": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "codigo": {
+                  "type": "string"
+                },
+                "descripcion": {
+                  "type": "string"
+                },
+                "unidad": {
+                  "type": "string"
+                },
+                "tipoFormula": {
+                  "type": "string",
+                  "enum": [
+                    "CONTEO",
+                    "LONGITUD",
+                    "AREA",
+                    "VOLUMEN"
+                  ]
+                },
+                "permiteDescuento": {
+                  "type": "boolean"
+                },
+                "insumos": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "codigo": {
+                        "type": "string"
+                      },
+                      "descripcion": {
+                        "type": "string"
+                      },
+                      "unidadBase": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "codigo",
+                      "descripcion",
+                      "unidadBase"
+                    ],
+                    "additionalProperties": false
+                  }
+                }
+              },
+              "required": [
+                "codigo",
+                "descripcion",
+                "unidad",
+                "tipoFormula",
+                "permiteDescuento",
+                "insumos"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "limite": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          }
+        },
+        "required": [
+          "conceptos",
+          "limite"
+        ],
+        "additionalProperties": false
+      },
+      "RespuestaOpcionesPrecio": {
+        "type": "object",
+        "properties": {
+          "fechaReferencia": {
+            "type": "string",
+            "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+          },
+          "insumos": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "insumoCodigo": {
+                  "type": "string"
+                },
+                "insumoDescripcion": {
+                  "type": "string"
+                },
+                "unidadBase": {
+                  "type": "string"
+                },
+                "conceptos": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "opciones": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "precioCodigo": {
+                        "type": "string"
+                      },
+                      "productoCodigo": {
+                        "type": "string"
+                      },
+                      "producto": {
+                        "type": "string"
+                      },
+                      "presentacion": {
+                        "type": "string"
+                      },
+                      "unidadCompra": {
+                        "type": "string"
+                      },
+                      "proveedorCodigo": {
+                        "type": "string"
+                      },
+                      "proveedor": {
+                        "type": "string"
+                      },
+                      "vigenteHasta": {
+                        "type": "string",
+                        "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                      },
+                      "esMenorPrecio": {
+                        "type": "boolean"
+                      }
+                    },
+                    "required": [
+                      "precioCodigo",
+                      "productoCodigo",
+                      "producto",
+                      "presentacion",
+                      "unidadCompra",
+                      "proveedorCodigo",
+                      "proveedor",
+                      "vigenteHasta",
+                      "esMenorPrecio"
+                    ],
+                    "additionalProperties": false
+                  }
+                }
+              },
+              "required": [
+                "insumoCodigo",
+                "insumoDescripcion",
+                "unidadBase",
+                "conceptos",
+                "opciones"
+              ],
+              "additionalProperties": false
+            }
+          }
+        },
+        "required": [
+          "fechaReferencia",
+          "insumos"
+        ],
+        "additionalProperties": false
+      },
+      "RespuestaTiposAdicional": {
+        "type": "object",
+        "properties": {
+          "tiposAdicional": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "codigo": {
+                  "type": "string"
+                },
+                "categoria": {
+                  "type": "string"
+                },
+                "descripcion": {
+                  "type": "string"
+                },
+                "unidad": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "codigo",
+                "categoria",
+                "descripcion",
+                "unidad"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "limite": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          }
+        },
+        "required": [
+          "tiposAdicional",
+          "limite"
+        ],
+        "additionalProperties": false
+      },
+      "RespuestaCalculoDemo": {
+        "type": "object",
+        "properties": {
+          "estado": {
+            "type": "string",
+            "const": "CALCULADO"
+          },
+          "fechaCalculo": {
+            "type": "string",
+            "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+          },
+          "cotizacion": {
+            "type": "object",
+            "properties": {
+              "ambiente": {
+                "type": "string",
+                "enum": [
+                  "DEMO",
+                  "PRODUCCION"
+                ]
+              },
+              "moneda": {
+                "type": "string",
+                "const": "MXN"
+              },
+              "leyenda": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "partidas": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "numero": {
+                      "type": "integer",
+                      "minimum": -9007199254740991,
+                      "maximum": 9007199254740991
+                    },
+                    "descripcion": {
+                      "type": "string"
+                    },
+                    "unidad": {
+                      "type": "string"
+                    },
+                    "cantidad": {
+                      "type": "string",
+                      "pattern": "^-?(0|[1-9]\\d{0,14})(\\.\\d{1,10})?$"
+                    },
+                    "precioUnitario": {
+                      "type": "string",
+                      "pattern": "^-?(0|[1-9]\\d{0,14})(\\.\\d{1,10})?$"
+                    },
+                    "importe": {
+                      "type": "string",
+                      "pattern": "^-?(0|[1-9]\\d{0,14})(\\.\\d{1,10})?$"
+                    }
+                  },
+                  "required": [
+                    "numero",
+                    "descripcion",
+                    "unidad",
+                    "cantidad",
+                    "precioUnitario",
+                    "importe"
+                  ],
+                  "additionalProperties": false
+                }
+              },
+              "subtotal": {
+                "type": "string",
+                "pattern": "^-?(0|[1-9]\\d{0,14})(\\.\\d{1,10})?$"
+              },
+              "impuesto": {
+                "type": "object",
+                "properties": {
+                  "nombre": {
+                    "type": "string"
+                  },
+                  "tasa": {
+                    "type": "string",
+                    "pattern": "^-?(0|[1-9]\\d{0,14})(\\.\\d{1,10})?$"
+                  },
+                  "importe": {
+                    "type": "string",
+                    "pattern": "^-?(0|[1-9]\\d{0,14})(\\.\\d{1,10})?$"
+                  }
+                },
+                "required": [
+                  "nombre",
+                  "tasa",
+                  "importe"
+                ],
+                "additionalProperties": false
+              },
+              "total": {
+                "type": "string",
+                "pattern": "^-?(0|[1-9]\\d{0,14})(\\.\\d{1,10})?$"
+              }
+            },
+            "required": [
+              "ambiente",
+              "moneda",
+              "leyenda",
+              "partidas",
+              "subtotal",
+              "impuesto",
+              "total"
+            ],
+            "additionalProperties": false
+          },
+          "avisos": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "codigo": {
+                  "type": "string",
+                  "enum": [
+                    "AV-01",
+                    "AV-03"
+                  ]
+                },
+                "mensaje": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "codigo",
+                "mensaje"
+              ],
+              "additionalProperties": false
+            }
+          }
+        },
+        "required": [
+          "estado",
+          "fechaCalculo",
+          "cotizacion",
+          "avisos"
+        ],
+        "additionalProperties": false
+      },
+      "RespuestaError": {
+        "type": "object",
+        "properties": {
+          "error": {
+            "type": "object",
+            "properties": {
+              "codigo": {
+                "type": "string",
+                "enum": [
+                  "SOLICITUD_INVALIDA",
+                  "NO_ENCONTRADO",
+                  "CUERPO_DEMASIADO_GRANDE",
+                  "TIPO_DE_CONTENIDO_NO_ADMITIDO",
+                  "CALCULO_BLOQUEADO",
+                  "DEMASIADAS_SOLICITUDES",
+                  "SERVICIO_NO_DISPONIBLE",
+                  "ERROR_INTERNO"
+                ]
+              },
+              "mensaje": {
+                "type": "string"
+              },
+              "solicitudId": {
+                "type": "string"
+              },
+              "campos": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "ruta": {
+                      "type": "string"
+                    },
+                    "mensaje": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "ruta",
+                    "mensaje"
+                  ],
+                  "additionalProperties": false
+                }
+              },
+              "faltantes": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "tipo": {
+                      "type": "string"
+                    },
+                    "codigo": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "tipo",
+                    "codigo"
+                  ],
+                  "additionalProperties": false
+                }
+              },
+              "problemas": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "codigo": {
+                      "type": "string"
+                    },
+                    "referencia": {
+                      "type": "string"
+                    },
+                    "mensaje": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "codigo",
+                    "referencia",
+                    "mensaje"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            },
+            "required": [
+              "codigo",
+              "mensaje",
+              "solicitudId"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "error"
+        ],
+        "additionalProperties": false
+      }
+    }
+  }
+}

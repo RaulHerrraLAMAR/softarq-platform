@@ -1,0 +1,18 @@
+{
+  "consolidarCompras": true,
+  "partidas": [
+    {
+      "id": "P001",
+      "tipo": "CONCEPTO",
+      "conceptoCodigo": "CON-00009",
+      "descripcion": "[DEMO] Muro de block de concreto reforzado",
+      "mediciones": [
+        { "descripcion": "Muro eje 1", "signo": "+", "piezas": "1", "largo": "6", "ancho": null, "alto": "2.7" },
+        { "descripcion": "Muro eje 2", "signo": "+", "piezas": "1", "largo": "4.5", "ancho": null, "alto": "2.7" },
+        { "descripcion": "Puerta (se descuenta)", "signo": "-", "piezas": "1", "largo": "0.9", "ancho": null, "alto": "2.1" }
+      ]
+    },
+    { "id": "P002", "tipo": "ADICIONAL", "tipoAdicionalCodigo": "CAD-00001", "descripcion": "Transporte de block y mortero", "cantidad": "1", "monto": "700" }
+  ],
+  "preciosElegidos": ["PRE-000016", "PRE-000017", "PRE-000013"]
+}

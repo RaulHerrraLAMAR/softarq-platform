@@ -3,9 +3,10 @@
 **Estado (02/10/2026):**
 - dominio de cálculo (módulo 1, ADR-0003);
 - persistencia de catálogos en PostgreSQL con Prisma 7.10 (módulo 2, ADR-0004);
-- todavía no están inicializados NestJS, los endpoints ni la autenticación.
+- API HTTP local con NestJS 12 (módulo 3, ADR-0005; endpoints en [`docs/api/README.md`](../../docs/api/README.md));
+- todavía no hay autenticación, usuarios ni guardado de cotizaciones.
 
-**Tecnología:** TypeScript 7 (ESM), decimal.js 10.6.0, Prisma 7.10.0 con `@prisma/adapter-pg`, PostgreSQL 18 local y Vitest 5.
+**Tecnología:** TypeScript 7 (ESM; decoradores con `tsc`), NestJS 12.1.2 sobre Express 5, Zod 4.6.5 (contratos), decimal.js 10.6.0, Prisma 7.10.0 con `@prisma/adapter-pg`, PostgreSQL 18 local y Vitest 5.
 
 ## Responsabilidades
 
@@ -32,6 +33,9 @@ Los clientes (web y móvil) solo muestran y capturan datos.
 | `prisma/schema.prisma`, `prisma/migrations/` | Esquema y migraciones versionadas |
 | `scripts/db/` | Credenciales, aprovisionamiento, migración, permisos y comprobación |
 | `src/generated/prisma/` | Cliente generado (no versionado; se genera en `build`) |
+| `src/main.ts`, `src/http/` | API HTTP: aplicación Nest, controladores, errores, transporte y OpenAPI |
+| `src/config/entorno.ts` | Variables validadas al arrancar |
+| `src/modules/catalogos/aplicacion/`, `src/modules/calculo/aplicacion/calculo-demo.ts`, `reloj.ts` | Casos de uso HTTP sin Nest: consultas de catálogo, cálculo DEMO y fecha de cálculo |
 
 ## Preparar el entorno desde cero
 
@@ -85,6 +89,14 @@ pnpm install --frozen-lockfile
    pnpm verificar                   # build + typecheck + pruebas unitarias
    pnpm verificar:integracion       # vacía y migra softarq_test; nunca otra base
    ```
+
+7. **API local:** escucha solo en `127.0.0.1:3000`; ver [`docs/api/README.md`](../../docs/api/README.md).
+
+   ```
+   pnpm --filter @softarq/api build && pnpm --filter @softarq/api start
+   ```
+
+   Cambiar un contrato obliga a regenerar `docs/api/openapi.json` con `pnpm --filter @softarq/api openapi:generar`; una prueba lo comprueba.
 
 **Migraciones nuevas:** `pnpm --filter @softarq/api db:nueva-migracion <nombre>` (usa la base sombra). Después, revisa y completa el SQL (CHECK y exclusiones) y aplícalo con `db:migrar`.
 

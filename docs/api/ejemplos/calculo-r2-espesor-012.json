@@ -1,0 +1,17 @@
+{
+  "consolidarCompras": true,
+  "partidas": [
+    {
+      "id": "P001",
+      "tipo": "CONCEPTO",
+      "conceptoCodigo": "CON-00008",
+      "descripcion": "[DEMO] Losa de concreto reforzado",
+      "mediciones": [
+        { "descripcion": "Tablero de entrepiso", "signo": "+", "piezas": "1", "largo": "6", "ancho": "5", "alto": "0.12" },
+        { "descripcion": "Volado de balcón", "signo": "+", "piezas": "1", "largo": "2", "ancho": "1.2", "alto": "0.12" }
+      ]
+    },
+    { "id": "P002", "tipo": "ADICIONAL", "tipoAdicionalCodigo": "CAD-00002", "descripcion": "Bomba para colado", "cantidad": "1", "monto": "1500" }
+  ],
+  "preciosElegidos": ["PRE-000012", "PRE-000013", "PRE-000014"]
+}

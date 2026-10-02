@@ -1,0 +1,18 @@
+{
+  "consolidarCompras": true,
+  "partidas": [
+    {
+      "id": "P001",
+      "tipo": "CONCEPTO",
+      "conceptoCodigo": "CON-00007",
+      "descripcion": "[DEMO] Cubierta ligera de lámina sobre largueros",
+      "mediciones": [
+        { "descripcion": "Faldón norte", "signo": "+", "piezas": "1", "largo": "10", "ancho": "4.5", "alto": null },
+        { "descripcion": "Faldón sur", "signo": "+", "piezas": "1", "largo": "10", "ancho": "4.5", "alto": null },
+        { "descripcion": "Tragaluz (se descuenta)", "signo": "-", "piezas": "1", "largo": "1.2", "ancho": "1", "alto": null }
+      ]
+    },
+    { "id": "P002", "tipo": "ADICIONAL", "tipoAdicionalCodigo": "CAD-00001", "descripcion": "Transporte de lámina y largueros", "cantidad": "1", "monto": "900" }
+  ],
+  "preciosElegidos": ["PRE-000007", "PRE-000008", "PRE-000009"]
+}

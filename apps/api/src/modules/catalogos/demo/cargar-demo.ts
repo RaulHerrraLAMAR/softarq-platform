@@ -31,7 +31,14 @@ export interface ResumenCarga {
   diferencias: string[];
 }
 
-export async function cargarDemo(prisma: PrismaClient): Promise<ResumenCarga> {
+/**
+ * @param organizacion organización DEMO destino (por omisión `DEMO`). Las pruebas HTTP usan otra
+ *   organización DEMO para no alterar los datos que verifican otras pruebas.
+ */
+export async function cargarDemo(
+  prisma: PrismaClient,
+  organizacion: { codigo: string; nombre: string } = ORGANIZACION_DEMO,
+): Promise<ResumenCarga> {
   return prisma.$transaction(async (tx) => {
     const repo = new RepositorioCatalogos(tx);
     const creados: Record<string, number> = {};
@@ -41,7 +48,7 @@ export async function cargarDemo(prisma: PrismaClient): Promise<ResumenCarga> {
       destino[tabla] = (destino[tabla] ?? 0) + 1;
     };
 
-    const org = await repo.asegurarOrganizacion(ORGANIZACION_DEMO.codigo, ORGANIZACION_DEMO.nombre, true);
+    const org = await repo.asegurarOrganizacion(organizacion.codigo, organizacion.nombre, true);
     anotar("organizacion", org.creado);
     const ctx: ContextoOrganizacion = { organizacionId: org.id };
 

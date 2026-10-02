@@ -26,7 +26,12 @@ const repo = new RepositorioCatalogos(app);
 let demo: ContextoOrganizacion;
 
 beforeAll(async () => {
-  demo = { organizacionId: (await cargarDemo(app)).organizacionId };
+  // Organización DEMO propia: las altas de estas pruebas no alteran `DEMO`, cuyos conteos
+  // verifica catalogos.integracion.test.ts (el orden de los archivos no está garantizado).
+  demo = {
+    organizacionId: (await cargarDemo(app, { codigo: "DEMO-CALCULO", nombre: "[DEMO] Organización para pruebas de cálculo" }))
+      .organizacionId,
+  };
 });
 afterAll(() => app.$disconnect());
 
