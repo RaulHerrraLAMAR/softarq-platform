@@ -2,7 +2,7 @@
 
 > Léelo al empezar. Actualízalo al terminar cada tarea (sección por sección, sin borrar el historial de la tabla 4). Reglas de trabajo: [`AGENTS.md`](AGENTS.md).
 
-**Última actualización:** 02/10/2026 · Claude Code (Opus 5.5) · módulo 2 (persistencia de catálogos) terminado y verificado contra PostgreSQL real
+**Última actualización:** 02/10/2026 · Claude Code (Opus 5.5) · módulo 2 (persistencia) verificado contra PostgreSQL real · skills de Claude Code y Codex instaladas
 
 ## 1. Estado actual
 
@@ -72,7 +72,8 @@ Credenciales: `apps/api/.env` y `.env.test` (locales, excluidos de Git). La cred
 | 02/10/2026 | Inspección de la fase 1, entorno, estructura y reglas | Commit `e375fce` |
 | 02/10/2026 | Módulo 1: motor de cálculo | Commit `f0a34da` (163 pruebas) |
 | 02/10/2026 | Módulo 2: esquema, migración, scripts de base de datos, repositorio, ensamblador, carga DEMO, pruebas, ADR-0004 | Ver §5 y §8 |
-| 02/10/2026 | Aprovisionamiento y verificación contra PostgreSQL real | Ver §5 |
+| 02/10/2026 | Aprovisionamiento y verificación contra PostgreSQL real | Commit `2543baa` |
+| 02/10/2026 | Skills del proyecto (ui-ux-pro-max, caveman, grill-me + grilling) para Claude Code y Codex, con reglas de uso | Ver §9 |
 
 ## 5. Comandos y resultados reales (02/10/2026)
 
@@ -134,4 +135,21 @@ Después: usuarios y autenticación, clientes y proyectos, y cotizaciones con ve
 
 ## 8. Último commit
 
-Ver `git log --oneline -3`: commit «Módulo 2: persistencia…» sobre `f0a34da`, en la rama `main`. Sin remoto ni push.
+- `2543baa`: Módulo 2, persistencia de catálogos (sobre `f0a34da`).
+- A continuación, el commit de configuración de skills y sus reglas: ver `git log --oneline -3`.
+
+Rama `main`. Sin remoto ni push.
+
+## 9. Skills de agentes
+
+Detalle completo, fuentes, comprobaciones y actualización: [`docs/herramientas/skills.md`](docs/herramientas/skills.md). Reglas de uso: `AGENTS.md` §11.
+
+| Skill | Claude Code | Codex | Verificado (02/10/2026) |
+|---|---|---|---|
+| `ui-ux-pro-max` (CLI 2.15.0, MIT) | `.claude/skills/ui-ux-pro-max` | `.agents/skills/ui-ux-pro-max` | Ambos agentes la reconocen; `search.py` funciona con Python 3.14.5 |
+| `caveman` (commit `b39c908`, Apache-2.0) | `.claude/skills/caveman`, solo explícita | `.agents/skills/caveman`, solo explícita | Ambos agentes aplican lite y citan la skill original |
+| `grill-me` + `grilling` (commit `d81f3a1`, MIT) | Literal; delega con la herramienta Skill | `grill-me` adaptada: lee `grilling/SKILL.md` | Delegación comprobada en ambos agentes |
+
+- **Reinstalar o actualizar:** `python scripts/skills/instalar_skills.py [--destino <carpeta>] [--reemplazar]`.
+- **Selección:** solo se instaló `ui-ux-pro-max` de las 7 skills que trae su instalador o plugin.
+- **Comandos personales:** los `~/.claude/commands/{caveman,grill-me,ui-ux-pro-max}.md` siguen intactos; en este repositorio prevalecen las skills.

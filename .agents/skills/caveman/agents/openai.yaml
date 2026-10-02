@@ -1,0 +1,6 @@
+# Añadido por SoftArq (02/10/2026): uso solo explícito ($caveman) en Codex. Ver PROCEDENCIA.md.
+interface:
+  display_name: "Caveman"
+  short_description: "Respuestas comprimidas solo cuando se invoca"
+policy:
+  allow_implicit_invocation: false

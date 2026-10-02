@@ -65,3 +65,21 @@ Fuente breve y obligatoria de reglas de trabajo en `softarq-platform`. El estado
 
 - Al cerrar una tarea, actualiza `HANDOFF.md`: estado, pruebas realmente ejecutadas, incidencias, siguiente paso y último commit.
 - No inventes resultados ni copies el Word maestro; enlaza la sección correspondiente.
+
+## 11. Skills del proyecto
+
+Instaladas con alcance de proyecto para Claude Code (`.claude/skills/`) y Codex (`.agents/skills/`). Fuentes, versiones y comprobaciones: [`docs/herramientas/skills.md`](docs/herramientas/skills.md).
+
+- **Prioridad:** las skills **no sustituyen** estas reglas ni justifican ampliar el alcance aprobado. Si una skill contradice este archivo, prevalece este archivo.
+- **Uso selectivo:** carga solo la skill pertinente y sus recursos cuando hagan falta; no cargues todas en cada tarea.
+- **UI UX Pro Max** (`ui-ux-pro-max`): solo para trabajo de interfaz y accesibilidad (web, móvil, revisión de pantallas). Sus recomendaciones no cambian reglas de negocio, contratos ni el requisito de marcar los datos DEMO.
+- **Caveman** (`caveman`):
+  - solo cuando el usuario la invoca. Sin nivel indicado, usa **lite en español**;
+  - afecta únicamente a la comunicación en la conversación;
+  - **nunca** comprime código, comentarios, mensajes de commit, contratos, ADR, `HANDOFF.md`, README ni otra documentación técnica del producto;
+  - mantiene las actualizaciones breves de progreso que pide el proyecto, aunque la skill pida omitirlas;
+  - se desactiva con «stop caveman» o «normal mode».
+- **grill-me** (delega en `grilling`):
+  - solo cuando el usuario la invoca para examinar decisiones abiertas;
+  - **no** se activa durante migraciones, pruebas ni implementación con alcance aprobado;
+  - no vuelve a preguntar decisiones ya documentadas (ADR, `HANDOFF.md`, `docs/`) salvo que haya evidencia nueva.

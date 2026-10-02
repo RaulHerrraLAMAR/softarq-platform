@@ -22,6 +22,7 @@ Principio: **los clientes solo comparten contratos**. Toda regla de negocio vive
 - [`CLAUDE.md`](CLAUDE.md): importa `AGENTS.md` y añade notas específicas de Claude Code.
 - [`HANDOFF.md`](HANDOFF.md): estado actual, decisiones vigentes y siguiente paso. **Léelo primero.**
 - [`docs/`](docs/README.md): decisiones (ADR), matriz de reglas del cálculo, modelo conceptual y estado verificado de la fase 1.
+- [`docs/herramientas/skills.md`](docs/herramientas/skills.md): skills de Claude Code (`.claude/skills/`) y Codex (`.agents/skills/`), con sus reglas de uso (`AGENTS.md` §11).
 
 ## Requisitos locales
 
