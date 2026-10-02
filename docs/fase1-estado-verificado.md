@@ -68,7 +68,19 @@ El Word (10.3) coloca la compuerta hacia la fase 2 después del piloto de la fas
 
 `COT-2026-00001-v1` vence el 08/10/2026; `00016` y `00017`, el 10/10/2026. Al abrir el libro después, pasarán a «Vencida» (comportamiento esperado, D-11).
 
-## 4. Pendiente de decidir (autor)
+## 4. Decisiones del propietario (02/10/2026)
 
-- Si `COT-2026-00016`/`00017` y la persona en turno se dejan así, se documentan en una v1.4 del Word o se restaura el libro desde un respaldo. **No se tocó nada.**
-- Fuera de `entrega\` hay archivos ajenos o de trabajo que no deben entrar al repositorio: `Sistema de control escolar v12.xlsm` (otro proyecto), `pruebas\` (55 MB de copias y evidencias) y `src\` (igual a `entrega\fuentes\` salvo `build.log`, `excel.pid` y `__pycache__`).
+- **Libro oficial:** `entrega\Cotizador_Estructuras_F1.xlsm`. `H.xlsm` (copia de prueba) fue eliminado y queda fuera del proyecto.
+- **Prueba del propietario:** declaró que probó personalmente el libro oficial y que funcionó correctamente. Se registra como declaración; **no equivale** a la ejecución de PR-41 (prueba guiada con una persona) ni de PR-44 (piloto), que siguen pendientes.
+- **D1:** se conservan `COT-2026-00016`, `COT-2026-00017` y la persona en turno `[DEMO] Revisor 1`. Son datos de uso posteriores al cierre documental, no defectos. No se restauran respaldos ni se modifican el Excel, el Word ni sus PDF.
+- **D2:** las evidencias hechas sobre copias tienen historiales de folios independientes. Se identifican por **archivo de origen, escenario y caso de prueba**; el folio por sí solo no identifica una prueba. Ejemplo: «`registro_ui.csv` paso 37, copia `Recorrido_UI.xlsm`, folio COT-2026-00016 de esa copia».
+- **D4:** se autoriza el DEMO local antes de PR-44 ([ADR-0002](adr/0002-demo-local-antes-del-piloto.md)).
+
+## 5. Archivos fuera del repositorio
+
+Fuera de `entrega\` hay archivos ajenos o de trabajo que no deben entrar al repositorio:
+- `Sistema de control escolar v12.xlsm` (otro proyecto);
+- `pruebas\` (55 MB de copias y evidencias);
+- `src\` (igual a `entrega\fuentes\`, salvo `build.log`, `excel.pid` y `__pycache__`).
+
+Comprobación del 02/10/2026, al cerrar el módulo de cálculo: MD5 del libro oficial sin cambios (`b60debc121957b8d8e3f2c2edd9a5b4f`).

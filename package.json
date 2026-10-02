@@ -8,5 +8,10 @@
     "node": ">=24.11.0",
     "pnpm": ">=11.1.0"
   },
-  "scripts": {}
+  "scripts": {
+    "build": "pnpm -r run build",
+    "typecheck": "pnpm -r run typecheck",
+    "test": "pnpm -r run test",
+    "verificar": "pnpm run build && pnpm run typecheck && pnpm run test"
+  }
 }

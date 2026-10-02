@@ -1,6 +1,12 @@
 # packages/contracts — Contratos compartidos
 
-**Estado:** carpeta reservada. Sin código ni dependencias.
+**Estado (02/10/2026):** contratos del motor de cálculo. Paquete ESM que se compila a `dist/` con `pnpm --filter @softarq/contracts run build`.
+
+| Archivo | Contenido |
+|---|---|
+| `src/decimal.ts` | `DecimalTexto` (formato documentado), `PATRON_DECIMAL_TEXTO`, `esDecimalTexto`, `FechaISO` |
+| `src/calculo.ts` | `EntradaCalculo`, `ResultadoCalculo` (`CALCULADO`, `BLOQUEADO` o `ENTRADA_INVALIDA`), fórmulas, modalidades, códigos BL/AV y `LIMITES_ENTRADA_CALCULO` |
+| `src/vista-comercial.ts` | `CotizacionComercial` y `LEYENDA_DEMO`: lo que pueden recibir web y móvil |
 
 ## Qué va aquí
 
@@ -10,8 +16,17 @@
 
 ## Qué NO va aquí
 
-- Cálculos, redondeos ni fórmulas de cotización.
+- Cálculos, redondeos ni fórmulas de cotización (viven en `apps/api`).
 - Permisos o reglas de negocio.
 - Acceso a base de datos, secretos o configuración de entorno.
 
-Los importes se transmiten como **cadenas decimales** (por ejemplo `"18790.94"`), nunca como `number`, para no perder precisión.
+## Precisión
+
+Los importes y cantidades se transmiten como **cadenas decimales**, nunca como `number`:
+
+- **Entrada:** `^-?(0|[1-9]\d{0,14})(\.\d{1,10})?$`, por ejemplo `"18790.94"`, `"12.5"` o `"-1.2"`.
+- **Salida:**
+  - importes de venta con 2 decimales exactos;
+  - cantidades y costos intermedios con precisión completa, sin exponente.
+
+`ResultadoCalculado` contiene costos internos: **no** debe enviarse a web ni móvil. Para ellos existe `CotizacionComercial`.

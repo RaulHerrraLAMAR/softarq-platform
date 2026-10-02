@@ -1,7 +1,22 @@
 {
   "name": "@softarq/api",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "private": true,
-  "description": "API de SoftArq (NestJS + TypeScript, PostgreSQL). Pendiente de inicializar.",
-  "scripts": {}
+  "description": "API de SoftArq (NestJS + TypeScript, PostgreSQL). Por ahora solo contiene el dominio de calculo.",
+  "type": "module",
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@softarq/contracts": "workspace:*",
+    "decimal.js": "10.6.0"
+  },
+  "devDependencies": {
+    "@types/node": "24.19.0",
+    "typescript": "7.0.2",
+    "vite": "8.3.2",
+    "vitest": "5.0.3"
+  }
 }

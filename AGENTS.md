@@ -52,7 +52,7 @@ Fuente breve y obligatoria de reglas de trabajo en `softarq-platform`. El estado
 ## 8. Pruebas
 
 - Ejecuta las pruebas que el cambio afecte: unitarias para reglas y cálculo; de integración para API y base de datos; de interfaz cuando cambie una pantalla.
-- Todo cambio en cálculo debe compararse con los casos de la fase 1 (CR-01 a CR-16 y ejemplo ilustrativo del Word maestro).
+- Todo cambio en cálculo debe compararse con los casos de la fase 1 (CR-01 a CR-16 y ejemplo ilustrativo del Word maestro). Ejecuta `pnpm verificar` y actualiza `docs/calculo/matriz-reglas.md`. Las fixtures llevan su `origen` y sus cifras esperadas se copian de la fuente, nunca del motor.
 - Informa solo pruebas realmente ejecutadas, con su resultado. Si algo no se probó, dilo.
 
 ## 9. Git y secretos
