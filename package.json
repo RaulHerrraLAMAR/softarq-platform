@@ -1,0 +1,12 @@
+{
+  "name": "softarq-platform",
+  "version": "0.0.0",
+  "private": true,
+  "description": "SoftArq: plataforma de cotizacion de estructuras (fase 2). Monorepo con web, API, app movil y contratos compartidos.",
+  "packageManager": "pnpm@11.1.3",
+  "engines": {
+    "node": ">=24.11.0",
+    "pnpm": ">=11.1.0"
+  },
+  "scripts": {}
+}

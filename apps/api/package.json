@@ -1,0 +1,7 @@
+{
+  "name": "@softarq/api",
+  "version": "0.0.0",
+  "private": true,
+  "description": "API de SoftArq (NestJS + TypeScript, PostgreSQL). Pendiente de inicializar.",
+  "scripts": {}
+}

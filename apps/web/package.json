@@ -1,0 +1,7 @@
+{
+  "name": "@softarq/web",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Cliente web de SoftArq (React + TypeScript). Pendiente de inicializar.",
+  "scripts": {}
+}

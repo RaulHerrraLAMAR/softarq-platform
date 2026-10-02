@@ -1,0 +1,9 @@
+packages:
+  - "apps/*"
+  - "packages/*"
+
+# Almacen, cache y estado de pnpm fuera del repositorio, en D:\Proyecto_SoftArq\_work.
+# Rutas relativas a la raiz del workspace.
+storeDir: ../_work/pnpm-store
+cacheDir: ../_work/pnpm-cache
+stateDir: ../_work/pnpm-state

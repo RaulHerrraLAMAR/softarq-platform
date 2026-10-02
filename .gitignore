@@ -1,0 +1,128 @@
+# ---------------------------------------------------------------
+# Secretos y configuración local
+# ---------------------------------------------------------------
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+*.jks
+*.keystore
+*.mobileprovision
+credentials*.json
+secrets*.json
+service-account*.json
+google-services.json
+GoogleService-Info.plist
+.npmrc.local
+
+# ---------------------------------------------------------------
+# Dependencias
+# ---------------------------------------------------------------
+node_modules/
+.pnpm-store/
+.yarn/
+bower_components/
+
+# ---------------------------------------------------------------
+# Compilaciones y salidas generadas
+# ---------------------------------------------------------------
+dist/
+build/
+out/
+.next/
+.nuxt/
+.vite/
+*.tsbuildinfo
+storybook-static/
+generated/
+# Expo / React Native
+.expo/
+.expo-shared/
+web-build/
+android/
+ios/
+*.apk
+*.aab
+*.ipa
+
+# ---------------------------------------------------------------
+# Cachés y herramientas
+# ---------------------------------------------------------------
+.cache/
+.turbo/
+.eslintcache
+.stylelintcache
+.parcel-cache/
+.metro-health-check*
+__pycache__/
+*.py[cod]
+
+# ---------------------------------------------------------------
+# Pruebas y cobertura
+# ---------------------------------------------------------------
+coverage/
+.nyc_output/
+test-results/
+playwright-report/
+junit*.xml
+
+# ---------------------------------------------------------------
+# Temporales y registros
+# ---------------------------------------------------------------
+tmp/
+temp/
+_work/
+*.tmp
+*.temp
+*.bak
+*.swp
+*~
+*.log
+npm-debug.log*
+pnpm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+*.pid
+
+# ---------------------------------------------------------------
+# Bases de datos locales y volcados
+# ---------------------------------------------------------------
+*.sqlite
+*.sqlite3
+*.db
+*.db-journal
+*.dump
+*.backup
+pgdata/
+postgres-data/
+docker-data/
+
+# ---------------------------------------------------------------
+# Archivos de la fase 1 y documentos de Office
+# (no se versionan sin revisión previa; ver AGENTS.md)
+# ---------------------------------------------------------------
+*.xlsm
+*.xlsx
+*.xls
+*.docx
+*.doc
+*.pptx
+~$*
+Respaldos/
+respaldos/
+*.pdf
+
+# ---------------------------------------------------------------
+# Sistema operativo y editores
+# ---------------------------------------------------------------
+.DS_Store
+Thumbs.db
+desktop.ini
+.idea/
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+.claude/settings.local.json
