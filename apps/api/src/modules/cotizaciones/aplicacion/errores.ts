@@ -13,6 +13,7 @@ export type CodigoNegocio =
   | "REGISTRO_INACTIVO"
   | "IDEMPOTENCIA_CONFLICTO"
   | "IDEMPOTENCIA_CADUCADA"
+  | "REFERENCIA_NO_DISPONIBLE"
   | "SIN_PERMISO";
 
 export interface DetalleError {

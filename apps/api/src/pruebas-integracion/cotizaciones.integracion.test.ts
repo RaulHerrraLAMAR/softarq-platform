@@ -45,6 +45,8 @@ const preparador = () => new ClienteHttp(url).entrar(cred["preparador.cot@softar
 const revisor = () => new ClienteHttp(url).entrar(cred["revisor.cot@softarq.test"]!);
 const preparadorB = () => new ClienteHttp(url).entrar(cred["preparador.cotb@softarq.test"]!);
 const preparadorH = () => new ClienteHttp(url).entrar(cred["preparador.coth@softarq.test"]!);
+const preparadorS = () => new ClienteHttp(url).entrar(cred["preparador.cots@softarq.test"]!);
+let orgS: ContextoOrganizacion;
 
 const idem = () => ({ cabeceras: { "Idempotency-Key": randomUUID() } });
 
@@ -99,6 +101,7 @@ beforeAll(async () => {
   org = { organizacionId: (await cargarDemo(prisma, { codigo: "DEMO-COT", nombre: "[DEMO] Cotizaciones" })).organizacionId };
   await cargarDemo(prisma, { codigo: "DEMO-COT-B", nombre: "[DEMO] Cotizaciones B" });
   orgH = { organizacionId: (await cargarDemo(prisma, { codigo: "DEMO-COT-H", nombre: "[DEMO] Historial" })).organizacionId };
+  orgS = { organizacionId: (await cargarDemo(prisma, { codigo: "DEMO-COT-S", nombre: "[DEMO] Selecciones" })).organizacionId };
   migrador = await prismaMigrador();
   Object.assign(
     cred,
@@ -108,6 +111,7 @@ beforeAll(async () => {
     ]),
     await crearCuentas(migrador, "DEMO-COT-B", [cuenta("preparador.cotb@softarq.test", "[DEMO] Preparador B", "PREPARADOR")]),
     await crearCuentas(migrador, "DEMO-COT-H", [cuenta("preparador.coth@softarq.test", "[DEMO] Preparador H", "PREPARADOR")]),
+    await crearCuentas(migrador, "DEMO-COT-S", [cuenta("preparador.cots@softarq.test", "[DEMO] Preparador S", "PREPARADOR")]),
   );
   app = await crearAplicacion(leerConfiguracion({ DATABASE_URL: urlDePrueba("DATABASE_URL"), API_REGISTRO: "ninguno" }), {
     reloj: new RelojFijo(FECHA),
@@ -333,6 +337,122 @@ describe("versiones inmutables e historial", () => {
     expect(obsoleta.status).toBe(409);
     expect(obsoleta.cuerpo.error).toMatchObject({ codigo: "CONFLICTO_EDICION", actual: { revision: cliente.revision + 2 } });
     expect((await c.get(`/api/v1/clientes/${cliente.id}`)).cuerpo.cliente.nombre).toBe(cliente.nombre);
+  });
+});
+
+describe("conservar lo capturado cuando una referencia deja de estar disponible (catálogo real)", () => {
+  /** Dos conceptos con sus selecciones completas (DEMO-COT-S, catálogo propio de esta prueba). */
+  const captura = (): CapturaBorrador => ({
+    consolidarCompras: false,
+    partidas: [
+      {
+        tipo: "CONCEPTO",
+        conceptoCodigo: "CON-00007",
+        descripcion: "Faldón norte",
+        mediciones: [{ descripcion: "", signo: "+", piezas: "1", largo: "10", ancho: "4", alto: null, segundaMedida: "ancho" }],
+      },
+      {
+        tipo: "CONCEPTO",
+        conceptoCodigo: "CON-00008",
+        descripcion: "Losa",
+        mediciones: [{ descripcion: "", signo: "+", piezas: "1", largo: "4", ancho: "4", alto: "0.12", segundaMedida: "ancho" }],
+      },
+    ],
+    seleccion: [
+      { insumoCodigo: "INS-00004", precioCodigo: "PRE-000007" },
+      { insumoCodigo: "INS-00005", precioCodigo: "PRE-000008" },
+      { insumoCodigo: "INS-00006", precioCodigo: "PRE-000009" },
+      { insumoCodigo: "INS-00007", precioCodigo: "PRE-000011" },
+      { insumoCodigo: "INS-00008", precioCodigo: "PRE-000013" },
+      { insumoCodigo: "INS-00009", precioCodigo: "PRE-000014" },
+    ],
+  });
+  const ordenar = (s: CapturaBorrador["seleccion"]) => [...s].sort((a, b) => a.insumoCodigo.localeCompare(b.insumoCodigo));
+
+  it("guardar, recargar, modificar otra partida y recuperar conserva partida, medidas y selecciones; las versiones no cambian", async () => {
+    const c = await preparadorS();
+    const { proyecto } = await crearClienteProyecto(c, "Selecciones");
+    const cot = await crearCotizacion(c, proyecto.id, captura());
+    const id = cot.cotizacion.id;
+    const v1 = await c.post(`/api/v1/cotizaciones/${id}/versiones`, { revisionBorrador: 0 }, idem());
+    expect(v1.status, v1.texto).toBe(201);
+    const filaAntes = await filaVersion(id, 1);
+
+    // El concepto CON-00007 deja de estar disponible y un precio de CON-00008 se anula (catálogo real).
+    await repo.cambiarEstadoConcepto(orgS, "CON-00007", "Borrador");
+    await repo.anularPrecio(orgS, "PRE-000011");
+
+    // Recargar: el servidor informa la indisponibilidad sin cambiar la captura.
+    const recargada = EsquemaDetalleCotizacion.parse((await c.get(`/api/v1/cotizaciones/${id}`)).cuerpo);
+    expect(recargada.borrador.captura).toEqual(captura());
+    expect(recargada.borrador.referencias.conceptos).toEqual([
+      { codigo: "CON-00007", disponible: false, motivo: "el concepto no está aprobado (estado Borrador)", insumos: ["INS-00004", "INS-00005", "INS-00006"] },
+      { codigo: "CON-00008", disponible: true, motivo: null, insumos: ["INS-00007", "INS-00008", "INS-00009"] },
+    ]);
+    expect(recargada.borrador.referencias.selecciones.find((x) => x.precioCodigo === "PRE-000011")).toMatchObject({
+      disponible: false,
+      motivo: "el precio está anulado",
+    });
+
+    // Modificar OTRA partida y guardar con las referencias conservadas: se acepta y no se pierde nada.
+    const editada = captura();
+    (editada.partidas[1] as { mediciones: { largo: string | null }[] }).mediciones[0]!.largo = "5";
+    const g = await c.put(`/api/v1/cotizaciones/${id}/borrador`, { revision: 0, captura: editada });
+    expect(g.status, g.texto).toBe(200);
+
+    // Recuperar: idéntico a lo guardado, con las seis selecciones.
+    const recuperada = EsquemaDetalleCotizacion.parse((await c.get(`/api/v1/cotizaciones/${id}`)).cuerpo);
+    expect(recuperada.borrador.revision).toBe(1);
+    expect(recuperada.borrador.captura).toEqual(editada);
+    expect(ordenar(recuperada.borrador.captura.seleccion)).toEqual(ordenar(captura().seleccion));
+    // Calcular queda bloqueado por sus reglas (BL-04 concepto no aprobado, BL-08 precio anulado)
+    // hasta que el usuario decida; no se escribe ninguna versión.
+    const bloqueada = await c.post(`/api/v1/cotizaciones/${id}/versiones`, { revisionBorrador: 1 }, idem());
+    expect(bloqueada.status, bloqueada.texto).toBe(422);
+    expect(new Set(bloqueada.cuerpo.error.problemas.map((p: { codigo: string }) => p.codigo))).toEqual(new Set(["BL-04", "BL-08"]));
+    expect(EsquemaDetalleCotizacion.parse((await c.get(`/api/v1/cotizaciones/${id}`)).cuerpo).versiones).toHaveLength(1);
+
+    // La versión histórica y su total no cambian.
+    expect(await filaVersion(id, 1)).toEqual(filaAntes);
+    expect((await c.get(`/api/v1/cotizaciones/${id}/versiones/1`)).cuerpo).toEqual(v1.cuerpo);
+  });
+
+  it("una referencia NUEVA inexistente, de otra organización o no disponible se rechaza (422) sin guardar", async () => {
+    const c = await preparadorS();
+    const { proyecto } = await crearClienteProyecto(c, "Nuevas");
+    // Mismo estado del catálogo que la prueba anterior (idempotente: no depende del orden).
+    await repo.cambiarEstadoConcepto(orgS, "CON-00007", "Borrador");
+    await repo.anularPrecio(orgS, "PRE-000011");
+    const base: CapturaBorrador = { consolidarCompras: false, partidas: [], seleccion: [] };
+    const cot = await crearCotizacion(c, proyecto.id, base);
+    const id = cot.cotizacion.id;
+
+    const casos: [CapturaBorrador, string][] = [
+      // Precio anulado (en esta organización) elegido por primera vez.
+      [{ ...base, seleccion: [{ insumoCodigo: "INS-00007", precioCodigo: "PRE-000011" }] }, "seleccion[0].precioCodigo"],
+      // Precio de otro insumo.
+      [{ ...base, seleccion: [{ insumoCodigo: "INS-00004", precioCodigo: "PRE-000008" }] }, "seleccion[0].precioCodigo"],
+      // Código que no existe en esta organización (como uno de otra).
+      [{ ...base, seleccion: [{ insumoCodigo: "INS-00004", precioCodigo: "PRE-999999" }] }, "seleccion[0].precioCodigo"],
+      // Concepto no aprobado agregado ahora.
+      [{ ...base, partidas: [{ tipo: "CONCEPTO", conceptoCodigo: "CON-00007", descripcion: "", mediciones: [] }] }, "partidas[0].conceptoCodigo"],
+    ];
+    for (const [cap, ruta] of casos) {
+      const r = await c.put(`/api/v1/cotizaciones/${id}/borrador`, { revision: 0, captura: cap });
+      expect(r.status, r.texto).toBe(422);
+      expect(r.cuerpo.error.codigo).toBe("REFERENCIA_NO_DISPONIBLE");
+      expect(r.cuerpo.error.campos.map((x: { ruta: string }) => x.ruta)).toEqual([ruta]);
+    }
+    const sin = EsquemaDetalleCotizacion.parse((await c.get(`/api/v1/cotizaciones/${id}`)).cuerpo);
+    expect(sin.borrador.revision).toBe(0);
+    expect(sin.borrador.captura).toEqual(base);
+
+    // Una referencia disponible sí se guarda.
+    const ok = await c.put(`/api/v1/cotizaciones/${id}/borrador`, {
+      revision: 0,
+      captura: { ...base, seleccion: [{ insumoCodigo: "INS-00007", precioCodigo: "PRE-000012" }] },
+    });
+    expect(ok.status, ok.texto).toBe(200);
   });
 });
 

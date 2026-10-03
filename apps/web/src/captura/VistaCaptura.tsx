@@ -71,7 +71,11 @@ export function VistaCaptura({
         </div>
         {avisos}
         {captura.avisosCarga.length > 0 ? (
-          <Aviso tono="aviso" titulo="La captura no se cargó completa" rol="status">
+          <Aviso
+            tono="aviso"
+            titulo={captura.origen.tipo === "cotizacion" ? "Hay datos guardados que ya no están disponibles" : "La captura no se cargó completa"}
+            rol="status"
+          >
             <ul>
               {captura.avisosCarga.map((a) => (
                 <li key={a}>{a}</li>
@@ -82,8 +86,8 @@ export function VistaCaptura({
         {Object.keys(captura.avisosSeleccion).length > 0 ? (
           <Aviso tono="aviso" titulo="Hay opciones que ya no están disponibles" rol="status">
             <p>
-              Elija otra opción para {Object.keys(captura.avisosSeleccion).join(", ")} en{" "}
-              <a href="#seccion-opciones">Opciones disponibles</a>. Nada se sustituyó automáticamente.
+              Elija otra opción o quite la selección de {Object.keys(captura.avisosSeleccion).join(", ")} en{" "}
+              <a href="#seccion-opciones">Opciones disponibles</a>. Nada se sustituyó ni se borró automáticamente.
             </p>
           </Aviso>
         ) : null}

@@ -3192,7 +3192,8 @@
                   "CAPTURA_INCOMPLETA",
                   "REGISTRO_INACTIVO",
                   "IDEMPOTENCIA_CONFLICTO",
-                  "IDEMPOTENCIA_CADUCADA"
+                  "IDEMPOTENCIA_CADUCADA",
+                  "REFERENCIA_NO_DISPONIBLE"
                 ]
               },
               "mensaje": {
@@ -4910,6 +4911,106 @@
                   "pendientes"
                 ],
                 "additionalProperties": false
+              },
+              "referencias": {
+                "type": "object",
+                "properties": {
+                  "conceptos": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "codigo": {
+                          "type": "string"
+                        },
+                        "disponible": {
+                          "type": "boolean"
+                        },
+                        "motivo": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "insumos": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        }
+                      },
+                      "required": [
+                        "codigo",
+                        "disponible",
+                        "motivo",
+                        "insumos"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "selecciones": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "insumoCodigo": {
+                          "type": "string"
+                        },
+                        "precioCodigo": {
+                          "type": "string"
+                        },
+                        "disponible": {
+                          "type": "boolean"
+                        },
+                        "motivo": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "insumoCodigo",
+                        "precioCodigo",
+                        "disponible",
+                        "motivo"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "tiposAdicional": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "codigo": {
+                          "type": "string"
+                        },
+                        "disponible": {
+                          "type": "boolean"
+                        },
+                        "motivo": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "codigo",
+                        "disponible",
+                        "motivo"
+                      ],
+                      "additionalProperties": false
+                    }
+                  }
+                },
+                "required": [
+                  "conceptos",
+                  "selecciones",
+                  "tiposAdicional"
+                ],
+                "additionalProperties": false
               }
             },
             "required": [
@@ -4917,7 +5018,8 @@
               "captura",
               "actualizadoPor",
               "actualizadoEn",
-              "completitud"
+              "completitud",
+              "referencias"
             ],
             "additionalProperties": false
           },
@@ -5271,6 +5373,106 @@
               "pendientes"
             ],
             "additionalProperties": false
+          },
+          "referencias": {
+            "type": "object",
+            "properties": {
+              "conceptos": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "codigo": {
+                      "type": "string"
+                    },
+                    "disponible": {
+                      "type": "boolean"
+                    },
+                    "motivo": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "insumos": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    }
+                  },
+                  "required": [
+                    "codigo",
+                    "disponible",
+                    "motivo",
+                    "insumos"
+                  ],
+                  "additionalProperties": false
+                }
+              },
+              "selecciones": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "insumoCodigo": {
+                      "type": "string"
+                    },
+                    "precioCodigo": {
+                      "type": "string"
+                    },
+                    "disponible": {
+                      "type": "boolean"
+                    },
+                    "motivo": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "insumoCodigo",
+                    "precioCodigo",
+                    "disponible",
+                    "motivo"
+                  ],
+                  "additionalProperties": false
+                }
+              },
+              "tiposAdicional": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "codigo": {
+                      "type": "string"
+                    },
+                    "disponible": {
+                      "type": "boolean"
+                    },
+                    "motivo": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "codigo",
+                    "disponible",
+                    "motivo"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            },
+            "required": [
+              "conceptos",
+              "selecciones",
+              "tiposAdicional"
+            ],
+            "additionalProperties": false
           }
         },
         "required": [
@@ -5278,7 +5480,8 @@
           "captura",
           "actualizadoPor",
           "actualizadoEn",
-          "completitud"
+          "completitud",
+          "referencias"
         ],
         "additionalProperties": false
       },
@@ -5548,13 +5751,114 @@
               "pendientes"
             ],
             "additionalProperties": false
+          },
+          "referencias": {
+            "type": "object",
+            "properties": {
+              "conceptos": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "codigo": {
+                      "type": "string"
+                    },
+                    "disponible": {
+                      "type": "boolean"
+                    },
+                    "motivo": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "insumos": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    }
+                  },
+                  "required": [
+                    "codigo",
+                    "disponible",
+                    "motivo",
+                    "insumos"
+                  ],
+                  "additionalProperties": false
+                }
+              },
+              "selecciones": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "insumoCodigo": {
+                      "type": "string"
+                    },
+                    "precioCodigo": {
+                      "type": "string"
+                    },
+                    "disponible": {
+                      "type": "boolean"
+                    },
+                    "motivo": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "insumoCodigo",
+                    "precioCodigo",
+                    "disponible",
+                    "motivo"
+                  ],
+                  "additionalProperties": false
+                }
+              },
+              "tiposAdicional": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "codigo": {
+                      "type": "string"
+                    },
+                    "disponible": {
+                      "type": "boolean"
+                    },
+                    "motivo": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "codigo",
+                    "disponible",
+                    "motivo"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            },
+            "required": [
+              "conceptos",
+              "selecciones",
+              "tiposAdicional"
+            ],
+            "additionalProperties": false
           }
         },
         "required": [
           "revision",
           "actualizadoPor",
           "actualizadoEn",
-          "completitud"
+          "completitud",
+          "referencias"
         ],
         "additionalProperties": false
       },

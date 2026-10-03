@@ -118,6 +118,7 @@ const ESTADO_NEGOCIO: Record<CodigoNegocio, number> = {
   REGISTRO_INACTIVO: 422,
   IDEMPOTENCIA_CONFLICTO: 422,
   IDEMPOTENCIA_CADUCADA: 422,
+  REFERENCIA_NO_DISPONIBLE: 422,
 };
 
 export function traducirError(error: unknown): ErrorApi {

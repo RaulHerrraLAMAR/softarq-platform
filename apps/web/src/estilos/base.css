@@ -786,6 +786,22 @@ select[aria-invalid="true"] {
   padding: 0 var(--esp-1);
 }
 
+.lista-conservadas {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: var(--esp-2);
+}
+
+.lista-conservadas li {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--esp-2) var(--esp-3);
+  align-items: center;
+  justify-content: space-between;
+}
+
 .opciones-insumo {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(min(100%, 240px), 1fr));

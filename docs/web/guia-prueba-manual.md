@@ -1,6 +1,14 @@
 # Guía para probar la web DEMO en persona
 
-Esta guía es para una **prueba futura hecha por una persona**; **todavía no se ha ejecutado**. Las verificaciones automatizadas de los módulos 4, 5 y 6 (Vitest y Playwright) están en `HANDOFF.md` §5 y **no sustituyen** esta prueba ni cuentan como PR-41 o PR-44 de la fase 1 (que son pruebas del libro de Excel).
+Esta guía es para la **prueba de la web hecha por una persona**. Distingue tres cosas:
+
+| Qué | Estado |
+|---|---|
+| **Revisión personal del propietario** | **Declarada.** El propietario declaró que revisa manualmente los resultados de la web (registrado el 03/10/2026). Es una declaración: no detalla recorridos, casos, fechas ni evidencias, y no se le atribuye ninguno |
+| **Ejecución formal de esta guía** (A1–A9, 1–14, C1–C15) | **Sin registro.** No hay constancia de casos ejecutados uno por uno con su resultado. Al hacerlo, anota fecha, caso, resultado y observaciones en la §5 |
+| **Pruebas automatizadas** (Vitest y Playwright) | En `HANDOFF.md` §5. **No sustituyen** esta prueba |
+
+Ninguna de las tres equivale a PR-41 ni a PR-44 de la fase 1, que son pruebas del libro de Excel y siguen pendientes.
 
 Todos los datos son DEMO y no tienen validez comercial.
 
@@ -93,6 +101,7 @@ Anota lo que observes en cada paso. La fecha de cálculo es la de hoy; con el ca
 | C12 | En «Clientes», desactiva el cliente de una cotización (confirma) | Ya no se ofrece en «Nueva cotización»; su cotización se abre y edita, pero guardar versión queda bloqueado con BL-01; al reactivarlo vuelve a funcionar |
 | C13 | Entra con el Revisor y abre la cotización y sus versiones | Solo consulta: sin «Guardar borrador», sin «Calcular», sin «Nueva cotización» |
 | C14 | Reduce la ventana a un ancho de teléfono en listas, cotización y versión | Una columna, tablas como tarjetas y sin desplazamiento horizontal |
+| C15 | Con una cotización guardada, deja de ofrecer un concepto o una opción de precio (p. ej. desactiva el proveedor PRV-00002 en la base de pruebas), recarga, cambia otra partida y guarda; recarga otra vez | La partida, sus medidas y la opción elegida **se conservan** con el aviso «ya no está disponible»; nada se sustituye. Calcular pide decidir; «Quitar selección» o elegir otra opción es decisión tuya |
 
 ## 4. Qué no hace todavía
 
@@ -100,3 +109,9 @@ Anota lo que observes en cada paso. La fecha de cálculo es la de hoy; con el ca
 - Sin descartar ni duplicar cotizaciones, revisión, aprobación, emisión, PDF, correo ni app móvil.
 - Sin registro de usuarios ni recuperación de contraseña.
 - Solo punto decimal (por ejemplo, `0.12`).
+
+## 5. Registro de la prueba en persona
+
+| Fecha | Persona | Casos ejecutados | Resultado | Observaciones |
+|---|---|---|---|---|
+| — | Propietario | Revisión personal declarada (sin casos detallados) | — | Registrada el 03/10/2026 como declaración; no es la ejecución formal de los casos |

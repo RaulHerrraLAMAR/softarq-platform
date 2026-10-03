@@ -2,7 +2,7 @@
 
 > Léelo al empezar. Actualízalo al terminar cada tarea (sección por sección, sin borrar el historial de la tabla 4). Reglas de trabajo: [`AGENTS.md`](AGENTS.md).
 
-**Última actualización:** 03/10/2026 · Claude Code (Opus 5.5) · módulo 6 (clientes, proyectos y cotizaciones con folio, borrador y versiones) terminado y verificado
+**Última actualización:** 03/10/2026 · Claude Code (Opus 5.5) · corrección del borrador (conservar selecciones no disponibles) y registro de la revisión personal; módulo 7 en curso
 
 ## 1. Estado actual
 
@@ -43,6 +43,8 @@
   - idempotencia en todas las altas (`Idempotency-Key`), eventos mínimos en `bitacora` e historial consultable;
   - permisos: Preparador prepara y calcula; Revisor solo consulta; Administrador del catálogo gestiona clientes y proyectos;
   - web con navegación por secciones y URL por pantalla, editor de cotización sobre el mismo formulario de la calculadora, vista previa, versiones, conflictos entre pestañas y «Guardar como cotización».
+- **Corrección del borrador (commit posterior al módulo 6):** guardar ya no elimina en silencio las selecciones de un concepto, proveedor o precio que dejó de estar disponible. Se conservan, marcadas, hasta que el usuario las sustituya o quite; las referencias nuevas inválidas se rechazan (422 `REFERENCIA_NO_DISPONIBLE`). Ver ADR-0008, «Corrección posterior».
+- **Revisión personal de la web:** el propietario declaró que revisa manualmente los resultados de la web (registrado el 03/10/2026). Es una declaración, sin recorridos, casos ni evidencias atribuidos. La ejecución formal de los casos de la guía (A1–A9, 1–14, C1–C15) sigue sin registro, y ninguna de las dos cuenta como PR-41 ni PR-44 del Excel.
 - **Todavía no existen:** registro o CRUD de usuarios, recuperación de contraseña, MFA, descartar o duplicar cotizaciones, revisión, aprobación, emisión, PDF ni móvil.
 
 ## 2. Decisiones vigentes
@@ -235,6 +237,16 @@ Se revisaron una por una. Defecto corregido: el botón «Mostrar/Ocultar» tení
 
 **Prueba intermitente corregida (módulo 5):** `autenticacion.test.ts` alteraba el último carácter del token CSRF, que en base64url de 32 bytes solo lleva 4 bits de datos; a veces el token alterado decodificaba igual. Ahora altera el primero; la expectativa no cambió (ADR-0008, «Cambios en pruebas existentes»).
 
+**Corrección del borrador (03/10/2026).** Automatizado y ejecutado en secuencia; registros en `D:\Proyecto_SoftArq\_work\registros\modulo7\`.
+
+| Comando | Resultado |
+|---|---|
+| Reproducción antes del cambio (`conservar-seleccion.test.ts`) | 5 de 6 fallaban con el código del módulo 6. La prueba sin datos nuevos del servidor confirma la pérdida: la selección del concepto no disponible no llegaba al borrador guardado (`01-reproduccion-antes.log`) |
+| `pnpm verificar` | **481/481**: 323 de la API (318 + 5 de `referencias.test.ts`) y 158 de la web (152 + 6 de conservación; 1 prueba anterior cambiada a propósito, ADR-0008). Primera corrida: solo falló la alineación de OpenAPI, que se regeneró |
+| `pnpm verificar:integracion` | **173/173** (171 + 2 con el catálogo real de `softarq_test`: concepto en Borrador y precio anulado → guardar otra partida, recargar y recuperar sin perder selecciones; v1 intacta; referencias nuevas inválidas → 422). En la primera corrida falló 1 prueba nueva por una expectativa equivocada mía: la completitud no depende del catálogo. Ahora comprueba el bloqueo real con BL-04 y BL-08 |
+| `pnpm verificar:e2e` | **36/36** (35 + 1: concepto no disponible y opción no disponible conservados tras guardar y recargar; «Quitar selección» y elegir otra solo por decisión del usuario), Edge con 1 worker, 2.1 min |
+| Revisión de capturas (`_work/evidencias/modulo7/escritorio-00a/00b`) | Correcto. Defecto de texto corregido: paréntesis anidados en el aviso del concepto no disponible |
+
 **Escenarios desde PostgreSQL** (módulo 2; por HTTP en el módulo 3; en la web en el módulo 4), comparados con los totales de las fuentes, no con el cálculo:
 
 | Escenario | Total |
@@ -272,7 +284,11 @@ En los cuatro, el resultado completo es idéntico al calculado con los fixtures 
     - `pnpm verificar:e2e` vacía y recarga `softarq_test`, así que no debe ejecutarse a la vez que `verificar:integracion`;
     - usa el Edge instalado (canal `msedge`); con otro equipo sin Edge habría que configurar otro canal o descargar Chromium en `_work`.
 14. **Skills en Claude Code:** si la sesión se abre en `D:\Proyecto_SoftArq` en lugar de `softarq-platform`, la herramienta Skill resuelve los comandos personales homónimos (comprobado). Hay que abrir Claude Code en `softarq-platform` o leer el `SKILL.md` directamente (`docs/herramientas/skills.md` §4).
-15. **Prueba en persona pendiente:** las comprobaciones de los módulos 4, 5 y 6 son automatizadas. Falta la prueba en persona con la guía de `docs/web/` (acceso A1–A9, calculadora 1–14 y cotizaciones C1–C14); no se ha ejecutado y no tiene relación con las pruebas del Excel (PR-41 y PR-44 siguen pendientes).
+15. **Revisión en persona:**
+    - el propietario declaró que revisa manualmente los resultados de la web (registrado el 03/10/2026, sin detalle de recorridos ni evidencias);
+    - la **ejecución formal** de la guía de `docs/web/` (acceso A1–A9, calculadora 1–14 y cotizaciones C1–C15) no tiene registro: se anota en la §5 de la guía;
+    - las pruebas de los módulos 4 a 6 y de la corrección son automatizadas;
+    - nada de esto equivale a PR-41 ni PR-44 del Excel, que siguen pendientes.
 16. **Autenticación (ADR-0007):**
     - los límites de acceso y los limitadores viven en memoria (una instancia; se reinician con el proceso);
     - un tercero puede bloquear una cuenta temporalmente (15 min);
@@ -286,12 +302,12 @@ En los cuatro, el resultado completo es idéntico al calculado con los fixtures 
     - el contacto del cliente y los datos del emisor llegarán con la emisión (BL-01);
     - la purga de idempotencia es manual (`db:purgar-idempotencia`);
     - listados limitados a 100 resultados, sin paginación;
-    - si un concepto del borrador desaparece del catálogo, su partida se conserva con un concepto provisional, pero la selección de precios de sus insumos no se conserva al volver a guardar;
+    - ~~la selección de un concepto que desaparece del catálogo se perdía al volver a guardar~~: corregido (ADR-0008, «Corrección posterior»);
     - en `softarq_dev` quedan `COT-2026-00001` (acentos dañados por el `curl` de humo) y `COT-2026-00002`, datos DEMO de prueba; el siguiente folio web será `COT-2026-00003`.
 
 ## 7. Siguiente tarea
 
-1. **Prueba en persona de la web** con [`docs/web/guia-prueba-manual.md`](docs/web/guia-prueba-manual.md) (acceso A1–A9, calculadora 1–14 y cotizaciones C1–C14) y registro de observaciones. No cuenta como PR-41 ni PR-44.
+1. **Ejecución formal de la guía manual** [`docs/web/guia-prueba-manual.md`](docs/web/guia-prueba-manual.md) (A1–A9, 1–14 y C1–C15), con el registro de la §5. Complementa la revisión personal ya declarada. No cuenta como PR-41 ni PR-44.
 2. **Módulo 7 propuesto: revisión y aprobación.**
    - «Enviar a revisión» de una versión concreta; observaciones y devolución a borrador;
    - aprobación por un revisor **distinto del preparador** (BL-17, D-13), registrada en una tabla de estados de solo inserción (sin UPDATE de la versión);

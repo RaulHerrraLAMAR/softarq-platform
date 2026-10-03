@@ -156,7 +156,7 @@ Los valores se escriben en `_work/registros/modulo6/tiempos-fases-integracion.js
 
 - **Rutas por hash**, sin dependencias: `#/cotizaciones`, `#/cotizaciones/nueva`, `#/cotizaciones/{id}`, `#/cotizaciones/{id}/v/{n}`, `#/clientes`, `#/clientes/{id}`, `#/proyectos` y `#/calculadora` (la calculadora DEMO, que sigue siendo la página inicial). Al recargar se vuelve a la misma pantalla y se pide lo persistido.
 - **Un solo formulario:** `useCaptura` y `VistaCaptura` se extrajeron de la calculadora; el editor de cotización usa las mismas secciones, la misma validación y la misma conversión a la solicitud de cálculo.
-- **Hidratación sin pérdida:** si un concepto del borrador ya no está en el catálogo, su partida se conserva con un concepto provisional y un aviso.
+- **Hidratación sin pérdida:** si un concepto del borrador ya no está en el catálogo, su partida se conserva con un concepto provisional y un aviso. Desde la corrección del 03/10/2026 también se conservan sus selecciones (ver «Corrección posterior»).
 - **Cambios sin guardar:** se comparan con la huella de lo guardado; salir pide confirmación y cerrar la pestaña avisa (`beforeunload`).
 - **La calculadora sigue montada** al navegar; «Guardar como cotización» lleva su captura como borrador inicial.
 - **CSRF:** ante 403 `CSRF_NO_VALIDO` se renueva el token y se reintenta **una** vez con las mismas cabeceras, incluida la clave de idempotencia.
@@ -178,4 +178,31 @@ Los valores se escriben en `_work/registros/modulo6/tiempos-fases-integracion.js
   - el contacto del cliente y los datos del emisor se añadirán con la emisión (BL-01);
   - la purga de idempotencia es manual;
   - las listas se limitan a 100 resultados, sin paginación;
-  - la selección de precios guardada para un concepto que deja de existir no se conserva al guardar de nuevo (el concepto provisional no tiene insumos).
+  - ~~la selección de precios guardada para un concepto que deja de existir no se conserva al guardar de nuevo~~ — corregido (ver «Corrección posterior»).
+
+## Corrección posterior (03/10/2026, antes del módulo 7): conservar lo capturado
+
+**Defecto reproducido** con una prueba que fallaba antes del cambio (`apps/web/src/captura/__tests__/conservar-seleccion.test.ts`; registro en `_work/registros/modulo7/01-reproduccion-antes.log`):
+- `serializarBorrador` solo guardaba las selecciones de los insumos de las partidas; el concepto provisional no tenía insumos, así que sus selecciones se perdían al guardar;
+- al conciliar las opciones vigentes, la web **borraba** la selección que ya no figuraba entre ellas.
+
+**Regla:** guardar nunca elimina en silencio medidas ni selecciones porque un concepto, proveedor o precio dejó de estar disponible. La web no elige otra opción por el usuario.
+
+- **API:**
+  - el detalle del borrador incluye `referencias`: disponibilidad hoy de cada concepto (con los insumos de sus componentes activos), selección y tipo de adicional, con su motivo. Se calcula con el catálogo de la organización de la sesión y no cambia la captura;
+  - al guardar (y al crear la cotización con captura inicial), una referencia **nueva** debe existir en esa organización y estar ofrecida hoy. Para un precio: no anulado, vigente, con producto y proveedor activos y del mismo insumo. Si no, 422 `REFERENCIA_NO_DISPONIBLE` con la ruta;
+  - una referencia **ya guardada** en la revisión sobre la que se editó se acepta aunque ya no esté disponible;
+  - un código de otra organización no existe en esta: es una referencia nueva inválida;
+  - en el alta, la validación va dentro de la operación idempotente, así que una reproducción devuelve lo ya creado;
+  - la completitud no cambia: depende de la forma de la captura. Calcular sigue bloqueado por sus reglas (BL-04, BL-08).
+- **Web:**
+  - el concepto no disponible conserva sus insumos reales, tomados de `referencias`;
+  - las selecciones sin partida conocida se conservan (`seleccionConservada`);
+  - una opción que deja de ofrecerse queda marcada «ya no está disponible… Se conserva hasta que elija otra o la quite»;
+  - calcular exige decidir: elegir otra opción o «Quitar selección» (acción `QUITAR_SELECCION`);
+  - no se piden opciones para conceptos no disponibles.
+
+**Cambios en pruebas existentes (comportamiento cambiado a propósito):**
+- `estado-solicitud.test.ts`: «una selección que desaparece de las opciones vigentes se retira con aviso» pasa a «se conserva con aviso (no se retira ni se sustituye)», y comprueba que calcular exige decidir y que «Quitar selección» la retira;
+- `bloqueos.spec.ts` (E2E): además de lo anterior, comprueba que la selección no disponible ofrece «Quitar selección»;
+- los datos de prueba del detalle del borrador incluyen `referencias`.

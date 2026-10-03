@@ -50,6 +50,8 @@ test("precio que deja de ser válido después de elegirlo: BL-08 sin importes ni
     await expect(page.getByRole("radio", { name: /PRE-000007/ })).toHaveCount(0);
     const lamina = page.getByRole("group", { name: /INS-00004/ });
     await expect(lamina).toContainText("La opción PRE-000007 ya no está disponible");
+    // La selección se conserva marcada (no se borra ni se sustituye): decide el usuario.
+    await expect(lamina.getByRole("button", { name: "Quitar selección de INS-00004" })).toBeVisible();
     await expect(lamina.getByRole("radio", { name: /PRE-000006/ })).not.toBeChecked();
     await sinImportes(page);
   } finally {

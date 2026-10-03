@@ -357,6 +357,8 @@ export const CODIGOS_ERROR_API = [
   "REGISTRO_INACTIVO",
   "IDEMPOTENCIA_CONFLICTO",
   "IDEMPOTENCIA_CADUCADA",
+  // Conservación de selecciones del borrador (corrección previa al módulo 7).
+  "REFERENCIA_NO_DISPONIBLE",
 ] as const;
 export type CodigoErrorApi = (typeof CODIGOS_ERROR_API)[number];
 

@@ -14,7 +14,7 @@ import {
   type SolicitudCalculoDemo,
 } from "@softarq/contracts";
 import type { InsumoConOpciones } from "../api/servicios.ts";
-import { insumosEnUso, type Captura, type PartidaConcepto, type RenglonCaptura } from "./estado.ts";
+import { insumosParaElegir, type Captura, type PartidaConcepto, type RenglonCaptura } from "./estado.ts";
 
 export type ErroresCampo = Record<string, string>;
 
@@ -43,10 +43,10 @@ function medicion(p: PartidaConcepto, r: RenglonCaptura): Medicion {
   };
 }
 
-/** Precios elegidos SOLO para los insumos de los conceptos actuales, en orden estable. */
+/** Precios elegidos SOLO para los insumos de los conceptos actuales disponibles, en orden estable. */
 function preciosElegidos(c: Captura): string[] {
   const lista: string[] = [];
-  for (const ins of insumosEnUso(c)) {
+  for (const ins of insumosParaElegir(c)) {
     const p = c.seleccion[ins];
     if (p !== undefined && !lista.includes(p)) lista.push(p);
   }
@@ -117,6 +117,10 @@ export function validarCaptura(c: Captura, opciones: readonly InsumoConOpciones[
       decimal(e, `${r}.monto`, p.monto, "Indique el monto.");
       return;
     }
+    if (p.noDisponible !== null) {
+      e[`${r}.conceptoCodigo`] =
+        `El concepto ${p.concepto.codigo} ya no está disponible: ${p.noDisponible}. Quite la partida para poder calcular.`;
+    }
     if (p.renglones.length === 0) e[`${r}.mediciones`] = "Agregue al menos un renglón de medidas.";
     p.renglones.forEach((rg, n) => {
       const rr = `${r}.mediciones[${n}]`;
@@ -125,13 +129,19 @@ export function validarCaptura(c: Captura, opciones: readonly InsumoConOpciones[
     });
   });
 
-  const insumos = insumosEnUso(c);
+  const insumos = insumosParaElegir(c);
   if (insumos.length > 0) {
     if (opciones === null) {
       e["preciosElegidos"] = "Espere a que se carguen las opciones disponibles.";
     } else {
+      const vigentes = new Map(opciones.map((o) => [o.insumoCodigo, new Set(o.opciones.map((x) => x.precioCodigo))]));
       for (const ins of insumos) {
-        if (c.seleccion[ins] === undefined) e[`seleccion.${ins}`] = "Elija una opción para este insumo.";
+        const elegido = c.seleccion[ins];
+        if (elegido === undefined) e[`seleccion.${ins}`] = "Elija una opción para este insumo.";
+        else if (vigentes.has(ins) && !vigentes.get(ins)!.has(elegido)) {
+          // Selección conservada que ya no se puede elegir: decide el usuario, no la web.
+          e[`seleccion.${ins}`] = `La opción ${elegido} ya no está disponible. Elija otra o quite la selección.`;
+        }
       }
     }
   }

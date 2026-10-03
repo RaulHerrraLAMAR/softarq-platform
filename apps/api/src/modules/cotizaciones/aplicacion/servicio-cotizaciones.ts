@@ -20,6 +20,7 @@ import {
   LIMITES_COTIZACIONES,
   type CapturaBorrador,
   type ConsultaCotizaciones,
+  type ReferenciasBorrador,
   type DetalleCotizacion,
   type RespuestaBorradorGuardado,
   type RespuestaCotizaciones,
@@ -38,6 +39,7 @@ import {
 } from "../../catalogos/persistencia/repositorio-catalogos.js";
 import { aSolicitudCalculo, evaluarCompletitud, type ConceptoParaCaptura } from "../dominio/borrador.js";
 import { huellaReferencia, sha256 } from "../dominio/huella.js";
+import { codigosReferenciados, evaluarReferencias, referenciasNuevasInvalidas } from "../dominio/referencias.js";
 import { resumirCambios } from "../dominio/resumen-cambios.js";
 import {
   RepositorioCotizaciones,
@@ -115,7 +117,25 @@ export class ServicioCotizaciones {
     const d = await this.repo.obtenerCotizacion(ctx, id, LIMITES_COTIZACIONES.eventosRecientes);
     if (!d) throw NO_ENCONTRADO();
     const conceptos = await conceptosParaCaptura(this.catalogos, ctx, d.borrador.captura);
-    return { ...d, borrador: { ...d.borrador, completitud: evaluarCompletitud(d.borrador.captura, conceptos) } };
+    return {
+      ...d,
+      borrador: {
+        ...d.borrador,
+        completitud: evaluarCompletitud(d.borrador.captura, conceptos),
+        referencias: await this.referencias(ctx, d.borrador.captura),
+      },
+    };
+  }
+
+  /** Disponibilidad hoy de las referencias de una captura (solo lectura; la captura no cambia). */
+  private async referencias(ctx: ContextoOrganizacion, captura: CapturaBorrador): Promise<ReferenciasBorrador> {
+    const cods = codigosReferenciados(captura);
+    const [conceptos, precios, tiposAdicional] = await Promise.all([
+      cods.conceptos.length > 0 ? this.catalogos.obtenerConceptos(ctx, cods.conceptos) : [],
+      cods.precios.length > 0 ? this.catalogos.obtenerPrecios(ctx, cods.precios) : [],
+      cods.tiposAdicional.length > 0 ? this.catalogos.obtenerTiposAdicional(ctx, cods.tiposAdicional) : [],
+    ]);
+    return evaluarReferencias(captura, { conceptos, precios, tiposAdicional }, this.reloj.hoy());
   }
 
   async crear(
@@ -128,9 +148,21 @@ export class ServicioCotizaciones {
     const idem = prepararIdempotencia(clave, "crear_cotizacion", {}, s, ahora);
     // Año del folio: el de la fecha civil del servidor (zona configurada), como Year(Hoy()) del libro.
     const anio = Number(this.reloj.hoy().slice(0, 4));
-    const r = await ejecutarIdempotente(this.repo, ctx, autor, idem, ahora, () =>
-      this.repo.crearCotizacion(ctx, autor, s.proyectoId, anio, s.captura ?? CAPTURA_BORRADOR_VACIA, idem),
-    );
+    // La validación va dentro del alta: una reproducción idempotente devuelve lo ya creado.
+    const r = await ejecutarIdempotente(this.repo, ctx, autor, idem, ahora, async () => {
+      // Captura inicial (p. ej. desde la calculadora): todas sus referencias son nuevas.
+      if (s.captura) {
+        const invalidas = referenciasNuevasInvalidas(s.captura, CAPTURA_BORRADOR_VACIA, await this.referencias(ctx, s.captura));
+        if (invalidas.length > 0) {
+          throw new ErrorNegocio(
+            "REFERENCIA_NO_DISPONIBLE",
+            "La cotización no se creó: la captura tiene referencias que no existen o no están disponibles hoy.",
+            { campos: invalidas.map((x) => ({ ...x, ruta: `captura.${x.ruta}` })) },
+          );
+        }
+      }
+      return this.repo.crearCotizacion(ctx, autor, s.proyectoId, anio, s.captura ?? CAPTURA_BORRADOR_VACIA, idem);
+    });
     return { detalle: await this.detalle(ctx, r.id), reproducida: r.reproducida };
   }
 
@@ -140,6 +172,21 @@ export class ServicioCotizaciones {
     id: string,
     s: SolicitudBorrador,
   ): Promise<RespuestaBorradorGuardado> {
+    // Referencias nuevas: deben estar disponibles hoy. Las ya guardadas en la revisión sobre la
+    // que se editó se conservan aunque hayan dejado de estarlo (el usuario decide quitarlas).
+    // Si la revisión ya no es esa, se omite: la sentencia de guardado responderá el conflicto.
+    const previo = await this.repo.obtenerBorrador(ctx, id);
+    if (!previo) throw NO_ENCONTRADO();
+    if (previo.revision === s.revision) {
+      const invalidas = referenciasNuevasInvalidas(s.captura, previo.captura, await this.referencias(ctx, s.captura));
+      if (invalidas.length > 0) {
+        throw new ErrorNegocio(
+          "REFERENCIA_NO_DISPONIBLE",
+          "El borrador no se guardó: hay referencias nuevas que no existen o no están disponibles hoy.",
+          { campos: invalidas },
+        );
+      }
+    }
     try {
       await this.repo.guardarBorrador(ctx, autor, id, s.revision, s.captura);
     } catch (e) {
@@ -164,6 +211,7 @@ export class ServicioCotizaciones {
       actualizadoPor: b.actualizadoPor,
       actualizadoEn: b.actualizadoEn,
       completitud: evaluarCompletitud(b.captura, conceptos),
+      referencias: await this.referencias(ctx, b.captura),
     };
   }
 

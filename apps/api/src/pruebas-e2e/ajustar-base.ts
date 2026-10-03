@@ -2,6 +2,7 @@
  * Ajustes reversibles de softarq_test para las pruebas de navegador (bloqueos reales):
  *
  *   node dist-e2e/pruebas-e2e/ajustar-base.js proveedor <codigo> activo|inactivo
+ *   node dist-e2e/pruebas-e2e/ajustar-base.js concepto <codigo> aprobado|borrador
  *   node dist-e2e/pruebas-e2e/ajustar-base.js parametros sin-impuesto|demo
  *   node dist-e2e/pruebas-e2e/ajustar-base.js sesiones revocar <correo>
  *
@@ -28,6 +29,8 @@ async function principal(args: string[]): Promise<void> {
     const [que, a, b] = args;
     if (que === "proveedor" && a && (b === "activo" || b === "inactivo")) {
       await repo.cambiarActivoProveedor(ctx, a, b === "activo");
+    } else if (que === "concepto" && a && (b === "aprobado" || b === "borrador")) {
+      await repo.cambiarEstadoConcepto(ctx, a, b === "aprobado" ? "Aprobado" : "Borrador");
     } else if (que === "parametros" && a === "sin-impuesto") {
       await repo.actualizarParametros(ctx, {
         ...PARAMETROS_DEMO,
@@ -46,7 +49,7 @@ async function principal(args: string[]): Promise<void> {
       console.log(`[e2e] sesiones revocadas: ${r.count}`);
     } else {
       throw new Error(
-        "Uso: ajustar-base proveedor <codigo> activo|inactivo | parametros sin-impuesto|demo | sesiones revocar <correo>",
+        "Uso: ajustar-base proveedor <codigo> activo|inactivo | concepto <codigo> aprobado|borrador | parametros sin-impuesto|demo | sesiones revocar <correo>",
       );
     }
     console.log(`[e2e] softarq_test: ${args.join(" ")}`);

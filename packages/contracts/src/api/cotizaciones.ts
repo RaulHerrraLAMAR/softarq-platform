@@ -349,12 +349,38 @@ export const EsquemaRespuestaCotizaciones = z.strictObject({
 });
 export type RespuestaCotizaciones = z.infer<typeof EsquemaRespuestaCotizaciones>;
 
+const EsquemaMotivo = z.string().nullable();
+
+/**
+ * Disponibilidad HOY de cada referencia de la captura guardada (solo lectura; la captura no
+ * cambia). Una referencia no disponible se conserva hasta que el usuario decida sustituirla o
+ * quitarla; el cálculo la señala con su regla.
+ */
+export const EsquemaReferenciasBorrador = z.strictObject({
+  conceptos: z.array(
+    z.strictObject({
+      codigo: z.string(),
+      disponible: z.boolean(),
+      /** `null` si está disponible. */
+      motivo: EsquemaMotivo,
+      /** Insumos de sus componentes activos (vacío si el concepto no existe en la organización). */
+      insumos: z.array(z.string()),
+    }),
+  ),
+  selecciones: z.array(
+    z.strictObject({ insumoCodigo: z.string(), precioCodigo: z.string(), disponible: z.boolean(), motivo: EsquemaMotivo }),
+  ),
+  tiposAdicional: z.array(z.strictObject({ codigo: z.string(), disponible: z.boolean(), motivo: EsquemaMotivo })),
+});
+export type ReferenciasBorrador = z.infer<typeof EsquemaReferenciasBorrador>;
+
 export const EsquemaBorrador = z.strictObject({
   revision: z.number().int().nonnegative(),
   captura: EsquemaCapturaBorrador,
   actualizadoPor: z.string(),
   actualizadoEn: EsquemaInstante,
   completitud: EsquemaCompletitud,
+  referencias: EsquemaReferenciasBorrador,
 });
 export type Borrador = z.infer<typeof EsquemaBorrador>;
 
@@ -380,6 +406,7 @@ export const EsquemaRespuestaBorradorGuardado = z.strictObject({
   actualizadoPor: z.string(),
   actualizadoEn: EsquemaInstante,
   completitud: EsquemaCompletitud,
+  referencias: EsquemaReferenciasBorrador,
 });
 export type RespuestaBorradorGuardado = z.infer<typeof EsquemaRespuestaBorradorGuardado>;
 

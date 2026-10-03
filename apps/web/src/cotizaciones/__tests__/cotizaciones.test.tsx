@@ -7,7 +7,7 @@
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
-import type { CapturaBorrador, DetalleCotizacion, Version } from "@softarq/contracts";
+import type { CapturaBorrador, DetalleCotizacion, ReferenciasBorrador, RespuestaBorradorGuardado, Version } from "@softarq/contracts";
 import type { ResultadoApi } from "../../api/cliente.ts";
 import type { ServiciosCotizaciones } from "../../api/servicios-cotizaciones.ts";
 import { huellaBorrador, huellaDeBorrador, serializarBorrador } from "../../captura/borrador.ts";
@@ -17,6 +17,9 @@ import { CON_AREA, RESPUESTA_CALCULADA, serviciosFalsos } from "../../pruebas/da
 import { PantallaCotizacion } from "../EditorCotizacion.tsx";
 
 const ID = "5d0f1c7e-1111-4aaa-8bbb-000000000001";
+
+/** Todas las referencias disponibles: el servidor no informa nada que conservar marcado. */
+const SIN_REFERENCIAS_NO_DISPONIBLES: ReferenciasBorrador = { conceptos: [], selecciones: [], tiposAdicional: [] };
 
 const BORRADOR: CapturaBorrador = {
   consolidarCompras: true,
@@ -55,6 +58,7 @@ function detalle(revision = 3, versiones: DetalleCotizacion["versiones"] = []): 
       actualizadoPor: "[DEMO] Preparador 1",
       actualizadoEn: "2026-10-03T15:05:00.000Z",
       completitud: { lista: true, pendientes: [] },
+      referencias: SIN_REFERENCIAS_NO_DISPONIBLES,
     },
     versiones,
     eventos: [],
@@ -182,9 +186,15 @@ describe("rutas por hash", () => {
 describe("editor de cotización", () => {
   it("marca los cambios sin guardar y guarda con la revisión leída", async () => {
     const guardarBorrador = vi.fn(
-      async (_id: string, revision: number, _c: CapturaBorrador): Promise<ResultadoApi<{ revision: number; actualizadoPor: string; actualizadoEn: string; completitud: { lista: boolean; pendientes: { ruta: string; mensaje: string }[] } }>> => ({
+      async (_id: string, revision: number, _c: CapturaBorrador): Promise<ResultadoApi<RespuestaBorradorGuardado>> => ({
         ok: true,
-        datos: { revision: revision + 1, actualizadoPor: "[DEMO] Preparador 1", actualizadoEn: "2026-10-03T16:00:00.000Z", completitud: { lista: true, pendientes: [] } },
+        datos: {
+          revision: revision + 1,
+          actualizadoPor: "[DEMO] Preparador 1",
+          actualizadoEn: "2026-10-03T16:00:00.000Z",
+          completitud: { lista: true, pendientes: [] },
+          referencias: SIN_REFERENCIAS_NO_DISPONIBLES,
+        },
       }),
     );
     const usuario = userEvent.setup();

@@ -125,12 +125,17 @@ describe("ejemplos", () => {
     expect(elegida.avisosSeleccion["INS-00004"]).toBeUndefined();
   });
 
-  it("una selección que desaparece de las opciones vigentes se retira con aviso", () => {
+  it("una selección que desaparece de las opciones vigentes se conserva con aviso (no se retira ni se sustituye)", () => {
     let c = con(cargado(), { tipo: "CONCILIAR_OPCIONES", conceptos: ["CON-00007"], insumos: OPCIONES_AREA });
     expect(c.seleccion["INS-00004"]).toBe("PRE-000007");
     c = con(c, { tipo: "CONCILIAR_OPCIONES", conceptos: ["CON-00007"], insumos: sinPre7 });
-    expect(c.seleccion["INS-00004"]).toBeUndefined();
+    expect(c.seleccion["INS-00004"]).toBe("PRE-000007");
     expect(c.avisosSeleccion["INS-00004"]).toMatch(/PRE-000007 ya no está disponible/);
+    // Calcular exige la decisión del usuario.
+    expect(validarCaptura(c, sinPre7)["seleccion.INS-00004"]).toMatch(/Elija otra o quite la selección/);
+    const quitada = con(c, { tipo: "QUITAR_SELECCION", insumo: "INS-00004" });
+    expect(quitada.seleccion["INS-00004"]).toBeUndefined();
+    expect(quitada.avisosSeleccion["INS-00004"]).toBeUndefined();
   });
 
   it("opciones de otra lista de conceptos (respuesta atrasada) no se aplican", () => {

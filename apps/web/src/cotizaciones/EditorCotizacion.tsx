@@ -220,7 +220,7 @@ function EditorBorrador({
         return;
       }
       const conceptos = respuestas.flatMap((r) => (r.ok ? r.datos.conceptos : [])).filter((c) => codigos.includes(c.codigo));
-      const accion: Accion = { tipo: "CARGAR_BORRADOR", folio, borrador: b.captura, conceptos };
+      const accion: Accion = { tipo: "CARGAR_BORRADOR", folio, borrador: b.captura, conceptos, referencias: b.referencias };
       // La huella se toma de la captura ya cargada: recién abierta no tiene cambios sin guardar.
       const cargada = reducir(ESTADO_INICIAL, accion).captura;
       reiniciarResultado();

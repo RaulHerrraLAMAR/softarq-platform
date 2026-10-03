@@ -5,8 +5,10 @@
  * - La selección de precios es explícita y por insumo; nada se preselecciona en una captura propia.
  * - Las opciones de un ejemplo se resuelven contra las opciones vigentes que entrega la API; si una ya
  *   no está disponible, el insumo queda sin selección y con aviso (nunca se sustituye).
+ * - Una selección ya hecha que deja de estar disponible SE CONSERVA marcada (nunca se borra ni se
+ *   sustituye en silencio): el usuario decide elegir otra opción o quitarla («Quitar selección»).
  */
-import type { CapturaBorrador, DimensionMedicion, TipoFormula } from "@softarq/contracts";
+import type { CapturaBorrador, DimensionMedicion, ReferenciasBorrador, TipoFormula } from "@softarq/contracts";
 import type { ConceptoCatalogo, InsumoConOpciones } from "../api/servicios.ts";
 import type { Ejemplo } from "../ejemplos/ejemplos.ts";
 
@@ -30,6 +32,12 @@ export interface PartidaConcepto {
   concepto: ConceptoCatalogo;
   descripcion: string;
   renglones: RenglonCaptura[];
+  /**
+   * Motivo si el concepto ya no está disponible en el catálogo (borrador guardado). La partida y
+   * sus selecciones se conservan; no se piden opciones para él y el cálculo queda pendiente hasta
+   * que el usuario la quite.
+   */
+  noDisponible: string | null;
 }
 
 export interface PartidaAdicional {
@@ -60,6 +68,11 @@ export interface Captura {
   preciosDelEjemplo: string[] | null;
   /** Aviso por insumo cuando una opción (del ejemplo o elegida) dejó de estar disponible. */
   avisosSeleccion: Record<string, string>;
+  /**
+   * Insumos con selección guardada que no corresponden a ninguna partida conocida (p. ej. de un
+   * concepto que ya no existe). Se conservan al guardar hasta que el usuario los quite.
+   */
+  seleccionConservada: string[];
   /** Avisos de la carga de un ejemplo (p. ej. un concepto que ya no existe). */
   avisosCarga: string[];
   siguienteClave: number;
@@ -68,7 +81,14 @@ export interface Captura {
 export type Accion =
   | { tipo: "INICIAR_PROPIA" }
   | { tipo: "CARGAR_EJEMPLO"; ejemplo: Ejemplo; conceptos: readonly ConceptoCatalogo[] }
-  | { tipo: "CARGAR_BORRADOR"; folio: string; borrador: CapturaBorrador; conceptos: readonly ConceptoCatalogo[] }
+  | {
+      tipo: "CARGAR_BORRADOR";
+      folio: string;
+      borrador: CapturaBorrador;
+      conceptos: readonly ConceptoCatalogo[];
+      /** Disponibilidad hoy, informada por el servidor (si falta, solo se usa el catálogo recibido). */
+      referencias?: ReferenciasBorrador;
+    }
   | { tipo: "VOLVER_AL_INICIO" }
   | { tipo: "AGREGAR_CONCEPTO"; concepto: ConceptoCatalogo }
   | { tipo: "QUITAR_PARTIDA"; clave: string }
@@ -80,6 +100,8 @@ export type Accion =
   | { tipo: "EDITAR_ADICIONAL"; clave: string; cambios: Partial<Omit<PartidaAdicional, "clave" | "tipo">> }
   | { tipo: "FIJAR_CONSOLIDACION"; valor: boolean }
   | { tipo: "ELEGIR_OPCION"; insumo: string; precio: string }
+  /** Decisión explícita del usuario: deja de guardar la selección de ese insumo. */
+  | { tipo: "QUITAR_SELECCION"; insumo: string }
   | { tipo: "CONCILIAR_OPCIONES"; conceptos: readonly string[]; insumos: readonly InsumoConOpciones[] };
 
 export type EstadoApp = { captura: Captura | null };
@@ -94,6 +116,7 @@ function capturaVacia(origen: OrigenCaptura): Captura {
     seleccion: {},
     preciosDelEjemplo: null,
     avisosSeleccion: {},
+    seleccionConservada: [],
     avisosCarga: [],
     siguienteClave: 1,
   };
@@ -103,24 +126,38 @@ function renglonVacio(clave: string): RenglonCaptura {
   return { clave, descripcion: "", signo: "+", piezas: "1", largo: "", ancho: "", alto: "", segundaMedida: "ancho" };
 }
 
-/** Conceptos distintos de la captura, en orden de aparición. */
+/** Conceptos DISPONIBLES de la captura, en orden de aparición (para pedir sus opciones). */
 export function conceptosEnUso(c: Captura): string[] {
   const vistos = new Set<string>();
-  for (const p of c.partidas) if (p.tipo === "CONCEPTO") vistos.add(p.concepto.codigo);
+  for (const p of c.partidas) if (p.tipo === "CONCEPTO" && p.noDisponible === null) vistos.add(p.concepto.codigo);
   return [...vistos];
 }
 
-/** Insumos que necesitan precio elegido, según los conceptos de la captura. */
+/** Insumos de todos los conceptos de la captura, también los no disponibles (lo que se guarda). */
 export function insumosEnUso(c: Captura): string[] {
   const vistos = new Set<string>();
   for (const p of c.partidas) if (p.tipo === "CONCEPTO") for (const i of p.concepto.insumos) vistos.add(i.codigo);
   return [...vistos];
 }
 
+/** Insumos de los conceptos disponibles: los que necesitan una opción elegida para calcular. */
+export function insumosParaElegir(c: Captura): string[] {
+  const vistos = new Set<string>();
+  for (const p of c.partidas) {
+    if (p.tipo === "CONCEPTO" && p.noDisponible === null) for (const i of p.concepto.insumos) vistos.add(i.codigo);
+  }
+  return [...vistos];
+}
+
+/** Insumos cuya selección se guarda: los de las partidas y los conservados sin partida conocida. */
+export function insumosConSeleccionGuardable(c: Captura): string[] {
+  return [...new Set([...insumosEnUso(c), ...c.seleccionConservada])];
+}
+
 export function reducir(estado: EstadoApp, accion: Accion): EstadoApp {
   if (accion.tipo === "INICIAR_PROPIA") return { captura: capturaVacia({ tipo: "propia" }) };
   if (accion.tipo === "CARGAR_EJEMPLO") return { captura: desdeEjemplo(accion.ejemplo, accion.conceptos) };
-  if (accion.tipo === "CARGAR_BORRADOR") return { captura: desdeBorrador(accion.folio, accion.borrador, accion.conceptos) };
+  if (accion.tipo === "CARGAR_BORRADOR") return { captura: desdeBorrador(accion.folio, accion.borrador, accion.conceptos, accion.referencias) };
   if (accion.tipo === "VOLVER_AL_INICIO") return ESTADO_INICIAL;
   const c = estado.captura;
   if (!c) return estado;
@@ -139,6 +176,7 @@ function reducirCaptura(c: Captura, a: Accion): Captura {
         concepto: a.concepto,
         descripcion: a.concepto.descripcion,
         renglones: [renglon],
+        noDisponible: null,
       };
       return { ...c, partidas: [...c.partidas, partida], siguienteClave: c.siguienteClave + 2 };
     }
@@ -182,6 +220,12 @@ function reducirCaptura(c: Captura, a: Accion): Captura {
       const { [a.insumo]: _, ...avisos } = c.avisosSeleccion;
       return { ...c, seleccion: { ...c.seleccion, [a.insumo]: a.precio }, avisosSeleccion: avisos };
     }
+    case "QUITAR_SELECCION": {
+      if (c.seleccion[a.insumo] === undefined && !c.seleccionConservada.includes(a.insumo)) return c;
+      const { [a.insumo]: _s, ...seleccion } = c.seleccion;
+      const { [a.insumo]: _a, ...avisos } = c.avisosSeleccion;
+      return { ...c, seleccion, avisosSeleccion: avisos, seleccionConservada: c.seleccionConservada.filter((i) => i !== a.insumo) };
+    }
     case "CONCILIAR_OPCIONES":
       return conciliar(c, a.conceptos, a.insumos);
     default:
@@ -205,7 +249,9 @@ function editarRenglon(r: RenglonCaptura, cambios: Partial<Omit<RenglonCaptura, 
 
 /**
  * Compara la selección con las opciones vigentes recibidas para los conceptos actuales:
- * - una selección que ya no figura entre las opciones se retira y se avisa;
+ * - una selección que ya no figura entre las opciones SE CONSERVA y se avisa (el usuario decide
+ *   elegir otra o quitarla; nunca se borra ni se sustituye por otra);
+ * - si una selección marcada vuelve a figurar entre las opciones, el aviso desaparece;
  * - en un ejemplo, se marcan las opciones del ejemplo que siguen vigentes y se avisa de las demás.
  * Una respuesta para otra lista de conceptos (atrasada) no se aplica.
  */
@@ -220,8 +266,12 @@ function conciliar(c: Captura, conceptos: readonly string[], insumos: readonly I
     const codigos = new Set(ins.opciones.map((o) => o.precioCodigo));
     const elegido = seleccion[ins.insumoCodigo];
     if (elegido !== undefined && !codigos.has(elegido)) {
-      delete seleccion[ins.insumoCodigo];
-      avisos[ins.insumoCodigo] = `La opción ${elegido} ya no está disponible. Elija otra opción.`;
+      if (!avisos[ins.insumoCodigo]?.includes(elegido)) {
+        avisos[ins.insumoCodigo] = avisoNoDisponible(elegido, null);
+        cambio = true;
+      }
+    } else if (elegido !== undefined && avisos[ins.insumoCodigo] !== undefined) {
+      delete avisos[ins.insumoCodigo];
       cambio = true;
     }
     if (c.preciosDelEjemplo && seleccion[ins.insumoCodigo] === undefined) {
@@ -236,6 +286,11 @@ function conciliar(c: Captura, conceptos: readonly string[], insumos: readonly I
   }
   if (!cambio && c.preciosDelEjemplo === null) return c;
   return { ...c, seleccion, avisosSeleccion: avisos, preciosDelEjemplo: null };
+}
+
+/** Aviso de una selección conservada que ya no se puede elegir. */
+export function avisoNoDisponible(precio: string, motivo: string | null): string {
+  return `La opción ${precio} ya no está disponible${motivo ? ` (${motivo})` : ""}. Se conserva hasta que elija otra o la quite.`;
 }
 
 function desdeEjemplo(ej: Ejemplo, conceptos: readonly ConceptoCatalogo[]): Captura {
@@ -276,6 +331,7 @@ function desdeEjemplo(ej: Ejemplo, conceptos: readonly ConceptoCatalogo[]): Capt
         alto: m.alto ?? "",
         segundaMedida: m.ancho === null && m.alto !== null ? "alto" : "ancho",
       })),
+      noDisponible: null,
     });
   }
   return {
@@ -299,15 +355,25 @@ function formulaSegunMedidas(p: Extract<CapturaBorrador["partidas"][number], { t
 
 /**
  * Captura editable a partir de un borrador guardado (módulo 6). A diferencia de un ejemplo, NUNCA
- * se descarta una partida: si su concepto ya no está en el catálogo, se conserva con un concepto
- * provisional (sin insumos) y un aviso, para que guardar no borre datos; el servidor lo señalará
- * al calcular. `null` vuelve a ser un campo vacío; `"0"` se conserva.
+ * se descarta una partida ni una selección:
+ * - si su concepto ya no está disponible, la partida se conserva con un concepto provisional y un
+ *   aviso; si el servidor informa sus insumos, sus selecciones siguen asociadas a ella;
+ * - una selección que el servidor informa como no disponible se conserva marcada;
+ * - una selección sin partida conocida se conserva («seleccionConservada») hasta que se quite.
+ * `null` vuelve a ser un campo vacío; `"0"` se conserva.
  */
-function desdeBorrador(folio: string, b: CapturaBorrador, conceptos: readonly ConceptoCatalogo[]): Captura {
+function desdeBorrador(
+  folio: string,
+  b: CapturaBorrador,
+  conceptos: readonly ConceptoCatalogo[],
+  referencias: ReferenciasBorrador | undefined,
+): Captura {
   const c = capturaVacia({ tipo: "cotizacion", folio });
   let n = 1;
   const clave = () => `k${n++}`;
   const avisosCarga: string[] = [];
+  const refConcepto = new Map((referencias?.conceptos ?? []).map((r) => [r.codigo, r]));
+  const avisados = new Set<string>();
   const partidas: PartidaCaptura[] = b.partidas.map((p) => {
     if (p.tipo === "ADICIONAL") {
       return {
@@ -319,18 +385,24 @@ function desdeBorrador(folio: string, b: CapturaBorrador, conceptos: readonly Co
         monto: p.monto ?? "",
       };
     }
-    let concepto = conceptos.find((x) => x.codigo === p.conceptoCodigo);
+    const ref = refConcepto.get(p.conceptoCodigo);
+    let concepto = ref?.disponible === false ? undefined : conceptos.find((x) => x.codigo === p.conceptoCodigo);
+    let noDisponible: string | null = null;
     if (!concepto) {
-      avisosCarga.push(
-        `El concepto ${p.conceptoCodigo} ya no está disponible en el catálogo. Su partida se conserva tal como se guardó, pero no se podrá calcular hasta quitarla.`,
-      );
+      noDisponible = ref?.motivo ?? "no está en el catálogo disponible";
+      if (!avisados.has(p.conceptoCodigo)) {
+        avisados.add(p.conceptoCodigo);
+        avisosCarga.push(
+          `El concepto ${p.conceptoCodigo} ya no está disponible: ${noDisponible}. Su partida y sus selecciones se conservan tal como se guardaron, pero no se podrá calcular hasta quitarla.`,
+        );
+      }
       concepto = {
         codigo: p.conceptoCodigo,
         descripcion: `${p.conceptoCodigo} (no disponible)`,
         unidad: "",
         tipoFormula: formulaSegunMedidas(p),
         permiteDescuento: true,
-        insumos: [],
+        insumos: (ref?.insumos ?? []).map((codigo) => ({ codigo, descripcion: "", unidadBase: "" })),
       };
     }
     return {
@@ -348,14 +420,27 @@ function desdeBorrador(folio: string, b: CapturaBorrador, conceptos: readonly Co
         alto: m.alto ?? "",
         segundaMedida: m.segundaMedida,
       })),
+      noDisponible,
     };
   });
-  return {
+  const base: Captura = {
     ...c,
     consolidarCompras: b.consolidarCompras,
     partidas,
     seleccion: Object.fromEntries(b.seleccion.map((s) => [s.insumoCodigo, s.precioCodigo])),
     avisosCarga,
     siguienteClave: n,
+  };
+  const conocidos = new Set(insumosEnUso(base));
+  const avisosSeleccion: Record<string, string> = {};
+  for (const r of referencias?.selecciones ?? []) {
+    if (!r.disponible && base.seleccion[r.insumoCodigo] === r.precioCodigo) {
+      avisosSeleccion[r.insumoCodigo] = avisoNoDisponible(r.precioCodigo, r.motivo);
+    }
+  }
+  return {
+    ...base,
+    avisosSeleccion,
+    seleccionConservada: b.seleccion.map((s) => s.insumoCodigo).filter((i) => !conocidos.has(i)),
   };
 }

@@ -1,20 +1,26 @@
 /**
  * Clientes, proyectos y cotizaciones con folio, borrador y versiones (módulo 6, ADR-0008), contra
  * la web compilada, la API real y softarq_test. Pruebas de navegador AUTOMATIZADAS: no equivalen a
- * la prueba hecha por una persona (pendiente).
+ * la revisión personal del propietario ni a la ejecución formal de la guía manual.
  */
 import { mkdirSync } from "node:fs";
 import { join } from "node:path";
 import { expect, test, type APIRequestContext, type Page, type TestInfo } from "@playwright/test";
-import { CORS, URL_API_E2E, abrirConSesion, cargarEjemplo, cuentasE2E, sinDesbordeHorizontal } from "./apoyo.ts";
+import { CORS, URL_API_E2E, abrirConSesion, ajustarBase, cargarEjemplo, cuentasE2E, sinDesbordeHorizontal } from "./apoyo.ts";
 
 const RAIZ_REPO = join(import.meta.dirname, "..", "..", "..");
 const CARPETA_M6 = join(RAIZ_REPO, "..", "_work", "evidencias", "modulo6");
+const CARPETA_M7 = join(RAIZ_REPO, "..", "_work", "evidencias", "modulo7");
 const ORIGEN_WEB = "http://localhost:4173";
 
 async function evidenciaM6(pagina: Page, info: TestInfo, nombre: string, completa = false): Promise<void> {
   mkdirSync(CARPETA_M6, { recursive: true });
   await pagina.screenshot({ path: join(CARPETA_M6, `${info.project.name}-${nombre}.png`), fullPage: completa });
+}
+
+async function evidenciaM7(pagina: Page, info: TestInfo, nombre: string, completa = false): Promise<void> {
+  mkdirSync(CARPETA_M7, { recursive: true });
+  await pagina.screenshot({ path: join(CARPETA_M7, `${info.project.name}-${nombre}.png`), fullPage: completa });
 }
 
 const sufijo = () => Math.random().toString(36).slice(2, 8);
@@ -293,4 +299,58 @@ test("pantalla estrecha: clientes, cotización y versión sin desbordamiento hor
   await expect(page.getByRole("heading", { level: 1, name: "Clientes" })).toBeVisible();
   await sinDesbordeHorizontal(page);
   await evidenciaM6(page, info, "03-clientes", true);
+});
+
+test("referencias que dejan de estar disponibles: guardar otra partida, recargar y recuperar conserva partida y selecciones", async ({ page }, info) => {
+  await abrirConSesion(page);
+  const { folio } = await cotizacionConEjemplo1(page, `Conservar ${sufijo()}`);
+  const monto = () => page.getByLabel(/^Monto/).first();
+  const guardarYRecargar = async (revision: number) => {
+    await page.getByRole("button", { name: "Guardar borrador" }).click();
+    await expect(estadoBorrador(page)).toContainText(`Guardado · revisión ${revision}`);
+    await page.reload();
+    await expect(page.getByRole("heading", { level: 1, name: `Cotización ${folio}` })).toBeVisible();
+    await expect(estadoBorrador(page)).toContainText(`Guardado · revisión ${revision}`);
+  };
+
+  // 1) El concepto deja de estar aprobado en el catálogo real (softarq_test).
+  ajustarBase("concepto", "CON-00007", "borrador");
+  try {
+    await page.reload();
+    await expect(page.getByText(/El concepto CON-00007 ya no está disponible/)).toBeVisible();
+    const conservadas = page.getByRole("group", { name: "Selecciones guardadas de conceptos no disponibles" });
+    for (const [ins, pre] of [["INS-00004", "PRE-000007"], ["INS-00005", "PRE-000008"], ["INS-00006", "PRE-000009"]]) {
+      await expect(conservadas).toContainText(`${ins} · opción ${pre}`);
+    }
+    await evidenciaM7(page, info, "00a-concepto-no-disponible-conservado", true);
+    // Modificar OTRA partida (el costo adicional) y guardar.
+    await monto().fill("950");
+    await guardarYRecargar(1);
+    await expect(monto()).toHaveValue("950");
+    await expect.poll(() => page.evaluate(() => [...document.querySelectorAll("input")].some((i) => i.value === "Faldón norte"))).toBe(true);
+    for (const pre of ["PRE-000007", "PRE-000008", "PRE-000009"]) await expect(conservadas).toContainText(pre);
+  } finally {
+    ajustarBase("concepto", "CON-00007", "aprobado");
+  }
+
+  // 2) La opción elegida deja de estar disponible (proveedor inactivo): se conserva marcada, sin sustituto.
+  ajustarBase("proveedor", "PRV-00002", "inactivo");
+  try {
+    await page.reload();
+    const lamina = page.getByRole("group", { name: /INS-00004/ });
+    await expect(lamina).toContainText("La opción PRE-000007 ya no está disponible (el proveedor está inactivo)");
+    await expect(lamina.getByRole("radio", { name: /PRE-000006/ })).not.toBeChecked();
+    await monto().fill("975");
+    await guardarYRecargar(2);
+    await expect(lamina).toContainText("La opción PRE-000007 ya no está disponible");
+    await evidenciaM7(page, info, "00b-opcion-no-disponible-conservada");
+    // Solo el usuario decide: quitar la selección y elegir otra.
+    await lamina.getByRole("button", { name: "Quitar selección de INS-00004" }).click();
+    await expect(lamina).not.toContainText("ya no está disponible");
+    await lamina.getByRole("radio", { name: /PRE-000006/ }).check();
+    await page.getByRole("button", { name: "Guardar borrador" }).click();
+    await expect(estadoBorrador(page)).toContainText("Guardado · revisión 3");
+  } finally {
+    ajustarBase("proveedor", "PRV-00002", "activo");
+  }
 });

@@ -4,12 +4,13 @@
  * - Lo que el usuario no escribió viaja como `null` (sin capturar); `"0"` es un valor.
  * - Un texto con formato decimal inválido NO se convierte: el guardado se detiene y el campo se
  *   marca; la captura local se conserva tal cual. El servidor vuelve a validar todo.
- * - Las dimensiones que la fórmula no usa viajan en `null` y los precios elegidos solo de los
- *   insumos de los conceptos actuales, igual que `armarSolicitud`.
+ * - Las dimensiones que la fórmula no usa viajan en `null`. Se guardan las selecciones de los
+ *   insumos de todas las partidas (también de conceptos no disponibles) y las conservadas sin
+ *   partida conocida: guardar nunca borra una selección que el usuario no quitó.
  * - El borrador no lleva resultados ni importes calculados.
  */
 import { PATRON_DECIMAL_TEXTO, type CapturaBorrador } from "@softarq/contracts";
-import { insumosEnUso, type Captura } from "./estado.ts";
+import { insumosConSeleccionGuardable, type Captura } from "./estado.ts";
 import { AYUDA_DECIMAL, dimensionesDelRenglon, type ErroresCampo } from "./solicitud.ts";
 
 export type ResultadoSerializacion = { ok: true; borrador: CapturaBorrador } | { ok: false; errores: ErroresCampo };
@@ -56,7 +57,7 @@ export function serializarBorrador(c: Captura): ResultadoSerializacion {
   });
 
   if (Object.keys(errores).length > 0) return { ok: false, errores };
-  const seleccion = insumosEnUso(c)
+  const seleccion = insumosConSeleccionGuardable(c)
     .filter((ins) => c.seleccion[ins] !== undefined)
     .map((ins) => ({ insumoCodigo: ins, precioCodigo: c.seleccion[ins]! }));
   return { ok: true, borrador: { consolidarCompras: c.consolidarCompras, partidas, seleccion } };

@@ -42,7 +42,7 @@ Variables (con sus valores por omisión) en [`.env.example`](../../.env.example)
 | GET | `/api/v1/cotizaciones?buscar=&clienteId=&proyectoId=&limite=` | `cotizaciones.consultar` | Cotizaciones con folio WEB DEMO y última versión |
 | POST | `/api/v1/cotizaciones` | `cotizaciones.preparar` + `Idempotency-Key` | `{ proyectoId, captura? }`: reserva el folio `COT-AAAA-NNNNN` y crea el borrador (revisión 0) |
 | GET | `/api/v1/cotizaciones/{id}` | `cotizaciones.consultar` | Cotización, borrador (captura, revisión, autor y completitud), versiones y eventos recientes |
-| PUT | `/api/v1/cotizaciones/{id}/borrador` | `cotizaciones.preparar` | `{ revision, captura }`; puede estar incompleto; revisión obsoleta: 409 `CONFLICTO_EDICION` con `actual` |
+| PUT | `/api/v1/cotizaciones/{id}/borrador` | `cotizaciones.preparar` | `{ revision, captura }`; puede estar incompleto; revisión obsoleta: 409 `CONFLICTO_EDICION` con `actual`. Las referencias ya guardadas se conservan aunque dejen de estar disponibles; una referencia nueva no disponible: 422 `REFERENCIA_NO_DISPONIBLE` con `campos`. El detalle devuelve `borrador.referencias` (disponibilidad hoy) |
 | POST | `/api/v1/cotizaciones/{id}/versiones` | `cotizaciones.preparar` + `calculo.ejecutar` + `Idempotency-Key` | `{ revisionBorrador, motivo? }`: el servidor calcula con el borrador guardado y guarda una versión inmutable (201). Sin captura ni importes del navegador |
 | GET | `/api/v1/cotizaciones/{id}/versiones/{numero}` | `cotizaciones.consultar` | La versión tal como se guardó (nunca se recalcula) |
 | GET | `/api/v1/openapi.json` | Público | Especificación |
@@ -89,7 +89,7 @@ Todos los errores usan el mismo sobre:
              "problemas": [{ "codigo": "BL-03", "referencia": "version", "mensaje": "…" }] } }
 ```
 
-Según el error, el sobre lleva además `campos` (400 y 422 `CAPTURA_INCOMPLETA`), `faltantes` (404), `problemas` (422 `CALCULO_BLOQUEADO`) o `actual` (409 `CONFLICTO_EDICION`: revisión, autor, hora y, en borradores, la captura vigente).
+Según el error, el sobre lleva además `campos` (400, 422 `CAPTURA_INCOMPLETA` y 422 `REFERENCIA_NO_DISPONIBLE`), `faltantes` (404), `problemas` (422 `CALCULO_BLOQUEADO`) o `actual` (409 `CONFLICTO_EDICION`: revisión, autor, hora y, en borradores, la captura vigente).
 
 | HTTP | Código | Cuándo |
 |---|---|---|
@@ -109,6 +109,7 @@ Según el error, el sobre lleva además `campos` (400 y 422 `CAPTURA_INCOMPLETA`
 | 422 | `CAPTURA_INCOMPLETA` | El borrador no está completo para calcular: ninguna versión |
 | 422 | `REGISTRO_INACTIVO` | Cliente o proyecto inactivo para un registro nuevo |
 | 422 | `IDEMPOTENCIA_CONFLICTO` / `IDEMPOTENCIA_CADUCADA` | Clave reutilizada para otra operación o contenido, o con más de 24 h |
+| 422 | `REFERENCIA_NO_DISPONIBLE` | Concepto, tipo de adicional o precio nuevo en la captura que no existe en la organización o no está disponible hoy; `campos` lleva la ruta |
 | 429 | `DEMASIADAS_SOLICITUDES` | Límite general, de cálculo o de intentos de acceso (`Retry-After`) |
 | 503 | `SERVICIO_NO_DISPONIBLE` | PostgreSQL no disponible |
 | 500 | `ERROR_INTERNO` | Error inesperado (sin detalles internos) |
