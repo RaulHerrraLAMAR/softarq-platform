@@ -50,6 +50,11 @@ const PARES: [string, string, string][] = [
   ["encabezado", BLANCO, t("color-primario")],
   ["leyenda del encabezado", "#e2e8f0", t("color-primario")],
   ["atenuado en tarjeta móvil", t("color-texto-atenuado"), t("color-superficie-suave")],
+  // Módulo 5: barra de sesión y pantalla de acceso.
+  ["detalle de la sesión en el encabezado", t("color-texto-sobre-oscuro"), t("color-primario")],
+  ["botón «Cerrar sesión» (hover)", BLANCO, t("color-secundario")],
+  ["error en la barra de sesión", t("color-error"), t("color-error-fondo")],
+  ["aviso «Sesión cerrada»", t("color-texto"), t("color-correcto-fondo")],
 ];
 
 describe("contraste del sistema visual (WCAG AA, texto normal)", () => {
@@ -61,5 +66,8 @@ describe("contraste del sistema visual (WCAG AA, texto normal)", () => {
     expect(contraste(t("color-borde-fuerte"), t("color-tarjeta"))).toBeGreaterThanOrEqual(3);
     expect(contraste(t("color-foco"), t("color-tarjeta"))).toBeGreaterThanOrEqual(3);
     expect(contraste(t("color-foco"), t("color-fondo"))).toBeGreaterThanOrEqual(3);
+    // Foco y borde del botón sobre el encabezado oscuro.
+    expect(contraste(t("color-foco-sobre-oscuro"), t("color-primario"))).toBeGreaterThanOrEqual(3);
+    expect(contraste(t("color-texto-sobre-oscuro"), t("color-primario"))).toBeGreaterThanOrEqual(3);
   });
 });

@@ -4,9 +4,10 @@
 - dominio de cálculo (módulo 1, ADR-0003);
 - persistencia de catálogos en PostgreSQL con Prisma 7.10 (módulo 2, ADR-0004);
 - API HTTP local con NestJS 12 (módulo 3, ADR-0005; endpoints en [`docs/api/README.md`](../../docs/api/README.md));
-- todavía no hay autenticación, usuarios ni guardado de cotizaciones.
+- usuarios DEMO, sesiones opacas en PostgreSQL, CSRF y permisos por función y organización (módulo 5, ADR-0007);
+- todavía no hay guardado de cotizaciones.
 
-**Tecnología:** TypeScript 7 (ESM; decoradores con `tsc`), NestJS 12.1.2 sobre Express 5, Zod 4.6.5 (contratos), decimal.js 10.6.0, Prisma 7.10.0 con `@prisma/adapter-pg`, PostgreSQL 18 local y Vitest 5.
+**Tecnología:** TypeScript 7 (ESM; decoradores con `tsc`), NestJS 12.1.2 sobre Express 5, Zod 4.6.5 (contratos), decimal.js 10.6.0, Prisma 7.10.0 con `@prisma/adapter-pg`, `@node-rs/argon2` 2.2.1 (Argon2id), `cookie` 0.7.2, PostgreSQL 18 local y Vitest 5.
 
 ## Responsabilidades
 
@@ -28,6 +29,8 @@ Los clientes (web y móvil) solo muestran y capturan datos.
 | `src/modules/calculo/aplicacion/construir-entrada.ts` | Ensamblador: catálogos de la base y solicitud → `EntradaCalculo` (selección explícita, BL-04 y BL-08) |
 | `src/modules/catalogos/persistencia/` | Repositorio de catálogos (siempre con `ContextoOrganizacion`) |
 | `src/modules/catalogos/demo/` | Datos DEMO con su procedencia y carga idempotente |
+| `src/modules/autenticacion/` | Matriz de permisos y política de sesiones (`dominio/`), casos de uso y limitador de accesos (`aplicacion/`), Argon2id, tokens, CSRF y repositorio de sesiones (`infraestructura/`), cuentas DEMO (`demo/`) |
+| `src/http/guardia-sesion.ts`, `cookies.ts`, `controlador-autenticacion.ts` | Guardia global (niega por omisión: sesión, origen, CSRF y capacidad), cookie de sesión y endpoints `/auth` |
 | `src/infraestructura/prisma/` | Cliente Prisma, conversión decimal por columna y fechas DATE |
 | `src/pruebas-integracion/` | Pruebas contra PostgreSQL (solo `softarq_test`) |
 | `prisma/schema.prisma`, `prisma/migrations/` | Esquema y migraciones versionadas |
@@ -83,20 +86,32 @@ pnpm install --frozen-lockfile
    pnpm --filter @softarq/api db:cargar-demo
    ```
 
-6. **Verificación:**
+6. **Cuentas DEMO** (Preparador y Revisor; rol migrador; solo `softarq_dev`):
+
+   ```
+   pnpm --filter @softarq/api db:cargar-usuarios-demo
+   # contraseña nueva para una cuenta DEMO existente (revoca sus sesiones):
+   pnpm --filter @softarq/api db:cargar-usuarios-demo -- --restablecer preparador.demo@softarq.test
+   ```
+
+   Las contraseñas generadas quedan **solo** en `D:\Proyecto_SoftArq\_work\secrets\accesos-demo-softarq_dev.json` (fuera del repositorio); la consola solo muestra esa ruta. Ejecutarlo de nuevo conserva las cuentas y sus contraseñas.
+
+7. **Verificación:**
 
    ```
    pnpm verificar                   # build + typecheck + pruebas unitarias
    pnpm verificar:integracion       # vacía y migra softarq_test; nunca otra base
    ```
 
-7. **API local:** escucha solo en `127.0.0.1:3000`; ver [`docs/api/README.md`](../../docs/api/README.md).
+8. **API local:** escucha solo en `127.0.0.1:3000` (los clientes usan `http://localhost:3000`); ver [`docs/api/README.md`](../../docs/api/README.md).
 
    ```
    pnpm --filter @softarq/api build && pnpm --filter @softarq/api start
    ```
 
    Cambiar un contrato obliga a regenerar `docs/api/openapi.json` con `pnpm --filter @softarq/api openapi:generar`; una prueba lo comprueba.
+
+**Mantenimiento de sesiones:** `pnpm --filter @softarq/api db:purgar-sesiones` (rol migrador) borra las sesiones vencidas o revocadas hace más de 7 días; la aplicación no tiene DELETE.
 
 **Migraciones nuevas:** `pnpm --filter @softarq/api db:nueva-migracion <nombre>` (usa la base sombra). Después, revisa y completa el SQL (CHECK y exclusiones) y aplícalo con `db:migrar`.
 
@@ -105,5 +120,6 @@ pnpm install --frozen-lockfile
 - Importes y cantidades con aritmética decimal exacta. En la base, `NUMERIC` con escala por clase de dato. Un valor con más decimales que su columna se **rechaza**, nunca se redondea.
 - La ausencia de un parámetro nunca se convierte en cero: recargo o impuesto NULL bloquean (BL-12, BL-13); `0` es un valor válido.
 - Toda consulta de datos propios exige el contexto de organización dentro del `where`.
-- El rol de la aplicación no tiene DDL ni DELETE: los catálogos se desactivan o anulan.
+- El rol de la aplicación no tiene DDL ni DELETE: los catálogos se desactivan o anulan. En identidad solo lee `usuario` y `membresia`, y en `sesion` solo inserta y actualiza actividad y revocación.
+- Toda ruta nueva exige sesión y una capacidad declarada con `@Requiere(...)`, o `@Publico()` justificado; la organización se toma de la sesión (`organizacionDe(req)`), nunca de la solicitud.
 - La selección de precios es explícita: el repositorio nunca elige el menor ni sustituye una selección inválida.

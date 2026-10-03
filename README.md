@@ -2,7 +2,7 @@
 
 Plataforma de **cotización de estructuras de construcción** (fase 2 del proyecto SoftArq). Sucede al libro de Excel de la fase 1 (`Cotizador_Estructuras_F1.xlsm`, versión 1.0.0-F1), que sigue siendo la referencia funcional.
 
-> **Estado (02/10/2026):** módulos 1 a 4 terminados: **motor de cálculo** (CR-01 a CR-16), **persistencia de catálogos** en PostgreSQL con Prisma, **API HTTP local** con NestJS 12 y **cliente web DEMO** con React y Vite (ejemplos y captura propia calculados por la API). Verificado con 374 pruebas unitarias (275 de la API y 99 de la web), 94 de integración y 21 de navegador contra PostgreSQL local. Todavía no hay autenticación ni guardado de cotizaciones. Todo dato de ejemplo es **DEMO** y no tiene validez comercial.
+> **Estado (02/10/2026):** módulos 1 a 5 terminados: **motor de cálculo** (CR-01 a CR-16), **persistencia de catálogos** en PostgreSQL con Prisma, **API HTTP local** con NestJS 12, **cliente web DEMO** con React y Vite y **usuarios DEMO con sesiones** (Argon2id, cookie HttpOnly, CSRF y permisos por función y organización). Verificado con 419 pruebas unitarias (297 de la API y 122 de la web), 147 de integración y 27 de navegador contra PostgreSQL local. Todavía no hay guardado de cotizaciones. Todo dato de ejemplo es **DEMO** y no tiene validez comercial.
 
 ## Estructura
 
@@ -58,7 +58,9 @@ pnpm --filter @softarq/api start
 curl -s http://127.0.0.1:3000/health
 ```
 
-4. Abre la web DEMO (con la API en marcha) en **http://localhost:5173** ([`apps/web/README.md`](apps/web/README.md); guía de prueba en [`docs/web/guia-prueba-manual.md`](docs/web/guia-prueba-manual.md)):
+   Las cuentas DEMO se crean con `pnpm --filter @softarq/api db:cargar-usuarios-demo`; sus accesos quedan en `D:\Proyecto_SoftArq\_work\secrets\accesos-demo-softarq_dev.json`, fuera del repositorio ([ADR-0007](docs/adr/0007-autenticacion-sesiones.md)).
+
+4. Abre la web DEMO (con la API en marcha) en **http://localhost:5173** e inicia sesión con una cuenta DEMO ([`apps/web/README.md`](apps/web/README.md); guía de prueba en [`docs/web/guia-prueba-manual.md`](docs/web/guia-prueba-manual.md)):
 
 ```
 pnpm --filter @softarq/web dev

@@ -7,7 +7,11 @@ import { z } from "zod";
 const HOSTS_LOCALES = new Set(["localhost", "127.0.0.1", "::1", "[::1]"]);
 /** Roles que nunca deben usarse para ejecutar el servidor. */
 const ROLES_PROHIBIDOS = new Set(["postgres", "softarq_migrator"]);
-const ORIGEN_LOCAL = /^https?:\/\/(localhost|127\.0\.0\.1)(:\d{1,5})?$/;
+/**
+ * Orígenes de los clientes: solo http en loopback. La cookie de sesión no lleva `Secure` en esta
+ * etapa (HTTP local, ADR-0007); por eso no se admite ningún origen que no sea local ni https.
+ */
+const ORIGEN_LOCAL = /^http:\/\/(localhost|127\.0\.0\.1)(:\d{1,5})?$/;
 
 const entero = (nombre: string, min: number, max: number, porOmision: number) =>
   z
@@ -35,12 +39,12 @@ const EsquemaEntorno = z.object({
   API_CORS_ORIGINS: z
     .string()
     .optional()
-    .transform((v) => (v ?? "http://localhost:5173,http://127.0.0.1:5173").split(",").map((o) => o.trim()).filter(Boolean))
+    .transform((v) => (v ?? "http://localhost:5173").split(",").map((o) => o.trim()).filter(Boolean))
     .pipe(
       z
         .array(
           z.string().refine((o) => o !== "*" && ORIGEN_LOCAL.test(o), {
-            error: "API_CORS_ORIGINS solo admite orígenes locales explícitos (http://localhost:PUERTO); nunca \"*\".",
+            error: "API_CORS_ORIGINS solo admite orígenes locales explícitos por http (http://localhost:PUERTO); nunca \"*\".",
           }),
         )
         .min(1)
@@ -49,11 +53,18 @@ const EsquemaEntorno = z.object({
   API_LIMITE_GENERAL_POR_MINUTO: entero("API_LIMITE_GENERAL_POR_MINUTO", 1, 10000, 120),
   API_LIMITE_CALCULO_POR_MINUTO: entero("API_LIMITE_CALCULO_POR_MINUTO", 1, 1000, 30),
   API_LIMITE_CUERPO_KB: entero("API_LIMITE_CUERPO_KB", 1, 1024, 128),
-  SOFTARQ_ORGANIZACION_DEMO: z
+  // Límites de intentos de acceso (ADR-0007 §4): ventanas fijas en memoria, nunca permanentes.
+  API_ACCESO_VENTANA_MINUTOS: entero("API_ACCESO_VENTANA_MINUTOS", 1, 1440, 15),
+  API_ACCESO_FALLOS_CUENTA_IP: entero("API_ACCESO_FALLOS_CUENTA_IP", 1, 100, 5),
+  API_ACCESO_FALLOS_CUENTA: entero("API_ACCESO_FALLOS_CUENTA", 1, 1000, 20),
+  API_ACCESO_INTENTOS_IP: entero("API_ACCESO_INTENTOS_IP", 1, 10000, 30),
+  // La cookie de sesión sin `Secure` solo es admisible en local: un entorno de producción se rechaza.
+  NODE_ENV: z
     .string()
-    .regex(/^[A-Z0-9][A-Z0-9_-]{0,39}$/, { error: "SOFTARQ_ORGANIZACION_DEMO debe ser un código." })
     .optional()
-    .transform((v) => v ?? "DEMO"),
+    .refine((v) => v !== "production", {
+      error: "NODE_ENV=production no está permitido: esta API solo funciona en local por HTTP (sin TLS ni cookie Secure; ADR-0007).",
+    }),
   SOFTARQ_ZONA_HORARIA: z
     .string()
     .optional()
@@ -83,7 +94,12 @@ export interface ConfiguracionApi {
   limiteGeneralPorMinuto: number;
   limiteCalculoPorMinuto: number;
   limiteCuerpoKb: number;
-  organizacionDemo: string;
+  accesos: {
+    ventanaMs: number;
+    fallosPorCuentaEIp: number;
+    fallosPorCuenta: number;
+    intentosPorIp: number;
+  };
   zonaHoraria: string;
   registro: "completo" | "errores" | "ninguno";
 }
@@ -111,7 +127,12 @@ export function leerConfiguracion(entorno: Record<string, string | undefined>): 
     limiteGeneralPorMinuto: e.API_LIMITE_GENERAL_POR_MINUTO,
     limiteCalculoPorMinuto: e.API_LIMITE_CALCULO_POR_MINUTO,
     limiteCuerpoKb: e.API_LIMITE_CUERPO_KB,
-    organizacionDemo: e.SOFTARQ_ORGANIZACION_DEMO,
+    accesos: {
+      ventanaMs: e.API_ACCESO_VENTANA_MINUTOS * 60_000,
+      fallosPorCuentaEIp: e.API_ACCESO_FALLOS_CUENTA_IP,
+      fallosPorCuenta: e.API_ACCESO_FALLOS_CUENTA,
+      intentosPorIp: e.API_ACCESO_INTENTOS_IP,
+    },
     zonaHoraria: e.SOFTARQ_ZONA_HORARIA,
     registro: e.API_REGISTRO,
   };

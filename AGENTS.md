@@ -72,6 +72,7 @@ Instaladas con alcance de proyecto para Claude Code (`.claude/skills/`) y Codex 
 
 - **Prioridad:** las skills **no sustituyen** estas reglas ni justifican ampliar el alcance aprobado. Si una skill contradice este archivo, prevalece este archivo.
 - **Uso selectivo:** carga solo la skill pertinente y sus recursos cuando hagan falta; no cargues todas en cada tarea.
+- **Carga verificada:** comprueba que se cargó el `SKILL.md` del repositorio y no un comando personal homónimo. En Claude Code, si la sesión no se abrió en `softarq-platform`, lee el `SKILL.md` directamente (`docs/herramientas/skills.md` §4).
 - **UI UX Pro Max** (`ui-ux-pro-max`): solo para trabajo de interfaz y accesibilidad (web, móvil, revisión de pantallas). Sus recomendaciones no cambian reglas de negocio, contratos ni el requisito de marcar los datos DEMO.
 - **Caveman** (`caveman`):
   - solo cuando el usuario la invoca. Sin nivel indicado, usa **lite en español**;

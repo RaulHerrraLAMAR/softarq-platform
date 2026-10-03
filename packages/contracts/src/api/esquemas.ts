@@ -1,5 +1,5 @@
 /**
- * Contratos HTTP de la API v1 (ADR-0005).
+ * Contratos HTTP de la API v1 (ADR-0005; autenticación y sesiones: ADR-0007).
  *
  * Los esquemas Zod son la ÚNICA definición: los tipos se derivan con `z.infer` y la API los usa
  * para validar en ejecución (Standard Schema) y para generar OpenAPI. Sin dependencias del servidor.
@@ -26,6 +26,8 @@ export const LIMITES_API = {
   conceptosPorConsulta: 20,
   limiteListadoPorOmision: 50,
   limiteListadoMaximo: 100,
+  longitudCorreo: 254,
+  longitudContrasena: 128,
 } as const;
 
 /** Códigos de negocio (INS-00001, PRE-000007, CON-00007, P001…). */
@@ -271,6 +273,59 @@ export const EsquemaRespuestaCalculoDemo = z.strictObject({
 });
 export type RespuestaCalculoDemo = z.infer<typeof EsquemaRespuestaCalculoDemo>;
 
+// ---------------------------------------------------------------------------
+// Autenticación y sesiones (ADR-0007)
+// ---------------------------------------------------------------------------
+
+/** Funciones del libro (modConfig.bas, D-20), asignadas por pertenencia a una organización. */
+export const FUNCIONES_USUARIO = ["PREPARADOR", "REVISOR", "ADMIN_CATALOGO", "ADMIN_SISTEMA"] as const;
+export type FuncionUsuario = (typeof FUNCIONES_USUARIO)[number];
+
+/**
+ * Capacidades que la API comprueba en esta etapa. Solo es la enumeración: qué función concede cada
+ * capacidad lo decide la API (matriz en ADR-0007); el cliente únicamente la muestra.
+ */
+export const CAPACIDADES = ["sesion.propia", "catalogos.consultar", "calculo.ejecutar"] as const;
+export type Capacidad = (typeof CAPACIDADES)[number];
+
+/** Nombre de la cabecera con el token CSRF (patrón synchronizer token, ligado a la sesión). */
+export const CABECERA_CSRF = "X-CSRF-Token";
+
+/** Token opaco: 32 bytes aleatorios en base64url. */
+const EsquemaTokenOpaco = z.string().regex(/^[A-Za-z0-9_-]{43}$/);
+
+export const EsquemaSolicitudAcceso = z.strictObject({
+  correo: z
+    .string()
+    .trim()
+    .min(3, { error: "Indique el correo." })
+    .max(LIMITES_API.longitudCorreo, { error: "El correo es demasiado largo." }),
+  contrasena: z
+    .string()
+    .min(1, { error: "Indique la contraseña." })
+    .max(LIMITES_API.longitudContrasena, { error: "La contraseña es demasiado larga." }),
+});
+export type SolicitudAcceso = z.infer<typeof EsquemaSolicitudAcceso>;
+
+/** GET /auth/csrf: token para iniciar sesión (ligado a la sesión previa de la cookie). */
+export const EsquemaRespuestaCsrf = z.strictObject({ csrfToken: EsquemaTokenOpaco });
+export type RespuestaCsrf = z.infer<typeof EsquemaRespuestaCsrf>;
+
+/** Identidad y contexto de la sesión. Nunca incluye el token de sesión ni hashes. */
+export const EsquemaRespuestaSesion = z.strictObject({
+  usuario: z.strictObject({ nombre: z.string(), correo: z.string() }),
+  organizacion: z.strictObject({ codigo: z.string(), nombre: z.string(), esDemo: z.boolean() }),
+  funciones: z.array(z.enum(FUNCIONES_USUARIO)),
+  capacidades: z.array(z.enum(CAPACIDADES)),
+  /** Instante ISO 8601 de la expiración absoluta. */
+  expiraEn: z.string(),
+  /** Minutos sin actividad tras los que la sesión vence. */
+  inactividadMinutos: z.number().int().positive(),
+  /** Token CSRF de esta sesión, para POST y DELETE (cabecera X-CSRF-Token). */
+  csrfToken: EsquemaTokenOpaco,
+});
+export type RespuestaSesion = z.infer<typeof EsquemaRespuestaSesion>;
+
 export const CODIGOS_ERROR_API = [
   "SOLICITUD_INVALIDA",
   "NO_ENCONTRADO",
@@ -280,6 +335,12 @@ export const CODIGOS_ERROR_API = [
   "DEMASIADAS_SOLICITUDES",
   "SERVICIO_NO_DISPONIBLE",
   "ERROR_INTERNO",
+  "NO_AUTENTICADO",
+  "SESION_NO_VALIDA",
+  "CREDENCIALES_INVALIDAS",
+  "SIN_PERMISO",
+  "CSRF_NO_VALIDO",
+  "ORIGEN_NO_PERMITIDO",
 ] as const;
 export type CodigoErrorApi = (typeof CODIGOS_ERROR_API)[number];
 

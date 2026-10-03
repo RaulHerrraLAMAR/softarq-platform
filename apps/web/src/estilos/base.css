@@ -1027,6 +1027,107 @@ select[aria-invalid="true"] {
   }
 }
 
+/* ---------- Sesión: acceso y barra (módulo 5) ---------- */
+.encabezado :focus-visible {
+  outline-color: var(--color-foco-sobre-oscuro);
+}
+
+.barra-sesion {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--esp-2) var(--esp-4);
+  margin-left: auto;
+}
+
+.barra-sesion-identidad {
+  display: grid;
+  line-height: 1.3;
+  min-width: 0;
+}
+
+.barra-sesion-nombre {
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.barra-sesion-detalle {
+  color: var(--color-texto-sobre-oscuro);
+  font-size: var(--texto-sm);
+  overflow-wrap: anywhere;
+}
+
+.boton-encabezado {
+  background: transparent;
+  color: #ffffff;
+  border-color: var(--color-texto-sobre-oscuro);
+}
+
+.boton-encabezado:hover:not(:disabled) {
+  background: var(--color-secundario);
+}
+
+.barra-sesion-error {
+  flex-basis: 100%;
+  background: var(--color-error-fondo);
+  color: var(--color-error);
+  padding: var(--esp-2) var(--esp-3);
+  border-radius: var(--radio);
+  font-size: var(--texto-sm);
+  font-weight: 500;
+}
+
+.acceso {
+  display: grid;
+  justify-items: center;
+  padding-block: var(--esp-8);
+}
+
+.acceso-tarjeta {
+  width: 100%;
+  max-width: 440px;
+  display: grid;
+  gap: var(--esp-4);
+  background: var(--color-tarjeta);
+  border: 1px solid var(--color-borde);
+  border-radius: var(--radio);
+  box-shadow: var(--sombra);
+  padding: var(--esp-8);
+}
+
+.acceso-titulo {
+  font-size: var(--texto-xl);
+  font-weight: 600;
+}
+
+.acceso-formulario {
+  display: grid;
+  gap: var(--esp-4);
+}
+
+.entrada-con-accion {
+  display: flex;
+  gap: var(--esp-2);
+}
+
+.entrada-con-accion input {
+  flex: 1;
+}
+
+.entrada-con-accion .boton {
+  flex: none;
+  min-width: 96px;
+}
+
+.acceso-enviar {
+  width: 100%;
+}
+
+.acceso-nota code {
+  font-family: var(--fuente-codigo);
+  font-size: var(--texto-xs);
+}
+
 /* ---------- Pantallas estrechas ---------- */
 @media (max-width: 720px) {
   main {
@@ -1035,6 +1136,20 @@ select[aria-invalid="true"] {
 
   .encabezado {
     padding: var(--esp-3) var(--esp-4);
+  }
+
+  .barra-sesion {
+    margin-left: 0;
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .acceso {
+    padding-block: var(--esp-4);
+  }
+
+  .acceso-tarjeta {
+    padding: var(--esp-4);
   }
 
   .seccion,

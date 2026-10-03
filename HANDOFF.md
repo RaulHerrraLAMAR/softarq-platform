@@ -2,7 +2,7 @@
 
 > Léelo al empezar. Actualízalo al terminar cada tarea (sección por sección, sin borrar el historial de la tabla 4). Reglas de trabajo: [`AGENTS.md`](AGENTS.md).
 
-**Última actualización:** 02/10/2026 · Claude Code (Opus 5.5) · módulo 4 (cliente web DEMO con React y Vite) terminado y verificado
+**Última actualización:** 02/10/2026 · Claude Code (Opus 5.5) · módulo 5 (usuarios DEMO, sesiones y autorización por organización) terminado y verificado
 
 ## 1. Estado actual
 
@@ -22,12 +22,20 @@
   - catálogos para preparar una cotización DEMO y `POST /api/v1/calculos/demo` con datos de PostgreSQL;
   - devuelve solo la proyección comercial;
   - los 4 escenarios principales se reproducen por HTTP.
-- **Módulo 4, cliente web DEMO (este commit):**
+- **Módulo 4, cliente web DEMO** (`84f9218`):
   - React 19 y Vite 8 en `http://localhost:5173` (escucha en `127.0.0.1`);
   - cuatro ejemplos verificados y captura propia, con selección explícita de opciones y costos adicionales;
   - el cálculo lo hace la API, y la web muestra el resultado comercial, los avisos y los bloqueos;
   - cada cambio deja el resultado pendiente de recalcular.
-- **Todavía no existen:** autenticación, usuarios, clientes, proyectos, cotizaciones persistidas, revisión, emisión, PDF ni móvil.
+- **Módulo 5, usuarios DEMO, sesiones y autorización (este commit):**
+  - tablas `usuario`, `membresia` (pertenencia con funciones del libro) y `sesion` (opaca; solo SHA-256 del token);
+  - contraseñas con Argon2id (`@node-rs/argon2`, m = 64 MiB, t = 3, p = 4);
+  - cookie `HttpOnly`, `SameSite=Strict`, `Path=/api/v1` y host-only;
+  - CSRF con HMAC ligado a la sesión, comprobación de `Origin` y límites de intentos de acceso;
+  - la organización, la identidad y las funciones salen de la sesión; no queda ningún contexto DEMO anónimo;
+  - matriz: Preparador consulta y calcula, Revisor consulta (403 al calcular);
+  - web con pantalla de acceso, restauración de la sesión, barra de identidad, cierre y sesión vencida, y limpieza de la captura al cambiar de identidad.
+- **Todavía no existen:** registro o CRUD de usuarios, recuperación de contraseña, MFA, clientes, proyectos, cotizaciones persistidas, revisión, aprobación, emisión, PDF ni móvil.
 
 ## 2. Decisiones vigentes
 
@@ -39,10 +47,11 @@
 | ADR-0004 | Prisma 7.10 con adaptador `pg`; roles migrador y aplicación; base sombra; `NUMERIC` por clase de dato; DATE; FK compuestas por organización; CHECK y exclusión; carga DEMO sin sobrescribir ni borrar; pruebas solo en `softarq_test` | [`docs/adr/0004-persistencia-catalogos.md`](docs/adr/0004-persistencia-catalogos.md) |
 | ADR-0005 | API HTTP local: NestJS 12 ESM compilado con `tsc`; Zod en `contracts` como definición única (validación, tipos y OpenAPI); sobre de error único (400/404/413/415/422/429/503/500); solo `127.0.0.1`; CORS con lista explícita; rate limit en memoria; contexto DEMO fijo (no es autenticación); fecha de cálculo del servidor | [`docs/adr/0005-api-http-local.md`](docs/adr/0005-api-http-local.md) |
 | ADR-0006 | Web DEMO: React 19 + Vite 8 sin router ni librería de estado; solo `@softarq/contracts`; captura en reducer con decimales como texto; huella para «pendiente de recalcular»; sin duplicados ni respuestas atrasadas (abort + número de solicitud); sin preselección; `DIMENSIONES_POR_FORMULA` en contracts; Vite solo en loopback con `strictPort`, sin proxy, CSP y fuentes locales; Playwright con Edge contra la web compilada, la API real y `softarq_test` con `RelojFijo` | [`docs/adr/0006-cliente-web-demo.md`](docs/adr/0006-cliente-web-demo.md) |
+| ADR-0007 | Usuarios DEMO y sesiones opacas en PostgreSQL (solo el hash del token); Argon2id m = 64 MiB, t = 3, p = 4 con `@node-rs/argon2`; expiración de 8 h absoluta y 30 min por inactividad, renovación al autenticar y revocación con UPDATE; cookie `HttpOnly`, `SameSite=Strict`, `Path=/api/v1`, host-only, sin `Secure` solo en local; host `localhost` para la web y la API (escucha en 127.0.0.1); CSRF con HMAC por sesión y `Origin`; límites de acceso temporales; guardia que niega por omisión; matriz de funciones del libro (solo el Preparador calcula); `softarq_app` solo lee las tablas de identidad | [`docs/adr/0007-autenticacion-sesiones.md`](docs/adr/0007-autenticacion-sesiones.md) |
 | Propietario | Libro oficial `entrega\Cotizador_Estructuras_F1.xlsm`; COT-2026-00016/00017 y la persona en turno se conservan; evidencias citadas por archivo, escenario y caso | [`docs/fase1-estado-verificado.md`](docs/fase1-estado-verificado.md) §4 |
 | Entorno | Trabajo en `D:\Proyecto_SoftArq`; temporales y cachés en `_work`; sin remoto ni push | `AGENTS.md` §1 |
 
-Pendiente de decidir: autenticación y permisos, almacén compartido del limitador para varias instancias, generación de PDF y alcance de la app móvil.
+Pendiente de decidir: selección de organización para usuarios con varias pertenencias, capacidades de revisión y aprobación, almacén compartido de los limitadores para varias instancias, TLS y proxy antes de publicar, generación de PDF y alcance de la app móvil.
 
 ## 3. Esquema implementado (migración `20261002000000_catalogos`)
 
@@ -64,6 +73,13 @@ Pendiente de decidir: autenticación y permisos, almacén compartido del limitad
 - **Vigencias:** `DATE`.
 
 Detalle en ADR-0004 y en [`docs/modelo-conceptual.md`](docs/modelo-conceptual.md) §4.
+
+**Migración `20261003014159_autenticacion` (módulo 5, ADR-0007):**
+- `usuario`: global, con correo normalizado y único y `CHECK` de hash Argon2id;
+- `membresia`: única por (`organizacion_id`, `usuario_id`), con `CHECK` de funciones;
+- `sesion`: `token_hash` de 32 bytes, FK compuesta a `membresia` y `CHECK` de coherencia.
+
+Permisos de `softarq_app`: solo `SELECT` en `usuario` y `membresia`; en `sesion`, `SELECT` e `INSERT` y `UPDATE` solo de `ultima_actividad_en`, `revocada_en` y `motivo_revocacion`. Sin DELETE. Aplicada en `softarq_dev` el 02/10/2026 con `db:migrar`.
 
 **Recursos de PostgreSQL creados (02/10/2026):**
 
@@ -87,7 +103,8 @@ Credenciales: `apps/api/.env` y `.env.test` (locales, excluidos de Git). La cred
 | 02/10/2026 | Aprovisionamiento y verificación contra PostgreSQL real | Commit `2543baa` |
 | 02/10/2026 | Skills del proyecto (ui-ux-pro-max, caveman, grill-me + grilling) para Claude Code y Codex, con reglas de uso | Commit `fdcc8f4`; ver §9 |
 | 02/10/2026 | Módulo 3: API HTTP local (NestJS 12, contratos Zod, catálogos, cálculo DEMO, errores, transporte, OpenAPI, ADR-0005) | Commit `185fd26` |
-| 02/10/2026 | Módulo 4: cliente web DEMO (React + Vite), sistema visual, pruebas de componentes y de navegador, ADR-0006 | Ver §5, §11 y §8 |
+| 02/10/2026 | Módulo 4: cliente web DEMO (React + Vite), sistema visual, pruebas de componentes y de navegador, ADR-0006 | Commit `84f9218` |
+| 02/10/2026 | Módulo 5: usuarios DEMO, sesiones, CSRF, permisos y aislamiento por organización; pantalla de acceso; ADR-0007; conflicto de la skill resuelto con un mecanismo comprobado | Ver §5, §12 y §8 |
 
 ## 5. Comandos y resultados reales (02/10/2026)
 
@@ -148,6 +165,40 @@ Las 21 pruebas de navegador comprueban:
 - la tabla de detalle ensanchaba el panel y recortaba el total (ahora se apila con una *container query*);
 - el aviso de opción no disponible quedaba bajo el pliegue (ahora también se resume en la cabecera).
 
+**Módulo 5 (usuarios, sesiones y permisos).** Todo automatizado y ejecutado en secuencia: integración y E2E usan `softarq_test`, nunca a la vez.
+
+| Comando | Resultado |
+|---|---|
+| `pnpm install` | `@node-rs/argon2` 2.2.1 (sin script de instalación; `allowBuilds` sin cambios), `cookie` 0.7.2 (ya en el lockfile) y `@types/cookie` 0.6.0 |
+| Medición de Argon2id en este equipo (20 operaciones) | m = 64 MiB, t = 3, p = 4: mediana de 56 ms por hash o verificación; 109 ms con dos simultáneas; RSS de 54 a 248 MiB (detalle en ADR-0007 §3) |
+| `pnpm verificar` | Build, typecheck y **419/419 pruebas unitarias**: 297 de la API (275 anteriores y 22 nuevas: 18 de autenticación y 4 de configuración y OpenAPI) y 122 de la web (99 anteriores y 23 nuevas: sesión, cliente con CSRF y generación, URL `localhost`, contraste) |
+| `pnpm verificar:integracion` (dos corridas, antes y después de cambiar a transacciones por lotes) | **147/147** en `softarq_test`. Nuevos: `autenticacion.integracion.test.ts` y `aislamiento.integracion.test.ts`, y permisos de identidad en `migraciones`. Las pruebas HTTP anteriores inician sesión como Preparador de `DEMO-HTTP` |
+| `pnpm verificar:e2e` | Primera corrida: 24/27, por transacciones interactivas de Prisma que superaban 5 s (`COMMIT` lentos por `WalWrite`, diagnosticados con `pg_stat_activity`) y por un selector de cookie mal escrito en la prueba. Tras corregir: **27/27 en dos corridas completas seguidas** (3.3 y 1.8 min; 21 anteriores, que ahora inician sesión, y 6 nuevas de sesión), Edge con 1 worker y sin errores del servidor |
+| Recorrido en desarrollo (`softarq_dev`, API en `127.0.0.1:3200` y Vite en `5273`, porque `3000` y `5173` estaban ocupados por servidores del propietario) | Acceso del Preparador con el archivo local de accesos; Ejemplo 1 = $54,190.68; cookie `HttpOnly`, `Strict`, `/api/v1`, host `localhost`; tras cerrar, la cookie anterior recibe 401; tráfico solo a `localhost:5273` y `localhost:3200`. Único error de consola: el 401 esperado de la comprobación inicial de sesión sin sesión |
+| Flujo `curl` documentado en `docs/api/README.md` (API temporal en 3200) | `csrf` → acceso → 5 conceptos → total 54190.68 → `DELETE` 204 → 401 |
+| `db:migrar` en `softarq_dev` | Migración `20261003014159_autenticacion` aplicada, con permisos |
+| `db:cargar-usuarios-demo`, dos veces | 1.ª: 2 cuentas creadas. 2.ª: 2 conservadas sin cambios (idempotente, sin cambiar contraseñas) |
+| `db:purgar-sesiones -- --test` | Ejecutado sin errores con el rol migrador |
+| Revisión de secretos | 0 coincidencias de las contraseñas DEMO o E2E ni de las de PostgreSQL en 365 archivos del repositorio; bundle sin contraseñas, `localStorage`, `sessionStorage` ni CDN |
+| MD5 del libro oficial | `b60debc121957b8d8e3f2c2edd9a5b4f`, sin cambios |
+
+Las 27 pruebas de navegador comprueban, además de lo del módulo 4:
+- **flujo completo:** acceso incorrecto con mensaje genérico, acceso correcto, atributos de la cookie, cálculo de $54,190.68 y cierre. Después, sin cookie y con la cookie anterior, catálogos, sesión y cálculo responden 401;
+- **restauración** al recargar la página;
+- **Revisor:** «Calcular» deshabilitado con el motivo, y la solicitud directa con su sesión y su CSRF recibe 403 `SIN_PERMISO`;
+- **sesión revocada en la base durante el uso:** aparece «Su sesión terminó» y la captura se descarta;
+- **respuesta tardía de la sesión anterior** tras cerrar y entrar con otro usuario: no reaparece;
+- **pantalla de 390 px** con la pantalla de acceso y la barra de sesión, sin desbordes.
+
+**Evidencias visuales del módulo 5** (fuera de Git): `D:\Proyecto_SoftArq\_work\evidencias\modulo5\`:
+- `escritorio-01…07`: acceso, error, sesión iniciada, cálculo, sesión cerrada, Revisor y sesión vencida;
+- `movil-01…02`;
+- `desarrollo-ejemplo1-softarq_dev.png`.
+
+Se revisaron una por una. Defecto corregido: el botón «Mostrar/Ocultar» tenía un nombre accesible ambiguo; ahora es «Mostrar contraseña» u «Ocultar contraseña».
+
+**Registros:** `D:\Proyecto_SoftArq\_work\registros\modulo5\`.
+
 **Escenarios desde PostgreSQL** (módulo 2; por HTTP en el módulo 3; en la web en el módulo 4), comparados con los totales de las fuentes, no con el cálculo:
 
 | Escenario | Total |
@@ -170,9 +221,9 @@ En los cuatro, el resultado completo es idéntico al calculado con los fixtures 
 5. **Fuera del motor y del ensamblador:** BL-07 y BL-09 (vigencia a la emisión con excepciones).
 6. **PostgreSQL:** escucha en `*:5432`, pero `pg_hba.conf` solo admite conexiones locales. No se modificó el servicio ni su configuración.
 7. **Fase 1:** siguen abiertas la incidencia de cierre de Excel y la observación de hoja activa.
-8. **API local sin autenticación:**
-   - el contexto DEMO es fijo y no controla el acceso;
-   - solo escucha en `127.0.0.1` y no debe exponerse en red, Expo ni despliegue sin un ADR de autenticación, TLS y proxy.
+8. **API con sesiones, pero solo local:**
+   - solo escucha en `127.0.0.1` y la cookie no lleva `Secure` (HTTP local);
+   - no debe exponerse en red, Expo ni despliegue sin TLS, `Secure` y `__Host-`, proxy y almacén compartido de los limitadores (ADR-0007 §5).
 9. **Rate limiting en memoria:** vale para una instancia; con varias hará falta un almacén compartido.
 10. **Avisos:** AV-01 y AV-03 se publican reescritos sin importes. AV-02, AV-04 y AV-05 corresponden a la revisión y la emisión.
 11. **Cierre por señal en Windows:** solo se comprobó dentro del mismo proceso; con Ctrl+C en la terminal funciona el mismo gancho (`enableShutdownHooks`).
@@ -180,32 +231,41 @@ En los cuatro, el resultado completo es idéntico al calculado con los fixtures 
     - la captura no se guarda (se pierde al recargar);
     - solo admite punto decimal;
     - hasta 20 conceptos distintos por consulta de opciones;
-    - sin autenticación: la organización sigue fija en el servidor.
+    - al vencer la sesión, la captura se descarta (es intencionado: no se conservan datos de una identidad anterior).
 13. **Pruebas de navegador:**
     - `pnpm verificar:e2e` vacía y recarga `softarq_test`, así que no debe ejecutarse a la vez que `verificar:integracion`;
     - usa el Edge instalado (canal `msedge`); con otro equipo sin Edge habría que configurar otro canal o descargar Chromium en `_work`.
-14. **Skill UI UX Pro Max:** la herramienta Skill cargó el comando personal homónimo de otro proyecto; se usó directamente `search.py` del repositorio (ver `docs/herramientas/skills.md` §4).
-15. **Prueba en persona pendiente:** las comprobaciones del módulo 4 son automatizadas; falta la prueba en persona con la guía de `docs/web/`.
+14. **Skills en Claude Code:** si la sesión se abre en `D:\Proyecto_SoftArq` en lugar de `softarq-platform`, la herramienta Skill resuelve los comandos personales homónimos (comprobado). Hay que abrir Claude Code en `softarq-platform` o leer el `SKILL.md` directamente (`docs/herramientas/skills.md` §4).
+15. **Prueba en persona pendiente:** las comprobaciones de los módulos 4 y 5 son automatizadas. Falta la prueba en persona con la guía de `docs/web/`, que ahora incluye los recorridos de acceso A1–A9; no se ha ejecutado y no tiene relación con las pruebas del Excel.
+16. **Autenticación (ADR-0007):**
+    - los límites de acceso y los limitadores viven en memoria (una instancia; se reinician con el proceso);
+    - un tercero puede bloquear una cuenta temporalmente (15 min);
+    - la purga de sesiones es manual (`db:purgar-sesiones`);
+    - reiniciar la API invalida los tokens CSRF (la web obtiene uno nuevo y pide repetir la acción);
+    - sin registro, recuperación, MFA ni selección de organización (el acceso exige una sola pertenencia activa).
+17. **Servidores del propietario en ejecución:** al terminar el módulo seguían activas una API en `127.0.0.1:3000` y Vite en `127.0.0.1:5173`, iniciadas antes de este trabajo. No se tocaron. Esa API es anterior al módulo 5 y no tiene `/api/v1/auth`: hay que **reiniciarla** con `pnpm --filter @softarq/api build && pnpm --filter @softarq/api start` para que la web (que ya pide sesión) funcione.
+18. **Disco y PostgreSQL:** se observaron `COMMIT` de más de 1 s (`WalWrite`) durante las pruebas de navegador. Por eso el código de sesiones evita las transacciones interactivas de Prisma, que tienen un tiempo máximo de 5 s.
 
 ## 7. Siguiente tarea
 
-1. **Prueba en persona de la web** con [`docs/web/guia-prueba-manual.md`](docs/web/guia-prueba-manual.md) y registro de observaciones (no cuenta como PR-41 ni PR-44).
-2. **Módulo 5 propuesto: usuarios, autenticación y cotizaciones con versiones.**
-   - autenticación local y sustitución del contexto DEMO fijo (`ContextoSolicitud`) por el contexto autenticado;
-   - clientes y proyectos;
-   - guardado de borradores y versiones (D-17), con folios que no se reutilizan (D-14);
-   - después, revisión, aprobación, emisión y PDF comercial (D-16).
+1. **Prueba en persona de la web** con [`docs/web/guia-prueba-manual.md`](docs/web/guia-prueba-manual.md) (acceso A1–A9 y cotizador 1–14) y registro de observaciones. No cuenta como PR-41 ni PR-44.
+2. **Módulo 6 propuesto: clientes, proyectos y cotizaciones guardadas con versiones.**
+   - clientes y proyectos por organización (BL-01 y BL-02), con capacidades nuevas en la matriz (Preparador y Administrador del catálogo, según el libro);
+   - borradores y versiones (D-17) con folios que no se reutilizan (D-14), ligados al usuario que prepara;
+   - después, revisión y aprobación con un revisor distinto del preparador (BL-17, D-13), emisión y PDF comercial (D-16).
 
-   Requiere un ADR de autenticación (sesiones o tokens, almacenamiento de contraseñas, CSRF y CORS con credenciales) antes de exponer nada fuera de `127.0.0.1`.
-
-Alternativa más corta: mejoras de la web DEMO (coma decimal, conservar el borrador en la sesión, más de 20 conceptos por consulta de opciones).
+Alternativas más cortas:
+- **web DEMO:** coma decimal, conservar el borrador durante la sesión y más de 20 conceptos por consulta;
+- **administración de usuarios:** alta, baja y restablecimiento por un Administrador del sistema.
 
 ## 8. Último commit
 
 - `2543baa`: Módulo 2, persistencia de catálogos (sobre `f0a34da`).
 - `fdcc8f4`: skills de proyecto y reglas de uso.
 - `185fd26`: Módulo 3, API HTTP local.
-- A continuación, el commit del módulo 4 (cliente web DEMO): ver `git log --oneline -3`.
+- `84f9218`: Módulo 4, cliente web DEMO.
+- A continuación, el commit del módulo 5 (usuarios, sesiones y autorización): ver `git log --oneline -3`.
+- MD5 del libro oficial al cerrar el módulo 5: `b60debc121957b8d8e3f2c2edd9a5b4f` (sin cambios).
 
 Rama `main`. Sin remoto ni push.
 
@@ -231,9 +291,10 @@ Endpoints, errores, límites y ejemplos: [`docs/api/README.md`](docs/api/README.
 pnpm --filter @softarq/api build
 pnpm --filter @softarq/api start        # http://127.0.0.1:3000 (lee apps/api/.env)
 curl -s http://127.0.0.1:3000/health
-curl -s -X POST http://127.0.0.1:3000/api/v1/calculos/demo -H "Content-Type: application/json" --data @docs/api/ejemplos/calculo-r1-faldones-10m.json
 pnpm --filter @softarq/api openapi:generar   # tras cambiar un contrato (una prueba lo exige)
 ```
+
+Desde el módulo 5, el cálculo y los catálogos exigen sesión. El flujo con `curl` (archivo de cookies, CSRF y `Origin`) está en [`docs/api/README.md`](docs/api/README.md#ejemplos-reproducibles-datos-demo).
 
 | Endpoint | Uso |
 |---|---|
@@ -241,7 +302,8 @@ pnpm --filter @softarq/api openapi:generar   # tras cambiar un contrato (una pru
 | `GET /api/v1/catalogos/conceptos` | Conceptos activos y aprobados |
 | `GET /api/v1/catalogos/opciones-precio?conceptos=…` | Opciones vigentes por insumo, sin precios, con `esMenorPrecio` |
 | `GET /api/v1/catalogos/tipos-adicional` | Tipos de costo adicional |
-| `POST /api/v1/calculos/demo` | Cálculo DEMO; solo vista comercial |
+| `GET /api/v1/auth/csrf`, `POST/GET/DELETE /api/v1/auth/sesion` | Sesión previa con CSRF, acceso, consulta y cierre (ADR-0007) |
+| `POST /api/v1/calculos/demo` | Cálculo DEMO; solo vista comercial; capacidad `calculo.ejecutar` (Preparador) |
 | `GET /api/v1/openapi.json` | Especificación |
 
 - **Código:**
@@ -258,7 +320,7 @@ Detalle: [`apps/web/README.md`](apps/web/README.md). Diseño: [`docs/web/sistema
 ```
 # Terminal 1: API (softarq_dev)
 pnpm --filter @softarq/api build && pnpm --filter @softarq/api start
-# Terminal 2: web → http://localhost:5173
+# Terminal 2: web → http://localhost:5173 (inicia sesión con una cuenta DEMO, §12)
 pnpm --filter @softarq/contracts build && pnpm --filter @softarq/web dev
 
 pnpm --filter @softarq/web test     # Vitest (estado, cliente HTTP, componentes)
@@ -268,3 +330,52 @@ pnpm verificar:e2e                  # Playwright: web compilada + API real + sof
 - **Escenarios implementados:** Ejemplo 1 (faldones de 10 m), Ejemplo 2 (espesor 0.12), Ejemplo 3 (sin la ventana), cotización propia de referencia (CON-00001) y captura propia libre.
 - **Arranque de pruebas de la API:** `apps/api/src/pruebas-e2e/` (`servidor-e2e.ts`, `ajustar-base.ts`), compilado con `pnpm --filter @softarq/api build:e2e` en `dist-e2e/` (no versionado). Solo `softarq_test`, con la fecha fija mediante `RelojFijo`.
 - **Salidas:** `D:\Proyecto_SoftArq\_work\playwright\` (informe y trazas) y `_work\evidencias\modulo4\` (capturas).
+
+## 12. Accesos DEMO y sesiones (módulo 5)
+
+Decisiones: [ADR-0007](docs/adr/0007-autenticacion-sesiones.md). Matriz de permisos: [`docs/modelo-conceptual.md`](docs/modelo-conceptual.md) §6.
+
+**Preparar el entorno** (con PostgreSQL ya preparado según [`apps/api/README.md`](apps/api/README.md#preparar-el-entorno-desde-cero)):
+
+```
+pnpm --filter @softarq/api db:migrar                # migración de usuarios y sesiones
+pnpm --filter @softarq/api db:cargar-usuarios-demo  # [DEMO] Preparador 1 y [DEMO] Revisor 1
+```
+
+**Obtener los accesos locales:**
+- abre `D:\Proyecto_SoftArq\_work\secrets\accesos-demo-softarq_dev.json`, que está fuera del repositorio y nunca se versiona;
+- las cuentas son `preparador.demo@softarq.test` (Preparador: consulta y calcula) y `revisor.demo@softarq.test` (Revisor: consulta y no calcula);
+- volver a ejecutar la carga conserva las cuentas y sus contraseñas;
+- para generar una contraseña nueva de forma explícita (revoca sus sesiones):
+
+  ```
+  pnpm --filter @softarq/api db:cargar-usuarios-demo -- --restablecer preparador.demo@softarq.test
+  ```
+
+**Usar:**
+1. reinicia la API (§10);
+2. arranca la web (§11);
+3. abre **http://localhost:5173** (con `localhost`, no `127.0.0.1`) e inicia sesión.
+
+La sesión vence tras 30 minutos sin actividad o a las 8 horas.
+
+**Probar:** en secuencia, nunca a la vez (las dos últimas usan `softarq_test`).
+
+```
+pnpm verificar
+pnpm verificar:integracion
+pnpm verificar:e2e
+```
+
+El servidor E2E crea cuentas de prueba nuevas en cada corrida (`_work\secrets\accesos-e2e.json`).
+
+**Mantenimiento:** `pnpm --filter @softarq/api db:purgar-sesiones` borra las sesiones vencidas o revocadas hace más de 7 días, con el rol migrador.
+
+**Código:**
+
+| Parte | Ubicación |
+|---|---|
+| API | `apps/api/src/modules/autenticacion/` (matriz, política, limitador, Argon2id, tokens, CSRF, repositorio y cuentas DEMO) y `apps/api/src/http/{guardia-sesion,cookies,controlador-autenticacion}.ts` |
+| Web | `apps/web/src/sesion/` y `apps/web/src/api/cliente.ts` |
+
+**Para continuar:** toda ruta nueva debe declarar `@Requiere(capacidad)` (o `@Publico()` con justificación) y filtrar por `organizacionDe(req)`. Las capacidades nuevas se añaden a `CAPACIDADES` (contracts) y a la matriz de `dominio/capacidades.ts`, contrastadas con el libro.

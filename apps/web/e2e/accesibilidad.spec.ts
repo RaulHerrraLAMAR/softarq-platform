@@ -2,7 +2,7 @@
  * Teclado, foco visible, objetivos táctiles y pantallas estrechas (comprobaciones automatizadas).
  */
 import { expect, test, type Page } from "@playwright/test";
-import { cargarEjemplo, evidencia, panel, sinDesbordeHorizontal, total } from "./apoyo.ts";
+import { abrirConSesion, cargarEjemplo, evidencia, panel, sinDesbordeHorizontal, total } from "./apoyo.ts";
 
 async function focoVisible(pagina: Page): Promise<void> {
   const estilo = await pagina.evaluate(() => {
@@ -17,7 +17,7 @@ async function focoVisible(pagina: Page): Promise<void> {
 }
 
 test("recorrido completo con teclado y foco visible", async ({ page }, info) => {
-  await page.goto("/");
+  await abrirConSesion(page);
   await page.keyboard.press("Tab");
   await expect(page.getByRole("link", { name: "Saltar al contenido" })).toBeFocused();
   await focoVisible(page);
@@ -53,7 +53,7 @@ test("recorrido completo con teclado y foco visible", async ({ page }, info) => 
 });
 
 test("objetivos de clic de al menos 44 px", async ({ page }) => {
-  await page.goto("/");
+  await abrirConSesion(page);
   await cargarEjemplo(page, 1);
   const pequenos = await page.evaluate(() =>
     [...document.querySelectorAll<HTMLElement>("button, select, input:not([type=radio]), summary, .opcion, .opcion-simple, .paso a")]
@@ -67,7 +67,7 @@ test("objetivos de clic de al menos 44 px", async ({ page }) => {
 
 test("movimiento reducido: sin animaciones", async ({ page }) => {
   await page.emulateMedia({ reducedMotion: "reduce" });
-  await page.goto("/");
+  await abrirConSesion(page);
   await page.route("**/api/v1/calculos/demo", async (r) => {
     await new Promise((x) => setTimeout(x, 800));
     await r.continue();
@@ -80,7 +80,7 @@ test("movimiento reducido: sin animaciones", async ({ page }) => {
 });
 
 test("pantalla estrecha: recorrido, sin desbordes y tablas legibles @movil", async ({ page }, info) => {
-  await page.goto("/");
+  await abrirConSesion(page);
   await sinDesbordeHorizontal(page);
   await evidencia(page, info, "01-inicio", true);
   await cargarEjemplo(page, 1);

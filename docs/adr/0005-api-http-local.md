@@ -130,6 +130,8 @@ Todas las respuestas de error usan el mismo sobre: `{ error: { codigo, mensaje, 
 
 ### 7. Organización y fecha
 
+> **Sustituido en el módulo 5:** el contexto fijo de organización se eliminó. La organización, la identidad y las funciones salen de la sesión y de la pertenencia vigente ([ADR-0007](0007-autenticacion-sesiones.md)). Lo que sigue describe el módulo 3.
+
 - **Organización:**
   - `SOFTARQ_ORGANIZACION_DEMO` (por omisión `DEMO`) se resuelve al arrancar y debe existir, ser DEMO y tener parámetros en ambiente DEMO; si no, el arranque falla;
   - el contexto vive encapsulado en `ContextoSolicitud.de(req)` y **no** procede del cliente;

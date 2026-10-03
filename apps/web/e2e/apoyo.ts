@@ -2,12 +2,63 @@
  * Utilidades de las pruebas de navegador (automatizadas; no equivalen a una prueba hecha por una persona).
  */
 import { execFileSync } from "node:child_process";
-import { mkdirSync } from "node:fs";
+import { mkdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { expect, type Page, type TestInfo } from "@playwright/test";
 
 const RAIZ_REPO = join(import.meta.dirname, "..", "..", "..");
 export const CARPETA_EVIDENCIAS = join(RAIZ_REPO, "..", "_work", "evidencias", "modulo4");
+export const CARPETA_EVIDENCIAS_M5 = join(RAIZ_REPO, "..", "_work", "evidencias", "modulo5");
+export const URL_API_E2E = "http://localhost:3101";
+
+/**
+ * Cabeceras CORS de la API real (ADR-0005 y ADR-0007) para las respuestas simuladas con
+ * `page.route`: con `credentials: "include"` el navegador exige el origen exacto y
+ * `Access-Control-Allow-Credentials`.
+ */
+export const CORS = {
+  "Access-Control-Allow-Origin": "http://localhost:4173",
+  "Access-Control-Allow-Credentials": "true",
+  "Access-Control-Expose-Headers": "X-Request-Id, Retry-After",
+} as const;
+
+export interface CuentaE2E {
+  correo: string;
+  contrasena: string;
+  nombre: string;
+}
+
+/**
+ * Cuentas creadas por el servidor de pruebas en softarq_test en cada corrida
+ * (D:\Proyecto_SoftArq\_work\secrets\accesos-e2e.json, fuera del repositorio).
+ */
+export function cuentasE2E(): { preparador: CuentaE2E; revisor: CuentaE2E } {
+  return JSON.parse(readFileSync(join(RAIZ_REPO, "..", "_work", "secrets", "accesos-e2e.json"), "utf8")) as {
+    preparador: CuentaE2E;
+    revisor: CuentaE2E;
+  };
+}
+
+/** Inicia sesión en la pantalla de acceso (sin atajos: el mismo formulario que una persona). */
+export async function iniciarSesion(pagina: Page, cuenta: CuentaE2E = cuentasE2E().preparador): Promise<void> {
+  await pagina.getByLabel("Correo").fill(cuenta.correo);
+  await pagina.getByLabel("Contraseña", { exact: true }).fill(cuenta.contrasena);
+  await pagina.getByRole("button", { name: "Iniciar sesión" }).click();
+  await expect(pagina.getByRole("group", { name: "Sesión actual" })).toContainText(cuenta.nombre);
+}
+
+/** Abre la web e inicia sesión (por omisión, como Preparador). */
+export async function abrirConSesion(pagina: Page, cuenta?: CuentaE2E): Promise<void> {
+  await pagina.goto("/");
+  await expect(pagina.getByRole("heading", { name: "Iniciar sesión" })).toBeVisible();
+  await iniciarSesion(pagina, cuenta);
+}
+
+/** Captura de evidencia del módulo 5. */
+export async function evidenciaM5(pagina: Page, info: TestInfo, nombre: string, completa = false): Promise<void> {
+  mkdirSync(CARPETA_EVIDENCIAS_M5, { recursive: true });
+  await pagina.screenshot({ path: join(CARPETA_EVIDENCIAS_M5, `${info.project.name}-${nombre}.png`), fullPage: completa });
+}
 
 /** Ajuste reversible de softarq_test (el script exige softarq_test local antes de tocar nada). */
 export function ajustarBase(...args: string[]): void {

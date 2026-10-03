@@ -3,12 +3,12 @@
  * navegador con `page.route` (interceptación de Playwright); la API y la base son las reales.
  */
 import { expect, test } from "@playwright/test";
-import { calcularYTotal, cargarEjemplo, contarCalculos, evidencia, panel, sinImportes, total } from "./apoyo.ts";
+import { CORS, abrirConSesion, calcularYTotal, cargarEjemplo, contarCalculos, evidencia, panel, sinImportes, total } from "./apoyo.ts";
 
 const RUTA_CALCULO = "**/api/v1/calculos/demo";
 
 test("clics repetidos en Calcular envían una sola solicitud", async ({ page }) => {
-  await page.goto("/");
+  await abrirConSesion(page);
   await cargarEjemplo(page, 1);
   const calculos = contarCalculos(page);
   await page.route(RUTA_CALCULO, async (ruta) => {
@@ -29,7 +29,7 @@ test("clics repetidos en Calcular envían una sola solicitud", async ({ page }) 
 });
 
 test("fallo de conexión: conserva la captura y se recupera con Reintentar", async ({ page }, info) => {
-  await page.goto("/");
+  await abrirConSesion(page);
   await cargarEjemplo(page, 1);
   const calculos = contarCalculos(page);
   let primera = true;
@@ -55,11 +55,11 @@ test("fallo de conexión: conserva la captura y se recupera con Reintentar", asy
 });
 
 test("servicio no disponible (503) y límite de solicitudes (429) se explican sin detalles técnicos", async ({ page }) => {
-  await page.goto("/");
+  await abrirConSesion(page);
   await cargarEjemplo(page, 1);
   const cuerpo = (codigo: string) => JSON.stringify({ error: { codigo, mensaje: "x", solicitudId: "e2e" } });
   await page.route(RUTA_CALCULO, (ruta) =>
-    ruta.fulfill({ status: 503, contentType: "application/json", body: cuerpo("SERVICIO_NO_DISPONIBLE") }),
+    ruta.fulfill({ status: 503, contentType: "application/json", headers: CORS, body: cuerpo("SERVICIO_NO_DISPONIBLE") }),
   );
   await page.getByRole("button", { name: "Calcular" }).click();
   await expect(panel(page)).toContainText("no está disponible en este momento");
@@ -71,8 +71,7 @@ test("servicio no disponible (503) y límite de solicitudes (429) se explican si
       contentType: "application/json",
       headers: {
         "Retry-After": "30",
-        "Access-Control-Allow-Origin": "http://localhost:4173",
-        "Access-Control-Expose-Headers": "X-Request-Id, Retry-After",
+        ...CORS,
       },
       body: cuerpo("DEMASIADAS_SOLICITUDES"),
     }),
@@ -84,10 +83,10 @@ test("servicio no disponible (503) y límite de solicitudes (429) se explican si
 });
 
 test("respuesta incompatible con el contrato: no se muestra", async ({ page }) => {
-  await page.goto("/");
+  await abrirConSesion(page);
   await cargarEjemplo(page, 1);
   await page.route(RUTA_CALCULO, (ruta) =>
-    ruta.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ estado: "CALCULADO", total: "1.00" }) }),
+    ruta.fulfill({ status: 200, contentType: "application/json", headers: CORS, body: JSON.stringify({ estado: "CALCULADO", total: "1.00" }) }),
   );
   await page.getByRole("button", { name: "Calcular" }).click();
   await expect(panel(page)).toContainText("no tiene el formato esperado");
@@ -95,7 +94,7 @@ test("respuesta incompatible con el contrato: no se muestra", async ({ page }) =
 });
 
 test("respuesta atrasada: un cálculo que llega después de editar no sobrescribe la captura nueva", async ({ page }, info) => {
-  await page.goto("/");
+  await abrirConSesion(page);
   await cargarEjemplo(page, 1);
   let liberar!: () => void;
   const retenida = new Promise<void>((r) => (liberar = r));
@@ -117,7 +116,7 @@ test("respuesta atrasada: un cálculo que llega después de editar no sobrescrib
 });
 
 test("búsqueda: una respuesta atrasada no reemplaza la búsqueda más reciente", async ({ page }) => {
-  await page.goto("/");
+  await abrirConSesion(page);
   await page.getByRole("button", { name: "Iniciar captura propia" }).click();
   // Retiene la búsqueda «Cubierta» y deja pasar «Losa».
   await page.route("**/api/v1/catalogos/conceptos?*", async (ruta) => {

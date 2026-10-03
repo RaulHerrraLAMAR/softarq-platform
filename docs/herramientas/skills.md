@@ -71,6 +71,20 @@ python scripts/skills/instalar_skills.py --reemplazar          # actualiza (sobr
   - la herramienta Skill de Claude Code, invocada con `ui-ux-pro-max`, devolvió el contenido del comando **personal** `~/.claude/commands/ui-ux-pro-max.md`, una lista de comprobación de otro proyecto que menciona «Accept/Refer/Decline», y no el `SKILL.md` del repositorio;
   - la prioridad descrita arriba no se cumplió en ese caso. Para el diseño se usó directamente la skill del repositorio (`python .claude/skills/ui-ux-pro-max/scripts/search.py …`), y del comando ajeno solo se tomaron los criterios generales de accesibilidad que coinciden con este proyecto;
   - si se quiere evitar la ambigüedad, el propietario puede renombrar o retirar sus comandos personales; el agente no los modifica.
+- **Mecanismo comprobado en el módulo 5 (02/10/2026):**
+  - **Causa:** Claude Code descubre las skills de proyecto en el `.claude/skills/` del **directorio donde se abre la sesión**. Esta sesión se abrió en `D:\Proyecto_SoftArq` (clave de proyecto `D--Proyecto-SoftArq`), que no tiene `.claude/`, así que las skills de `softarq-platform/.claude/skills/` **no se registran**. La lista de skills de la sesión no las mostraba.
+  - **Qué carga cada invocación en esa sesión** (verificado por el contenido devuelto):
+
+    | Invocación | Resultado |
+    |---|---|
+    | Herramienta Skill con `ui-ux-pro-max` | Comando personal (`userSettings:ui-ux-pro-max`): la lista «Accept/Refer/Decline», no el `SKILL.md` del repositorio |
+    | Herramienta Skill con `projectSettings:ui-ux-pro-max` | «Unknown skill» |
+
+  - **Uso correcto:**
+    - **preferido:** abrir Claude Code con `softarq-platform` como directorio de trabajo (`cd D:\Proyecto_SoftArq\softarq-platform` y después `claude`). Así la skill del proyecto existe y tiene prioridad sobre el comando homónimo (es lo que comprobaron las pruebas de la §6, hechas desde el repositorio);
+    - **si la sesión está abierta en la carpeta superior:** no usar la herramienta Skill para `ui-ux-pro-max`, sino leer explícitamente `softarq-platform/.claude/skills/ui-ux-pro-max/SKILL.md` y sus recursos, y consultar `python .claude/skills/ui-ux-pro-max/scripts/search.py …` desde la raíz del repositorio. Así se hizo en el módulo 5;
+    - comprobar siempre qué texto se cargó: el `SKILL.md` empieza por «UI/UX Pro Max - Design Intelligence»; el comando personal menciona «Accept/Refer/Decline».
+  - **Sin cambios en `caveman` ni en `grill-me`:** tienen el mismo riesgo (también hay comandos personales homónimos), así que se aplica la misma regla. Sus reglas de uso no cambian y los comandos personales no se modificaron.
 
 ## 5. Adaptaciones (mínimas y documentadas)
 

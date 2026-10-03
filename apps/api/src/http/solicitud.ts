@@ -15,6 +15,12 @@ export function middlewareSolicitudId(_req: Request, res: Response, next: NextFu
   next();
 }
 
+/** Ninguna respuesta de la API se guarda en cachés (contienen datos de la sesión). */
+export function middlewareSinCache(_req: Request, res: Response, next: NextFunction): void {
+  res.setHeader("Cache-Control", "no-store");
+  next();
+}
+
 /** Registra id, método, ruta (sin query), estado y duración. Nunca cuerpos ni cabeceras. */
 export function crearMiddlewareRegistro(nivel: "completo" | "errores" | "ninguno") {
   const registro = new Logger("HTTP");

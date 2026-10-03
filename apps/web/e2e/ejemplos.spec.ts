@@ -3,7 +3,7 @@
  * servidor 2026-09-25). Los totales esperados proceden de las fuentes (docs/api/README.md).
  */
 import { expect, test } from "@playwright/test";
-import { calcularYTotal, cargarEjemplo, evidencia, panel, sinDesbordeHorizontal, sinImportes } from "./apoyo.ts";
+import { abrirConSesion, calcularYTotal, cargarEjemplo, evidencia, panel, sinDesbordeHorizontal, sinImportes } from "./apoyo.ts";
 
 const ESCENARIOS = [
   { ejemplo: 1, total: "$54,190.68" },
@@ -15,7 +15,7 @@ const ESCENARIOS = [
 test.describe("ejemplos verificados", () => {
   for (const e of ESCENARIOS) {
     test(`ejemplo ${e.ejemplo} → ${e.total}`, async ({ page }, info) => {
-      await page.goto("/");
+      await abrirConSesion(page);
       if (e.ejemplo === 1) await evidencia(page, info, "01-inicio");
       await cargarEjemplo(page, e.ejemplo);
       // Antes de calcular no hay resultado.
@@ -36,7 +36,7 @@ test.describe("ejemplos verificados", () => {
   }
 
   test("modificar una medida marca pendiente y recalcula", async ({ page }, info) => {
-    await page.goto("/");
+    await abrirConSesion(page);
     await cargarEjemplo(page, 1);
     expect(await calcularYTotal(page)).toBe("$54,190.68");
     const largo = page.getByLabel("Largo del renglón 1", { exact: false });

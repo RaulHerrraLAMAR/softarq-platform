@@ -12,6 +12,7 @@ import {
 import { ThrottlerException } from "@nestjs/throttler";
 import type { CodigoErrorApi, RespuestaError } from "@softarq/contracts";
 import type { Request, Response } from "express";
+import { ErrorContrasenasSaturado } from "../modules/autenticacion/infraestructura/contrasenas.js";
 
 /** Forma mínima de un issue de Standard Schema (la que entrega StandardSchemaValidationPipe). */
 interface IssueEsquema {
@@ -109,6 +110,9 @@ export function traducirError(error: unknown): ErrorApi {
   if (error instanceof ErrorApi) return error;
   const cuerpo = errorDeCuerpo(error);
   if (cuerpo) return cuerpo;
+  if (error instanceof ErrorContrasenasSaturado) {
+    return new ErrorApi(429, "DEMASIADAS_SOLICITUDES", "Demasiadas solicitudes; intente de nuevo más tarde.");
+  }
   if (error instanceof ThrottlerException) {
     return new ErrorApi(429, "DEMASIADAS_SOLICITUDES", "Demasiadas solicitudes; intente de nuevo más tarde.");
   }

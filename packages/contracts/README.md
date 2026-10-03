@@ -7,7 +7,7 @@
 | `src/decimal.ts` | `DecimalTexto` (formato documentado), `PATRON_DECIMAL_TEXTO`, `esDecimalTexto`, `FechaISO` |
 | `src/calculo.ts` | `EntradaCalculo`, `ResultadoCalculo` (`CALCULADO`, `BLOQUEADO` o `ENTRADA_INVALIDA`), fórmulas, modalidades, códigos BL/AV, `LIMITES_ENTRADA_CALCULO` y `DIMENSIONES_POR_FORMULA` (qué medidas se capturan por fórmula; la usan el motor y la web, ADR-0006) |
 | `src/vista-comercial.ts` | `CotizacionComercial` y `LEYENDA_DEMO`: lo que pueden recibir web y móvil |
-| `src/api/esquemas.ts` | Contratos HTTP v1 como **esquemas Zod** (definición única: tipos con `z.infer`, validación en la API y OpenAPI): solicitud de cálculo DEMO, consultas, respuestas, sobre de error y `LIMITES_API`. `RenglonMedicion` y `CotizacionComercial` se derivan de aquí |
+| `src/api/esquemas.ts` | Contratos HTTP v1 como **esquemas Zod** (definición única: tipos con `z.infer`, validación en la API y OpenAPI): solicitud de cálculo DEMO, consultas, respuestas, sobre de error y `LIMITES_API`. `RenglonMedicion` y `CotizacionComercial` se derivan de aquí. Módulo 5: `EsquemaSolicitudAcceso`, `EsquemaRespuestaCsrf`, `EsquemaRespuestaSesion`, `FUNCIONES_USUARIO`, `CAPACIDADES`, `CABECERA_CSRF` y los códigos de error 401/403 (ADR-0007). Solo enumeraciones: la matriz de permisos vive en la API |
 
 Dependencia de ejecución: `zod` (4.6.5). Ninguna dependencia del servidor (Nest, Prisma, Express).
 

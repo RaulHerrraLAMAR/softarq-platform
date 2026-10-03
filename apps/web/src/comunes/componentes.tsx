@@ -78,3 +78,18 @@ export function Esqueleto({ lineas = 3, etiqueta }: { lineas?: number; etiqueta:
 export function Codigo({ children }: { children: ReactNode }) {
   return <span className="codigo">{children}</span>;
 }
+
+/** Encabezado común: marca, insignia y leyenda DEMO; `children` (p. ej., la sesión) a la derecha. */
+export function Encabezado({ children }: { children?: ReactNode }) {
+  return (
+    <header className="encabezado">
+      <div className="encabezado-marca">
+        <span className="marca">SoftArq</span>
+        <span className="marca-sub">Cotizador de estructuras</span>
+        <Insignia tono="demo">DEMO</Insignia>
+      </div>
+      <p className="encabezado-leyenda">Datos ilustrativos, sin validez comercial.</p>
+      {children}
+    </header>
+  );
+}

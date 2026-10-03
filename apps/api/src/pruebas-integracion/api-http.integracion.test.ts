@@ -4,6 +4,10 @@
  *
  * Los totales esperados proceden de los fixtures verificados (guía de demostración y evidencias
  * del libro), no de cálculos hechos durante la prueba.
+ *
+ * Módulo 5 (ADR-0007): las solicitudes se hacen con la sesión de un Preparador de la organización
+ * de prueba DEMO-HTTP, obtenida con el flujo real de acceso (sin atajos). La autenticación, la
+ * autorización y el aislamiento por sesión tienen sus propias pruebas (autenticacion.*, aislamiento.*).
  */
 import type { INestApplication } from "@nestjs/common";
 import {
@@ -28,25 +32,27 @@ import { RelojFijo } from "../modules/calculo/aplicacion/reloj.js";
 import { ESCENARIOS } from "../modules/calculo/domain/__tests__/fixtures/escenarios.js";
 import { calcularCotizacion } from "../modules/calculo/domain/motor.js";
 import { aVistaComercial } from "../modules/calculo/domain/vista-comercial.js";
+import type { ClientePrisma } from "../infraestructura/prisma/cliente.js";
 import { prismaApp, urlDePrueba } from "./entorno.js";
+import { ClienteHttp, ORIGEN_PERMITIDO, crearCuentas, cuenta, prismaMigrador, type Credencial } from "./sesiones.js";
 import { solicitudDemoDesdeEntrada } from "./solicitudes.js";
 
 const FECHA = "2026-09-25";
 /** Organización DEMO exclusiva de estas pruebas: no altera los datos de `DEMO` que verifican otras pruebas. */
 const ORG_HTTP = { codigo: "DEMO-HTTP", nombre: "[DEMO] Organización para pruebas HTTP" };
-const ORIGEN_PERMITIDO = "http://localhost:5173";
 const ORIGEN_AJENO = "http://evil.example.test";
 
 const prisma = prismaApp();
 const repo = new RepositorioCatalogos(prisma);
 let demo: ContextoOrganizacion;
+let migrador: ClientePrisma;
+let preparador: Credencial;
 
 function configuracion(extra: Partial<ConfiguracionApi> = {}): ConfiguracionApi {
   return {
     ...leerConfiguracion({
       DATABASE_URL: urlDePrueba("DATABASE_URL"),
       API_REGISTRO: "ninguno",
-      SOFTARQ_ORGANIZACION_DEMO: ORG_HTTP.codigo,
     }),
     ...extra,
   };
@@ -59,28 +65,31 @@ async function iniciar(extra: Partial<ConfiguracionApi> = {}, opciones: Opciones
 }
 
 let api: { app: INestApplication; url: string };
+/** Sesión de un Preparador de DEMO-HTTP (capacidad calculo.ejecutar). */
+let cliente: ClienteHttp;
 
 beforeAll(async () => {
   demo = { organizacionId: (await cargarDemo(prisma, ORG_HTTP)).organizacionId };
+  migrador = await prismaMigrador();
+  const creadas = await crearCuentas(migrador, ORG_HTTP.codigo, [
+    cuenta("preparador.http@softarq.test", "[DEMO] Preparador HTTP", "PREPARADOR"),
+  ]);
+  preparador = creadas["preparador.http@softarq.test"]!;
   api = await iniciar();
+  cliente = await new ClienteHttp(api.url).entrar(preparador);
 });
 afterAll(async () => {
   await api.app.close();
   await prisma.$disconnect();
+  await migrador.$disconnect();
 });
 
-async function post(cuerpo: unknown, url = api.url, cabeceras: Record<string, string> = {}) {
-  const r = await fetch(`${url}/api/v1/calculos/demo`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json", ...cabeceras },
-    body: typeof cuerpo === "string" ? cuerpo : JSON.stringify(cuerpo),
-  });
-  return { status: r.status, headers: r.headers, cuerpo: (await r.json()) as any };
+async function post(cuerpo: unknown, c: ClienteHttp = cliente) {
+  return c.post("/api/v1/calculos/demo", cuerpo);
 }
 
-async function get(ruta: string, url = api.url, cabeceras: Record<string, string> = {}) {
-  const r = await fetch(`${url}${ruta}`, { headers: cabeceras });
-  return { status: r.status, headers: r.headers, cuerpo: (await r.json()) as any };
+async function get(ruta: string, c: ClienteHttp = cliente) {
+  return c.get(ruta);
 }
 
 /** Ninguna respuesta pública contiene costos internos, proveedores en el cálculo ni precios de compra. */
@@ -405,6 +414,11 @@ describe("transporte", () => {
     expect(await r.json()).toEqual({ estado: "ok", baseDeDatos: "disponible" });
   });
 
+  it("Cache-Control: no-store en las respuestas de la API (contienen datos de la sesión)", async () => {
+    const r = await get("/api/v1/catalogos/tipos-adicional");
+    expect(r.headers.get("cache-control")).toBe("no-store");
+  });
+
   it("no confía en el X-Request-Id del cliente", async () => {
     const r = await fetch(`${api.url}/health`, { headers: { "X-Request-Id": "inyectado" } });
     expect(r.headers.get("x-request-id")).not.toBe("inyectado");
@@ -416,7 +430,7 @@ describe("transporte", () => {
       const s = solicitudDemoDesdeEntrada(escenario("GUIA-R1-FALDONES-10M").entrada);
       s.partidas[1] = { ...s.partidas[1]!, descripcion: "x".repeat(200) } as never;
       const grande = { ...s, partidas: Array.from({ length: 20 }, (_, i) => ({ ...s.partidas[1]!, id: `A${i}` })) };
-      const r = await post(grande, pequeno.url);
+      const r = await post(grande, await new ClienteHttp(pequeno.url).entrar(preparador));
       expect(r.status).toBe(413);
       expect(r.cuerpo.error.codigo).toBe("CUERPO_DEMASIADO_GRANDE");
     } finally {
@@ -439,14 +453,15 @@ describe("transporte", () => {
   it("429: límite específico de cálculo, con Retry-After; los catálogos siguen disponibles", async () => {
     const limitado = await iniciar({ limiteCalculoPorMinuto: 2 });
     try {
+      const c = await new ClienteHttp(limitado.url).entrar(preparador);
       const vacia = { consolidarCompras: true, partidas: [], preciosElegidos: [] };
-      expect((await post(vacia, limitado.url)).status).toBe(422);
-      expect((await post(vacia, limitado.url)).status).toBe(422);
-      const r = await post(vacia, limitado.url);
+      expect((await post(vacia, c)).status).toBe(422);
+      expect((await post(vacia, c)).status).toBe(422);
+      const r = await post(vacia, c);
       expect(r.status).toBe(429);
       expect(r.cuerpo.error.codigo).toBe("DEMASIADAS_SOLICITUDES");
       expect(Number(r.headers.get("retry-after"))).toBeGreaterThan(0);
-      expect((await get("/api/v1/catalogos/tipos-adicional", limitado.url)).status).toBe(200);
+      expect((await get("/api/v1/catalogos/tipos-adicional", c)).status).toBe(200);
     } finally {
       await limitado.app.close();
     }
@@ -468,22 +483,29 @@ describe("CORS (lo aplica el navegador según las cabeceras)", () => {
   async function preflight(origen: string) {
     return fetch(`${api.url}/api/v1/calculos/demo`, {
       method: "OPTIONS",
-      headers: { Origin: origen, "Access-Control-Request-Method": "POST", "Access-Control-Request-Headers": "content-type" },
+      headers: {
+        Origin: origen,
+        "Access-Control-Request-Method": "POST",
+        "Access-Control-Request-Headers": "content-type,x-csrf-token",
+      },
     });
   }
 
-  it("preflight de un origen permitido: autoriza POST y Content-Type", async () => {
+  it("preflight de un origen permitido: autoriza POST, Content-Type, X-CSRF-Token y credenciales (ADR-0007)", async () => {
     const r = await preflight(ORIGEN_PERMITIDO);
     expect(r.status).toBe(204);
     expect(r.headers.get("access-control-allow-origin")).toBe(ORIGEN_PERMITIDO);
     expect(r.headers.get("access-control-allow-methods")).toContain("POST");
     expect(r.headers.get("access-control-allow-headers")?.toLowerCase()).toContain("content-type");
-    expect(r.headers.get("access-control-allow-credentials")).toBeNull();
+    expect(r.headers.get("access-control-allow-headers")?.toLowerCase()).toContain("x-csrf-token");
+    // Módulo 5: la cookie de sesión exige credenciales, solo para el origen exacto (nunca "*").
+    expect(r.headers.get("access-control-allow-credentials")).toBe("true");
   });
 
   it("preflight de un origen ajeno: sin Access-Control-Allow-Origin (el navegador bloquea)", async () => {
     const r = await preflight(ORIGEN_AJENO);
     expect(r.headers.get("access-control-allow-origin")).toBeNull();
+    expect(r.headers.get("access-control-allow-credentials")).toBeNull();
   });
 
   it("GET simple: origen permitido recibe ACAO; el ajeno no (la respuesta existe, pero el navegador no la entrega)", async () => {
@@ -499,9 +521,11 @@ describe("CORS (lo aplica el navegador según las cabeceras)", () => {
 describe("PostgreSQL no disponible (503 sin información interna)", () => {
   let caido: { app: INestApplication; url: string };
   beforeAll(async () => {
+    // Sin la comprobación inicial de rol (necesita la base). La guardia sigue exigiendo sesión:
+    // con una cookie de forma válida, consultarla en la base inaccesible da 503.
     caido = await iniciar(
       { databaseUrl: "postgresql://softarq_app:clave-falsa@127.0.0.1:1/softarq_test" },
-      { contextoFijo: { organizacionId: "00000000-0000-0000-0000-000000000000" } },
+      { sinComprobacionInicialDeRol: true },
     );
   });
   afterAll(() => caido.app.close());
@@ -521,13 +545,15 @@ describe("PostgreSQL no disponible (503 sin información interna)", () => {
     ["GET", "/api/v1/catalogos/opciones-precio?conceptos=CON-00007"],
     ["POST", "/api/v1/calculos/demo"],
   ])("%s %s → 503 SERVICIO_NO_DISPONIBLE", async (metodo, ruta) => {
+    const sesion = { Cookie: `softarq_sesion=${"A".repeat(43)}` };
     const r = await fetch(`${caido.url}${ruta}`, {
       method: metodo,
+      headers:
+        metodo === "POST"
+          ? { ...sesion, "Content-Type": "application/json", Origin: ORIGEN_PERMITIDO, "X-CSRF-Token": "B".repeat(43) }
+          : sesion,
       ...(metodo === "POST"
-        ? {
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(solicitudDemoDesdeEntrada(escenario("GUIA-PROPIA-CON-00001").entrada)),
-          }
+        ? { body: JSON.stringify(solicitudDemoDesdeEntrada(escenario("GUIA-PROPIA-CON-00001").entrada)) }
         : {}),
     });
     const texto = await r.text();
@@ -538,13 +564,9 @@ describe("PostgreSQL no disponible (503 sin información interna)", () => {
 });
 
 describe("validaciones de arranque", () => {
-  it("falla si la organización configurada no existe", async () => {
-    await expect(crearAplicacion(configuracion({ organizacionDemo: "NO-EXISTE" }))).rejects.toThrow(/No existe la organización NO-EXISTE/);
-  });
-
-  it("falla si la organización no es DEMO", async () => {
-    await expect(crearAplicacion(configuracion({ organizacionDemo: "PRUEBA-HTTP-OTRA" }))).rejects.toThrow(/no es DEMO/);
-  });
+  // Módulo 5: ya no hay organización configurada al arrancar (SOFTARQ_ORGANIZACION_DEMO se eliminó);
+  // la organización sale de la sesión. Las comprobaciones equivalentes (organización DEMO, usuario
+  // y pertenencia activos) están en autenticacion.integracion.test.ts.
 
   it("falla con el rol migrador aunque se salte la validación del entorno (propietario de la base)", async () => {
     await expect(crearAplicacion(configuracion({ databaseUrl: urlDePrueba("MIGRATION_DATABASE_URL") }))).rejects.toThrow(

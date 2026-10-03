@@ -1,6 +1,6 @@
 # Guía para probar la web DEMO en persona
 
-Esta guía es para una **prueba futura hecha por una persona**. Las verificaciones automatizadas del módulo 4 (Vitest y Playwright) están en `HANDOFF.md` §5 y **no sustituyen** esta prueba ni cuentan como PR-41 o PR-44 de la fase 1.
+Esta guía es para una **prueba futura hecha por una persona**; **todavía no se ha ejecutado**. Las verificaciones automatizadas de los módulos 4 y 5 (Vitest y Playwright) están en `HANDOFF.md` §5 y **no sustituyen** esta prueba ni cuentan como PR-41 o PR-44 de la fase 1 (que son pruebas del libro de Excel).
 
 Todos los datos son DEMO y no tienen validez comercial.
 
@@ -11,7 +11,11 @@ Requiere PostgreSQL con `softarq_dev` y el catálogo DEMO cargado: [`apps/api/RE
 ```
 pnpm install --frozen-lockfile
 pnpm --filter @softarq/contracts build
+pnpm --filter @softarq/api db:migrar               # aplica la migración de usuarios y sesiones
+pnpm --filter @softarq/api db:cargar-usuarios-demo # cuentas DEMO (Preparador y Revisor)
 ```
+
+**Accesos:** abre `D:\Proyecto_SoftArq\_work\secrets\accesos-demo-softarq_dev.json` (archivo local, fuera del repositorio) y usa el correo y la contraseña de `preparador.demo@softarq.test` o `revisor.demo@softarq.test`. No los copies a documentos ni capturas compartidas.
 
 ## 2. Abrir
 
@@ -26,16 +30,33 @@ pnpm --filter @softarq/api start
 pnpm --filter @softarq/web dev
 ```
 
-1. Abre **http://localhost:5173** en el navegador.
+1. Abre **http://localhost:5173** en el navegador (usa `localhost`, no `127.0.0.1`: la cookie de sesión depende de ello).
 2. Para cerrar, pulsa Ctrl+C en cada terminal.
 
 **Si la web no conecta**, comprueba que:
 - la API responda en `http://127.0.0.1:3000/health`;
-- `apps/web/.env.local` no exista o tenga `VITE_API_URL=http://127.0.0.1:3000`.
+- `apps/web/.env.local` no exista o tenga `VITE_API_URL=http://localhost:3000`;
+- la API se haya compilado y reiniciado después de actualizar el repositorio (una API anterior al módulo 5 no tiene `/api/v1/auth` y la web muestra «No se pudo comprobar la sesión»).
 
 ## 3. Recorridos sugeridos
 
 Anota lo que observes en cada paso. La fecha de cálculo es la de hoy; con el catálogo DEMO actual, los totales de los ejemplos deben coincidir.
+
+**Acceso y sesión (módulo 5)**
+
+| # | Acción | Qué esperar |
+|---|---|---|
+| A1 | Abre la web | Pantalla «Iniciar sesión»; ningún ejemplo visible ni datos precargados |
+| A2 | Escribe el correo del Preparador y una contraseña incorrecta | «Correo o contraseña incorrectos…» (el mismo mensaje con un correo inexistente) |
+| A3 | Usa «Mostrar» en la contraseña y vuelve a ocultarla | El texto se ve y se oculta; pegar y el gestor de contraseñas funcionan |
+| A4 | Entra con el Preparador | Barra con «[DEMO] Preparador 1 · Preparador · [DEMO] Organización…» y «Cerrar sesión» |
+| A5 | Recarga la página | Sigues dentro sin volver a escribir la contraseña |
+| A6 | Carga el Ejemplo 1, calcula y pulsa «Cerrar sesión» | «Sesión cerrada»; al volver a entrar no queda la captura ni el resultado |
+| A7 | Entra con el Revisor y carga un ejemplo | Puedes ver y editar la captura, pero «Calcular» está deshabilitado y explica que esa función no calcula |
+| A8 | Deja la página abierta más de 30 minutos sin usarla y pulsa «Calcular» | «Su sesión terminó»; hay que entrar de nuevo y la captura no se conserva |
+| A9 | Falla la contraseña 5 veces seguidas | «Demasiados intentos»: espera unos 15 minutos (no es un bloqueo permanente) |
+
+**Cotizador**
 
 | # | Acción | Qué esperar |
 |---|---|---|
@@ -57,5 +78,5 @@ Anota lo que observes en cada paso. La fecha de cálculo es la de hoy; con el ca
 ## 4. Qué no hace todavía
 
 - No guarda la captura: se pierde al recargar o cerrar la página.
-- Sin usuarios, folios, aprobación, emisión, PDF ni app móvil.
+- Sin registro de usuarios, recuperación de contraseña, folios, revisión ni aprobación, emisión, PDF ni app móvil.
 - Solo punto decimal (por ejemplo, `0.12`).

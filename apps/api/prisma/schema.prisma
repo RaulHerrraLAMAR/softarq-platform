@@ -1,5 +1,6 @@
-// Esquema de persistencia de SoftArq — módulo 2: catálogos para el motor de cálculo.
-// Ver docs/adr/0004-persistencia-catalogos.md.
+// Esquema de persistencia de SoftArq — módulo 2: catálogos para el motor de cálculo;
+// módulo 5: usuarios, pertenencias y sesiones.
+// Ver docs/adr/0004-persistencia-catalogos.md y docs/adr/0007-autenticacion-sesiones.md.
 //
 // Convenciones:
 // - Tablas y columnas en snake_case (@@map/@map); modelos en español.
@@ -57,6 +58,7 @@ model Organizacion {
   conceptos      Concepto[]
   componentes    Componente[]
   tiposAdicional TipoAdicional[]
+  membresias     Membresia[]
 
   @@map("organizacion")
 }
@@ -266,4 +268,70 @@ model TipoAdicional {
 
   @@unique([organizacionId, codigo])
   @@map("tipo_adicional")
+}
+
+// ---------------------------------------------------------------------------
+// Módulo 5: identidad y sesiones (ADR-0007).
+// La aplicación (softarq_app) solo LEE usuario y membresia; las cuentas DEMO las crea el rol
+// migrador. En sesion puede insertar y actualizar únicamente actividad y revocación (sin DELETE).
+// ---------------------------------------------------------------------------
+
+/// Persona con acceso. Es global: la organización la aporta la pertenencia (membresia).
+model Usuario {
+  id                   String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  /// Normalizado (minúsculas, sin espacios en los extremos; CHECK en la migración).
+  correo               String   @unique @db.VarChar(254)
+  nombre               String   @db.VarChar(200)
+  /// Cadena PHC de Argon2id (CHECK en la migración). Nunca sale de la API.
+  hashContrasena       String   @map("hash_contrasena") @db.Text
+  activo               Boolean  @default(true)
+  esDemo               Boolean  @map("es_demo")
+  creadoEn             DateTime @default(now()) @map("creado_en") @db.Timestamptz(3)
+  contrasenaCambiadaEn DateTime @default(now()) @map("contrasena_cambiada_en") @db.Timestamptz(3)
+
+  membresias Membresia[]
+
+  @@map("usuario")
+}
+
+/// Pertenencia de un usuario a una organización, con sus funciones (las del libro, D-20).
+model Membresia {
+  id             String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organizacionId String   @map("organizacion_id") @db.Uuid
+  usuarioId      String   @map("usuario_id") @db.Uuid
+  /// PREPARADOR | REVISOR | ADMIN_CATALOGO | ADMIN_SISTEMA (CHECK en la migración).
+  funciones      String[] @db.VarChar(20)
+  activa         Boolean  @default(true)
+  creadaEn       DateTime @default(now()) @map("creada_en") @db.Timestamptz(3)
+
+  organizacion Organizacion @relation(fields: [organizacionId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  usuario      Usuario      @relation(fields: [usuarioId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  sesiones     Sesion[]
+
+  @@unique([organizacionId, usuarioId])
+  @@index([usuarioId])
+  @@map("membresia")
+}
+
+/// Sesión opaca. Solo se guarda el SHA-256 del token (nunca el utilizable). El token CSRF no se
+/// guarda: es un HMAC del id de sesión con una clave aleatoria del proceso (ADR-0007).
+/// PREVIA: anterior al acceso (protege el inicio de sesión con CSRF); USUARIO: autenticada.
+model Sesion {
+  id                String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tipo              String    @db.VarChar(10)
+  tokenHash         Bytes     @unique @map("token_hash")
+  organizacionId    String?   @map("organizacion_id") @db.Uuid
+  usuarioId         String?   @map("usuario_id") @db.Uuid
+  creadaEn          DateTime  @map("creada_en") @db.Timestamptz(3)
+  ultimaActividadEn DateTime  @map("ultima_actividad_en") @db.Timestamptz(3)
+  expiraEn          DateTime  @map("expira_en") @db.Timestamptz(3)
+  revocadaEn        DateTime? @map("revocada_en") @db.Timestamptz(3)
+  motivoRevocacion  String?   @map("motivo_revocacion") @db.VarChar(30)
+
+  /// FK compuesta: la sesión no puede unir un usuario con una organización a la que no pertenece.
+  membresia Membresia? @relation(fields: [organizacionId, usuarioId], references: [organizacionId, usuarioId], onDelete: Restrict, onUpdate: Restrict)
+
+  @@index([usuarioId])
+  @@index([expiraEn])
+  @@map("sesion")
 }

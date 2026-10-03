@@ -23,11 +23,12 @@ describe("configuración de la API", () => {
       databaseUrl: base.DATABASE_URL,
       host: "127.0.0.1",
       puerto: 3000,
-      origenesCors: ["http://localhost:5173", "http://127.0.0.1:5173"],
+      // Módulo 5: solo localhost (la cookie SameSite=Strict exige el mismo site que la API, ADR-0007).
+      origenesCors: ["http://localhost:5173"],
       limiteGeneralPorMinuto: 120,
       limiteCalculoPorMinuto: 30,
       limiteCuerpoKb: 128,
-      organizacionDemo: "DEMO",
+      accesos: { ventanaMs: 15 * 60_000, fallosPorCuentaEIp: 5, fallosPorCuenta: 20, intentosPorIp: 30 },
       zonaHoraria: "America/Mexico_City",
       registro: "completo",
     });
@@ -40,6 +41,10 @@ describe("configuración de la API", () => {
     ["puerto inválido", { API_PORT: "80" }, /API_PORT/],
     ["zona horaria inválida", { SOFTARQ_ZONA_HORARIA: "Marte/Olimpo" }, /SOFTARQ_ZONA_HORARIA/],
     ["límite no numérico", { API_LIMITE_CALCULO_POR_MINUTO: "muchos" }, /API_LIMITE_CALCULO_POR_MINUTO/],
+    // ADR-0007: la cookie sin Secure solo es admisible en local por HTTP.
+    ["NODE_ENV de producción", { NODE_ENV: "production" }, /NODE_ENV=production/],
+    ["origen https (la cookie no lleva Secure)", { API_CORS_ORIGINS: "https://localhost:5173" }, /orígenes locales/],
+    ["límite de accesos fuera de rango", { API_ACCESO_FALLOS_CUENTA_IP: "0" }, /API_ACCESO_FALLOS_CUENTA_IP/],
   ])("rechaza %s", (_n, extra, patron) => {
     expect(fallo({ ...base, ...extra })).toMatch(patron);
   });

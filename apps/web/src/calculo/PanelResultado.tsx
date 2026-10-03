@@ -28,9 +28,23 @@ export interface PropsPanel {
   alActualizarOpciones: () => void;
   /** Recibe el foco cuando un intento de cálculo encuentra la captura incompleta. */
   refResumen: Ref<HTMLDivElement>;
+  /**
+   * Si la función del usuario no incluye calcular, el motivo (el botón se deshabilita). Solo es
+   * presentación: la API rechaza el cálculo de todos modos (403).
+   */
+  motivoSinCalculo?: string | null;
 }
 
-export function PanelResultado({ estado, huellaActual, erroresLocales, mostrarErrores, alCalcular, alActualizarOpciones, refResumen }: PropsPanel) {
+export function PanelResultado({
+  estado,
+  huellaActual,
+  erroresLocales,
+  mostrarErrores,
+  alCalcular,
+  alActualizarOpciones,
+  refResumen,
+  motivoSinCalculo = null,
+}: PropsPanel) {
   const calculando = estado.fase === "calculando";
   const vigente = estado.fase !== "sin_calcular" && estado.huella === huellaActual;
   const anterior = estado.fase !== "sin_calcular" && estado.fase !== "calculando" && !vigente;
@@ -45,10 +59,23 @@ export function PanelResultado({ estado, huellaActual, erroresLocales, mostrarEr
         </span>
         Resultado
       </h2>
-      <Boton variante="primario" className="boton-calcular" onClick={alCalcular} disabled={calculando} aria-disabled={calculando}>
+      <Boton
+        variante="primario"
+        className="boton-calcular"
+        onClick={alCalcular}
+        disabled={calculando || motivoSinCalculo !== null}
+        aria-disabled={calculando || motivoSinCalculo !== null}
+        aria-describedby={motivoSinCalculo !== null ? "motivo-sin-calculo" : undefined}
+      >
         {calculando ? "Calculando…" : "Calcular"}
       </Boton>
-      <p className="ayuda">El cálculo lo hace el servidor con los catálogos vigentes.</p>
+      {motivoSinCalculo !== null ? (
+        <Aviso tono="info" titulo="Calcular no está disponible para su función" id="motivo-sin-calculo">
+          <p>{motivoSinCalculo}</p>
+        </Aviso>
+      ) : (
+        <p className="ayuda">El cálculo lo hace el servidor con los catálogos vigentes.</p>
+      )}
 
       {incompleta ? (
         <div className="resumen-errores" ref={refResumen} tabIndex={-1} role="alert" aria-labelledby="titulo-errores">

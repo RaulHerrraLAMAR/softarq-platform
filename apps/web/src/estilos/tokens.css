@@ -28,6 +28,9 @@
   --color-demo: #7c2d12;
   --color-demo-fondo: #ffedd5;
   --color-foco: #0369a1;
+  /* Foco y texto secundario sobre el encabezado oscuro (sesión, módulo 5). */
+  --color-foco-sobre-oscuro: #7dd3fc;
+  --color-texto-sobre-oscuro: #e2e8f0;
 
   /* Tipografía */
   --fuente-texto: "Fira Sans", system-ui, "Segoe UI", Arial, sans-serif;

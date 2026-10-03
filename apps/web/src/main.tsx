@@ -6,10 +6,9 @@ import "./estilos/tokens.css";
 import "./estilos/base.css";
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
-import { crearClienteApi } from "./api/cliente.ts";
-import { crearServicios } from "./api/servicios.ts";
-import { App } from "./App.tsx";
 import { leerConfiguracion } from "./config/configuracion.ts";
+import { ProveedorSesion } from "./sesion/ProveedorSesion.tsx";
+import { Raiz } from "./sesion/Raiz.tsx";
 
 const raiz = document.getElementById("raiz");
 if (!raiz) throw new Error("Falta el elemento raíz.");
@@ -18,7 +17,9 @@ const config = leerConfiguracion();
 createRoot(raiz).render(
   <StrictMode>
     {config.ok ? (
-      <App servicios={crearServicios(crearClienteApi(config.url))} />
+      <ProveedorSesion urlApi={config.url}>
+        <Raiz />
+      </ProveedorSesion>
     ) : (
       <main className="error-configuracion">
         <h1>SoftArq DEMO</h1>

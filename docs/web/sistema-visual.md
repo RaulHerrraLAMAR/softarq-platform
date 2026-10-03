@@ -38,6 +38,7 @@ Se consultó la skill del repositorio con su buscador local (`.claude/skills/ui-
 | `--color-info` sobre `--color-info-fondo` | `#075985` / `#e0f2fe` | Avisos AV e insignia «Menor precio vigente» |
 | `--color-correcto` sobre `--color-correcto-fondo` | `#166534` / `#dcfce7` | «Calculado» y «Elegida» |
 | `--color-demo` sobre `--color-demo-fondo` | `#7c2d12` / `#ffedd5` | Insignia y leyenda DEMO |
+| `--color-texto-sobre-oscuro` / `--color-foco-sobre-oscuro` | `#e2e8f0` / `#7dd3fc` | Detalle de la sesión, borde de «Cerrar sesión» y foco sobre el encabezado (módulo 5) |
 
 **Contraste medido (WCAG 2.x).** Lo comprueba `src/estilos/__tests__/contraste.test.ts` con los valores de `tokens.css`:
 
@@ -59,6 +60,10 @@ Se consultó la skill del repositorio con su buscador local (`.claude/skills/ui-
 | Leyenda del encabezado | `#e2e8f0` / `#0f172a` | 14.48:1 |
 | Borde de campo / tarjeta (no textual, ≥ 3:1) | `#64748b` / `#ffffff` | 4.76:1 |
 | Foco / tarjeta (no textual, ≥ 3:1) | `#0369a1` / `#ffffff` | 5.93:1 |
+| Detalle de la sesión / encabezado | `#e2e8f0` / `#0f172a` | 14.48:1 |
+| «Cerrar sesión» (hover) | `#ffffff` / `#334155` | 10.35:1 |
+| Texto / aviso «Sesión cerrada» | `#0f172a` / `#dcfce7` | 16.26:1 |
+| Foco sobre el encabezado (no textual, ≥ 3:1) | `#7dd3fc` / `#0f172a` | 10.71:1 |
 
 ## Tipografía y espaciado
 
@@ -78,6 +83,9 @@ Se consultó la skill del repositorio con su buscador local (`.claude/skills/ui-
 | Aviso | Información, aviso, error y correcto, siempre con icono, título y texto (nunca solo color). `role="alert"` solo para errores que exigen atención |
 | Esqueleto | Carga de catálogos y del cálculo, con `role="status"` y texto para lectores. Sin animación con `prefers-reduced-motion` |
 | Progreso | Cuatro pasos con icono y texto de estado: «completo», «falta elegir N», «opcional», «calculado», «bloqueado», «pendiente de recalcular» |
+| Pantalla de acceso (módulo 5) | Tarjeta centrada: correo (`type=email`, `autocomplete=username`) y contraseña (`autocomplete=current-password`) con etiqueta visible; «Mostrar/Ocultar» con nombre accesible que cambia con el estado; pegar permitido (WCAG 2.2 «Accessible Authentication»); errores junto al campo con `aria-describedby`; error del servidor con `role="alert"`; botón «Verificando…» deshabilitado durante el envío; avisos de «Sesión cerrada» y «Su sesión terminó» con icono y texto. Sin credenciales ni acceso automático |
+| Barra de sesión | En el encabezado: nombre, función y organización; «Cerrar sesión» (≥ 44 px, foco claro sobre fondo oscuro). En pantallas estrechas ocupa una fila completa |
+| «Calcular» sin permiso | Deshabilitado con `aria-describedby` hacia el aviso informativo con el motivo (solo presentación; la API responde 403) |
 | Resultado | `aria-live="polite"`. Total destacado, subtotal, impuesto con nombre y tasa, fecha de los catálogos, leyenda DEMO, avisos y «Detalle de la cotización» desplegable; en un panel estrecho, la tabla se apila (*container query*) |
 
 **Estados del resultado:**
@@ -107,4 +115,6 @@ Se consultó la skill del repositorio con su buscador local (`.claude/skills/ui-
 - navegación completa con teclado;
 - movimiento reducido.
 
-Las capturas están en `D:\Proyecto_SoftArq\_work\evidencias\modulo4\`.
+Las capturas están en `D:\Proyecto_SoftArq\_work\evidencias\modulo4\` y, para la sesión, en `...\modulo5\`.
+
+**Módulo 5 (UI UX Pro Max):** como la sesión de Claude Code se abrió en `D:\Proyecto_SoftArq`, la herramienta Skill resolvió el comando personal homónimo; se cargó explícitamente `.claude/skills/ui-ux-pro-max/SKILL.md` (§8 «Forms & Feedback») y se consultó `search.py` (`--domain ux` «login form authentication password visibility error session expired» y `--stack react` «auth context logout clear state»). Se aplicaron: etiquetas visibles, mostrar u ocultar la contraseña, autocompletado y pegado, errores anunciados, estado de envío y contexto memoizado ([`docs/herramientas/skills.md`](../herramientas/skills.md) §4).

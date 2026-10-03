@@ -3,6 +3,10 @@
  *
  *   node dist-e2e/pruebas-e2e/ajustar-base.js proveedor <codigo> activo|inactivo
  *   node dist-e2e/pruebas-e2e/ajustar-base.js parametros sin-impuesto|demo
+ *   node dist-e2e/pruebas-e2e/ajustar-base.js sesiones revocar <correo>
+ *
+ * `sesiones revocar` simula que la sesión terminó en el servidor (revocación con UPDATE, lo único
+ * que el rol de la aplicación puede modificar en `sesion`).
  *
  * Exige softarq_test local (mismo guardia que las pruebas de integración) y usa el rol de la
  * aplicación, que no tiene DELETE ni DDL.
@@ -34,8 +38,16 @@ async function principal(args: string[]): Promise<void> {
       });
     } else if (que === "parametros" && a === "demo") {
       await repo.actualizarParametros(ctx, { ...PARAMETROS_DEMO });
+    } else if (que === "sesiones" && a === "revocar" && b) {
+      const r = await prisma.sesion.updateMany({
+        where: { revocadaEn: null, membresia: { is: { usuario: { correo: b } } } },
+        data: { revocadaEn: new Date(), motivoRevocacion: "RESTABLECIMIENTO" },
+      });
+      console.log(`[e2e] sesiones revocadas: ${r.count}`);
     } else {
-      throw new Error("Uso: ajustar-base proveedor <codigo> activo|inactivo | parametros sin-impuesto|demo");
+      throw new Error(
+        "Uso: ajustar-base proveedor <codigo> activo|inactivo | parametros sin-impuesto|demo | sesiones revocar <correo>",
+      );
     }
     console.log(`[e2e] softarq_test: ${args.join(" ")}`);
   } finally {

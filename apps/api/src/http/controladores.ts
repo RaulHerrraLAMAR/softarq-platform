@@ -1,6 +1,9 @@
 /**
  * Controladores HTTP: validan (Standard Schema/Zod), coordinan y presentan. No contienen reglas
  * de cálculo ni consultas: delegan en la capa de aplicación.
+ *
+ * Autorización (ADR-0007): la guardia global exige sesión y la capacidad de `@Requiere`; la
+ * organización de las consultas sale de la sesión (`organizacionDe(req)`), nunca del cliente.
  */
 import { Body, Controller, Get, HttpCode, Inject, Post, Query, Req, Res } from "@nestjs/common";
 import { SkipThrottle } from "@nestjs/throttler";
@@ -29,14 +32,16 @@ import {
 import { calcularDemo } from "../modules/calculo/aplicacion/calculo-demo.js";
 import type { Reloj } from "../modules/calculo/aplicacion/reloj.js";
 import type { ServicioBaseDeDatos } from "./base-de-datos.js";
-import type { ContextoSolicitud } from "./contexto.js";
+import { organizacionDe, sesionDe } from "./contexto.js";
 import { ErrorApi } from "./errores.js";
+import { Publico, Requiere } from "./guardia-sesion.js";
 import { construirDocumentoOpenApi } from "./openapi.js";
-import { BASE_DE_DATOS, CONTEXTO_SOLICITUD, RELOJ, REPOSITORIO_CATALOGOS } from "./tokens.js";
+import { BASE_DE_DATOS, RELOJ, REPOSITORIO_CATALOGOS } from "./tokens.js";
 
 /** GET /health (sin prefijo): servicio y PostgreSQL, sin configuración interna. */
 @Controller("health")
 @SkipThrottle({ calculo: true })
+@Publico()
 export class SaludController {
   constructor(@Inject(BASE_DE_DATOS) private readonly bd: ServicioBaseDeDatos) {}
 
@@ -50,10 +55,10 @@ export class SaludController {
 
 @Controller("catalogos")
 @SkipThrottle({ calculo: true })
+@Requiere("catalogos.consultar")
 export class CatalogosController {
   constructor(
     @Inject(REPOSITORIO_CATALOGOS) private readonly repo: RepositorioCatalogos,
-    @Inject(CONTEXTO_SOLICITUD) private readonly contexto: ContextoSolicitud,
     @Inject(RELOJ) private readonly reloj: Reloj,
   ) {}
 
@@ -62,7 +67,7 @@ export class CatalogosController {
     @Req() req: Request,
     @Query({ schema: EsquemaConsultaConceptos }) consulta: ConsultaConceptos,
   ): Promise<RespuestaConceptos> {
-    return consultarConceptos(this.repo, this.contexto.de(req), consulta);
+    return consultarConceptos(this.repo, organizacionDe(req), consulta);
   }
 
   @Get("opciones-precio")
@@ -70,7 +75,7 @@ export class CatalogosController {
     @Req() req: Request,
     @Query({ schema: EsquemaConsultaOpcionesPrecio }) consulta: ConsultaOpcionesPrecio,
   ): Promise<RespuestaOpcionesPrecio> {
-    const r = await consultarOpcionesPrecio(this.repo, this.contexto.de(req), consulta.conceptos, this.reloj.hoy());
+    const r = await consultarOpcionesPrecio(this.repo, organizacionDe(req), consulta.conceptos, this.reloj.hoy());
     if (r.estado === "NO_ENCONTRADO") {
       throw new ErrorApi(404, "NO_ENCONTRADO", "Uno o más conceptos no existen o no están disponibles.", {
         faltantes: r.faltantes,
@@ -84,15 +89,15 @@ export class CatalogosController {
     @Req() req: Request,
     @Query({ schema: EsquemaConsultaTiposAdicional }) consulta: ConsultaTiposAdicional,
   ): Promise<RespuestaTiposAdicional> {
-    return consultarTiposAdicional(this.repo, this.contexto.de(req), consulta);
+    return consultarTiposAdicional(this.repo, organizacionDe(req), consulta);
   }
 }
 
 @Controller("calculos")
+@Requiere("calculo.ejecutar")
 export class CalculosController {
   constructor(
     @Inject(REPOSITORIO_CATALOGOS) private readonly repo: RepositorioCatalogos,
-    @Inject(CONTEXTO_SOLICITUD) private readonly contexto: ContextoSolicitud,
     @Inject(RELOJ) private readonly reloj: Reloj,
   ) {}
 
@@ -103,7 +108,10 @@ export class CalculosController {
     @Req() req: Request,
     @Body({ schema: EsquemaSolicitudCalculoDemo }) solicitud: SolicitudCalculoDemo,
   ): Promise<RespuestaCalculoDemo> {
-    const r = await calcularDemo(this.repo, this.contexto.de(req), solicitud, this.reloj.hoy());
+    if (!sesionDe(req).organizacion.esDemo) {
+      throw new ErrorApi(403, "SIN_PERMISO", "El cálculo DEMO solo está disponible para organizaciones DEMO.");
+    }
+    const r = await calcularDemo(this.repo, organizacionDe(req), solicitud, this.reloj.hoy());
     switch (r.estado) {
       case "CALCULADO":
         return r.respuesta;
@@ -125,6 +133,7 @@ export class CalculosController {
 
 @Controller("openapi.json")
 @SkipThrottle({ calculo: true })
+@Publico()
 export class OpenApiController {
   private readonly documento = construirDocumentoOpenApi();
 

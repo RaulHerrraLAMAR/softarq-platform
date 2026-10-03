@@ -3,17 +3,24 @@
   "info": {
     "title": "SoftArq API (DEMO local)",
     "version": "1.0.0",
-    "description": "API local de SoftArq: catálogos DEMO y cálculo de cotizaciones con datos de PostgreSQL. Solo escucha en 127.0.0.1. Sin autenticación (contexto fijo de la organización DEMO; ver ADR-0005). Los importes y cantidades viajan como texto decimal. Todos los datos son DEMO y no tienen validez comercial."
+    "description": "API local de SoftArq: catálogos DEMO y cálculo de cotizaciones con datos de PostgreSQL. Solo escucha en 127.0.0.1. Autenticación con sesión opaca en una cookie HttpOnly (`softarq_sesion`); la organización, la identidad y las funciones salen de la sesión (ADR-0007). Las solicitudes POST y DELETE exigen la cabecera X-CSRF-Token de la sesión y un Origin permitido. Los importes y cantidades viajan como texto decimal. Todos los datos son DEMO y no tienen validez comercial."
   },
   "servers": [
     {
-      "url": "http://127.0.0.1:3000"
+      "url": "http://localhost:3000",
+      "description": "API local (escucha en 127.0.0.1; el navegador usa localhost)."
+    }
+  ],
+  "security": [
+    {
+      "cookieSesion": []
     }
   ],
   "paths": {
     "/health": {
       "get": {
         "summary": "Salud del servicio y de PostgreSQL",
+        "security": [],
         "responses": {
           "200": {
             "description": "Servicio y base de datos disponibles.",
@@ -41,6 +48,286 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/RespuestaSalud"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/csrf": {
+      "get": {
+        "summary": "Crea la sesión previa al acceso (cookie) y devuelve su token CSRF",
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "Token CSRF para iniciar sesión.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaCsrf"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "DEMASIADAS_SOLICITUDES (cabecera Retry-After).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "ERROR_INTERNO.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "SERVICIO_NO_DISPONIBLE: PostgreSQL no disponible.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/sesion": {
+      "post": {
+        "summary": "Inicia sesión con correo y contraseña (exige la sesión previa y su token CSRF)",
+        "security": [
+          {
+            "cookieSesion": [],
+            "tokenCsrf": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SolicitudAcceso"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Sesión iniciada; cookie nueva y token CSRF nuevo.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaSesion"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "SOLICITUD_INVALIDA: no cumple el contrato (campos con su ruta) o JSON mal formado.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "NO_AUTENTICADO (sin cookie de sesión) o SESION_NO_VALIDA (vencida, revocada o desconocida; se borra la cookie).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "SIN_PERMISO (la función no concede la capacidad), CSRF_NO_VALIDO u ORIGEN_NO_PERMITIDO.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "CUERPO_DEMASIADO_GRANDE.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "TIPO_DE_CONTENIDO_NO_ADMITIDO: el cuerpo debe ser application/json.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "DEMASIADAS_SOLICITUDES (cabecera Retry-After).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "ERROR_INTERNO.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "SERVICIO_NO_DISPONIBLE: PostgreSQL no disponible.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "summary": "Identidad, organización, funciones, capacidades y token CSRF de la sesión actual",
+        "responses": {
+          "200": {
+            "description": "Sesión vigente.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaSesion"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "NO_AUTENTICADO (sin cookie de sesión) o SESION_NO_VALIDA (vencida, revocada o desconocida; se borra la cookie).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "DEMASIADAS_SOLICITUDES (cabecera Retry-After).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "ERROR_INTERNO.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "SERVICIO_NO_DISPONIBLE: PostgreSQL no disponible.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "summary": "Cierra la sesión (revocación en el servidor) y borra la cookie",
+        "security": [
+          {
+            "cookieSesion": [],
+            "tokenCsrf": []
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Sesión cerrada."
+          },
+          "401": {
+            "description": "NO_AUTENTICADO (sin cookie de sesión) o SESION_NO_VALIDA (vencida, revocada o desconocida; se borra la cookie).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "SIN_PERMISO (la función no concede la capacidad), CSRF_NO_VALIDO u ORIGEN_NO_PERMITIDO.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "DEMASIADAS_SOLICITUDES (cabecera Retry-After).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "ERROR_INTERNO.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "SERVICIO_NO_DISPONIBLE: PostgreSQL no disponible.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
                 }
               }
             }
@@ -85,6 +372,26 @@
           },
           "400": {
             "description": "SOLICITUD_INVALIDA: no cumple el contrato (campos con su ruta) o JSON mal formado.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "NO_AUTENTICADO (sin cookie de sesión) o SESION_NO_VALIDA (vencida, revocada o desconocida; se borra la cookie).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "SIN_PERMISO (la función no concede la capacidad), CSRF_NO_VALIDO u ORIGEN_NO_PERMITIDO.",
             "content": {
               "application/json": {
                 "schema": {
@@ -152,6 +459,26 @@
           },
           "400": {
             "description": "SOLICITUD_INVALIDA: no cumple el contrato (campos con su ruta) o JSON mal formado.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "NO_AUTENTICADO (sin cookie de sesión) o SESION_NO_VALIDA (vencida, revocada o desconocida; se borra la cookie).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "SIN_PERMISO (la función no concede la capacidad), CSRF_NO_VALIDO u ORIGEN_NO_PERMITIDO.",
             "content": {
               "application/json": {
                 "schema": {
@@ -238,6 +565,26 @@
               }
             }
           },
+          "401": {
+            "description": "NO_AUTENTICADO (sin cookie de sesión) o SESION_NO_VALIDA (vencida, revocada o desconocida; se borra la cookie).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "SIN_PERMISO (la función no concede la capacidad), CSRF_NO_VALIDO u ORIGEN_NO_PERMITIDO.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
           "429": {
             "description": "DEMASIADAS_SOLICITUDES (cabecera Retry-After).",
             "content": {
@@ -273,7 +620,13 @@
     },
     "/api/v1/calculos/demo": {
       "post": {
-        "summary": "Calcula una cotización DEMO con datos de PostgreSQL y devuelve la proyección comercial",
+        "summary": "Calcula una cotización DEMO con datos de PostgreSQL y devuelve la proyección comercial (capacidad calculo.ejecutar: Preparador)",
+        "security": [
+          {
+            "cookieSesion": [],
+            "tokenCsrf": []
+          }
+        ],
         "requestBody": {
           "required": true,
           "content": {
@@ -297,6 +650,26 @@
           },
           "400": {
             "description": "SOLICITUD_INVALIDA: no cumple el contrato (campos con su ruta) o JSON mal formado.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "NO_AUTENTICADO (sin cookie de sesión) o SESION_NO_VALIDA (vencida, revocada o desconocida; se borra la cookie).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "SIN_PERMISO (la función no concede la capacidad), CSRF_NO_VALIDO u ORIGEN_NO_PERMITIDO.",
             "content": {
               "application/json": {
                 "schema": {
@@ -381,6 +754,7 @@
     "/api/v1/openapi.json": {
       "get": {
         "summary": "Esta especificación",
+        "security": [],
         "responses": {
           "200": {
             "description": "Documento OpenAPI 3.1."
@@ -390,7 +764,140 @@
     }
   },
   "components": {
+    "securitySchemes": {
+      "cookieSesion": {
+        "type": "apiKey",
+        "in": "cookie",
+        "name": "softarq_sesion",
+        "description": "Sesión opaca (HttpOnly, SameSite=Strict, Path=/api/v1, host-only)."
+      },
+      "tokenCsrf": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "X-CSRF-Token",
+        "description": "Token CSRF de la sesión (GET /api/v1/auth/csrf antes del acceso; después, el de la respuesta de sesión)."
+      }
+    },
     "schemas": {
+      "SolicitudAcceso": {
+        "type": "object",
+        "properties": {
+          "correo": {
+            "type": "string",
+            "minLength": 3,
+            "maxLength": 254
+          },
+          "contrasena": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          }
+        },
+        "required": [
+          "correo",
+          "contrasena"
+        ],
+        "additionalProperties": false
+      },
+      "RespuestaCsrf": {
+        "type": "object",
+        "properties": {
+          "csrfToken": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]{43}$"
+          }
+        },
+        "required": [
+          "csrfToken"
+        ],
+        "additionalProperties": false
+      },
+      "RespuestaSesion": {
+        "type": "object",
+        "properties": {
+          "usuario": {
+            "type": "object",
+            "properties": {
+              "nombre": {
+                "type": "string"
+              },
+              "correo": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "nombre",
+              "correo"
+            ],
+            "additionalProperties": false
+          },
+          "organizacion": {
+            "type": "object",
+            "properties": {
+              "codigo": {
+                "type": "string"
+              },
+              "nombre": {
+                "type": "string"
+              },
+              "esDemo": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "codigo",
+              "nombre",
+              "esDemo"
+            ],
+            "additionalProperties": false
+          },
+          "funciones": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "PREPARADOR",
+                "REVISOR",
+                "ADMIN_CATALOGO",
+                "ADMIN_SISTEMA"
+              ]
+            }
+          },
+          "capacidades": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "sesion.propia",
+                "catalogos.consultar",
+                "calculo.ejecutar"
+              ]
+            }
+          },
+          "expiraEn": {
+            "type": "string"
+          },
+          "inactividadMinutos": {
+            "type": "integer",
+            "exclusiveMinimum": 0,
+            "maximum": 9007199254740991
+          },
+          "csrfToken": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]{43}$"
+          }
+        },
+        "required": [
+          "usuario",
+          "organizacion",
+          "funciones",
+          "capacidades",
+          "expiraEn",
+          "inactividadMinutos",
+          "csrfToken"
+        ],
+        "additionalProperties": false
+      },
       "SolicitudCalculoDemo": {
         "type": "object",
         "properties": {
@@ -949,7 +1456,13 @@
                   "CALCULO_BLOQUEADO",
                   "DEMASIADAS_SOLICITUDES",
                   "SERVICIO_NO_DISPONIBLE",
-                  "ERROR_INTERNO"
+                  "ERROR_INTERNO",
+                  "NO_AUTENTICADO",
+                  "SESION_NO_VALIDA",
+                  "CREDENCIALES_INVALIDAS",
+                  "SIN_PERMISO",
+                  "CSRF_NO_VALIDO",
+                  "ORIGEN_NO_PERMITIDO"
                 ]
               },
               "mensaje": {

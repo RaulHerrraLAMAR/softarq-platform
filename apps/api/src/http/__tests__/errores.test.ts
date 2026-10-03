@@ -65,6 +65,8 @@ describe("OpenAPI", () => {
 
   it("documenta todos los endpoints y esquemas", () => {
     expect(Object.keys(doc.paths).sort()).toEqual([
+      "/api/v1/auth/csrf",
+      "/api/v1/auth/sesion",
       "/api/v1/calculos/demo",
       "/api/v1/catalogos/conceptos",
       "/api/v1/catalogos/opciones-precio",
@@ -73,6 +75,22 @@ describe("OpenAPI", () => {
       "/health",
     ]);
     expect(Object.keys(doc.components.schemas)).toContain("SolicitudCalculoDemo");
+    expect(Object.keys(doc.components.schemas)).toEqual(expect.arrayContaining(["SolicitudAcceso", "RespuestaSesion", "RespuestaCsrf"]));
+  });
+
+  it("documenta la seguridad: cookie de sesión por omisión y rutas públicas sin seguridad (ADR-0007)", () => {
+    const d = doc as unknown as {
+      security: unknown;
+      paths: Record<string, Record<string, { security?: unknown }>>;
+      components: { securitySchemes: Record<string, { in: string; name: string }> };
+    };
+    expect(d.security).toEqual([{ cookieSesion: [] }]);
+    expect(d.components.securitySchemes["cookieSesion"]).toMatchObject({ in: "cookie", name: "softarq_sesion" });
+    expect(d.components.securitySchemes["tokenCsrf"]).toMatchObject({ in: "header", name: "X-CSRF-Token" });
+    expect(d.paths["/health"]?.["get"]?.security).toEqual([]);
+    expect(d.paths["/api/v1/auth/csrf"]?.["get"]?.security).toEqual([]);
+    expect(d.paths["/api/v1/calculos/demo"]?.["post"]?.security).toEqual([{ cookieSesion: [], tokenCsrf: [] }]);
+    expect(JSON.stringify(doc.components.schemas["RespuestaSesion"])).not.toMatch(/token_hash|hashContrasena|tokenSesion/);
   });
 
   it("docs/api/openapi.json está alineado con los contratos (regenerar con openapi:generar)", () => {

@@ -1,13 +1,16 @@
 /**
- * Aplicación DEMO: inicio (ejemplos o captura propia) y captura con resultado.
+ * Cotizador DEMO: inicio (ejemplos o captura propia) y captura con resultado.
  * Coordina el estado; la presentación vive en cada funcionalidad.
+ *
+ * Con sesión (ADR-0007) se monta con una `key` por generación de sesión: al cerrar, vencer o
+ * cambiar de usuario, todo este estado (captura, resultados y consultas) se descarta.
  */
-import { useCallback, useEffect, useMemo, useReducer, useRef, useState, type RefObject } from "react";
+import { useCallback, useEffect, useMemo, useReducer, useRef, useState, type ReactNode, type RefObject } from "react";
 import type { ServiciosApi } from "./api/servicios.ts";
 import { PanelResultado } from "./calculo/PanelResultado.tsx";
 import { useCalculo, type EstadoCalculo } from "./calculo/usarCalculo.ts";
 import { useOpcionesPrecio, useTiposAdicional, type OpcionesCargadas } from "./catalogos/hooks.ts";
-import { Aviso, Boton, Insignia } from "./comunes/componentes.tsx";
+import { Aviso, Boton, Encabezado } from "./comunes/componentes.tsx";
 import { ProveedorCaptura } from "./captura/contexto.tsx";
 import { ESTADO_INICIAL, conceptosEnUso, reducir, type Captura } from "./captura/estado.ts";
 import { Progreso, type EstadoResultado } from "./captura/componentes/Progreso.tsx";
@@ -18,7 +21,15 @@ import { armarSolicitud, huellaCaptura, validarCaptura, type ErroresCampo } from
 import type { Ejemplo } from "./ejemplos/ejemplos.ts";
 import { Inicio, type EstadoCargaEjemplo } from "./inicio/Inicio.tsx";
 
-export function App({ servicios }: { servicios: ServiciosApi }) {
+export interface PropsApp {
+  servicios: ServiciosApi;
+  /** Identidad y cierre de sesión, en el encabezado. */
+  barraSesion?: ReactNode;
+  /** Motivo por el que la función del usuario no permite calcular (solo presentación). */
+  motivoSinCalculo?: string | null;
+}
+
+export function App({ servicios, barraSesion, motivoSinCalculo = null }: PropsApp) {
   const [estado, despachar] = useReducer(reducir, ESTADO_INICIAL);
   const captura = estado.captura;
   const [mostrarErrores, setMostrarErrores] = useState(false);
@@ -108,14 +119,7 @@ export function App({ servicios }: { servicios: ServiciosApi }) {
       <a className="saltar" href="#principal">
         Saltar al contenido
       </a>
-      <header className="encabezado">
-        <div className="encabezado-marca">
-          <span className="marca">SoftArq</span>
-          <span className="marca-sub">Cotizador de estructuras</span>
-          <Insignia tono="demo">DEMO</Insignia>
-        </div>
-        <p className="encabezado-leyenda">Datos ilustrativos, sin validez comercial.</p>
-      </header>
+      <Encabezado>{barraSesion}</Encabezado>
       <main id="principal" tabIndex={-1}>
         {captura ? (
           <ProveedorCaptura valor={{ despachar, errores: erroresVisibles }}>
@@ -133,6 +137,7 @@ export function App({ servicios }: { servicios: ServiciosApi }) {
               confirmarSalida={confirmarSalida}
               setConfirmarSalida={setConfirmarSalida}
               alVolver={volverAlInicio}
+              motivoSinCalculo={motivoSinCalculo}
             />
           </ProveedorCaptura>
         ) : (
@@ -170,6 +175,7 @@ function VistaCaptura(props: {
   confirmarSalida: boolean;
   setConfirmarSalida: (v: boolean) => void;
   alVolver: () => void;
+  motivoSinCalculo: string | null;
 }) {
   const { captura } = props;
   const titulo = captura.origen.tipo === "ejemplo" ? captura.origen.titulo : "Captura propia";
@@ -234,6 +240,7 @@ function VistaCaptura(props: {
             alCalcular={props.alCalcular}
             alActualizarOpciones={props.opciones.reintentar}
             refResumen={props.refResumen}
+            motivoSinCalculo={props.motivoSinCalculo}
           />
         </aside>
       </div>

@@ -3,14 +3,14 @@
  * proveedor inactivo y parámetros sin impuesto. Cada prueba restaura la base al terminar.
  */
 import { expect, test } from "@playwright/test";
-import { ajustarBase, calcularYTotal, cargarEjemplo, evidencia, panel, sinImportes } from "./apoyo.ts";
+import { abrirConSesion, ajustarBase, calcularYTotal, cargarEjemplo, evidencia, panel, sinImportes } from "./apoyo.ts";
 
 test.describe.configure({ mode: "serial" });
 
 test("opción de un ejemplo que dejó de estar disponible: se explica y se elige otra", async ({ page }, info) => {
   ajustarBase("proveedor", "PRV-00002", "inactivo");
   try {
-    await page.goto("/");
+    await abrirConSesion(page);
     await cargarEjemplo(page, 3);
     const block = page.getByRole("group", { name: /INS-00010/ });
     await expect(block).toContainText("La opción indicada en el ejemplo ya no está disponible");
@@ -33,7 +33,7 @@ test("opción de un ejemplo que dejó de estar disponible: se explica y se elige
 });
 
 test("precio que deja de ser válido después de elegirlo: BL-08 sin importes ni sustituto", async ({ page }, info) => {
-  await page.goto("/");
+  await abrirConSesion(page);
   await cargarEjemplo(page, 1);
   await expect(page.getByRole("radio", { name: /PRE-000007/ })).toBeChecked();
   ajustarBase("proveedor", "PRV-00002", "inactivo");
@@ -58,7 +58,7 @@ test("precio que deja de ser válido después de elegirlo: BL-08 sin importes ni
 });
 
 test("parámetros sin impuesto en la base: BL-13 sin importes; al restaurarlos, el total vuelve", async ({ page }, info) => {
-  await page.goto("/");
+  await abrirConSesion(page);
   await cargarEjemplo(page, 2);
   expect(await calcularYTotal(page)).toBe("$43,312.16");
   ajustarBase("parametros", "sin-impuesto");

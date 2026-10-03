@@ -4,10 +4,10 @@
  * 4 m × 2.5 m, PRE-000001 y PRE-000002, compras consolidadas) debe dar $4,911.79.
  */
 import { expect, test } from "@playwright/test";
-import { calcularYTotal, evidencia, panel, sinImportes } from "./apoyo.ts";
+import { abrirConSesion, calcularYTotal, evidencia, panel, sinImportes } from "./apoyo.ts";
 
 test("captura propia completa con opciones elegidas por el usuario", async ({ page }, info) => {
-  await page.goto("/");
+  await abrirConSesion(page);
   await page.getByRole("button", { name: "Iniciar captura propia" }).click();
   await expect(page.getByRole("heading", { name: "Captura propia" })).toBeVisible();
 
@@ -62,7 +62,7 @@ test("captura propia completa con opciones elegidas por el usuario", async ({ pa
 });
 
 test("costo adicional con monto cero: bloqueo del servidor sin importes", async ({ page }, info) => {
-  await page.goto("/");
+  await abrirConSesion(page);
   await page.getByRole("button", { name: /Cargar ejemplo: Ejemplo 1/ }).click();
   await expect(page.getByText(/Opciones vigentes al/)).toBeVisible();
   await page.getByLabel("Monto", { exact: false }).fill("0");
@@ -74,7 +74,7 @@ test("costo adicional con monto cero: bloqueo del servidor sin importes", async 
 });
 
 test("piezas no enteras: el servidor rechaza y el mensaje queda junto al campo", async ({ page }) => {
-  await page.goto("/");
+  await abrirConSesion(page);
   await page.getByRole("button", { name: /Cargar ejemplo: Ejemplo 1/ }).click();
   await expect(page.getByText(/Opciones vigentes al/)).toBeVisible();
   const piezas = page.getByLabel("Piezas del renglón 1", { exact: false });

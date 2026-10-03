@@ -101,7 +101,7 @@ No hay autenticación, usuarios, guardado de cotizaciones, folios, aprobación, 
   - `strictPort` activado; sin `proxy` ni hosts adicionales.
 - **Origen de la web:** `http://localhost:5173`, ya incluido en `API_CORS_ORIGINS`.
 - **`VITE_API_URL`:**
-  - pública y sin secretos; por omisión `http://127.0.0.1:3000`;
+  - pública y sin secretos; por omisión `http://127.0.0.1:3000` (desde el módulo 5, `http://localhost:3000` y solo `localhost`, por la cookie de sesión: [ADR-0007](0007-autenticacion-sesiones.md) §5);
   - se valida en `vite.config.ts` y en ejecución: solo http a loopback, con puerto, sin ruta ni credenciales. Una URL inválida hace fallar el arranque o la compilación.
 - **CSP** en `index.html`:
   - `default-src 'self'`;

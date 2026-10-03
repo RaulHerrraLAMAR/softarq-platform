@@ -1,8 +1,10 @@
 /** Migraciones sobre base vacía y permisos de los roles (solo softarq_test). */
 import { spawnSync } from "node:child_process";
+import { randomBytes } from "node:crypto";
 import { join } from "node:path";
 import { afterAll, describe, expect, it } from "vitest";
-import { RAIZ_API, confirmarBase, prismaApp } from "./entorno.js";
+import { crearPrisma } from "../infraestructura/prisma/cliente.js";
+import { RAIZ_API, confirmarBase, prismaApp, urlDePrueba } from "./entorno.js";
 
 const app = prismaApp();
 afterAll(() => app.$disconnect());
@@ -47,6 +49,56 @@ describe("permisos del rol de la aplicación (softarq_app)", () => {
     await expect(
       app.unidad.create({ data: { clave: "zz", nombre: "Prueba", magnitud: "conteo" } }),
     ).rejects.toThrow();
+  });
+
+  describe("identidad y sesiones (ADR-0007)", () => {
+    const ahora = new Date();
+    const sesionPrevia = () => ({
+      tipo: "PREVIA",
+      tokenHash: new Uint8Array(randomBytes(32)),
+      creadaEn: ahora,
+      ultimaActividadEn: ahora,
+      expiraEn: new Date(ahora.getTime() + 60_000),
+    });
+
+    it("no puede crear ni modificar usuarios ni pertenencias", async () => {
+      await expect(
+        app.usuario.create({ data: { correo: "intruso@softarq.test", nombre: "x", hashContrasena: "$argon2id$v=19$m=1", esDemo: true } }),
+      ).rejects.toThrow();
+      await expect(app.usuario.updateMany({ data: { activo: true } })).rejects.toThrow();
+      await expect(app.membresia.updateMany({ data: { funciones: ["PREPARADOR"] } })).rejects.toThrow();
+      await expect(app.$executeRawUnsafe("INSERT INTO membresia (organizacion_id, usuario_id, funciones) VALUES (gen_random_uuid(), gen_random_uuid(), ARRAY['PREPARADOR'])")).rejects.toThrow();
+    });
+
+    it("puede leer usuarios y pertenencias (resolución de la sesión)", async () => {
+      await expect(app.usuario.count()).resolves.toBeGreaterThanOrEqual(0);
+      await expect(app.membresia.count()).resolves.toBeGreaterThanOrEqual(0);
+    });
+
+    it("en sesión: inserta y actualiza solo actividad y revocación; no borra ni cambia el hash ni la expiración", async () => {
+      const s = await app.sesion.create({ data: sesionPrevia(), select: { id: true } });
+      await expect(app.sesion.update({ where: { id: s.id }, data: { ultimaActividadEn: ahora } })).resolves.toBeTruthy();
+      await expect(app.sesion.update({ where: { id: s.id }, data: { tokenHash: new Uint8Array(randomBytes(32)) } })).rejects.toThrow();
+      await expect(app.sesion.update({ where: { id: s.id }, data: { expiraEn: new Date(ahora.getTime() + 3_600_000) } })).rejects.toThrow();
+      await expect(app.sesion.update({ where: { id: s.id }, data: { revocadaEn: ahora, motivoRevocacion: "CIERRE" } })).resolves.toBeTruthy();
+      await expect(app.sesion.deleteMany({ where: { id: s.id } })).rejects.toThrow();
+    });
+
+    it("las restricciones de la base rechazan hashes que no son Argon2id y sesiones incoherentes", async () => {
+      const migrador = crearPrisma(urlDePrueba("MIGRATION_DATABASE_URL"));
+      try {
+        await expect(
+          migrador.usuario.create({ data: { correo: "claro@softarq.test", nombre: "x", hashContrasena: "contraseña-en-claro", esDemo: true } }),
+        ).rejects.toThrow(/usuario_hash_argon2id_ck/);
+        await expect(
+          migrador.usuario.create({ data: { correo: "Mayus@Softarq.test", nombre: "x", hashContrasena: "$argon2id$v=19$m=65536,t=3,p=4$x", esDemo: true } }),
+        ).rejects.toThrow(/usuario_correo_normalizado_ck/);
+        await expect(app.sesion.create({ data: { ...sesionPrevia(), tokenHash: new Uint8Array(16) } })).rejects.toThrow(/sesion_token_hash_ck/);
+        await expect(app.sesion.create({ data: { ...sesionPrevia(), tipo: "USUARIO" } })).rejects.toThrow(/sesion_tipo_titular_ck/);
+      } finally {
+        await migrador.$disconnect();
+      }
+    });
   });
 
   it("no tiene atributos privilegiados", async () => {

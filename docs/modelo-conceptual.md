@@ -3,12 +3,14 @@
 - **Fecha:** 02/10/2026
 - **Estado:**
   - **Implementado (módulo 2, ADR-0004):** `organizacion` y los catálogos que alimentan el cálculo, persistidos en PostgreSQL y aislados por organización (ver §4).
-  - **Sin implementar:** usuarios, autenticación, clientes, proyectos, cotizaciones, versiones ni suscripciones.
+  - **Implementado (módulo 5, ADR-0007):** `usuario`, `membresia` (pertenencia con funciones) y `sesion`; matriz de permisos en §6.
+  - **Sin implementar:** CRUD de usuarios, clientes, proyectos, cotizaciones, versiones, revisión, aprobación ni suscripciones.
 
 ## 1. Entidades y relaciones
 
 ```
-Organización 1 ── N Usuario        (prepara o revisa cotizaciones)
+Organización N ── N Usuario        (por Membresía, con funciones; hoy una activa por usuario)
+Usuario      1 ── N Sesión         (opaca; solo el hash del token)
 Organización 1 ── N Cliente        (recibe la cotización; no tiene cuenta)
 Cliente      1 ── N Proyecto
 Organización 1 ── N Catálogo       (insumos, productos, proveedores, precios, tarifas, conceptos)
@@ -21,7 +23,9 @@ Versión      1 ── N Excepción      (rendimiento, precio vencido, concepto 
 ```
 
 - **Organización:** posee sus usuarios, clientes, proyectos, catálogos y cotizaciones. Al principio solo habrá una organización **DEMO**. Toda consulta futura se filtrará por organización en el servidor.
-- **Usuario:** persona que prepara o revisa. Sustituye a la «persona en turno» del Excel, que era un registro operativo sin autenticación (D-20). Las funciones del libro (preparador, revisor, administrador del catálogo y administrador del sistema) pasarán a ser permisos comprobados en la API.
+- **Usuario:** persona que prepara o revisa. Sustituye a la «persona en turno» del Excel, que era un registro operativo sin autenticación (D-20). Es global: la organización la aporta la pertenencia.
+- **Membresía (pertenencia):** une un usuario con una organización y guarda sus funciones del libro (Preparador, Revisor, Administrador del catálogo, Administrador del sistema), que la API traduce a capacidades en cada solicitud. El modelo admite varias pertenencias; en esta etapa el acceso exige una sola activa.
+- **Sesión:** sesión opaca en PostgreSQL ligada a una pertenencia (FK compuesta, sin mezclar organizaciones). Expira por inactividad (30 min) y de forma absoluta (8 h) y se revoca al cerrar.
 - **Cliente:** quien recibe la cotización. **No requiere cuenta** ni accede al sistema.
 
 ## 2. Contraste con el libro 1.0.0-F1
@@ -29,7 +33,7 @@ Versión      1 ── N Excepción      (rendimiento, precio vencido, concepto 
 | Libro (tabla y columnas) | Modelo | Observación |
 |---|---|---|
 | — | Organización | No existe en el Excel (un solo archivo maestro, D-15). Es nueva. |
-| `tblPersonas` (17 CONFIG), «persona en turno» | Usuario | En el Excel no hay autenticación ni permisos reales. |
+| `tblPersonas` (17 CONFIG): `id_persona`, `nombre`, `funciones` (varias, separadas por «;»), `activo`; «persona en turno» | Usuario + Membresía (`funciones`) + Sesión | En el Excel no hay autenticación ni permisos reales; aquí la sesión sustituye a la persona en turno. |
 | `tblClientes`: `id_cliente`, `nombre_razon_social`, contacto, `activo` | Cliente | Sin cuenta. BL-01: cliente con campos mínimos y activo. |
 | `tblProyectos`: `id_proyecto`, **`id_cliente`**, nombre, municipio, entidad, descripción, `activo` | Proyecto | Pertenece a un solo cliente. BL-02 bloquea un proyecto «de otro cliente». |
 | `tblCotizaciones`: `folio`, **`id_cliente`**, **`id_proyecto`**, `estado_folio`, `origen_duplicado` | Cotización | El folio fija cliente y proyecto. Solo se cambian en una v1 (duplicar crea folio nuevo, §3.8). Folio COT-AAAA-NNNNN no reutilizable (D-14). |
@@ -65,7 +69,18 @@ Toda relación entre datos propios es una FK compuesta con `organizacion_id`, de
 
 ## 5. Pendiente de decidir (módulos posteriores)
 
-- Mecanismo de autenticación y modelo de permisos.
+- Selección o cambio de organización para usuarios con varias pertenencias.
+- Capacidades de revisión, aprobación, emisión y administración (módulos posteriores).
 - Si los catálogos se comparten entre organizaciones o son siempre propios.
 - Planes o suscripciones (fuera del DEMO).
 - Esquema de PostgreSQL y migración desde los CSV del libro (Prisma, según ADR-0003).
+
+## 6. Matriz de permisos vigente (módulo 5, ADR-0007 §2)
+
+| Capacidad | Endpoints | Preparador | Revisor | Adm. catálogo | Adm. sistema | Fuente en el libro |
+|---|---|---|---|---|---|---|
+| `sesion.propia` | `GET` y `DELETE /api/v1/auth/sesion` | ✓ | ✓ | ✓ | ✓ | — |
+| `catalogos.consultar` | `GET /api/v1/catalogos/*` | ✓ | ✓ | ✓ | ✓ | Las hojas de catálogo se abren sin función |
+| `calculo.ejecutar` | `POST /api/v1/calculos/demo` | ✓ | ✗ | ✗ | ✗ | `BTN_Calcular` exige `Req_Funcion FN_PREP` (`modMotor.bas`) |
+
+**Previsto para módulos posteriores** (no implementado): registrar excepciones y enviar a revisión (Preparador); observaciones, autorizar excepciones, aprobar y emitir con un revisor **distinto del preparador** (Revisor, BL-17 y D-13); editar catálogos y aprobar conceptos (Administrador del catálogo); parámetros y personas (Administrador del sistema).

@@ -13,7 +13,13 @@ import { defineConfig } from "@playwright/test";
 
 const RAIZ_REPO = join(import.meta.dirname, "..", "..");
 const TRABAJO = join(RAIZ_REPO, "..", "_work");
-const URL_API_E2E = "http://127.0.0.1:3101";
+/**
+ * El navegador llama a la API por `localhost` (mismo site que la web en localhost:4173, para la
+ * cookie de sesión SameSite=Strict; ADR-0007). La API escucha en 127.0.0.1, así que la espera del
+ * arranque se hace contra 127.0.0.1.
+ */
+const URL_API_E2E = "http://localhost:3101";
+const SALUD_API_E2E = "http://127.0.0.1:3101/health";
 
 export default defineConfig({
   testDir: "e2e",
@@ -39,7 +45,7 @@ export default defineConfig({
     {
       command: "node dist-e2e/pruebas-e2e/servidor-e2e.js",
       cwd: join(RAIZ_REPO, "apps", "api"),
-      url: `${URL_API_E2E}/health`,
+      url: SALUD_API_E2E,
       reuseExistingServer: false,
       timeout: 180_000,
       stdout: "ignore",
