@@ -7,11 +7,15 @@
  *    parámetros salen de la base; la selección de precios es explícita).
  * 3. Calcula con el motor y devuelve SOLO la proyección comercial y avisos sin importes.
  *
- * No escribe cotizaciones ni modifica catálogos.
+ * No escribe cotizaciones ni modifica catálogos. Las versiones guardadas (módulo 6, ADR-0008)
+ * usan `calcularSolicitud`, que además devuelve la entrada y el resultado internos para el
+ * historial del servidor.
  */
 import type {
   AvisoCalculo,
+  EntradaCalculo,
   FechaISO,
+  ResultadoCalculado,
   RespuestaCalculoDemo,
   SolicitudCalculoDemo,
 } from "@softarq/contracts";
@@ -26,12 +30,31 @@ export type ResultadoCalculoDemo =
   | { estado: "ENTRADA_INVALIDA"; campos: { ruta: string; mensaje: string }[] }
   | { estado: "NO_ENCONTRADO"; faltantes: { tipo: string; codigo: string }[] };
 
+/** Resultado con los datos internos (solo para el servidor: nunca se envían al cliente). */
+export type ResultadoCalculoDetallado =
+  | { estado: "CALCULADO"; respuesta: RespuestaCalculoDemo; entrada: EntradaCalculo; resultado: ResultadoCalculado }
+  | Exclude<ResultadoCalculoDemo, { estado: "CALCULADO" }>;
+
 export async function calcularDemo(
   repo: RepositorioCatalogos,
   ctx: ContextoOrganizacion,
   solicitud: SolicitudCalculoDemo,
   fechaCalculo: FechaISO,
 ): Promise<ResultadoCalculoDemo> {
+  const r = await calcularSolicitud(repo, ctx, solicitud, fechaCalculo);
+  return r.estado === "CALCULADO" ? { estado: "CALCULADO", respuesta: r.respuesta } : r;
+}
+
+/**
+ * Ensambla con los catálogos del repositorio (que puede ser el cliente de una transacción, para
+ * leerlo todo en una sola instantánea) y calcula con el motor.
+ */
+export async function calcularSolicitud(
+  repo: RepositorioCatalogos,
+  ctx: ContextoOrganizacion,
+  solicitud: SolicitudCalculoDemo,
+  fechaCalculo: FechaISO,
+): Promise<ResultadoCalculoDetallado> {
   const ensamblado = await construirEntradaCalculo(repo, ctx, aSolicitudCalculo(solicitud, fechaCalculo));
   if (ensamblado.estado === "NO_ENCONTRADO") return { estado: "NO_ENCONTRADO", faltantes: ensamblado.faltantes };
   if (ensamblado.estado === "BLOQUEADO") return { estado: "BLOQUEADO", problemas: problemas(ensamblado.problemas) };
@@ -52,6 +75,8 @@ export async function calcularDemo(
           cotizacion: aVistaComercial(r),
           avisos: avisosPublicos(r.avisos),
         },
+        entrada: ensamblado.entrada,
+        resultado: r,
       };
   }
 }
@@ -93,7 +118,7 @@ function problemas(lista: readonly { codigo: string; referencia: string; mensaje
  * Los avisos internos mencionan precios (AV-01) y productos o sobrantes (AV-03); hacia el cliente
  * se publican reescritos, sin importes ni datos de compra.
  */
-function avisosPublicos(avisos: readonly AvisoCalculo[]): RespuestaCalculoDemo["avisos"] {
+export function avisosPublicos(avisos: readonly AvisoCalculo[]): RespuestaCalculoDemo["avisos"] {
   const publicos: RespuestaCalculoDemo["avisos"] = [];
   for (const a of avisos) {
     if (a.codigo === "AV-01") {

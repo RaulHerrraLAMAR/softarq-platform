@@ -6,7 +6,7 @@
  * - Las opciones de un ejemplo se resuelven contra las opciones vigentes que entrega la API; si una ya
  *   no está disponible, el insumo queda sin selección y con aviso (nunca se sustituye).
  */
-import type { DimensionMedicion } from "@softarq/contracts";
+import type { CapturaBorrador, DimensionMedicion, TipoFormula } from "@softarq/contracts";
 import type { ConceptoCatalogo, InsumoConOpciones } from "../api/servicios.ts";
 import type { Ejemplo } from "../ejemplos/ejemplos.ts";
 
@@ -43,7 +43,11 @@ export interface PartidaAdicional {
 
 export type PartidaCaptura = PartidaConcepto | PartidaAdicional;
 
-export type OrigenCaptura = { tipo: "ejemplo"; id: string; titulo: string } | { tipo: "propia" };
+export type OrigenCaptura =
+  | { tipo: "ejemplo"; id: string; titulo: string }
+  | { tipo: "propia" }
+  /** Borrador guardado de una cotización (módulo 6). */
+  | { tipo: "cotizacion"; folio: string };
 
 export interface Captura {
   origen: OrigenCaptura;
@@ -64,6 +68,7 @@ export interface Captura {
 export type Accion =
   | { tipo: "INICIAR_PROPIA" }
   | { tipo: "CARGAR_EJEMPLO"; ejemplo: Ejemplo; conceptos: readonly ConceptoCatalogo[] }
+  | { tipo: "CARGAR_BORRADOR"; folio: string; borrador: CapturaBorrador; conceptos: readonly ConceptoCatalogo[] }
   | { tipo: "VOLVER_AL_INICIO" }
   | { tipo: "AGREGAR_CONCEPTO"; concepto: ConceptoCatalogo }
   | { tipo: "QUITAR_PARTIDA"; clave: string }
@@ -115,6 +120,7 @@ export function insumosEnUso(c: Captura): string[] {
 export function reducir(estado: EstadoApp, accion: Accion): EstadoApp {
   if (accion.tipo === "INICIAR_PROPIA") return { captura: capturaVacia({ tipo: "propia" }) };
   if (accion.tipo === "CARGAR_EJEMPLO") return { captura: desdeEjemplo(accion.ejemplo, accion.conceptos) };
+  if (accion.tipo === "CARGAR_BORRADOR") return { captura: desdeBorrador(accion.folio, accion.borrador, accion.conceptos) };
   if (accion.tipo === "VOLVER_AL_INICIO") return ESTADO_INICIAL;
   const c = estado.captura;
   if (!c) return estado;
@@ -277,6 +283,78 @@ function desdeEjemplo(ej: Ejemplo, conceptos: readonly ConceptoCatalogo[]): Capt
     consolidarCompras: ej.solicitud.consolidarCompras,
     partidas,
     preciosDelEjemplo: [...ej.solicitud.preciosElegidos],
+    avisosCarga,
+    siguienteClave: n,
+  };
+}
+
+/** Fórmula probable de un concepto que ya no está en el catálogo, según las medidas guardadas. */
+function formulaSegunMedidas(p: Extract<CapturaBorrador["partidas"][number], { tipo: "CONCEPTO" }>): TipoFormula {
+  const m = p.mediciones;
+  if (m.some((r) => r.ancho !== null && r.alto !== null)) return "VOLUMEN";
+  if (m.some((r) => r.ancho !== null || r.alto !== null)) return "AREA";
+  if (m.some((r) => r.largo !== null)) return "LONGITUD";
+  return "CONTEO";
+}
+
+/**
+ * Captura editable a partir de un borrador guardado (módulo 6). A diferencia de un ejemplo, NUNCA
+ * se descarta una partida: si su concepto ya no está en el catálogo, se conserva con un concepto
+ * provisional (sin insumos) y un aviso, para que guardar no borre datos; el servidor lo señalará
+ * al calcular. `null` vuelve a ser un campo vacío; `"0"` se conserva.
+ */
+function desdeBorrador(folio: string, b: CapturaBorrador, conceptos: readonly ConceptoCatalogo[]): Captura {
+  const c = capturaVacia({ tipo: "cotizacion", folio });
+  let n = 1;
+  const clave = () => `k${n++}`;
+  const avisosCarga: string[] = [];
+  const partidas: PartidaCaptura[] = b.partidas.map((p) => {
+    if (p.tipo === "ADICIONAL") {
+      return {
+        clave: clave(),
+        tipo: "ADICIONAL",
+        tipoAdicionalCodigo: p.tipoAdicionalCodigo ?? "",
+        descripcion: p.descripcion,
+        cantidad: p.cantidad ?? "",
+        monto: p.monto ?? "",
+      };
+    }
+    let concepto = conceptos.find((x) => x.codigo === p.conceptoCodigo);
+    if (!concepto) {
+      avisosCarga.push(
+        `El concepto ${p.conceptoCodigo} ya no está disponible en el catálogo. Su partida se conserva tal como se guardó, pero no se podrá calcular hasta quitarla.`,
+      );
+      concepto = {
+        codigo: p.conceptoCodigo,
+        descripcion: `${p.conceptoCodigo} (no disponible)`,
+        unidad: "",
+        tipoFormula: formulaSegunMedidas(p),
+        permiteDescuento: true,
+        insumos: [],
+      };
+    }
+    return {
+      clave: clave(),
+      tipo: "CONCEPTO",
+      concepto,
+      descripcion: p.descripcion,
+      renglones: p.mediciones.map((m) => ({
+        clave: clave(),
+        descripcion: m.descripcion,
+        signo: m.signo,
+        piezas: m.piezas ?? "",
+        largo: m.largo ?? "",
+        ancho: m.ancho ?? "",
+        alto: m.alto ?? "",
+        segundaMedida: m.segundaMedida,
+      })),
+    };
+  });
+  return {
+    ...c,
+    consolidarCompras: b.consolidarCompras,
+    partidas,
+    seleccion: Object.fromEntries(b.seleccion.map((s) => [s.insumoCodigo, s.precioCodigo])),
     avisosCarga,
     siguienteClave: n,
   };

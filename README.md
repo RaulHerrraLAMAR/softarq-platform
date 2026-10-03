@@ -2,14 +2,14 @@
 
 Plataforma de **cotización de estructuras de construcción** (fase 2 del proyecto SoftArq). Sucede al libro de Excel de la fase 1 (`Cotizador_Estructuras_F1.xlsm`, versión 1.0.0-F1), que sigue siendo la referencia funcional.
 
-> **Estado (02/10/2026):** módulos 1 a 5 terminados: **motor de cálculo** (CR-01 a CR-16), **persistencia de catálogos** en PostgreSQL con Prisma, **API HTTP local** con NestJS 12, **cliente web DEMO** con React y Vite y **usuarios DEMO con sesiones** (Argon2id, cookie HttpOnly, CSRF y permisos por función y organización). Verificado con 419 pruebas unitarias (297 de la API y 122 de la web), 147 de integración y 27 de navegador contra PostgreSQL local. Todavía no hay guardado de cotizaciones. Todo dato de ejemplo es **DEMO** y no tiene validez comercial.
+> **Estado (03/10/2026):** módulos 1 a 6 terminados: **motor de cálculo** (CR-01 a CR-16), **persistencia de catálogos** en PostgreSQL con Prisma, **API HTTP local** con NestJS 12, **cliente web DEMO** con React y Vite, **usuarios DEMO con sesiones** (Argon2id, cookie HttpOnly, CSRF y permisos por función y organización) y **clientes, proyectos y cotizaciones** con folio WEB DEMO, borrador y versiones inmutables calculadas en el servidor. Resultados de pruebas en [`HANDOFF.md`](HANDOFF.md). Todavía no hay revisión, aprobación, emisión ni PDF. Todo dato de ejemplo es **DEMO** y no tiene validez comercial.
 
 ## Estructura
 
 | Ruta | Contenido | Tecnología prevista |
 |---|---|---|
-| `apps/api` | API: cálculos, permisos, reglas de negocio y validación. Hoy: dominio de cálculo, persistencia de catálogos y API HTTP local | NestJS 12, decimal.js, Prisma 7.10 + PostgreSQL 18, Zod 4 y Vitest |
-| `apps/web` | Cliente web DEMO: ejemplos, captura, opciones, cálculo por la API y resultado comercial | React 19 + Vite 8, TypeScript 7, Playwright |
+| `apps/api` | API: cálculos, permisos, reglas de negocio y validación. Hoy: dominio de cálculo, catálogos, sesiones, clientes, proyectos y cotizaciones con versiones, por HTTP local | NestJS 12, decimal.js, Prisma 7.10 + PostgreSQL 18, Zod 4 y Vitest |
+| `apps/web` | Cliente web DEMO: calculadora, clientes, proyectos, cotizaciones con borrador, versiones e historial | React 19 + Vite 8, TypeScript 7, Playwright |
 | `apps/mobile` | App móvil | React Native con Expo |
 | `packages/contracts` | Contratos compartidos sin lógica: tipos del cálculo y esquemas Zod de la API HTTP (definición única) | TypeScript (ESM), Zod 4 |
 | `docs` | Decisiones de arquitectura y referencias a la fase 1 | Markdown |

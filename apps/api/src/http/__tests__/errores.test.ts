@@ -71,10 +71,22 @@ describe("OpenAPI", () => {
       "/api/v1/catalogos/conceptos",
       "/api/v1/catalogos/opciones-precio",
       "/api/v1/catalogos/tipos-adicional",
+      "/api/v1/clientes",
+      "/api/v1/clientes/{id}",
+      "/api/v1/cotizaciones",
+      "/api/v1/cotizaciones/{id}",
+      "/api/v1/cotizaciones/{id}/borrador",
+      "/api/v1/cotizaciones/{id}/versiones",
+      "/api/v1/cotizaciones/{id}/versiones/{numero}",
       "/api/v1/openapi.json",
+      "/api/v1/proyectos",
+      "/api/v1/proyectos/{id}",
       "/health",
     ]);
     expect(Object.keys(doc.components.schemas)).toContain("SolicitudCalculoDemo");
+    expect(Object.keys(doc.components.schemas)).toEqual(
+      expect.arrayContaining(["CapturaBorrador", "SolicitudBorrador", "SolicitudVersion", "Version", "DetalleCotizacion"]),
+    );
     expect(Object.keys(doc.components.schemas)).toEqual(expect.arrayContaining(["SolicitudAcceso", "RespuestaSesion", "RespuestaCsrf"]));
   });
 
@@ -91,6 +103,31 @@ describe("OpenAPI", () => {
     expect(d.paths["/api/v1/auth/csrf"]?.["get"]?.security).toEqual([]);
     expect(d.paths["/api/v1/calculos/demo"]?.["post"]?.security).toEqual([{ cookieSesion: [], tokenCsrf: [] }]);
     expect(JSON.stringify(doc.components.schemas["RespuestaSesion"])).not.toMatch(/token_hash|hashContrasena|tokenSesion/);
+  });
+
+  it("cotizaciones (ADR-0008): escrituras con CSRF, altas con Idempotency-Key y versiones sin datos internos", () => {
+    const d = doc as unknown as {
+      paths: Record<string, Record<string, { security?: unknown; parameters?: { name: string; in: string; required: boolean }[] }>>;
+    };
+    const escrituras: [string, string][] = [
+      ["/api/v1/clientes", "post"],
+      ["/api/v1/clientes/{id}", "patch"],
+      ["/api/v1/proyectos", "post"],
+      ["/api/v1/proyectos/{id}", "patch"],
+      ["/api/v1/cotizaciones", "post"],
+      ["/api/v1/cotizaciones/{id}/borrador", "put"],
+      ["/api/v1/cotizaciones/{id}/versiones", "post"],
+    ];
+    for (const [ruta, metodo] of escrituras) {
+      expect(d.paths[ruta]?.[metodo]?.security, `${metodo} ${ruta}`).toEqual([{ cookieSesion: [], tokenCsrf: [] }]);
+    }
+    for (const [ruta, metodo] of escrituras.filter(([, m]) => m === "post")) {
+      expect(d.paths[ruta]?.[metodo]?.parameters).toEqual(
+        expect.arrayContaining([expect.objectContaining({ name: "Idempotency-Key", in: "header", required: true })]),
+      );
+    }
+    const version = JSON.stringify(doc.components.schemas["Version"]);
+    expect(version).not.toMatch(/entradaCalculo|resultadoInterno|costoDirecto|recargo|margen|precioCompra|proveedor/i);
   });
 
   it("docs/api/openapi.json está alineado con los contratos (regenerar con openapi:generar)", () => {

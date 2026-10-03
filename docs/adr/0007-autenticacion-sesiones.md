@@ -1,7 +1,7 @@
 # ADR-0007 — Usuarios DEMO, sesiones opacas y autorización por organización
 
 - **Fecha:** 02/10/2026
-- **Estado:** aceptada
+- **Estado:** aceptada (matriz ampliada en [ADR-0008](0008-cotizaciones-versiones-folios.md) §3 con clientes, proyectos y cotizaciones; `@Requiere` admite varias capacidades)
 - **Sustituye:** el contexto DEMO fijo de [ADR-0005](0005-api-http-local.md) §7 (`SOFTARQ_ORGANIZACION_DEMO`).
 - **Ámbito:**
   - `apps/api/src/modules/autenticacion`;

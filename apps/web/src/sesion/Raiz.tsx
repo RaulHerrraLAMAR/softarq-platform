@@ -2,7 +2,7 @@
  * Raíz de la web con sesión: comprobación inicial, pantalla de acceso o cotizador.
  * El cotizador solo se monta con una sesión válida y con `key` = generación de la sesión.
  */
-import { App } from "../App.tsx";
+import { Aplicacion } from "../Aplicacion.tsx";
 import { mensajeDeFallo } from "../api/cliente.ts";
 import { Aviso, Boton, Encabezado, Esqueleto } from "../comunes/componentes.tsx";
 import { BarraSesion } from "./BarraSesion.tsx";
@@ -13,14 +13,16 @@ export const MOTIVO_REVISOR =
   "Su función (Revisor) no incluye calcular; en el libro de la fase 1 el cálculo lo hace el Preparador. Puede consultar los catálogos y la captura.";
 
 export function Raiz() {
-  const { estado, servicios, iniciar, cerrar, reintentarVerificacion } = useSesion();
+  const { estado, servicios, cotizaciones, iniciar, cerrar, reintentarVerificacion } = useSesion();
 
   if (estado.fase === "autenticado") {
     const puedeCalcular = estado.sesion.capacidades.includes("calculo.ejecutar");
     return (
-      <App
+      <Aplicacion
         key={estado.generacion}
+        sesion={estado.sesion}
         servicios={servicios}
+        cotizaciones={cotizaciones}
         barraSesion={<BarraSesion sesion={estado.sesion} alCerrar={cerrar} />}
         motivoSinCalculo={puedeCalcular ? null : estado.sesion.funciones.includes("REVISOR") ? MOTIVO_REVISOR : "Su función no incluye calcular."}
       />

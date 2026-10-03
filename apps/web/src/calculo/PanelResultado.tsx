@@ -5,7 +5,7 @@
  * - un cálculo BLOQUEADO nunca muestra importes (ni cero ni anteriores).
  */
 import type { RespuestaCalculoDemo } from "@softarq/contracts";
-import type { Ref } from "react";
+import type { ReactNode, Ref } from "react";
 import { mensajeDeFallo } from "../api/cliente.ts";
 import { Aviso, Boton, Codigo, Esqueleto, Insignia } from "../comunes/componentes.tsx";
 import { formatearCantidad, formatearFecha, formatearImporte, formatearTasa } from "../comunes/formato.ts";
@@ -33,6 +33,10 @@ export interface PropsPanel {
    * presentación: la API rechaza el cálculo de todos modos (403).
    */
   motivoSinCalculo?: string | null;
+  /** Texto del botón (por omisión «Calcular»; en cotizaciones, «Vista previa»). */
+  textoCalcular?: string;
+  /** Ayuda bajo el botón. */
+  ayudaCalcular?: ReactNode;
 }
 
 export function PanelResultado({
@@ -44,6 +48,8 @@ export function PanelResultado({
   alActualizarOpciones,
   refResumen,
   motivoSinCalculo = null,
+  textoCalcular = "Calcular",
+  ayudaCalcular = "El cálculo lo hace el servidor con los catálogos vigentes.",
 }: PropsPanel) {
   const calculando = estado.fase === "calculando";
   const vigente = estado.fase !== "sin_calcular" && estado.huella === huellaActual;
@@ -67,14 +73,14 @@ export function PanelResultado({
         aria-disabled={calculando || motivoSinCalculo !== null}
         aria-describedby={motivoSinCalculo !== null ? "motivo-sin-calculo" : undefined}
       >
-        {calculando ? "Calculando…" : "Calcular"}
+        {calculando ? "Calculando…" : textoCalcular}
       </Boton>
       {motivoSinCalculo !== null ? (
         <Aviso tono="info" titulo="Calcular no está disponible para su función" id="motivo-sin-calculo">
           <p>{motivoSinCalculo}</p>
         </Aviso>
       ) : (
-        <p className="ayuda">El cálculo lo hace el servidor con los catálogos vigentes.</p>
+        <p className="ayuda">{ayudaCalcular}</p>
       )}
 
       {incompleta ? (
@@ -96,16 +102,16 @@ export function PanelResultado({
       <div className="resultado-vivo" aria-live="polite" aria-atomic="true" aria-busy={calculando}>
         {calculando ? <Esqueleto lineas={4} etiqueta="Calculando la cotización…" /> : null}
         {estado.fase === "sin_calcular" && !incompleta ? (
-          <p className="vacio">Sin calcular. Complete la captura y pulse «Calcular».</p>
+          <p className="vacio">Sin calcular. Complete la captura y pulse «{textoCalcular}».</p>
         ) : null}
         {anterior ? (
           <Aviso tono="aviso" titulo="Pendiente de recalcular">
-            <p>La captura cambió después del último cálculo. Pulse «Calcular» para obtener el resultado de la captura actual.</p>
+            <p>La captura cambió después del último cálculo. Pulse «{textoCalcular}» para obtener el resultado de la captura actual.</p>
           </Aviso>
         ) : null}
         {vigente && estado.fase === "cancelado" ? (
           <Aviso tono="aviso" titulo="Cálculo cancelado">
-            <p>La captura cambió mientras se calculaba. Pulse «Calcular» de nuevo.</p>
+            <p>La captura cambió mientras se calculaba. Pulse «{textoCalcular}» de nuevo.</p>
           </Aviso>
         ) : null}
         {vigente && estado.fase === "calculado" ? <Resumen respuesta={estado.respuesta} /> : null}
@@ -161,12 +167,16 @@ export function PanelResultado({
   );
 }
 
-function Resumen({ respuesta }: { respuesta: RespuestaCalculoDemo }) {
+export function Resumen({ respuesta, etiqueta }: { respuesta: RespuestaCalculoDemo; etiqueta?: ReactNode }) {
   const c = respuesta.cotizacion;
   return (
     <div className="resumen">
       <p className="resumen-estado">
-        <Insignia tono="estado">Calculado</Insignia> con catálogos vigentes al {formatearFecha(respuesta.fechaCalculo)}
+        {etiqueta ?? (
+          <>
+            <Insignia tono="estado">Calculado</Insignia> con catálogos vigentes al {formatearFecha(respuesta.fechaCalculo)}
+          </>
+        )}
       </p>
       {c.leyenda ? <p className="leyenda-demo">{c.leyenda}</p> : null}
       <dl className="totales">
@@ -201,7 +211,7 @@ function Resumen({ respuesta }: { respuesta: RespuestaCalculoDemo }) {
   );
 }
 
-function Detalle({ respuesta }: { respuesta: RespuestaCalculoDemo }) {
+export function Detalle({ respuesta }: { respuesta: RespuestaCalculoDemo }) {
   const c = respuesta.cotizacion;
   return (
     <details className="detalle">

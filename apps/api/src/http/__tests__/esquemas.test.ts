@@ -3,6 +3,7 @@
  * decimal y solicitudes derivadas de los fixtures verificados.
  */
 import {
+  EsquemaCapturaBorrador,
   EsquemaConsultaConceptos,
   EsquemaConsultaOpcionesPrecio,
   EsquemaDecimalTexto,
@@ -16,7 +17,7 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { validarEntrada } from "../../modules/calculo/domain/validar-entrada.js";
 import { ESCENARIOS } from "../../modules/calculo/domain/__tests__/fixtures/escenarios.js";
-import { solicitudDemoDesdeEntrada } from "../../pruebas-integracion/solicitudes.js";
+import { borradorDesdeEntrada, solicitudDemoDesdeEntrada } from "../../pruebas-integracion/solicitudes.js";
 
 const valida = (): SolicitudCalculoDemo => solicitudDemoDesdeEntrada(ESCENARIOS[0]!.entrada);
 
@@ -79,6 +80,13 @@ describe("ejemplos de docs/api/ejemplos", () => {
     const ejemplo = JSON.parse(readFileSync(ruta, "utf8"));
     expect(EsquemaSolicitudCalculoDemo.safeParse(ejemplo).success).toBe(true);
     expect(ejemplo).toEqual(solicitudDemoDesdeEntrada(ESCENARIOS.find((e) => e.id === id)!.entrada));
+  });
+
+  it("borrador-r1-faldones-10m.json (módulo 6) es el borrador del fixture R1 y cumple el contrato del borrador", () => {
+    const ruta = join(import.meta.dirname, "..", "..", "..", "..", "..", "docs", "api", "ejemplos", "borrador-r1-faldones-10m.json");
+    const ejemplo = JSON.parse(readFileSync(ruta, "utf8"));
+    expect(EsquemaCapturaBorrador.safeParse(ejemplo).success).toBe(true);
+    expect(ejemplo).toEqual(borradorDesdeEntrada(ESCENARIOS.find((e) => e.id === "GUIA-R1-FALDONES-10M")!.entrada));
   });
 });
 

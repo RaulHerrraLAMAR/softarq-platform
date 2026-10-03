@@ -86,6 +86,13 @@ Se consultó la skill del repositorio con su buscador local (`.claude/skills/ui-
 | Pantalla de acceso (módulo 5) | Tarjeta centrada: correo (`type=email`, `autocomplete=username`) y contraseña (`autocomplete=current-password`) con etiqueta visible; «Mostrar/Ocultar» con nombre accesible que cambia con el estado; pegar permitido (WCAG 2.2 «Accessible Authentication»); errores junto al campo con `aria-describedby`; error del servidor con `role="alert"`; botón «Verificando…» deshabilitado durante el envío; avisos de «Sesión cerrada» y «Su sesión terminó» con icono y texto. Sin credenciales ni acceso automático |
 | Barra de sesión | En el encabezado: nombre, función y organización; «Cerrar sesión» (≥ 44 px, foco claro sobre fondo oscuro). En pantallas estrechas ocupa una fila completa |
 | «Calcular» sin permiso | Deshabilitado con `aria-describedby` hacia el aviso informativo con el motivo (solo presentación; la API responde 403) |
+| Navegación (módulo 6) | Barra bajo el encabezado: Calculadora DEMO · Cotizaciones · Clientes · Proyectos. La sección actual lleva `aria-current="page"`, color de acción, peso 600 y subrayado (no solo color). Al cambiar de pantalla el foco va al título |
+| Listados (módulo 6) | Búsqueda con botón, «Incluir inactivos» y estados vacíos con sugerencia. Tablas que en pantallas estrechas pasan a tarjetas con etiquetas visibles; estado «Activo»/«Inactivo» con texto |
+| Folio | Código del folio y la insignia **WEB DEMO** siempre juntos (no confundir con folios del libro Excel) |
+| Estado del borrador | Banda con `aria-live="polite"`: «Guardado · revisión N · hora · autor» (borde verde) o «Cambios sin guardar.» (borde y fondo de aviso), siempre con texto; completitud de lo guardado y relación con la última versión |
+| Conflicto de edición | Aviso de error con `role="alert"`: quién y cuándo guardó; «Comparar» (lista de diferencias), «Recargar la versión guardada» (con confirmación) y «Guardar mis cambios sobre la revisión N». Nunca se sobrescribe solo |
+| Versión guardada | Panel con motivo opcional y «Calcular y guardar versión»; el resultado mostrado es el que devolvió el servidor («Guardado en COT-…-vN»), con aviso si difiere de la vista previa |
+| Salida con cambios sin guardar | Aviso fijo arriba con «Seguir editando» (foco inicial) y «Salir sin guardar» (peligro) |
 | Resultado | `aria-live="polite"`. Total destacado, subtotal, impuesto con nombre y tasa, fecha de los catálogos, leyenda DEMO, avisos y «Detalle de la cotización» desplegable; en un panel estrecho, la tabla se apila (*container query*) |
 
 **Estados del resultado:**
@@ -115,6 +122,8 @@ Se consultó la skill del repositorio con su buscador local (`.claude/skills/ui-
 - navegación completa con teclado;
 - movimiento reducido.
 
-Las capturas están en `D:\Proyecto_SoftArq\_work\evidencias\modulo4\` y, para la sesión, en `...\modulo5\`.
+Las capturas están en `D:\Proyecto_SoftArq\_work\evidencias\modulo4\`, para la sesión en `...\modulo5\` y para cotizaciones en `...\modulo6\`.
 
 **Módulo 5 (UI UX Pro Max):** como la sesión de Claude Code se abrió en `D:\Proyecto_SoftArq`, la herramienta Skill resolvió el comando personal homónimo; se cargó explícitamente `.claude/skills/ui-ux-pro-max/SKILL.md` (§8 «Forms & Feedback») y se consultó `search.py` (`--domain ux` «login form authentication password visibility error session expired» y `--stack react` «auth context logout clear state»). Se aplicaron: etiquetas visibles, mostrar u ocultar la contraseña, autocompletado y pegado, errores anunciados, estado de envío y contexto memoizado ([`docs/herramientas/skills.md`](../herramientas/skills.md) §4).
+
+**Módulo 6 (UI UX Pro Max):** la sesión de Claude Code seguía abierta en `D:\Proyecto_SoftArq`: `projectSettings:ui-ux-pro-max` respondió «Unknown skill» y el nombre corto resolvió el comando personal. Se leyó explícitamente `.claude/skills/ui-ux-pro-max/SKILL.md` (§8 «Forms & Feedback» y §9 «Navigation Patterns») y se consultó `search.py --domain ux` («unsaved changes conflict autosave optimistic», «data table history versions list search»). Se aplicaron: sección actual marcada sin depender del color, foco al cambiar de ruta, enlaces directos por URL, confirmación antes de descartar cambios, recuperación de errores con «Reintentar», estados vacíos con sugerencia y tablas como tarjetas en móvil.

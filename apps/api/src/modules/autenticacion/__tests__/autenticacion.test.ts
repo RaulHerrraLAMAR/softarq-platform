@@ -146,7 +146,9 @@ describe("tokens opacos y CSRF", () => {
     expect(g.esValido(t, "sesion-1")).toBe(true);
     expect(g.esValido(t, "sesion-2")).toBe(false);
     expect(g.esValido(undefined, "sesion-1")).toBe(false);
-    expect(g.esValido(t.slice(0, -1) + (t.endsWith("A") ? "B" : "A"), "sesion-1")).toBe(false);
+    // Se altera el PRIMER carácter: el último de 43 en base64url solo lleva 4 bits de datos y
+    // cambiarlo (p. ej., «A» → «B») puede producir los mismos bytes.
+    expect(g.esValido((t.startsWith("A") ? "B" : "A") + t.slice(1), "sesion-1")).toBe(false);
     expect(new GeneradorCsrf().esValido(t, "sesion-1")).toBe(false); // otra clave (reinicio)
   });
 });

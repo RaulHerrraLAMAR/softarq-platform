@@ -103,7 +103,16 @@ describe("inicio de sesión", () => {
     expect(s.usuario).toEqual({ nombre: "[DEMO] Preparador AUTH", correo: "preparador.auth@softarq.test" });
     expect(s.organizacion).toEqual({ codigo: ORG.codigo, nombre: ORG.nombre, esDemo: true });
     expect(s.funciones).toEqual(["PREPARADOR"]);
-    expect(s.capacidades).toEqual(["sesion.propia", "catalogos.consultar", "calculo.ejecutar"]);
+    // Matriz vigente (ADR-0007 §2, ampliada en ADR-0008 §3 con clientes y cotizaciones).
+    expect(s.capacidades).toEqual([
+      "sesion.propia",
+      "catalogos.consultar",
+      "calculo.ejecutar",
+      "clientes.consultar",
+      "clientes.gestionar",
+      "cotizaciones.consultar",
+      "cotizaciones.preparar",
+    ]);
     expect(s.inactividadMinutos).toBe(30);
     expect(new Date(s.expiraEn).getTime()).toBe(instante.getTime() + POLITICA_SESION.absolutaMs);
 

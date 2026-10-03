@@ -12,6 +12,7 @@
 | [`adr/0005-api-http-local.md`](adr/0005-api-http-local.md) | API HTTP local con NestJS: contratos Zod, errores, límites, CORS, rate limit, contexto DEMO y fecha. |
 | [`adr/0006-cliente-web-demo.md`](adr/0006-cliente-web-demo.md) | Cliente web DEMO (React + Vite): estado, huella, sin preselección, configuración, pruebas de navegador. |
 | [`adr/0007-autenticacion-sesiones.md`](adr/0007-autenticacion-sesiones.md) | Usuarios DEMO, sesiones opacas en PostgreSQL, Argon2id, cookie, CSRF, límites de acceso, matriz de permisos y aislamiento por organización. |
+| [`adr/0008-cotizaciones-versiones-folios.md`](adr/0008-cotizaciones-versiones-folios.md) | Clientes, proyectos y cotizaciones: folios WEB DEMO, borrador con revisión, versiones inmutables en dos fases, idempotencia, estados y permisos. |
 | [`api/README.md`](api/README.md) | Endpoints, errores, límites y ejemplos `curl` de la API v1 ([`openapi.json`](api/openapi.json)). |
 | [`web/sistema-visual.md`](web/sistema-visual.md) | Sistema visual de la web: tokens, contraste medido, componentes y estados. |
 | [`web/guia-prueba-manual.md`](web/guia-prueba-manual.md) | Guía para probar la web en persona (distinta de las pruebas automatizadas). |

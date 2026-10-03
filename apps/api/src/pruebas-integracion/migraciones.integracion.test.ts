@@ -101,6 +101,61 @@ describe("permisos del rol de la aplicación (softarq_app)", () => {
     });
   });
 
+  describe("cotizaciones (ADR-0008)", () => {
+    it("versiones, bitácora e idempotencia: solo SELECT e INSERT; sin UPDATE ni DELETE", async () => {
+      const filas = await app.$queryRaw<{ tabla: string; privilegio: string }[]>`
+        SELECT table_name AS tabla, privilege_type AS privilegio FROM information_schema.role_table_grants
+         WHERE grantee = 'softarq_app' AND table_name IN ('cotizacion_version', 'bitacora', 'idempotencia')
+         ORDER BY 1, 2`;
+      expect(filas).toEqual(
+        ["bitacora", "cotizacion_version", "idempotencia"].flatMap((tabla) => [
+          { tabla, privilegio: "INSERT" },
+          { tabla, privilegio: "SELECT" },
+        ]),
+      );
+    });
+
+    it("en las demás tablas, UPDATE solo de columnas editables (nunca id, código, folio ni organización)", async () => {
+      const filas = await app.$queryRaw<{ tabla: string; columna: string }[]>`
+        SELECT table_name AS tabla, column_name AS columna FROM information_schema.column_privileges
+         WHERE grantee = 'softarq_app' AND privilege_type = 'UPDATE'
+           AND table_name IN ('cliente', 'proyecto', 'cotizacion', 'cotizacion_borrador', 'contador')
+         ORDER BY 1, 2`;
+      const porTabla = (t: string) => filas.filter((f) => f.tabla === t).map((f) => f.columna);
+      expect(porTabla("cotizacion")).toEqual(["ultima_version"]);
+      expect(porTabla("contador")).toEqual(["ultimo"]);
+      expect(porTabla("cotizacion_borrador")).toEqual(["actualizado_en", "actualizado_por", "captura", "revision"]);
+      expect(porTabla("cliente")).toEqual(["activo", "modificado_en", "modificado_por", "nombre", "revision"]);
+      expect(porTabla("proyecto")).not.toContain("cliente_id");
+      for (const t of ["cliente", "proyecto", "cotizacion"]) {
+        for (const prohibida of ["id", "organizacion_id", "codigo", "folio", "creado_por", "creado_en"]) {
+          expect(porTabla(t), `${t}.${prohibida}`).not.toContain(prohibida);
+        }
+      }
+    });
+
+    it("las funciones de escritura no se pueden ejecutar desde PUBLIC y son SECURITY INVOKER", async () => {
+      const filas = await app.$queryRaw<{ nombre: string; definer: boolean; publico: boolean; app: boolean }[]>`
+        SELECT p.proname AS nombre, p.prosecdef AS definer,
+               has_function_privilege('public', p.oid, 'EXECUTE') AS publico,
+               has_function_privilege('softarq_app', p.oid, 'EXECUTE') AS app
+          FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
+         WHERE n.nspname = 'public' AND p.proname LIKE 'softarq\\_%' ORDER BY 1`;
+      expect(filas.map((f) => f.nombre)).toEqual([
+        "softarq_crear_cliente",
+        "softarq_crear_cotizacion",
+        "softarq_crear_proyecto",
+        "softarq_crear_version",
+        "softarq_editar_cliente",
+        "softarq_editar_proyecto",
+        "softarq_guardar_borrador",
+        "softarq_registrar_idempotencia",
+        "softarq_siguiente",
+      ]);
+      for (const f of filas) expect(f, f.nombre).toMatchObject({ definer: false, publico: false, app: true });
+    });
+  });
+
   it("no tiene atributos privilegiados", async () => {
     const filas = await app.$queryRaw<{ rolsuper: boolean; rolcreatedb: boolean; rolcreaterole: boolean; rolbypassrls: boolean }[]>`
       SELECT rolsuper, rolcreatedb, rolcreaterole, rolbypassrls FROM pg_roles WHERE rolname = current_user`;

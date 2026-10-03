@@ -12,6 +12,7 @@ import type { RespuestaSesion } from "@softarq/contracts";
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { crearClienteApi, type FalloApi } from "../api/cliente.ts";
 import { crearServicios, type ServiciosApi } from "../api/servicios.ts";
+import { crearServiciosCotizaciones, type ServiciosCotizaciones } from "../api/servicios-cotizaciones.ts";
 import { crearServiciosSesion, type ServiciosSesion } from "./servicios.ts";
 
 export type MotivoAcceso = null | "cerrada" | "vencida";
@@ -28,6 +29,8 @@ export interface ValorSesion {
   estado: EstadoSesion;
   /** Servicios de catálogo y cálculo (mismo cliente, con cookie y CSRF). */
   servicios: ServiciosApi;
+  /** Clientes, proyectos y cotizaciones (mismo cliente). */
+  cotizaciones: ServiciosCotizaciones;
   iniciar(correo: string, contrasena: string): Promise<ResultadoInicio>;
   cerrar(): Promise<ResultadoInicio>;
   reintentarVerificacion(): void;
@@ -53,15 +56,20 @@ export function ProveedorSesion({ urlApi, children, hacerFetch }: PropsProveedor
   const csrf = useRef<string | null>(null);
   const generacion = useRef(0);
   const vencer = useRef<() => void>(() => {});
-  const renovarCsrf = useRef<() => void>(() => {});
+  const renovarCsrf = useRef<() => Promise<boolean>>(async () => false);
 
-  const { cliente, servicios, sesion } = useMemo(() => {
+  const { cliente, servicios, cotizaciones, sesion } = useMemo(() => {
     const cliente = crearClienteApi(urlApi, hacerFetch, {
       csrf: () => csrf.current,
       alNoAutenticado: () => vencer.current(),
-      alCsrfNoValido: () => renovarCsrf.current(),
+      renovarCsrf: () => renovarCsrf.current(),
     });
-    return { cliente, servicios: crearServicios(cliente), sesion: crearServiciosSesion(cliente) as ServiciosSesion };
+    return {
+      cliente,
+      servicios: crearServicios(cliente),
+      cotizaciones: crearServiciosCotizaciones(cliente),
+      sesion: crearServiciosSesion(cliente) as ServiciosSesion,
+    };
   }, [urlApi, hacerFetch]);
 
   /** Olvida todo lo de la identidad anterior. */
@@ -79,10 +87,12 @@ export function ProveedorSesion({ urlApi, children, hacerFetch }: PropsProveedor
     setEstado({ fase: "anonimo", motivo: "vencida" });
   };
 
-  renovarCsrf.current = () => {
-    void sesion.consultar().then((r) => {
-      if (r.ok) csrf.current = r.datos.csrfToken;
-    });
+  /** Token CSRF nuevo de la sesión vigente (p. ej., tras reiniciarse la API); solo en memoria. */
+  renovarCsrf.current = async () => {
+    if (estadoActual.current.fase !== "autenticado") return false;
+    const r = await sesion.consultar();
+    if (r.ok) csrf.current = r.datos.csrfToken;
+    return r.ok;
   };
 
   const [intento, setIntento] = useState(0);
@@ -132,8 +142,8 @@ export function ProveedorSesion({ urlApi, children, hacerFetch }: PropsProveedor
   }, [cliente, sesion, olvidar]);
 
   const valor = useMemo<ValorSesion>(
-    () => ({ estado, servicios, iniciar, cerrar, reintentarVerificacion: () => setIntento((n) => n + 1) }),
-    [estado, servicios, iniciar, cerrar],
+    () => ({ estado, servicios, cotizaciones, iniciar, cerrar, reintentarVerificacion: () => setIntento((n) => n + 1) }),
+    [estado, servicios, cotizaciones, iniciar, cerrar],
   );
   return <ContextoSesion.Provider value={valor}>{children}</ContextoSesion.Provider>;
 }

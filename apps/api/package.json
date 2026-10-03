@@ -1,8 +1,8 @@
 {
   "name": "@softarq/api",
-  "version": "0.4.0",
+  "version": "0.5.0",
   "private": true,
-  "description": "API de SoftArq (NestJS 12 + TypeScript, PostgreSQL): calculo, catalogos DEMO, sesiones y API HTTP local.",
+  "description": "API de SoftArq (NestJS 12 + TypeScript, PostgreSQL): calculo, catalogos DEMO, sesiones, cotizaciones con versiones y API HTTP local.",
   "type": "module",
   "scripts": {
     "prisma:generar": "node scripts/db/prisma-generar.mjs",
@@ -17,6 +17,7 @@
     "db:cargar-demo": "pnpm run build && node dist/modules/catalogos/demo/ejecutar-carga-demo.js",
     "db:cargar-usuarios-demo": "pnpm run build && node dist/modules/autenticacion/demo/ejecutar-carga-usuarios-demo.js",
     "db:purgar-sesiones": "node scripts/db/purgar-sesiones.mjs",
+    "db:purgar-idempotencia": "node scripts/db/purgar-idempotencia.mjs",
     "start": "node dist/main.js",
     "openapi:generar": "pnpm run build && node dist/http/generar-openapi.js",
     "build:e2e": "pnpm run prisma:generar && tsc -p tsconfig.e2e.json",

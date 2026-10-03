@@ -1,6 +1,6 @@
 {
   "name": "@softarq/contracts",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "private": true,
   "description": "Contratos compartidos (tipos y constantes de la API). Sin logica de negocio.",
   "type": "module",

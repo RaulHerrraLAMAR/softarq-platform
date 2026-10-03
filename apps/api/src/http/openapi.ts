@@ -4,6 +4,27 @@
  * documento; una prueba lo comprueba.
  */
 import {
+  EsquemaBorrador,
+  EsquemaCapturaBorrador,
+  EsquemaCliente,
+  EsquemaConsultaClientes,
+  EsquemaConsultaCotizaciones,
+  EsquemaConsultaProyectos,
+  EsquemaDetalleCliente,
+  EsquemaDetalleCotizacion,
+  EsquemaEdicionCliente,
+  EsquemaEdicionProyecto,
+  EsquemaProyecto,
+  EsquemaRespuestaBorradorGuardado,
+  EsquemaRespuestaClientes,
+  EsquemaRespuestaCotizaciones,
+  EsquemaRespuestaProyectos,
+  EsquemaSolicitudBorrador,
+  EsquemaSolicitudCliente,
+  EsquemaSolicitudCotizacion,
+  EsquemaSolicitudProyecto,
+  EsquemaSolicitudVersion,
+  EsquemaVersion,
   EsquemaConsultaConceptos,
   EsquemaConsultaOpcionesPrecio,
   EsquemaConsultaTiposAdicional,
@@ -37,10 +58,11 @@ const DESCRIPCION_ERROR: Record<number, string> = {
   400: "SOLICITUD_INVALIDA: no cumple el contrato (campos con su ruta) o JSON mal formado.",
   401: "NO_AUTENTICADO (sin cookie de sesión) o SESION_NO_VALIDA (vencida, revocada o desconocida; se borra la cookie).",
   403: "SIN_PERMISO (la función no concede la capacidad), CSRF_NO_VALIDO u ORIGEN_NO_PERMITIDO.",
-  404: "NO_ENCONTRADO: ruta o códigos inexistentes en la organización.",
+  404: "NO_ENCONTRADO: ruta, id o códigos inexistentes en la organización (un id de otra organización responde igual).",
+  409: "CONFLICTO_EDICION (revisión obsoleta; `actual` trae el estado vigente) o BORRADOR_DESACTUALIZADO (el borrador cambió; no se guardó ninguna versión).",
   413: "CUERPO_DEMASIADO_GRANDE.",
   415: "TIPO_DE_CONTENIDO_NO_ADMITIDO: el cuerpo debe ser application/json.",
-  422: "CALCULO_BLOQUEADO: bloqueos de negocio (códigos BL), sin importes.",
+  422: "CALCULO_BLOQUEADO (códigos BL, sin importes), CAPTURA_INCOMPLETA (campos pendientes), REGISTRO_INACTIVO, IDEMPOTENCIA_CONFLICTO o IDEMPOTENCIA_CADUCADA.",
   429: "DEMASIADAS_SOLICITUDES (cabecera Retry-After).",
   503: "SERVICIO_NO_DISPONIBLE: PostgreSQL no disponible.",
   500: "ERROR_INTERNO.",
@@ -61,6 +83,24 @@ const ok = (ref: string, descripcion: string) => ({
   content: { "application/json": { schema: { $ref: `#/components/schemas/${ref}` } } },
 });
 
+const cuerpo = (ref: string) => ({
+  required: true,
+  content: { "application/json": { schema: { $ref: `#/components/schemas/${ref}` } } },
+});
+
+const PARAMETRO_ID = { name: "id", in: "path", required: true, schema: { type: "string", format: "uuid" } };
+const PARAMETRO_NUMERO = { name: "numero", in: "path", required: true, schema: { type: "integer", minimum: 1 } };
+const CABECERA_IDEMPOTENCIA = {
+  name: "Idempotency-Key",
+  in: "header",
+  required: true,
+  description:
+    "UUID de la intención (obligatorio en las altas). Repetirlo con el mismo contenido reproduce el resultado " +
+    "(cabecera de respuesta Idempotent-Replayed: true); con otra operación u otro contenido responde 422. Vigencia: 24 h.",
+  schema: { type: "string", format: "uuid" },
+};
+const CON_EFECTOS = [{ cookieSesion: [], tokenCsrf: [] }];
+
 export function construirDocumentoOpenApi(): Record<string, unknown> {
   return {
     openapi: "3.1.0",
@@ -70,8 +110,10 @@ export function construirDocumentoOpenApi(): Record<string, unknown> {
       description:
         "API local de SoftArq: catálogos DEMO y cálculo de cotizaciones con datos de PostgreSQL. " +
         "Solo escucha en 127.0.0.1. Autenticación con sesión opaca en una cookie HttpOnly (`softarq_sesion`); " +
-        "la organización, la identidad y las funciones salen de la sesión (ADR-0007). Las solicitudes POST y DELETE " +
-        "exigen la cabecera X-CSRF-Token de la sesión y un Origin permitido. " +
+        "la organización, la identidad y las funciones salen de la sesión (ADR-0007). Las solicitudes POST, PUT, PATCH y DELETE " +
+        "exigen la cabecera X-CSRF-Token de la sesión y un Origin permitido. Clientes, proyectos y cotizaciones con folio " +
+        "WEB DEMO, borrador con revisión y versiones inmutables calculadas en el servidor (ADR-0008); las altas exigen " +
+        "Idempotency-Key. " +
         "Los importes y cantidades viajan como texto decimal. Todos los datos son DEMO y no tienen validez comercial.",
     },
     servers: [{ url: "http://localhost:3000", description: "API local (escucha en 127.0.0.1; el navegador usa localhost)." }],
@@ -153,6 +195,119 @@ export function construirDocumentoOpenApi(): Record<string, unknown> {
           },
         },
       },
+      "/api/v1/clientes": {
+        get: {
+          summary: "Clientes de la organización (activos, o todos con incluirInactivos=true). Capacidad clientes.consultar",
+          parameters: parametrosQuery(EsquemaConsultaClientes),
+          responses: { "200": ok("RespuestaClientes", "Clientes."), ...errores(400, 401, 403, 429, 503, 500) },
+        },
+        post: {
+          summary: "Crea un cliente con código CLI-NNNNN (capacidad clientes.gestionar: Preparador o Adm. catálogo)",
+          security: CON_EFECTOS,
+          parameters: [CABECERA_IDEMPOTENCIA],
+          requestBody: cuerpo("SolicitudCliente"),
+          responses: { "201": ok("Cliente", "Cliente creado (o reproducido)."), ...errores(400, 401, 403, 413, 415, 422, 429, 503, 500) },
+        },
+      },
+      "/api/v1/clientes/{id}": {
+        get: {
+          summary: "Cliente, sus proyectos y número de cotizaciones activas",
+          parameters: [PARAMETRO_ID],
+          responses: { "200": ok("DetalleCliente", "Cliente."), ...errores(401, 403, 404, 429, 503, 500) },
+        },
+        patch: {
+          summary: "Edita, desactiva o reactiva un cliente (con la revisión leída; nunca se borra)",
+          security: CON_EFECTOS,
+          parameters: [PARAMETRO_ID],
+          requestBody: cuerpo("EdicionCliente"),
+          responses: { "200": ok("Cliente", "Cliente actualizado."), ...errores(400, 401, 403, 404, 409, 413, 415, 429, 503, 500) },
+        },
+      },
+      "/api/v1/proyectos": {
+        get: {
+          summary: "Proyectos (activos con cliente activo, o todos con incluirInactivos=true)",
+          parameters: parametrosQuery(EsquemaConsultaProyectos),
+          responses: { "200": ok("RespuestaProyectos", "Proyectos."), ...errores(400, 401, 403, 429, 503, 500) },
+        },
+        post: {
+          summary: "Crea un proyecto PRY-NNNNN de un cliente activo (capacidad clientes.gestionar)",
+          security: CON_EFECTOS,
+          parameters: [CABECERA_IDEMPOTENCIA],
+          requestBody: cuerpo("SolicitudProyecto"),
+          responses: { "201": ok("Proyecto", "Proyecto creado (o reproducido)."), ...errores(400, 401, 403, 404, 413, 415, 422, 429, 503, 500) },
+        },
+      },
+      "/api/v1/proyectos/{id}": {
+        get: {
+          summary: "Proyecto",
+          parameters: [PARAMETRO_ID],
+          responses: { "200": ok("Proyecto", "Proyecto."), ...errores(401, 403, 404, 429, 503, 500) },
+        },
+        patch: {
+          summary: "Edita, desactiva o reactiva un proyecto (con la revisión leída; el cliente no cambia)",
+          security: CON_EFECTOS,
+          parameters: [PARAMETRO_ID],
+          requestBody: cuerpo("EdicionProyecto"),
+          responses: { "200": ok("Proyecto", "Proyecto actualizado."), ...errores(400, 401, 403, 404, 409, 413, 415, 429, 503, 500) },
+        },
+      },
+      "/api/v1/cotizaciones": {
+        get: {
+          summary: "Cotizaciones con folio WEB DEMO (capacidad cotizaciones.consultar)",
+          parameters: parametrosQuery(EsquemaConsultaCotizaciones),
+          responses: { "200": ok("RespuestaCotizaciones", "Cotizaciones."), ...errores(400, 401, 403, 429, 503, 500) },
+        },
+        post: {
+          summary: "Crea una cotización: reserva el folio COT-AAAA-NNNNN y un borrador (capacidad cotizaciones.preparar: Preparador)",
+          security: CON_EFECTOS,
+          parameters: [CABECERA_IDEMPOTENCIA],
+          requestBody: cuerpo("SolicitudCotizacion"),
+          responses: {
+            "201": ok("DetalleCotizacion", "Cotización creada (o reproducida)."),
+            ...errores(400, 401, 403, 404, 413, 415, 422, 429, 503, 500),
+          },
+        },
+      },
+      "/api/v1/cotizaciones/{id}": {
+        get: {
+          summary: "Cotización, borrador (revisión, autor y completitud), versiones y eventos recientes",
+          parameters: [PARAMETRO_ID],
+          responses: { "200": ok("DetalleCotizacion", "Cotización."), ...errores(401, 403, 404, 429, 503, 500) },
+        },
+      },
+      "/api/v1/cotizaciones/{id}/borrador": {
+        put: {
+          summary: "Guarda la captura en borrador si sigue en la revisión indicada (puede estar incompleta; nunca tiene total)",
+          security: CON_EFECTOS,
+          parameters: [PARAMETRO_ID],
+          requestBody: cuerpo("SolicitudBorrador"),
+          responses: {
+            "200": ok("RespuestaBorradorGuardado", "Borrador guardado."),
+            ...errores(400, 401, 403, 404, 409, 413, 415, 429, 503, 500),
+          },
+        },
+      },
+      "/api/v1/cotizaciones/{id}/versiones": {
+        post: {
+          summary:
+            "Calcula en el servidor con el borrador guardado y las condiciones vigentes, y guarda una versión inmutable " +
+            "(capacidades cotizaciones.preparar y calculo.ejecutar: Preparador; organización DEMO)",
+          security: CON_EFECTOS,
+          parameters: [PARAMETRO_ID, CABECERA_IDEMPOTENCIA],
+          requestBody: cuerpo("SolicitudVersion"),
+          responses: {
+            "201": ok("Version", "Versión guardada (o reproducida): lo almacenado, solo la vista comercial."),
+            ...errores(400, 401, 403, 404, 409, 413, 415, 422, 429, 503, 500),
+          },
+        },
+      },
+      "/api/v1/cotizaciones/{id}/versiones/{numero}": {
+        get: {
+          summary: "Versión guardada tal como se almacenó (no se recalcula)",
+          parameters: [PARAMETRO_ID, PARAMETRO_NUMERO],
+          responses: { "200": ok("Version", "Versión."), ...errores(401, 403, 404, 429, 503, 500) },
+        },
+      },
       "/api/v1/openapi.json": {
         get: { summary: "Esta especificación", security: [], responses: { "200": { description: "Documento OpenAPI 3.1." } } },
       },
@@ -183,6 +338,24 @@ export function construirDocumentoOpenApi(): Record<string, unknown> {
         RespuestaTiposAdicional: json(EsquemaRespuestaTiposAdicional, "output"),
         RespuestaCalculoDemo: json(EsquemaRespuestaCalculoDemo, "output"),
         RespuestaError: json(EsquemaRespuestaError, "output"),
+        CapturaBorrador: json(EsquemaCapturaBorrador, "output"),
+        SolicitudCliente: json(EsquemaSolicitudCliente, "input"),
+        EdicionCliente: json(EsquemaEdicionCliente, "input"),
+        Cliente: json(EsquemaCliente, "output"),
+        RespuestaClientes: json(EsquemaRespuestaClientes, "output"),
+        DetalleCliente: json(EsquemaDetalleCliente, "output"),
+        SolicitudProyecto: json(EsquemaSolicitudProyecto, "input"),
+        EdicionProyecto: json(EsquemaEdicionProyecto, "input"),
+        Proyecto: json(EsquemaProyecto, "output"),
+        RespuestaProyectos: json(EsquemaRespuestaProyectos, "output"),
+        SolicitudCotizacion: json(EsquemaSolicitudCotizacion, "input"),
+        RespuestaCotizaciones: json(EsquemaRespuestaCotizaciones, "output"),
+        DetalleCotizacion: json(EsquemaDetalleCotizacion, "output"),
+        Borrador: json(EsquemaBorrador, "output"),
+        SolicitudBorrador: json(EsquemaSolicitudBorrador, "input"),
+        RespuestaBorradorGuardado: json(EsquemaRespuestaBorradorGuardado, "output"),
+        SolicitudVersion: json(EsquemaSolicitudVersion, "input"),
+        Version: json(EsquemaVersion, "output"),
       },
     },
   };

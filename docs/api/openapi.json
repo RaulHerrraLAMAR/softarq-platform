@@ -3,7 +3,7 @@
   "info": {
     "title": "SoftArq API (DEMO local)",
     "version": "1.0.0",
-    "description": "API local de SoftArq: catálogos DEMO y cálculo de cotizaciones con datos de PostgreSQL. Solo escucha en 127.0.0.1. Autenticación con sesión opaca en una cookie HttpOnly (`softarq_sesion`); la organización, la identidad y las funciones salen de la sesión (ADR-0007). Las solicitudes POST y DELETE exigen la cabecera X-CSRF-Token de la sesión y un Origin permitido. Los importes y cantidades viajan como texto decimal. Todos los datos son DEMO y no tienen validez comercial."
+    "description": "API local de SoftArq: catálogos DEMO y cálculo de cotizaciones con datos de PostgreSQL. Solo escucha en 127.0.0.1. Autenticación con sesión opaca en una cookie HttpOnly (`softarq_sesion`); la organización, la identidad y las funciones salen de la sesión (ADR-0007). Las solicitudes POST, PUT, PATCH y DELETE exigen la cabecera X-CSRF-Token de la sesión y un Origin permitido. Clientes, proyectos y cotizaciones con folio WEB DEMO, borrador con revisión y versiones inmutables calculadas en el servidor (ADR-0008); las altas exigen Idempotency-Key. Los importes y cantidades viajan como texto decimal. Todos los datos son DEMO y no tienen validez comercial."
   },
   "servers": [
     {
@@ -488,7 +488,7 @@
             }
           },
           "404": {
-            "description": "NO_ENCONTRADO: ruta o códigos inexistentes en la organización.",
+            "description": "NO_ENCONTRADO: ruta, id o códigos inexistentes en la organización (un id de otra organización responde igual).",
             "content": {
               "application/json": {
                 "schema": {
@@ -679,7 +679,7 @@
             }
           },
           "404": {
-            "description": "NO_ENCONTRADO: ruta o códigos inexistentes en la organización.",
+            "description": "NO_ENCONTRADO: ruta, id o códigos inexistentes en la organización (un id de otra organización responde igual).",
             "content": {
               "application/json": {
                 "schema": {
@@ -709,7 +709,1727 @@
             }
           },
           "422": {
-            "description": "CALCULO_BLOQUEADO: bloqueos de negocio (códigos BL), sin importes.",
+            "description": "CALCULO_BLOQUEADO (códigos BL, sin importes), CAPTURA_INCOMPLETA (campos pendientes), REGISTRO_INACTIVO, IDEMPOTENCIA_CONFLICTO o IDEMPOTENCIA_CADUCADA.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "DEMASIADAS_SOLICITUDES (cabecera Retry-After).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "ERROR_INTERNO.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "SERVICIO_NO_DISPONIBLE: PostgreSQL no disponible.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/clientes": {
+      "get": {
+        "summary": "Clientes de la organización (activos, o todos con incluirInactivos=true). Capacidad clientes.consultar",
+        "parameters": [
+          {
+            "name": "buscar",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 60
+            }
+          },
+          {
+            "name": "incluirInactivos",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "true",
+                "false"
+              ]
+            }
+          },
+          {
+            "name": "limite",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d{1,3}$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Clientes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaClientes"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "SOLICITUD_INVALIDA: no cumple el contrato (campos con su ruta) o JSON mal formado.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "NO_AUTENTICADO (sin cookie de sesión) o SESION_NO_VALIDA (vencida, revocada o desconocida; se borra la cookie).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "SIN_PERMISO (la función no concede la capacidad), CSRF_NO_VALIDO u ORIGEN_NO_PERMITIDO.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "DEMASIADAS_SOLICITUDES (cabecera Retry-After).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "ERROR_INTERNO.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "SERVICIO_NO_DISPONIBLE: PostgreSQL no disponible.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "summary": "Crea un cliente con código CLI-NNNNN (capacidad clientes.gestionar: Preparador o Adm. catálogo)",
+        "security": [
+          {
+            "cookieSesion": [],
+            "tokenCsrf": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "description": "UUID de la intención (obligatorio en las altas). Repetirlo con el mismo contenido reproduce el resultado (cabecera de respuesta Idempotent-Replayed: true); con otra operación u otro contenido responde 422. Vigencia: 24 h.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SolicitudCliente"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Cliente creado (o reproducido).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Cliente"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "SOLICITUD_INVALIDA: no cumple el contrato (campos con su ruta) o JSON mal formado.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "NO_AUTENTICADO (sin cookie de sesión) o SESION_NO_VALIDA (vencida, revocada o desconocida; se borra la cookie).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "SIN_PERMISO (la función no concede la capacidad), CSRF_NO_VALIDO u ORIGEN_NO_PERMITIDO.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "CUERPO_DEMASIADO_GRANDE.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "TIPO_DE_CONTENIDO_NO_ADMITIDO: el cuerpo debe ser application/json.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "CALCULO_BLOQUEADO (códigos BL, sin importes), CAPTURA_INCOMPLETA (campos pendientes), REGISTRO_INACTIVO, IDEMPOTENCIA_CONFLICTO o IDEMPOTENCIA_CADUCADA.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "DEMASIADAS_SOLICITUDES (cabecera Retry-After).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "ERROR_INTERNO.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "SERVICIO_NO_DISPONIBLE: PostgreSQL no disponible.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/clientes/{id}": {
+      "get": {
+        "summary": "Cliente, sus proyectos y número de cotizaciones activas",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Cliente.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DetalleCliente"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "NO_AUTENTICADO (sin cookie de sesión) o SESION_NO_VALIDA (vencida, revocada o desconocida; se borra la cookie).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "SIN_PERMISO (la función no concede la capacidad), CSRF_NO_VALIDO u ORIGEN_NO_PERMITIDO.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "NO_ENCONTRADO: ruta, id o códigos inexistentes en la organización (un id de otra organización responde igual).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "DEMASIADAS_SOLICITUDES (cabecera Retry-After).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "ERROR_INTERNO.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "SERVICIO_NO_DISPONIBLE: PostgreSQL no disponible.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "summary": "Edita, desactiva o reactiva un cliente (con la revisión leída; nunca se borra)",
+        "security": [
+          {
+            "cookieSesion": [],
+            "tokenCsrf": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EdicionCliente"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Cliente actualizado.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Cliente"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "SOLICITUD_INVALIDA: no cumple el contrato (campos con su ruta) o JSON mal formado.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "NO_AUTENTICADO (sin cookie de sesión) o SESION_NO_VALIDA (vencida, revocada o desconocida; se borra la cookie).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "SIN_PERMISO (la función no concede la capacidad), CSRF_NO_VALIDO u ORIGEN_NO_PERMITIDO.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "NO_ENCONTRADO: ruta, id o códigos inexistentes en la organización (un id de otra organización responde igual).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "CONFLICTO_EDICION (revisión obsoleta; `actual` trae el estado vigente) o BORRADOR_DESACTUALIZADO (el borrador cambió; no se guardó ninguna versión).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "CUERPO_DEMASIADO_GRANDE.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "TIPO_DE_CONTENIDO_NO_ADMITIDO: el cuerpo debe ser application/json.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "DEMASIADAS_SOLICITUDES (cabecera Retry-After).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "ERROR_INTERNO.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "SERVICIO_NO_DISPONIBLE: PostgreSQL no disponible.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/proyectos": {
+      "get": {
+        "summary": "Proyectos (activos con cliente activo, o todos con incluirInactivos=true)",
+        "parameters": [
+          {
+            "name": "clienteId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            }
+          },
+          {
+            "name": "buscar",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 60
+            }
+          },
+          {
+            "name": "incluirInactivos",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "true",
+                "false"
+              ]
+            }
+          },
+          {
+            "name": "limite",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d{1,3}$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Proyectos.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaProyectos"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "SOLICITUD_INVALIDA: no cumple el contrato (campos con su ruta) o JSON mal formado.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "NO_AUTENTICADO (sin cookie de sesión) o SESION_NO_VALIDA (vencida, revocada o desconocida; se borra la cookie).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "SIN_PERMISO (la función no concede la capacidad), CSRF_NO_VALIDO u ORIGEN_NO_PERMITIDO.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "DEMASIADAS_SOLICITUDES (cabecera Retry-After).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "ERROR_INTERNO.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "SERVICIO_NO_DISPONIBLE: PostgreSQL no disponible.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "summary": "Crea un proyecto PRY-NNNNN de un cliente activo (capacidad clientes.gestionar)",
+        "security": [
+          {
+            "cookieSesion": [],
+            "tokenCsrf": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "description": "UUID de la intención (obligatorio en las altas). Repetirlo con el mismo contenido reproduce el resultado (cabecera de respuesta Idempotent-Replayed: true); con otra operación u otro contenido responde 422. Vigencia: 24 h.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SolicitudProyecto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Proyecto creado (o reproducido).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Proyecto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "SOLICITUD_INVALIDA: no cumple el contrato (campos con su ruta) o JSON mal formado.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "NO_AUTENTICADO (sin cookie de sesión) o SESION_NO_VALIDA (vencida, revocada o desconocida; se borra la cookie).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "SIN_PERMISO (la función no concede la capacidad), CSRF_NO_VALIDO u ORIGEN_NO_PERMITIDO.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "NO_ENCONTRADO: ruta, id o códigos inexistentes en la organización (un id de otra organización responde igual).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "CUERPO_DEMASIADO_GRANDE.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "TIPO_DE_CONTENIDO_NO_ADMITIDO: el cuerpo debe ser application/json.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "CALCULO_BLOQUEADO (códigos BL, sin importes), CAPTURA_INCOMPLETA (campos pendientes), REGISTRO_INACTIVO, IDEMPOTENCIA_CONFLICTO o IDEMPOTENCIA_CADUCADA.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "DEMASIADAS_SOLICITUDES (cabecera Retry-After).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "ERROR_INTERNO.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "SERVICIO_NO_DISPONIBLE: PostgreSQL no disponible.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/proyectos/{id}": {
+      "get": {
+        "summary": "Proyecto",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Proyecto.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Proyecto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "NO_AUTENTICADO (sin cookie de sesión) o SESION_NO_VALIDA (vencida, revocada o desconocida; se borra la cookie).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "SIN_PERMISO (la función no concede la capacidad), CSRF_NO_VALIDO u ORIGEN_NO_PERMITIDO.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "NO_ENCONTRADO: ruta, id o códigos inexistentes en la organización (un id de otra organización responde igual).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "DEMASIADAS_SOLICITUDES (cabecera Retry-After).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "ERROR_INTERNO.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "SERVICIO_NO_DISPONIBLE: PostgreSQL no disponible.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "summary": "Edita, desactiva o reactiva un proyecto (con la revisión leída; el cliente no cambia)",
+        "security": [
+          {
+            "cookieSesion": [],
+            "tokenCsrf": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EdicionProyecto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Proyecto actualizado.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Proyecto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "SOLICITUD_INVALIDA: no cumple el contrato (campos con su ruta) o JSON mal formado.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "NO_AUTENTICADO (sin cookie de sesión) o SESION_NO_VALIDA (vencida, revocada o desconocida; se borra la cookie).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "SIN_PERMISO (la función no concede la capacidad), CSRF_NO_VALIDO u ORIGEN_NO_PERMITIDO.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "NO_ENCONTRADO: ruta, id o códigos inexistentes en la organización (un id de otra organización responde igual).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "CONFLICTO_EDICION (revisión obsoleta; `actual` trae el estado vigente) o BORRADOR_DESACTUALIZADO (el borrador cambió; no se guardó ninguna versión).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "CUERPO_DEMASIADO_GRANDE.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "TIPO_DE_CONTENIDO_NO_ADMITIDO: el cuerpo debe ser application/json.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "DEMASIADAS_SOLICITUDES (cabecera Retry-After).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "ERROR_INTERNO.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "SERVICIO_NO_DISPONIBLE: PostgreSQL no disponible.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/cotizaciones": {
+      "get": {
+        "summary": "Cotizaciones con folio WEB DEMO (capacidad cotizaciones.consultar)",
+        "parameters": [
+          {
+            "name": "buscar",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 60
+            }
+          },
+          {
+            "name": "clienteId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            }
+          },
+          {
+            "name": "proyectoId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            }
+          },
+          {
+            "name": "limite",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d{1,3}$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Cotizaciones.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaCotizaciones"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "SOLICITUD_INVALIDA: no cumple el contrato (campos con su ruta) o JSON mal formado.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "NO_AUTENTICADO (sin cookie de sesión) o SESION_NO_VALIDA (vencida, revocada o desconocida; se borra la cookie).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "SIN_PERMISO (la función no concede la capacidad), CSRF_NO_VALIDO u ORIGEN_NO_PERMITIDO.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "DEMASIADAS_SOLICITUDES (cabecera Retry-After).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "ERROR_INTERNO.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "SERVICIO_NO_DISPONIBLE: PostgreSQL no disponible.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "summary": "Crea una cotización: reserva el folio COT-AAAA-NNNNN y un borrador (capacidad cotizaciones.preparar: Preparador)",
+        "security": [
+          {
+            "cookieSesion": [],
+            "tokenCsrf": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "description": "UUID de la intención (obligatorio en las altas). Repetirlo con el mismo contenido reproduce el resultado (cabecera de respuesta Idempotent-Replayed: true); con otra operación u otro contenido responde 422. Vigencia: 24 h.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SolicitudCotizacion"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Cotización creada (o reproducida).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DetalleCotizacion"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "SOLICITUD_INVALIDA: no cumple el contrato (campos con su ruta) o JSON mal formado.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "NO_AUTENTICADO (sin cookie de sesión) o SESION_NO_VALIDA (vencida, revocada o desconocida; se borra la cookie).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "SIN_PERMISO (la función no concede la capacidad), CSRF_NO_VALIDO u ORIGEN_NO_PERMITIDO.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "NO_ENCONTRADO: ruta, id o códigos inexistentes en la organización (un id de otra organización responde igual).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "CUERPO_DEMASIADO_GRANDE.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "TIPO_DE_CONTENIDO_NO_ADMITIDO: el cuerpo debe ser application/json.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "CALCULO_BLOQUEADO (códigos BL, sin importes), CAPTURA_INCOMPLETA (campos pendientes), REGISTRO_INACTIVO, IDEMPOTENCIA_CONFLICTO o IDEMPOTENCIA_CADUCADA.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "DEMASIADAS_SOLICITUDES (cabecera Retry-After).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "ERROR_INTERNO.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "SERVICIO_NO_DISPONIBLE: PostgreSQL no disponible.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/cotizaciones/{id}": {
+      "get": {
+        "summary": "Cotización, borrador (revisión, autor y completitud), versiones y eventos recientes",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Cotización.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DetalleCotizacion"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "NO_AUTENTICADO (sin cookie de sesión) o SESION_NO_VALIDA (vencida, revocada o desconocida; se borra la cookie).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "SIN_PERMISO (la función no concede la capacidad), CSRF_NO_VALIDO u ORIGEN_NO_PERMITIDO.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "NO_ENCONTRADO: ruta, id o códigos inexistentes en la organización (un id de otra organización responde igual).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "DEMASIADAS_SOLICITUDES (cabecera Retry-After).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "ERROR_INTERNO.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "SERVICIO_NO_DISPONIBLE: PostgreSQL no disponible.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/cotizaciones/{id}/borrador": {
+      "put": {
+        "summary": "Guarda la captura en borrador si sigue en la revisión indicada (puede estar incompleta; nunca tiene total)",
+        "security": [
+          {
+            "cookieSesion": [],
+            "tokenCsrf": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SolicitudBorrador"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Borrador guardado.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaBorradorGuardado"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "SOLICITUD_INVALIDA: no cumple el contrato (campos con su ruta) o JSON mal formado.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "NO_AUTENTICADO (sin cookie de sesión) o SESION_NO_VALIDA (vencida, revocada o desconocida; se borra la cookie).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "SIN_PERMISO (la función no concede la capacidad), CSRF_NO_VALIDO u ORIGEN_NO_PERMITIDO.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "NO_ENCONTRADO: ruta, id o códigos inexistentes en la organización (un id de otra organización responde igual).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "CONFLICTO_EDICION (revisión obsoleta; `actual` trae el estado vigente) o BORRADOR_DESACTUALIZADO (el borrador cambió; no se guardó ninguna versión).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "CUERPO_DEMASIADO_GRANDE.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "TIPO_DE_CONTENIDO_NO_ADMITIDO: el cuerpo debe ser application/json.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "DEMASIADAS_SOLICITUDES (cabecera Retry-After).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "ERROR_INTERNO.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "SERVICIO_NO_DISPONIBLE: PostgreSQL no disponible.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/cotizaciones/{id}/versiones": {
+      "post": {
+        "summary": "Calcula en el servidor con el borrador guardado y las condiciones vigentes, y guarda una versión inmutable (capacidades cotizaciones.preparar y calculo.ejecutar: Preparador; organización DEMO)",
+        "security": [
+          {
+            "cookieSesion": [],
+            "tokenCsrf": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "description": "UUID de la intención (obligatorio en las altas). Repetirlo con el mismo contenido reproduce el resultado (cabecera de respuesta Idempotent-Replayed: true); con otra operación u otro contenido responde 422. Vigencia: 24 h.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SolicitudVersion"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Versión guardada (o reproducida): lo almacenado, solo la vista comercial.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Version"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "SOLICITUD_INVALIDA: no cumple el contrato (campos con su ruta) o JSON mal formado.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "NO_AUTENTICADO (sin cookie de sesión) o SESION_NO_VALIDA (vencida, revocada o desconocida; se borra la cookie).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "SIN_PERMISO (la función no concede la capacidad), CSRF_NO_VALIDO u ORIGEN_NO_PERMITIDO.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "NO_ENCONTRADO: ruta, id o códigos inexistentes en la organización (un id de otra organización responde igual).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "CONFLICTO_EDICION (revisión obsoleta; `actual` trae el estado vigente) o BORRADOR_DESACTUALIZADO (el borrador cambió; no se guardó ninguna versión).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "CUERPO_DEMASIADO_GRANDE.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "TIPO_DE_CONTENIDO_NO_ADMITIDO: el cuerpo debe ser application/json.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "CALCULO_BLOQUEADO (códigos BL, sin importes), CAPTURA_INCOMPLETA (campos pendientes), REGISTRO_INACTIVO, IDEMPOTENCIA_CONFLICTO o IDEMPOTENCIA_CADUCADA.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "DEMASIADAS_SOLICITUDES (cabecera Retry-After).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "ERROR_INTERNO.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "SERVICIO_NO_DISPONIBLE: PostgreSQL no disponible.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/cotizaciones/{id}/versiones/{numero}": {
+      "get": {
+        "summary": "Versión guardada tal como se almacenó (no se recalcula)",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "numero",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Versión.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Version"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "NO_AUTENTICADO (sin cookie de sesión) o SESION_NO_VALIDA (vencida, revocada o desconocida; se borra la cookie).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "SIN_PERMISO (la función no concede la capacidad), CSRF_NO_VALIDO u ORIGEN_NO_PERMITIDO.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "NO_ENCONTRADO: ruta, id o códigos inexistentes en la organización (un id de otra organización responde igual).",
             "content": {
               "application/json": {
                 "schema": {
@@ -870,7 +2590,11 @@
               "enum": [
                 "sesion.propia",
                 "catalogos.consultar",
-                "calculo.ejecutar"
+                "calculo.ejecutar",
+                "clientes.consultar",
+                "clientes.gestionar",
+                "cotizaciones.consultar",
+                "cotizaciones.preparar"
               ]
             }
           },
@@ -1462,7 +3186,13 @@
                   "CREDENCIALES_INVALIDAS",
                   "SIN_PERMISO",
                   "CSRF_NO_VALIDO",
-                  "ORIGEN_NO_PERMITIDO"
+                  "ORIGEN_NO_PERMITIDO",
+                  "CONFLICTO_EDICION",
+                  "BORRADOR_DESACTUALIZADO",
+                  "CAPTURA_INCOMPLETA",
+                  "REGISTRO_INACTIVO",
+                  "IDEMPOTENCIA_CONFLICTO",
+                  "IDEMPOTENCIA_CADUCADA"
                 ]
               },
               "mensaje": {
@@ -1531,6 +3261,29 @@
                   ],
                   "additionalProperties": false
                 }
+              },
+              "actual": {
+                "type": "object",
+                "properties": {
+                  "revision": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 9007199254740991
+                  },
+                  "actualizadoPor": {
+                    "type": "string"
+                  },
+                  "actualizadoEn": {
+                    "type": "string"
+                  },
+                  "captura": {}
+                },
+                "required": [
+                  "revision",
+                  "actualizadoPor",
+                  "actualizadoEn"
+                ],
+                "additionalProperties": false
               }
             },
             "required": [
@@ -1543,6 +3296,2838 @@
         },
         "required": [
           "error"
+        ],
+        "additionalProperties": false
+      },
+      "CapturaBorrador": {
+        "type": "object",
+        "properties": {
+          "consolidarCompras": {
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
+          "partidas": {
+            "maxItems": 100,
+            "type": "array",
+            "items": {
+              "oneOf": [
+                {
+                  "type": "object",
+                  "properties": {
+                    "tipo": {
+                      "type": "string",
+                      "const": "CONCEPTO"
+                    },
+                    "conceptoCodigo": {
+                      "type": "string",
+                      "pattern": "^[A-Z0-9][A-Z0-9_-]{0,39}$"
+                    },
+                    "descripcion": {
+                      "type": "string",
+                      "maxLength": 200
+                    },
+                    "mediciones": {
+                      "maxItems": 200,
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "descripcion": {
+                            "type": "string",
+                            "maxLength": 200
+                          },
+                          "signo": {
+                            "type": "string",
+                            "enum": [
+                              "+",
+                              "-"
+                            ]
+                          },
+                          "piezas": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "pattern": "^-?(0|[1-9]\\d{0,14})(\\.\\d{1,10})?$"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "largo": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "pattern": "^-?(0|[1-9]\\d{0,14})(\\.\\d{1,10})?$"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "ancho": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "pattern": "^-?(0|[1-9]\\d{0,14})(\\.\\d{1,10})?$"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "alto": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "pattern": "^-?(0|[1-9]\\d{0,14})(\\.\\d{1,10})?$"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "segundaMedida": {
+                            "type": "string",
+                            "enum": [
+                              "ancho",
+                              "alto"
+                            ]
+                          }
+                        },
+                        "required": [
+                          "descripcion",
+                          "signo",
+                          "piezas",
+                          "largo",
+                          "ancho",
+                          "alto",
+                          "segundaMedida"
+                        ],
+                        "additionalProperties": false
+                      }
+                    }
+                  },
+                  "required": [
+                    "tipo",
+                    "conceptoCodigo",
+                    "descripcion",
+                    "mediciones"
+                  ],
+                  "additionalProperties": false
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "tipo": {
+                      "type": "string",
+                      "const": "ADICIONAL"
+                    },
+                    "tipoAdicionalCodigo": {
+                      "anyOf": [
+                        {
+                          "type": "string",
+                          "pattern": "^[A-Z0-9][A-Z0-9_-]{0,39}$"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "descripcion": {
+                      "type": "string",
+                      "maxLength": 200
+                    },
+                    "cantidad": {
+                      "anyOf": [
+                        {
+                          "type": "string",
+                          "pattern": "^-?(0|[1-9]\\d{0,14})(\\.\\d{1,10})?$"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "monto": {
+                      "anyOf": [
+                        {
+                          "type": "string",
+                          "pattern": "^-?(0|[1-9]\\d{0,14})(\\.\\d{1,10})?$"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    }
+                  },
+                  "required": [
+                    "tipo",
+                    "tipoAdicionalCodigo",
+                    "descripcion",
+                    "cantidad",
+                    "monto"
+                  ],
+                  "additionalProperties": false
+                }
+              ]
+            }
+          },
+          "seleccion": {
+            "maxItems": 100,
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "insumoCodigo": {
+                  "type": "string",
+                  "pattern": "^[A-Z0-9][A-Z0-9_-]{0,39}$"
+                },
+                "precioCodigo": {
+                  "type": "string",
+                  "pattern": "^[A-Z0-9][A-Z0-9_-]{0,39}$"
+                }
+              },
+              "required": [
+                "insumoCodigo",
+                "precioCodigo"
+              ],
+              "additionalProperties": false
+            }
+          }
+        },
+        "required": [
+          "consolidarCompras",
+          "partidas",
+          "seleccion"
+        ],
+        "additionalProperties": false
+      },
+      "SolicitudCliente": {
+        "type": "object",
+        "properties": {
+          "nombre": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200
+          }
+        },
+        "required": [
+          "nombre"
+        ],
+        "additionalProperties": false
+      },
+      "EdicionCliente": {
+        "type": "object",
+        "properties": {
+          "revision": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "nombre": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200
+          },
+          "activo": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "revision"
+        ],
+        "additionalProperties": false
+      },
+      "Cliente": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "codigo": {
+            "type": "string"
+          },
+          "nombre": {
+            "type": "string"
+          },
+          "activo": {
+            "type": "boolean"
+          },
+          "revision": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "creadoEn": {
+            "type": "string"
+          },
+          "modificadoEn": {
+            "type": "string"
+          },
+          "modificadoPor": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "codigo",
+          "nombre",
+          "activo",
+          "revision",
+          "creadoEn",
+          "modificadoEn",
+          "modificadoPor"
+        ],
+        "additionalProperties": false
+      },
+      "RespuestaClientes": {
+        "type": "object",
+        "properties": {
+          "clientes": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "codigo": {
+                  "type": "string"
+                },
+                "nombre": {
+                  "type": "string"
+                },
+                "activo": {
+                  "type": "boolean"
+                },
+                "revision": {
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991
+                },
+                "creadoEn": {
+                  "type": "string"
+                },
+                "modificadoEn": {
+                  "type": "string"
+                },
+                "modificadoPor": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "id",
+                "codigo",
+                "nombre",
+                "activo",
+                "revision",
+                "creadoEn",
+                "modificadoEn",
+                "modificadoPor"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "limite": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          }
+        },
+        "required": [
+          "clientes",
+          "limite"
+        ],
+        "additionalProperties": false
+      },
+      "DetalleCliente": {
+        "type": "object",
+        "properties": {
+          "cliente": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "codigo": {
+                "type": "string"
+              },
+              "nombre": {
+                "type": "string"
+              },
+              "activo": {
+                "type": "boolean"
+              },
+              "revision": {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              "creadoEn": {
+                "type": "string"
+              },
+              "modificadoEn": {
+                "type": "string"
+              },
+              "modificadoPor": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "codigo",
+              "nombre",
+              "activo",
+              "revision",
+              "creadoEn",
+              "modificadoEn",
+              "modificadoPor"
+            ],
+            "additionalProperties": false
+          },
+          "proyectos": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "codigo": {
+                  "type": "string"
+                },
+                "cliente": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    },
+                    "codigo": {
+                      "type": "string"
+                    },
+                    "nombre": {
+                      "type": "string"
+                    },
+                    "activo": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "codigo",
+                    "nombre",
+                    "activo"
+                  ],
+                  "additionalProperties": false
+                },
+                "nombre": {
+                  "type": "string"
+                },
+                "municipio": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "entidadFederativa": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "descripcion": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "activo": {
+                  "type": "boolean"
+                },
+                "revision": {
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991
+                },
+                "creadoEn": {
+                  "type": "string"
+                },
+                "modificadoEn": {
+                  "type": "string"
+                },
+                "modificadoPor": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "id",
+                "codigo",
+                "cliente",
+                "nombre",
+                "municipio",
+                "entidadFederativa",
+                "descripcion",
+                "activo",
+                "revision",
+                "creadoEn",
+                "modificadoEn",
+                "modificadoPor"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "borradoresAbiertos": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          }
+        },
+        "required": [
+          "cliente",
+          "proyectos",
+          "borradoresAbiertos"
+        ],
+        "additionalProperties": false
+      },
+      "SolicitudProyecto": {
+        "type": "object",
+        "properties": {
+          "clienteId": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          },
+          "nombre": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200
+          },
+          "municipio": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 120
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "entidadFederativa": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 60
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "descripcion": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 500
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "clienteId",
+          "nombre"
+        ],
+        "additionalProperties": false
+      },
+      "EdicionProyecto": {
+        "type": "object",
+        "properties": {
+          "revision": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "nombre": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200
+          },
+          "municipio": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 120
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "entidadFederativa": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 60
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "descripcion": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 500
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "activo": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "revision"
+        ],
+        "additionalProperties": false
+      },
+      "Proyecto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "codigo": {
+            "type": "string"
+          },
+          "cliente": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "codigo": {
+                "type": "string"
+              },
+              "nombre": {
+                "type": "string"
+              },
+              "activo": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "id",
+              "codigo",
+              "nombre",
+              "activo"
+            ],
+            "additionalProperties": false
+          },
+          "nombre": {
+            "type": "string"
+          },
+          "municipio": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "entidadFederativa": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "descripcion": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "activo": {
+            "type": "boolean"
+          },
+          "revision": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "creadoEn": {
+            "type": "string"
+          },
+          "modificadoEn": {
+            "type": "string"
+          },
+          "modificadoPor": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "codigo",
+          "cliente",
+          "nombre",
+          "municipio",
+          "entidadFederativa",
+          "descripcion",
+          "activo",
+          "revision",
+          "creadoEn",
+          "modificadoEn",
+          "modificadoPor"
+        ],
+        "additionalProperties": false
+      },
+      "RespuestaProyectos": {
+        "type": "object",
+        "properties": {
+          "proyectos": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "codigo": {
+                  "type": "string"
+                },
+                "cliente": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    },
+                    "codigo": {
+                      "type": "string"
+                    },
+                    "nombre": {
+                      "type": "string"
+                    },
+                    "activo": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "codigo",
+                    "nombre",
+                    "activo"
+                  ],
+                  "additionalProperties": false
+                },
+                "nombre": {
+                  "type": "string"
+                },
+                "municipio": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "entidadFederativa": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "descripcion": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "activo": {
+                  "type": "boolean"
+                },
+                "revision": {
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991
+                },
+                "creadoEn": {
+                  "type": "string"
+                },
+                "modificadoEn": {
+                  "type": "string"
+                },
+                "modificadoPor": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "id",
+                "codigo",
+                "cliente",
+                "nombre",
+                "municipio",
+                "entidadFederativa",
+                "descripcion",
+                "activo",
+                "revision",
+                "creadoEn",
+                "modificadoEn",
+                "modificadoPor"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "limite": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          }
+        },
+        "required": [
+          "proyectos",
+          "limite"
+        ],
+        "additionalProperties": false
+      },
+      "SolicitudCotizacion": {
+        "type": "object",
+        "properties": {
+          "proyectoId": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          },
+          "captura": {
+            "type": "object",
+            "properties": {
+              "consolidarCompras": {
+                "type": [
+                  "boolean",
+                  "null"
+                ]
+              },
+              "partidas": {
+                "maxItems": 100,
+                "type": "array",
+                "items": {
+                  "oneOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "tipo": {
+                          "type": "string",
+                          "const": "CONCEPTO"
+                        },
+                        "conceptoCodigo": {
+                          "type": "string",
+                          "pattern": "^[A-Z0-9][A-Z0-9_-]{0,39}$"
+                        },
+                        "descripcion": {
+                          "type": "string",
+                          "maxLength": 200
+                        },
+                        "mediciones": {
+                          "maxItems": 200,
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "descripcion": {
+                                "type": "string",
+                                "maxLength": 200
+                              },
+                              "signo": {
+                                "type": "string",
+                                "enum": [
+                                  "+",
+                                  "-"
+                                ]
+                              },
+                              "piezas": {
+                                "anyOf": [
+                                  {
+                                    "type": "string",
+                                    "pattern": "^-?(0|[1-9]\\d{0,14})(\\.\\d{1,10})?$"
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              },
+                              "largo": {
+                                "anyOf": [
+                                  {
+                                    "type": "string",
+                                    "pattern": "^-?(0|[1-9]\\d{0,14})(\\.\\d{1,10})?$"
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              },
+                              "ancho": {
+                                "anyOf": [
+                                  {
+                                    "type": "string",
+                                    "pattern": "^-?(0|[1-9]\\d{0,14})(\\.\\d{1,10})?$"
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              },
+                              "alto": {
+                                "anyOf": [
+                                  {
+                                    "type": "string",
+                                    "pattern": "^-?(0|[1-9]\\d{0,14})(\\.\\d{1,10})?$"
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              },
+                              "segundaMedida": {
+                                "type": "string",
+                                "enum": [
+                                  "ancho",
+                                  "alto"
+                                ]
+                              }
+                            },
+                            "required": [
+                              "descripcion",
+                              "signo",
+                              "piezas",
+                              "largo",
+                              "ancho",
+                              "alto",
+                              "segundaMedida"
+                            ],
+                            "additionalProperties": false
+                          }
+                        }
+                      },
+                      "required": [
+                        "tipo",
+                        "conceptoCodigo",
+                        "descripcion",
+                        "mediciones"
+                      ],
+                      "additionalProperties": false
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "tipo": {
+                          "type": "string",
+                          "const": "ADICIONAL"
+                        },
+                        "tipoAdicionalCodigo": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "pattern": "^[A-Z0-9][A-Z0-9_-]{0,39}$"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "descripcion": {
+                          "type": "string",
+                          "maxLength": 200
+                        },
+                        "cantidad": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "pattern": "^-?(0|[1-9]\\d{0,14})(\\.\\d{1,10})?$"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "monto": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "pattern": "^-?(0|[1-9]\\d{0,14})(\\.\\d{1,10})?$"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        }
+                      },
+                      "required": [
+                        "tipo",
+                        "tipoAdicionalCodigo",
+                        "descripcion",
+                        "cantidad",
+                        "monto"
+                      ],
+                      "additionalProperties": false
+                    }
+                  ]
+                }
+              },
+              "seleccion": {
+                "maxItems": 100,
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "insumoCodigo": {
+                      "type": "string",
+                      "pattern": "^[A-Z0-9][A-Z0-9_-]{0,39}$"
+                    },
+                    "precioCodigo": {
+                      "type": "string",
+                      "pattern": "^[A-Z0-9][A-Z0-9_-]{0,39}$"
+                    }
+                  },
+                  "required": [
+                    "insumoCodigo",
+                    "precioCodigo"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            },
+            "required": [
+              "consolidarCompras",
+              "partidas",
+              "seleccion"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "proyectoId"
+        ],
+        "additionalProperties": false
+      },
+      "RespuestaCotizaciones": {
+        "type": "object",
+        "properties": {
+          "cotizaciones": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "folio": {
+                  "type": "string"
+                },
+                "origen": {
+                  "type": "string",
+                  "enum": [
+                    "WEB_DEMO"
+                  ]
+                },
+                "estadoFolio": {
+                  "type": "string",
+                  "enum": [
+                    "ACTIVO"
+                  ]
+                },
+                "cliente": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    },
+                    "codigo": {
+                      "type": "string"
+                    },
+                    "nombre": {
+                      "type": "string"
+                    },
+                    "activo": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "codigo",
+                    "nombre",
+                    "activo"
+                  ],
+                  "additionalProperties": false
+                },
+                "proyecto": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    },
+                    "codigo": {
+                      "type": "string"
+                    },
+                    "nombre": {
+                      "type": "string"
+                    },
+                    "activo": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "codigo",
+                    "nombre",
+                    "activo"
+                  ],
+                  "additionalProperties": false
+                },
+                "creadoEn": {
+                  "type": "string"
+                },
+                "creadoPor": {
+                  "type": "string"
+                },
+                "revisionBorrador": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 9007199254740991
+                },
+                "borradorActualizadoEn": {
+                  "type": "string"
+                },
+                "ultimaVersion": {
+                  "anyOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "numero": {
+                          "type": "integer",
+                          "exclusiveMinimum": 0,
+                          "maximum": 9007199254740991
+                        },
+                        "idVersion": {
+                          "type": "string"
+                        },
+                        "estado": {
+                          "type": "string",
+                          "enum": [
+                            "BORRADOR"
+                          ]
+                        },
+                        "revisionBorrador": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 9007199254740991
+                        },
+                        "fechaCalculo": {
+                          "type": "string",
+                          "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                        },
+                        "creadoEn": {
+                          "type": "string"
+                        },
+                        "autor": {
+                          "type": "string"
+                        },
+                        "total": {
+                          "type": "string",
+                          "pattern": "^-?(0|[1-9]\\d{0,14})(\\.\\d{1,10})?$"
+                        },
+                        "motivo": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "numero",
+                        "idVersion",
+                        "estado",
+                        "revisionBorrador",
+                        "fechaCalculo",
+                        "creadoEn",
+                        "autor",
+                        "total",
+                        "motivo"
+                      ],
+                      "additionalProperties": false
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                }
+              },
+              "required": [
+                "id",
+                "folio",
+                "origen",
+                "estadoFolio",
+                "cliente",
+                "proyecto",
+                "creadoEn",
+                "creadoPor",
+                "revisionBorrador",
+                "borradorActualizadoEn",
+                "ultimaVersion"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "limite": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          }
+        },
+        "required": [
+          "cotizaciones",
+          "limite"
+        ],
+        "additionalProperties": false
+      },
+      "DetalleCotizacion": {
+        "type": "object",
+        "properties": {
+          "cotizacion": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "folio": {
+                "type": "string"
+              },
+              "origen": {
+                "type": "string",
+                "enum": [
+                  "WEB_DEMO"
+                ]
+              },
+              "estadoFolio": {
+                "type": "string",
+                "enum": [
+                  "ACTIVO"
+                ]
+              },
+              "cliente": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string"
+                  },
+                  "codigo": {
+                    "type": "string"
+                  },
+                  "nombre": {
+                    "type": "string"
+                  },
+                  "activo": {
+                    "type": "boolean"
+                  }
+                },
+                "required": [
+                  "id",
+                  "codigo",
+                  "nombre",
+                  "activo"
+                ],
+                "additionalProperties": false
+              },
+              "proyecto": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string"
+                  },
+                  "codigo": {
+                    "type": "string"
+                  },
+                  "nombre": {
+                    "type": "string"
+                  },
+                  "activo": {
+                    "type": "boolean"
+                  }
+                },
+                "required": [
+                  "id",
+                  "codigo",
+                  "nombre",
+                  "activo"
+                ],
+                "additionalProperties": false
+              },
+              "creadoEn": {
+                "type": "string"
+              },
+              "creadoPor": {
+                "type": "string"
+              },
+              "revisionBorrador": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              },
+              "borradorActualizadoEn": {
+                "type": "string"
+              },
+              "ultimaVersion": {
+                "anyOf": [
+                  {
+                    "type": "object",
+                    "properties": {
+                      "numero": {
+                        "type": "integer",
+                        "exclusiveMinimum": 0,
+                        "maximum": 9007199254740991
+                      },
+                      "idVersion": {
+                        "type": "string"
+                      },
+                      "estado": {
+                        "type": "string",
+                        "enum": [
+                          "BORRADOR"
+                        ]
+                      },
+                      "revisionBorrador": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 9007199254740991
+                      },
+                      "fechaCalculo": {
+                        "type": "string",
+                        "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                      },
+                      "creadoEn": {
+                        "type": "string"
+                      },
+                      "autor": {
+                        "type": "string"
+                      },
+                      "total": {
+                        "type": "string",
+                        "pattern": "^-?(0|[1-9]\\d{0,14})(\\.\\d{1,10})?$"
+                      },
+                      "motivo": {
+                        "type": [
+                          "string",
+                          "null"
+                        ]
+                      }
+                    },
+                    "required": [
+                      "numero",
+                      "idVersion",
+                      "estado",
+                      "revisionBorrador",
+                      "fechaCalculo",
+                      "creadoEn",
+                      "autor",
+                      "total",
+                      "motivo"
+                    ],
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            },
+            "required": [
+              "id",
+              "folio",
+              "origen",
+              "estadoFolio",
+              "cliente",
+              "proyecto",
+              "creadoEn",
+              "creadoPor",
+              "revisionBorrador",
+              "borradorActualizadoEn",
+              "ultimaVersion"
+            ],
+            "additionalProperties": false
+          },
+          "borrador": {
+            "type": "object",
+            "properties": {
+              "revision": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              },
+              "captura": {
+                "type": "object",
+                "properties": {
+                  "consolidarCompras": {
+                    "type": [
+                      "boolean",
+                      "null"
+                    ]
+                  },
+                  "partidas": {
+                    "maxItems": 100,
+                    "type": "array",
+                    "items": {
+                      "oneOf": [
+                        {
+                          "type": "object",
+                          "properties": {
+                            "tipo": {
+                              "type": "string",
+                              "const": "CONCEPTO"
+                            },
+                            "conceptoCodigo": {
+                              "type": "string",
+                              "pattern": "^[A-Z0-9][A-Z0-9_-]{0,39}$"
+                            },
+                            "descripcion": {
+                              "type": "string",
+                              "maxLength": 200
+                            },
+                            "mediciones": {
+                              "maxItems": 200,
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "descripcion": {
+                                    "type": "string",
+                                    "maxLength": 200
+                                  },
+                                  "signo": {
+                                    "type": "string",
+                                    "enum": [
+                                      "+",
+                                      "-"
+                                    ]
+                                  },
+                                  "piezas": {
+                                    "anyOf": [
+                                      {
+                                        "type": "string",
+                                        "pattern": "^-?(0|[1-9]\\d{0,14})(\\.\\d{1,10})?$"
+                                      },
+                                      {
+                                        "type": "null"
+                                      }
+                                    ]
+                                  },
+                                  "largo": {
+                                    "anyOf": [
+                                      {
+                                        "type": "string",
+                                        "pattern": "^-?(0|[1-9]\\d{0,14})(\\.\\d{1,10})?$"
+                                      },
+                                      {
+                                        "type": "null"
+                                      }
+                                    ]
+                                  },
+                                  "ancho": {
+                                    "anyOf": [
+                                      {
+                                        "type": "string",
+                                        "pattern": "^-?(0|[1-9]\\d{0,14})(\\.\\d{1,10})?$"
+                                      },
+                                      {
+                                        "type": "null"
+                                      }
+                                    ]
+                                  },
+                                  "alto": {
+                                    "anyOf": [
+                                      {
+                                        "type": "string",
+                                        "pattern": "^-?(0|[1-9]\\d{0,14})(\\.\\d{1,10})?$"
+                                      },
+                                      {
+                                        "type": "null"
+                                      }
+                                    ]
+                                  },
+                                  "segundaMedida": {
+                                    "type": "string",
+                                    "enum": [
+                                      "ancho",
+                                      "alto"
+                                    ]
+                                  }
+                                },
+                                "required": [
+                                  "descripcion",
+                                  "signo",
+                                  "piezas",
+                                  "largo",
+                                  "ancho",
+                                  "alto",
+                                  "segundaMedida"
+                                ],
+                                "additionalProperties": false
+                              }
+                            }
+                          },
+                          "required": [
+                            "tipo",
+                            "conceptoCodigo",
+                            "descripcion",
+                            "mediciones"
+                          ],
+                          "additionalProperties": false
+                        },
+                        {
+                          "type": "object",
+                          "properties": {
+                            "tipo": {
+                              "type": "string",
+                              "const": "ADICIONAL"
+                            },
+                            "tipoAdicionalCodigo": {
+                              "anyOf": [
+                                {
+                                  "type": "string",
+                                  "pattern": "^[A-Z0-9][A-Z0-9_-]{0,39}$"
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            },
+                            "descripcion": {
+                              "type": "string",
+                              "maxLength": 200
+                            },
+                            "cantidad": {
+                              "anyOf": [
+                                {
+                                  "type": "string",
+                                  "pattern": "^-?(0|[1-9]\\d{0,14})(\\.\\d{1,10})?$"
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            },
+                            "monto": {
+                              "anyOf": [
+                                {
+                                  "type": "string",
+                                  "pattern": "^-?(0|[1-9]\\d{0,14})(\\.\\d{1,10})?$"
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            }
+                          },
+                          "required": [
+                            "tipo",
+                            "tipoAdicionalCodigo",
+                            "descripcion",
+                            "cantidad",
+                            "monto"
+                          ],
+                          "additionalProperties": false
+                        }
+                      ]
+                    }
+                  },
+                  "seleccion": {
+                    "maxItems": 100,
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "insumoCodigo": {
+                          "type": "string",
+                          "pattern": "^[A-Z0-9][A-Z0-9_-]{0,39}$"
+                        },
+                        "precioCodigo": {
+                          "type": "string",
+                          "pattern": "^[A-Z0-9][A-Z0-9_-]{0,39}$"
+                        }
+                      },
+                      "required": [
+                        "insumoCodigo",
+                        "precioCodigo"
+                      ],
+                      "additionalProperties": false
+                    }
+                  }
+                },
+                "required": [
+                  "consolidarCompras",
+                  "partidas",
+                  "seleccion"
+                ],
+                "additionalProperties": false
+              },
+              "actualizadoPor": {
+                "type": "string"
+              },
+              "actualizadoEn": {
+                "type": "string"
+              },
+              "completitud": {
+                "type": "object",
+                "properties": {
+                  "lista": {
+                    "type": "boolean"
+                  },
+                  "pendientes": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "ruta": {
+                          "type": "string"
+                        },
+                        "mensaje": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "ruta",
+                        "mensaje"
+                      ],
+                      "additionalProperties": false
+                    }
+                  }
+                },
+                "required": [
+                  "lista",
+                  "pendientes"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "revision",
+              "captura",
+              "actualizadoPor",
+              "actualizadoEn",
+              "completitud"
+            ],
+            "additionalProperties": false
+          },
+          "versiones": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "numero": {
+                  "type": "integer",
+                  "exclusiveMinimum": 0,
+                  "maximum": 9007199254740991
+                },
+                "idVersion": {
+                  "type": "string"
+                },
+                "estado": {
+                  "type": "string",
+                  "enum": [
+                    "BORRADOR"
+                  ]
+                },
+                "revisionBorrador": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 9007199254740991
+                },
+                "fechaCalculo": {
+                  "type": "string",
+                  "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                },
+                "creadoEn": {
+                  "type": "string"
+                },
+                "autor": {
+                  "type": "string"
+                },
+                "total": {
+                  "type": "string",
+                  "pattern": "^-?(0|[1-9]\\d{0,14})(\\.\\d{1,10})?$"
+                },
+                "motivo": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                }
+              },
+              "required": [
+                "numero",
+                "idVersion",
+                "estado",
+                "revisionBorrador",
+                "fechaCalculo",
+                "creadoEn",
+                "autor",
+                "total",
+                "motivo"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "eventos": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "tipo": {
+                  "type": "string"
+                },
+                "usuario": {
+                  "type": "string"
+                },
+                "ocurridoEn": {
+                  "type": "string"
+                },
+                "detalle": {
+                  "type": "object",
+                  "propertyNames": {
+                    "type": "string"
+                  },
+                  "additionalProperties": {}
+                }
+              },
+              "required": [
+                "tipo",
+                "usuario",
+                "ocurridoEn",
+                "detalle"
+              ],
+              "additionalProperties": false
+            }
+          }
+        },
+        "required": [
+          "cotizacion",
+          "borrador",
+          "versiones",
+          "eventos"
+        ],
+        "additionalProperties": false
+      },
+      "Borrador": {
+        "type": "object",
+        "properties": {
+          "revision": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "captura": {
+            "type": "object",
+            "properties": {
+              "consolidarCompras": {
+                "type": [
+                  "boolean",
+                  "null"
+                ]
+              },
+              "partidas": {
+                "maxItems": 100,
+                "type": "array",
+                "items": {
+                  "oneOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "tipo": {
+                          "type": "string",
+                          "const": "CONCEPTO"
+                        },
+                        "conceptoCodigo": {
+                          "type": "string",
+                          "pattern": "^[A-Z0-9][A-Z0-9_-]{0,39}$"
+                        },
+                        "descripcion": {
+                          "type": "string",
+                          "maxLength": 200
+                        },
+                        "mediciones": {
+                          "maxItems": 200,
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "descripcion": {
+                                "type": "string",
+                                "maxLength": 200
+                              },
+                              "signo": {
+                                "type": "string",
+                                "enum": [
+                                  "+",
+                                  "-"
+                                ]
+                              },
+                              "piezas": {
+                                "anyOf": [
+                                  {
+                                    "type": "string",
+                                    "pattern": "^-?(0|[1-9]\\d{0,14})(\\.\\d{1,10})?$"
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              },
+                              "largo": {
+                                "anyOf": [
+                                  {
+                                    "type": "string",
+                                    "pattern": "^-?(0|[1-9]\\d{0,14})(\\.\\d{1,10})?$"
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              },
+                              "ancho": {
+                                "anyOf": [
+                                  {
+                                    "type": "string",
+                                    "pattern": "^-?(0|[1-9]\\d{0,14})(\\.\\d{1,10})?$"
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              },
+                              "alto": {
+                                "anyOf": [
+                                  {
+                                    "type": "string",
+                                    "pattern": "^-?(0|[1-9]\\d{0,14})(\\.\\d{1,10})?$"
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              },
+                              "segundaMedida": {
+                                "type": "string",
+                                "enum": [
+                                  "ancho",
+                                  "alto"
+                                ]
+                              }
+                            },
+                            "required": [
+                              "descripcion",
+                              "signo",
+                              "piezas",
+                              "largo",
+                              "ancho",
+                              "alto",
+                              "segundaMedida"
+                            ],
+                            "additionalProperties": false
+                          }
+                        }
+                      },
+                      "required": [
+                        "tipo",
+                        "conceptoCodigo",
+                        "descripcion",
+                        "mediciones"
+                      ],
+                      "additionalProperties": false
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "tipo": {
+                          "type": "string",
+                          "const": "ADICIONAL"
+                        },
+                        "tipoAdicionalCodigo": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "pattern": "^[A-Z0-9][A-Z0-9_-]{0,39}$"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "descripcion": {
+                          "type": "string",
+                          "maxLength": 200
+                        },
+                        "cantidad": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "pattern": "^-?(0|[1-9]\\d{0,14})(\\.\\d{1,10})?$"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "monto": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "pattern": "^-?(0|[1-9]\\d{0,14})(\\.\\d{1,10})?$"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        }
+                      },
+                      "required": [
+                        "tipo",
+                        "tipoAdicionalCodigo",
+                        "descripcion",
+                        "cantidad",
+                        "monto"
+                      ],
+                      "additionalProperties": false
+                    }
+                  ]
+                }
+              },
+              "seleccion": {
+                "maxItems": 100,
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "insumoCodigo": {
+                      "type": "string",
+                      "pattern": "^[A-Z0-9][A-Z0-9_-]{0,39}$"
+                    },
+                    "precioCodigo": {
+                      "type": "string",
+                      "pattern": "^[A-Z0-9][A-Z0-9_-]{0,39}$"
+                    }
+                  },
+                  "required": [
+                    "insumoCodigo",
+                    "precioCodigo"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            },
+            "required": [
+              "consolidarCompras",
+              "partidas",
+              "seleccion"
+            ],
+            "additionalProperties": false
+          },
+          "actualizadoPor": {
+            "type": "string"
+          },
+          "actualizadoEn": {
+            "type": "string"
+          },
+          "completitud": {
+            "type": "object",
+            "properties": {
+              "lista": {
+                "type": "boolean"
+              },
+              "pendientes": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "ruta": {
+                      "type": "string"
+                    },
+                    "mensaje": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "ruta",
+                    "mensaje"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            },
+            "required": [
+              "lista",
+              "pendientes"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "revision",
+          "captura",
+          "actualizadoPor",
+          "actualizadoEn",
+          "completitud"
+        ],
+        "additionalProperties": false
+      },
+      "SolicitudBorrador": {
+        "type": "object",
+        "properties": {
+          "revision": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "captura": {
+            "type": "object",
+            "properties": {
+              "consolidarCompras": {
+                "type": [
+                  "boolean",
+                  "null"
+                ]
+              },
+              "partidas": {
+                "maxItems": 100,
+                "type": "array",
+                "items": {
+                  "oneOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "tipo": {
+                          "type": "string",
+                          "const": "CONCEPTO"
+                        },
+                        "conceptoCodigo": {
+                          "type": "string",
+                          "pattern": "^[A-Z0-9][A-Z0-9_-]{0,39}$"
+                        },
+                        "descripcion": {
+                          "type": "string",
+                          "maxLength": 200
+                        },
+                        "mediciones": {
+                          "maxItems": 200,
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "descripcion": {
+                                "type": "string",
+                                "maxLength": 200
+                              },
+                              "signo": {
+                                "type": "string",
+                                "enum": [
+                                  "+",
+                                  "-"
+                                ]
+                              },
+                              "piezas": {
+                                "anyOf": [
+                                  {
+                                    "type": "string",
+                                    "pattern": "^-?(0|[1-9]\\d{0,14})(\\.\\d{1,10})?$"
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              },
+                              "largo": {
+                                "anyOf": [
+                                  {
+                                    "type": "string",
+                                    "pattern": "^-?(0|[1-9]\\d{0,14})(\\.\\d{1,10})?$"
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              },
+                              "ancho": {
+                                "anyOf": [
+                                  {
+                                    "type": "string",
+                                    "pattern": "^-?(0|[1-9]\\d{0,14})(\\.\\d{1,10})?$"
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              },
+                              "alto": {
+                                "anyOf": [
+                                  {
+                                    "type": "string",
+                                    "pattern": "^-?(0|[1-9]\\d{0,14})(\\.\\d{1,10})?$"
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              },
+                              "segundaMedida": {
+                                "type": "string",
+                                "enum": [
+                                  "ancho",
+                                  "alto"
+                                ]
+                              }
+                            },
+                            "required": [
+                              "descripcion",
+                              "signo",
+                              "piezas",
+                              "largo",
+                              "ancho",
+                              "alto",
+                              "segundaMedida"
+                            ],
+                            "additionalProperties": false
+                          }
+                        }
+                      },
+                      "required": [
+                        "tipo",
+                        "conceptoCodigo",
+                        "descripcion",
+                        "mediciones"
+                      ],
+                      "additionalProperties": false
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "tipo": {
+                          "type": "string",
+                          "const": "ADICIONAL"
+                        },
+                        "tipoAdicionalCodigo": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "pattern": "^[A-Z0-9][A-Z0-9_-]{0,39}$"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "descripcion": {
+                          "type": "string",
+                          "maxLength": 200
+                        },
+                        "cantidad": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "pattern": "^-?(0|[1-9]\\d{0,14})(\\.\\d{1,10})?$"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "monto": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "pattern": "^-?(0|[1-9]\\d{0,14})(\\.\\d{1,10})?$"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        }
+                      },
+                      "required": [
+                        "tipo",
+                        "tipoAdicionalCodigo",
+                        "descripcion",
+                        "cantidad",
+                        "monto"
+                      ],
+                      "additionalProperties": false
+                    }
+                  ]
+                }
+              },
+              "seleccion": {
+                "maxItems": 100,
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "insumoCodigo": {
+                      "type": "string",
+                      "pattern": "^[A-Z0-9][A-Z0-9_-]{0,39}$"
+                    },
+                    "precioCodigo": {
+                      "type": "string",
+                      "pattern": "^[A-Z0-9][A-Z0-9_-]{0,39}$"
+                    }
+                  },
+                  "required": [
+                    "insumoCodigo",
+                    "precioCodigo"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            },
+            "required": [
+              "consolidarCompras",
+              "partidas",
+              "seleccion"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "revision",
+          "captura"
+        ],
+        "additionalProperties": false
+      },
+      "RespuestaBorradorGuardado": {
+        "type": "object",
+        "properties": {
+          "revision": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "actualizadoPor": {
+            "type": "string"
+          },
+          "actualizadoEn": {
+            "type": "string"
+          },
+          "completitud": {
+            "type": "object",
+            "properties": {
+              "lista": {
+                "type": "boolean"
+              },
+              "pendientes": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "ruta": {
+                      "type": "string"
+                    },
+                    "mensaje": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "ruta",
+                    "mensaje"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            },
+            "required": [
+              "lista",
+              "pendientes"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "revision",
+          "actualizadoPor",
+          "actualizadoEn",
+          "completitud"
+        ],
+        "additionalProperties": false
+      },
+      "SolicitudVersion": {
+        "type": "object",
+        "properties": {
+          "revisionBorrador": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "motivo": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 500
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "revisionBorrador"
+        ],
+        "additionalProperties": false
+      },
+      "Version": {
+        "type": "object",
+        "properties": {
+          "folio": {
+            "type": "string"
+          },
+          "origen": {
+            "type": "string",
+            "enum": [
+              "WEB_DEMO"
+            ]
+          },
+          "version": {
+            "type": "object",
+            "properties": {
+              "numero": {
+                "type": "integer",
+                "exclusiveMinimum": 0,
+                "maximum": 9007199254740991
+              },
+              "idVersion": {
+                "type": "string"
+              },
+              "estado": {
+                "type": "string",
+                "enum": [
+                  "BORRADOR"
+                ]
+              },
+              "revisionBorrador": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              },
+              "fechaCalculo": {
+                "type": "string",
+                "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+              },
+              "creadoEn": {
+                "type": "string"
+              },
+              "autor": {
+                "type": "string"
+              },
+              "total": {
+                "type": "string",
+                "pattern": "^-?(0|[1-9]\\d{0,14})(\\.\\d{1,10})?$"
+              },
+              "motivo": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "required": [
+              "numero",
+              "idVersion",
+              "estado",
+              "revisionBorrador",
+              "fechaCalculo",
+              "creadoEn",
+              "autor",
+              "total",
+              "motivo"
+            ],
+            "additionalProperties": false
+          },
+          "cliente": {
+            "type": "object",
+            "properties": {
+              "codigo": {
+                "type": "string"
+              },
+              "nombre": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "codigo",
+              "nombre"
+            ],
+            "additionalProperties": false
+          },
+          "proyecto": {
+            "type": "object",
+            "properties": {
+              "codigo": {
+                "type": "string"
+              },
+              "nombre": {
+                "type": "string"
+              },
+              "ubicacion": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "descripcion": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "required": [
+              "codigo",
+              "nombre",
+              "ubicacion",
+              "descripcion"
+            ],
+            "additionalProperties": false
+          },
+          "versionMotor": {
+            "type": "string"
+          },
+          "huellaCalculo": {
+            "type": "string"
+          },
+          "captura": {
+            "type": "object",
+            "properties": {
+              "consolidarCompras": {
+                "type": [
+                  "boolean",
+                  "null"
+                ]
+              },
+              "partidas": {
+                "maxItems": 100,
+                "type": "array",
+                "items": {
+                  "oneOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "tipo": {
+                          "type": "string",
+                          "const": "CONCEPTO"
+                        },
+                        "conceptoCodigo": {
+                          "type": "string",
+                          "pattern": "^[A-Z0-9][A-Z0-9_-]{0,39}$"
+                        },
+                        "descripcion": {
+                          "type": "string",
+                          "maxLength": 200
+                        },
+                        "mediciones": {
+                          "maxItems": 200,
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "descripcion": {
+                                "type": "string",
+                                "maxLength": 200
+                              },
+                              "signo": {
+                                "type": "string",
+                                "enum": [
+                                  "+",
+                                  "-"
+                                ]
+                              },
+                              "piezas": {
+                                "anyOf": [
+                                  {
+                                    "type": "string",
+                                    "pattern": "^-?(0|[1-9]\\d{0,14})(\\.\\d{1,10})?$"
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              },
+                              "largo": {
+                                "anyOf": [
+                                  {
+                                    "type": "string",
+                                    "pattern": "^-?(0|[1-9]\\d{0,14})(\\.\\d{1,10})?$"
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              },
+                              "ancho": {
+                                "anyOf": [
+                                  {
+                                    "type": "string",
+                                    "pattern": "^-?(0|[1-9]\\d{0,14})(\\.\\d{1,10})?$"
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              },
+                              "alto": {
+                                "anyOf": [
+                                  {
+                                    "type": "string",
+                                    "pattern": "^-?(0|[1-9]\\d{0,14})(\\.\\d{1,10})?$"
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              },
+                              "segundaMedida": {
+                                "type": "string",
+                                "enum": [
+                                  "ancho",
+                                  "alto"
+                                ]
+                              }
+                            },
+                            "required": [
+                              "descripcion",
+                              "signo",
+                              "piezas",
+                              "largo",
+                              "ancho",
+                              "alto",
+                              "segundaMedida"
+                            ],
+                            "additionalProperties": false
+                          }
+                        }
+                      },
+                      "required": [
+                        "tipo",
+                        "conceptoCodigo",
+                        "descripcion",
+                        "mediciones"
+                      ],
+                      "additionalProperties": false
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "tipo": {
+                          "type": "string",
+                          "const": "ADICIONAL"
+                        },
+                        "tipoAdicionalCodigo": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "pattern": "^[A-Z0-9][A-Z0-9_-]{0,39}$"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "descripcion": {
+                          "type": "string",
+                          "maxLength": 200
+                        },
+                        "cantidad": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "pattern": "^-?(0|[1-9]\\d{0,14})(\\.\\d{1,10})?$"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "monto": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "pattern": "^-?(0|[1-9]\\d{0,14})(\\.\\d{1,10})?$"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        }
+                      },
+                      "required": [
+                        "tipo",
+                        "tipoAdicionalCodigo",
+                        "descripcion",
+                        "cantidad",
+                        "monto"
+                      ],
+                      "additionalProperties": false
+                    }
+                  ]
+                }
+              },
+              "seleccion": {
+                "maxItems": 100,
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "insumoCodigo": {
+                      "type": "string",
+                      "pattern": "^[A-Z0-9][A-Z0-9_-]{0,39}$"
+                    },
+                    "precioCodigo": {
+                      "type": "string",
+                      "pattern": "^[A-Z0-9][A-Z0-9_-]{0,39}$"
+                    }
+                  },
+                  "required": [
+                    "insumoCodigo",
+                    "precioCodigo"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            },
+            "required": [
+              "consolidarCompras",
+              "partidas",
+              "seleccion"
+            ],
+            "additionalProperties": false
+          },
+          "cotizacion": {
+            "type": "object",
+            "properties": {
+              "ambiente": {
+                "type": "string",
+                "enum": [
+                  "DEMO",
+                  "PRODUCCION"
+                ]
+              },
+              "moneda": {
+                "type": "string",
+                "const": "MXN"
+              },
+              "leyenda": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "partidas": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "numero": {
+                      "type": "integer",
+                      "minimum": -9007199254740991,
+                      "maximum": 9007199254740991
+                    },
+                    "descripcion": {
+                      "type": "string"
+                    },
+                    "unidad": {
+                      "type": "string"
+                    },
+                    "cantidad": {
+                      "type": "string",
+                      "pattern": "^-?(0|[1-9]\\d{0,14})(\\.\\d{1,10})?$"
+                    },
+                    "precioUnitario": {
+                      "type": "string",
+                      "pattern": "^-?(0|[1-9]\\d{0,14})(\\.\\d{1,10})?$"
+                    },
+                    "importe": {
+                      "type": "string",
+                      "pattern": "^-?(0|[1-9]\\d{0,14})(\\.\\d{1,10})?$"
+                    }
+                  },
+                  "required": [
+                    "numero",
+                    "descripcion",
+                    "unidad",
+                    "cantidad",
+                    "precioUnitario",
+                    "importe"
+                  ],
+                  "additionalProperties": false
+                }
+              },
+              "subtotal": {
+                "type": "string",
+                "pattern": "^-?(0|[1-9]\\d{0,14})(\\.\\d{1,10})?$"
+              },
+              "impuesto": {
+                "type": "object",
+                "properties": {
+                  "nombre": {
+                    "type": "string"
+                  },
+                  "tasa": {
+                    "type": "string",
+                    "pattern": "^-?(0|[1-9]\\d{0,14})(\\.\\d{1,10})?$"
+                  },
+                  "importe": {
+                    "type": "string",
+                    "pattern": "^-?(0|[1-9]\\d{0,14})(\\.\\d{1,10})?$"
+                  }
+                },
+                "required": [
+                  "nombre",
+                  "tasa",
+                  "importe"
+                ],
+                "additionalProperties": false
+              },
+              "total": {
+                "type": "string",
+                "pattern": "^-?(0|[1-9]\\d{0,14})(\\.\\d{1,10})?$"
+              }
+            },
+            "required": [
+              "ambiente",
+              "moneda",
+              "leyenda",
+              "partidas",
+              "subtotal",
+              "impuesto",
+              "total"
+            ],
+            "additionalProperties": false
+          },
+          "avisos": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "codigo": {
+                  "type": "string",
+                  "enum": [
+                    "AV-01",
+                    "AV-03"
+                  ]
+                },
+                "mensaje": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "codigo",
+                "mensaje"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "cambios": {
+            "type": "object",
+            "properties": {
+              "versionAnterior": {
+                "anyOf": [
+                  {
+                    "type": "integer",
+                    "exclusiveMinimum": 0,
+                    "maximum": 9007199254740991
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "partidasAgregadas": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "partidasQuitadas": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "partidasModificadas": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "seleccionCambiada": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "consolidacionCambiada": {
+                "type": "boolean"
+              },
+              "datosDescriptivosCambiados": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "condicionesCambiadas": {
+                "type": "boolean"
+              },
+              "totalAnterior": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "pattern": "^-?(0|[1-9]\\d{0,14})(\\.\\d{1,10})?$"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "totalNuevo": {
+                "type": "string",
+                "pattern": "^-?(0|[1-9]\\d{0,14})(\\.\\d{1,10})?$"
+              }
+            },
+            "required": [
+              "versionAnterior",
+              "partidasAgregadas",
+              "partidasQuitadas",
+              "partidasModificadas",
+              "seleccionCambiada",
+              "consolidacionCambiada",
+              "datosDescriptivosCambiados",
+              "condicionesCambiadas",
+              "totalAnterior",
+              "totalNuevo"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "folio",
+          "origen",
+          "version",
+          "cliente",
+          "proyecto",
+          "versionMotor",
+          "huellaCalculo",
+          "captura",
+          "cotizacion",
+          "avisos",
+          "cambios"
         ],
         "additionalProperties": false
       }

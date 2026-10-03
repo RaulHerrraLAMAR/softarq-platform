@@ -1,6 +1,7 @@
 // Esquema de persistencia de SoftArq — módulo 2: catálogos para el motor de cálculo;
-// módulo 5: usuarios, pertenencias y sesiones.
-// Ver docs/adr/0004-persistencia-catalogos.md y docs/adr/0007-autenticacion-sesiones.md.
+// módulo 5: usuarios, pertenencias y sesiones; módulo 6: clientes, proyectos y cotizaciones.
+// Ver docs/adr/0004-persistencia-catalogos.md, docs/adr/0007-autenticacion-sesiones.md y
+// docs/adr/0008-cotizaciones-versiones-folios.md.
 //
 // Convenciones:
 // - Tablas y columnas en snake_case (@@map/@map); modelos en español.
@@ -29,14 +30,14 @@ model Unidad {
   nombre   String @db.VarChar(60)
   magnitud String @db.VarChar(20)
 
-  insumos                 Insumo[]
-  conversionesOrigen      Conversion[]     @relation("ConversionOrigen")
-  conversionesDestino     Conversion[]     @relation("ConversionDestino")
-  productosCompra         Producto[]
-  tarifas                 TarifaManoObra[]
-  conceptos               Concepto[]
-  componentesRendimiento  Componente[]
-  tiposAdicional          TipoAdicional[]
+  insumos                Insumo[]
+  conversionesOrigen     Conversion[]     @relation("ConversionOrigen")
+  conversionesDestino    Conversion[]     @relation("ConversionDestino")
+  productosCompra        Producto[]
+  tarifas                TarifaManoObra[]
+  conceptos              Concepto[]
+  componentesRendimiento Componente[]
+  tiposAdicional         TipoAdicional[]
 
   @@map("unidad")
 }
@@ -59,6 +60,9 @@ model Organizacion {
   componentes    Componente[]
   tiposAdicional TipoAdicional[]
   membresias     Membresia[]
+  clientes       Cliente[]
+  contadores     Contador[]
+  bitacora       Bitacora[]
 
   @@map("organizacion")
 }
@@ -308,6 +312,17 @@ model Membresia {
   usuario      Usuario      @relation(fields: [usuarioId], references: [id], onDelete: Restrict, onUpdate: Restrict)
   sesiones     Sesion[]
 
+  // Autoría (módulo 6): FK compuestas (organización, usuario); el autor pertenece a la organización.
+  clientesCreados      Cliente[]            @relation("ClienteCreadoPor")
+  clientesModificados  Cliente[]            @relation("ClienteModificadoPor")
+  proyectosCreados     Proyecto[]           @relation("ProyectoCreadoPor")
+  proyectosModificados Proyecto[]           @relation("ProyectoModificadoPor")
+  cotizacionesCreadas  Cotizacion[]
+  borradoresGuardados  CotizacionBorrador[]
+  versionesCreadas     CotizacionVersion[]
+  eventos              Bitacora[]
+  idempotencia         Idempotencia[]
+
   @@unique([organizacionId, usuarioId])
   @@index([usuarioId])
   @@map("membresia")
@@ -334,4 +349,207 @@ model Sesion {
   @@index([usuarioId])
   @@index([expiraEn])
   @@map("sesion")
+}
+
+// ---------------------------------------------------------------------------
+// Módulo 6: clientes, proyectos y cotizaciones con folio, borrador y versiones (ADR-0008).
+// softarq_app: versiones, bitácora e idempotencia solo SELECT/INSERT (sin UPDATE ni DELETE);
+// en las demás, UPDATE solo de columnas editables (scripts/db/permisos-app.sql). Las altas con
+// folio o código y las escrituras condicionadas por revisión son funciones PL/pgSQL de una sola
+// sentencia (ver la migración). Los CHECK y el trigger de inmutabilidad están en el SQL.
+// ---------------------------------------------------------------------------
+
+/// Quien recibe la cotización (tblClientes). Sin cuenta. Solo los campos que este flujo necesita.
+model Cliente {
+  id             String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organizacionId String   @map("organizacion_id") @db.Uuid
+  /// CLI-00001, por organización (contador; no se reutiliza).
+  codigo         String   @db.VarChar(20)
+  /// nombre_razon_social del libro.
+  nombre         String   @db.VarChar(200)
+  activo         Boolean  @default(true)
+  /// Control de concurrencia optimista de la edición.
+  revision       Int      @default(0)
+  creadoPor      String   @map("creado_por") @db.Uuid
+  creadoEn       DateTime @default(now()) @map("creado_en") @db.Timestamptz(3)
+  modificadoPor  String   @map("modificado_por") @db.Uuid
+  modificadoEn   DateTime @default(now()) @map("modificado_en") @db.Timestamptz(3)
+
+  organizacion Organizacion @relation(fields: [organizacionId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  autor        Membresia    @relation("ClienteCreadoPor", fields: [organizacionId, creadoPor], references: [organizacionId, usuarioId], onDelete: Restrict, onUpdate: Restrict)
+  modificador  Membresia    @relation("ClienteModificadoPor", fields: [organizacionId, modificadoPor], references: [organizacionId, usuarioId], onDelete: Restrict, onUpdate: Restrict)
+  proyectos    Proyecto[]
+
+  @@unique([organizacionId, id])
+  @@unique([organizacionId, codigo])
+  @@map("cliente")
+}
+
+/// Trabajo del cliente (tblProyectos). Pertenece a un solo cliente, que no cambia.
+model Proyecto {
+  id                String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organizacionId    String   @map("organizacion_id") @db.Uuid
+  clienteId         String   @map("cliente_id") @db.Uuid
+  /// PRY-00001, por organización.
+  codigo            String   @db.VarChar(20)
+  nombre            String   @db.VarChar(200)
+  municipio         String?  @db.VarChar(120)
+  entidadFederativa String?  @map("entidad_federativa") @db.VarChar(60)
+  descripcion       String?  @db.VarChar(500)
+  activo            Boolean  @default(true)
+  revision          Int      @default(0)
+  creadoPor         String   @map("creado_por") @db.Uuid
+  creadoEn          DateTime @default(now()) @map("creado_en") @db.Timestamptz(3)
+  modificadoPor     String   @map("modificado_por") @db.Uuid
+  modificadoEn      DateTime @default(now()) @map("modificado_en") @db.Timestamptz(3)
+
+  cliente      Cliente      @relation(fields: [organizacionId, clienteId], references: [organizacionId, id], onDelete: Restrict, onUpdate: Restrict)
+  autor        Membresia    @relation("ProyectoCreadoPor", fields: [organizacionId, creadoPor], references: [organizacionId, usuarioId], onDelete: Restrict, onUpdate: Restrict)
+  modificador  Membresia    @relation("ProyectoModificadoPor", fields: [organizacionId, modificadoPor], references: [organizacionId, usuarioId], onDelete: Restrict, onUpdate: Restrict)
+  cotizaciones Cotizacion[]
+
+  @@unique([organizacionId, id])
+  @@unique([organizacionId, codigo])
+  /// Destino de la FK compuesta de cotizacion: el proyecto es de ESE cliente y de ESA organización.
+  @@unique([organizacionId, clienteId, id])
+  @@map("proyecto")
+}
+
+/// Cotización con folio (tblCotizaciones). El folio fija cliente y proyecto.
+model Cotizacion {
+  id             String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organizacionId String   @map("organizacion_id") @db.Uuid
+  /// COT-AAAA-NNNNN (formato del libro); contador propio de la web por organización y año.
+  folio          String   @db.VarChar(20)
+  anioFolio      Int      @map("anio_folio")
+  /// WEB_DEMO: historial independiente de la fase Excel (CHECK).
+  origen         String   @db.VarChar(20)
+  /// ACTIVO | DESCARTADO (CHECK). En este módulo solo se alcanza ACTIVO.
+  estadoFolio    String   @default("ACTIVO") @map("estado_folio") @db.VarChar(20)
+  clienteId      String   @map("cliente_id") @db.Uuid
+  proyectoId     String   @map("proyecto_id") @db.Uuid
+  /// Último número de versión asignado (0 = sin versiones). Se incrementa atómicamente.
+  ultimaVersion  Int      @default(0) @map("ultima_version")
+  creadoPor      String   @map("creado_por") @db.Uuid
+  creadoEn       DateTime @default(now()) @map("creado_en") @db.Timestamptz(3)
+
+  proyecto  Proyecto            @relation(fields: [organizacionId, clienteId, proyectoId], references: [organizacionId, clienteId, id], onDelete: Restrict, onUpdate: Restrict)
+  autor     Membresia           @relation(fields: [organizacionId, creadoPor], references: [organizacionId, usuarioId], onDelete: Restrict, onUpdate: Restrict)
+  borrador  CotizacionBorrador?
+  versiones CotizacionVersion[]
+
+  @@unique([organizacionId, id])
+  @@unique([organizacionId, folio])
+  @@index([organizacionId, creadoEn])
+  @@map("cotizacion")
+}
+
+/// Captura editable (1:1). `revision` es el control de concurrencia optimista.
+model CotizacionBorrador {
+  cotizacionId   String   @id @map("cotizacion_id") @db.Uuid
+  organizacionId String   @map("organizacion_id") @db.Uuid
+  /// EsquemaCapturaBorrador (contracts): códigos y textos; null = sin capturar.
+  captura        Json
+  revision       Int      @default(0)
+  actualizadoPor String   @map("actualizado_por") @db.Uuid
+  actualizadoEn  DateTime @default(now()) @map("actualizado_en") @db.Timestamptz(3)
+
+  cotizacion Cotizacion @relation(fields: [organizacionId, cotizacionId], references: [organizacionId, id], onDelete: Restrict, onUpdate: Restrict)
+  autor      Membresia  @relation(fields: [organizacionId, actualizadoPor], references: [organizacionId, usuarioId], onDelete: Restrict, onUpdate: Restrict)
+
+  @@unique([organizacionId, cotizacionId])
+  @@map("cotizacion_borrador")
+}
+
+/// Versión guardada: registro histórico INMUTABLE de un cálculo válido hecho en el servidor.
+/// entrada_calculo y resultado_interno contienen costos internos y nunca salen de la API.
+model CotizacionVersion {
+  id                  String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organizacionId      String   @map("organizacion_id") @db.Uuid
+  cotizacionId        String   @map("cotizacion_id") @db.Uuid
+  numero              Int
+  revisionBorrador    Int      @map("revision_borrador")
+  captura             Json
+  solicitudCalculo    Json     @map("solicitud_calculo")
+  entradaCalculo      Json     @map("entrada_calculo")
+  resultadoInterno    Json     @map("resultado_interno")
+  proyeccionComercial Json     @map("proyeccion_comercial")
+  avisos              Json
+  total               Decimal  @db.Decimal(18, 2)
+  fechaCalculo        DateTime @map("fecha_calculo") @db.Date
+  versionMotor        String   @map("version_motor") @db.VarChar(40)
+  /// SHA-256 de entrada y resultado (equivalente a sello_calculo, BL-16).
+  huellaCalculo       Bytes    @map("huella_calculo")
+  /// SHA-256 solo de los valores de referencia (parámetros, precios, consumos y tarifas).
+  huellaReferencia    Bytes    @map("huella_referencia")
+  clienteCodigo       String   @map("cliente_codigo") @db.VarChar(20)
+  clienteNombre       String   @map("cliente_nombre") @db.VarChar(200)
+  proyectoCodigo      String   @map("proyecto_codigo") @db.VarChar(20)
+  proyectoNombre      String   @map("proyecto_nombre") @db.VarChar(200)
+  proyectoUbicacion   String?  @map("proyecto_ubicacion") @db.VarChar(200)
+  proyectoDescripcion String?  @map("proyecto_descripcion") @db.VarChar(500)
+  autorId             String   @map("autor_id") @db.Uuid
+  autorNombre         String   @map("autor_nombre") @db.VarChar(200)
+  motivo              String?  @db.VarChar(500)
+  resumenCambios      Json     @map("resumen_cambios")
+  creadoEn            DateTime @default(now()) @map("creado_en") @db.Timestamptz(3)
+
+  cotizacion Cotizacion @relation(fields: [organizacionId, cotizacionId], references: [organizacionId, id], onDelete: Restrict, onUpdate: Restrict)
+  autor      Membresia  @relation(fields: [organizacionId, autorId], references: [organizacionId, usuarioId], onDelete: Restrict, onUpdate: Restrict)
+
+  @@unique([cotizacionId, numero])
+  @@unique([organizacionId, id])
+  @@map("cotizacion_version")
+}
+
+/// Contadores de identificadores (tblContadores): CLI, PRY y COT-AAAA, por organización.
+model Contador {
+  organizacionId String @map("organizacion_id") @db.Uuid
+  entidad        String @db.VarChar(20)
+  ultimo         Int
+
+  organizacion Organizacion @relation(fields: [organizacionId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+
+  @@id([organizacionId, entidad])
+  @@map("contador")
+}
+
+/// Eventos mínimos (tblBitacora): creación, edición y versionado. Sin capturas, contraseñas ni tokens.
+model Bitacora {
+  id             String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organizacionId String   @map("organizacion_id") @db.Uuid
+  /// cliente | proyecto | cotizacion (referencia polimórfica: sin FK).
+  entidad        String   @db.VarChar(20)
+  entidadId      String   @map("entidad_id") @db.Uuid
+  tipo           String   @db.VarChar(40)
+  usuarioId      String   @map("usuario_id") @db.Uuid
+  detalle        Json
+  ocurridoEn     DateTime @default(now()) @map("ocurrido_en") @db.Timestamptz(3)
+
+  organizacion Organizacion @relation(fields: [organizacionId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  usuario      Membresia    @relation(fields: [organizacionId, usuarioId], references: [organizacionId, usuarioId], onDelete: Restrict, onUpdate: Restrict)
+
+  @@index([organizacionId, entidad, entidadId, ocurridoEn])
+  @@map("bitacora")
+}
+
+/// Claves de idempotencia de las altas (ámbito: organización + usuario + clave; 24 h).
+/// Solo se registran los éxitos, en la misma sentencia que crea el recurso.
+model Idempotencia {
+  organizacionId  String   @map("organizacion_id") @db.Uuid
+  usuarioId       String   @map("usuario_id") @db.Uuid
+  clave           String   @db.Uuid
+  operacion       String   @db.VarChar(40)
+  /// SHA-256 de operación, parámetros de ruta y cuerpo canónico.
+  huellaSolicitud Bytes    @map("huella_solicitud")
+  recursoTipo     String   @map("recurso_tipo") @db.VarChar(20)
+  recursoId       String   @map("recurso_id") @db.Uuid
+  creadaEn        DateTime @default(now()) @map("creada_en") @db.Timestamptz(3)
+  expiraEn        DateTime @map("expira_en") @db.Timestamptz(3)
+
+  usuario Membresia @relation(fields: [organizacionId, usuarioId], references: [organizacionId, usuarioId], onDelete: Restrict, onUpdate: Restrict)
+
+  @@id([organizacionId, usuarioId, clave])
+  @@index([expiraEn])
+  @@map("idempotencia")
 }

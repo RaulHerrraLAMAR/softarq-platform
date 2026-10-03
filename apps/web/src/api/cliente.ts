@@ -9,7 +9,10 @@
  * Sesión (ADR-0007):
  * - `credentials: "include"`: el navegador envía la cookie HttpOnly de sesión; la web nunca la ve.
  * - El token CSRF se lee de memoria (`csrf()`), nunca de `localStorage`, `sessionStorage` ni
- *   variables públicas, y se envía en POST y DELETE.
+ *   variables públicas, y se envía en todo método con efectos (POST, PUT, PATCH y DELETE).
+ * - Si el servidor responde 403 CSRF_NO_VALIDO (p. ej., la API se reinició), se renueva el token
+ *   (`renovarCsrf`) y se reintenta UNA vez la misma solicitud con las mismas cabeceras, incluida la
+ *   `Idempotency-Key`: el reintento conserva la identidad de la operación y no duplica altas.
  * - Generación de sesión: al iniciar, cerrar o vencer la sesión se cancela todo lo pendiente
  *   (`cancelarTodo`) y cualquier respuesta de una generación anterior se descarta («cancelado»),
  *   de modo que ningún dato de la identidad anterior vuelve a la pantalla.
@@ -27,11 +30,27 @@ export type FalloApi =
   | { tipo: "credenciales" }
   | { tipo: "sin_permiso" }
   | { tipo: "csrf" }
+  /** 409 (ADR-0008): revisión obsoleta o borrador cambiado; `actual` trae el estado vigente. */
+  | { tipo: "conflicto"; codigo: "CONFLICTO_EDICION" | "BORRADOR_DESACTUALIZADO"; mensaje: string; actual: ActualServidor | null }
+  /** 422 CAPTURA_INCOMPLETA: la captura no está lista; no se guardó ninguna versión. */
+  | { tipo: "incompleta"; campos: { ruta: string; mensaje: string }[] }
+  /** 422 REGISTRO_INACTIVO: el cliente o el proyecto no se ofrece para registros nuevos. */
+  | { tipo: "inactivo"; mensaje: string }
+  /** 422 IDEMPOTENCIA_CONFLICTO o IDEMPOTENCIA_CADUCADA. */
+  | { tipo: "idempotencia"; mensaje: string }
   | { tipo: "no_disponible" }
   | { tipo: "incompatible" }
   | { tipo: "error_servidor" }
   | { tipo: "red" }
   | { tipo: "cancelado" };
+
+export interface ActualServidor {
+  revision: number;
+  actualizadoPor: string;
+  actualizadoEn: string;
+  /** Solo en borradores: la captura guardada (sin validar; la web la valida con el contrato). */
+  captura?: unknown;
+}
 
 export type ResultadoApi<T> = { ok: true; datos: T } | { ok: false; fallo: FalloApi };
 
@@ -42,11 +61,19 @@ export interface OpcionesSolicitud {
   tiempoMaximo?: number;
   /** Endpoints de acceso: un 401 no significa «sesión vencida». */
   sinAvisoDeSesion?: boolean;
+  /** Cabeceras adicionales (p. ej., `Idempotency-Key`); se conservan en el reintento por CSRF. */
+  cabeceras?: Record<string, string>;
 }
+
+export type MetodoEscritura = "POST" | "PUT" | "PATCH";
 
 export interface ClienteApi {
   obtener<E extends z.ZodType>(ruta: string, esquema: E, opciones?: OpcionesSolicitud): Promise<ResultadoApi<z.infer<E>>>;
-  enviar<E extends z.ZodType>(ruta: string, esquema: E, opciones: OpcionesSolicitud): Promise<ResultadoApi<z.infer<E>>>;
+  enviar<E extends z.ZodType>(
+    ruta: string,
+    esquema: E,
+    opciones: OpcionesSolicitud & { metodo?: MetodoEscritura },
+  ): Promise<ResultadoApi<z.infer<E>>>;
   /** DELETE sin cuerpo de respuesta (204). */
   eliminar(ruta: string, opciones?: OpcionesSolicitud): Promise<ResultadoApi<null>>;
   /** Cancela todo lo pendiente y descarta las respuestas que lleguen después. */
@@ -58,12 +85,15 @@ export interface OpcionesCliente {
   csrf?: () => string | null;
   /** Se llama ante un 401 fuera de los endpoints de acceso. */
   alNoAutenticado?: () => void;
-  /** Se llama ante un 403 CSRF_NO_VALIDO (p. ej., la API se reinició). */
-  alCsrfNoValido?: () => void;
+  /**
+   * Ante un 403 CSRF_NO_VALIDO: obtiene un token nuevo (en memoria) y devuelve `true` si lo
+   * consiguió; entonces la solicitud se reintenta una sola vez con las mismas cabeceras.
+   */
+  renovarCsrf?: () => Promise<boolean>;
 }
 
 const TIEMPO_MAXIMO_MS = 15_000;
-type Metodo = "GET" | "POST" | "DELETE";
+type Metodo = "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
 
 export function crearClienteApi(
   urlBase: string,
@@ -78,6 +108,7 @@ export function crearClienteApi(
     ruta: string,
     validar: (cuerpo: unknown) => ResultadoApi<T>,
     opciones: OpcionesSolicitud = {},
+    esReintento = false,
   ): Promise<ResultadoApi<T>> {
     const cancelado: ResultadoApi<T> = { ok: false, fallo: { tipo: "cancelado" } };
     const externo = opciones.signal;
@@ -90,8 +121,9 @@ export function crearClienteApi(
     const descartado = () => externo?.aborted === true || propio.signal.aborted || miGeneracion !== generacion;
 
     try {
-      const cabeceras: Record<string, string> = { Accept: "application/json" };
-      if (metodo === "POST") cabeceras["Content-Type"] = "application/json";
+      const conCuerpo = metodo === "POST" || metodo === "PUT" || metodo === "PATCH";
+      const cabeceras: Record<string, string> = { ...(opciones.cabeceras ?? {}), Accept: "application/json" };
+      if (conCuerpo) cabeceras["Content-Type"] = "application/json";
       if (metodo !== "GET") {
         const csrf = opcionesCliente.csrf?.();
         if (csrf) cabeceras[CABECERA_CSRF] = csrf;
@@ -102,7 +134,7 @@ export function crearClienteApi(
           method: metodo,
           signal,
           headers: cabeceras,
-          ...(metodo === "POST" ? { body: JSON.stringify(opciones.cuerpo) } : {}),
+          ...(conCuerpo ? { body: JSON.stringify(opciones.cuerpo) } : {}),
           credentials: "include",
           cache: "no-store",
           redirect: "error",
@@ -128,7 +160,12 @@ export function crearClienteApi(
       const error = EsquemaRespuestaError.safeParse(cuerpo);
       const fallo = falloPorEstado(respuesta, error.success ? error.data : null);
       if (fallo.tipo === "no_autenticado" && !opciones.sinAvisoDeSesion) opcionesCliente.alNoAutenticado?.();
-      if (fallo.tipo === "csrf" && !opciones.sinAvisoDeSesion) opcionesCliente.alCsrfNoValido?.();
+      if (fallo.tipo === "csrf" && !opciones.sinAvisoDeSesion && !esReintento && opcionesCliente.renovarCsrf) {
+        pendientes.delete(propio);
+        const renovado = await opcionesCliente.renovarCsrf();
+        if (descartado()) return cancelado;
+        if (renovado) return solicitar(metodo, ruta, validar, opciones, true);
+      }
       return { ok: false, fallo };
     } finally {
       pendientes.delete(propio);
@@ -144,7 +181,7 @@ export function crearClienteApi(
 
   return {
     obtener: (ruta, esquema, opciones) => solicitar("GET", ruta, conEsquema(esquema), opciones),
-    enviar: (ruta, esquema, opciones) => solicitar("POST", ruta, conEsquema(esquema), opciones),
+    enviar: (ruta, esquema, { metodo = "POST", ...opciones }) => solicitar(metodo, ruta, conEsquema(esquema), opciones),
     eliminar: (ruta, opciones) =>
       solicitar("DELETE", ruta, (c) => (c === null ? { ok: true, datos: null } : { ok: false, fallo: { tipo: "incompatible" } }), opciones),
     cancelarTodo() {
@@ -168,8 +205,24 @@ function falloPorEstado(respuesta: Response, error: RespuestaError | null): Fall
       return e?.codigo === "SIN_PERMISO" || e?.codigo === "ORIGEN_NO_PERMITIDO" ? { tipo: "sin_permiso" } : { tipo: "incompatible" };
     case 404:
       return e ? { tipo: "no_encontrado", faltantes: e.faltantes ?? [] } : { tipo: "incompatible" };
+    case 409:
+      return e?.codigo === "CONFLICTO_EDICION" || e?.codigo === "BORRADOR_DESACTUALIZADO"
+        ? { tipo: "conflicto", codigo: e.codigo, mensaje: e.mensaje, actual: e.actual ?? null }
+        : { tipo: "incompatible" };
     case 422:
-      return e?.codigo === "CALCULO_BLOQUEADO" ? { tipo: "bloqueado", problemas: e.problemas ?? [] } : { tipo: "incompatible" };
+      switch (e?.codigo) {
+        case "CALCULO_BLOQUEADO":
+          return { tipo: "bloqueado", problemas: e.problemas ?? [] };
+        case "CAPTURA_INCOMPLETA":
+          return { tipo: "incompleta", campos: e.campos ?? [] };
+        case "REGISTRO_INACTIVO":
+          return { tipo: "inactivo", mensaje: e.mensaje };
+        case "IDEMPOTENCIA_CONFLICTO":
+        case "IDEMPOTENCIA_CADUCADA":
+          return { tipo: "idempotencia", mensaje: e.mensaje };
+        default:
+          return { tipo: "incompatible" };
+      }
     case 429:
       return { tipo: "limite", reintentarEnSegundos: segundos(respuesta.headers.get("Retry-After")) };
     case 502:
@@ -209,6 +262,14 @@ export function mensajeDeFallo(fallo: FalloApi): string {
       return "Su función no permite esta operación.";
     case "csrf":
       return "La protección de la solicitud se renovó. Vuelva a intentarlo.";
+    case "conflicto":
+      return fallo.mensaje;
+    case "incompleta":
+      return "La captura está incompleta: no se guardó ninguna versión. Complete los datos señalados.";
+    case "inactivo":
+      return fallo.mensaje;
+    case "idempotencia":
+      return "La operación no se pudo repetir con seguridad. Recargue la página y vuelva a intentarlo.";
     case "no_disponible":
       return "El servicio de cotización no está disponible en este momento.";
     case "incompatible":

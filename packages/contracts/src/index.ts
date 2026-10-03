@@ -2,3 +2,4 @@ export * from "./decimal.js";
 export * from "./calculo.js";
 export * from "./vista-comercial.js";
 export * from "./api/esquemas.js";
+export * from "./api/cotizaciones.js";

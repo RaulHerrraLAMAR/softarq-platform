@@ -1,23 +1,19 @@
 /**
- * Cotizador DEMO: inicio (ejemplos o captura propia) y captura con resultado.
- * Coordina el estado; la presentación vive en cada funcionalidad.
+ * Calculadora DEMO: inicio (ejemplos o captura propia) y captura con resultado previo.
+ * Coordina el estado; la presentación vive en cada funcionalidad. No guarda nada: para conservar
+ * una captura se usa «Guardar como cotización» (módulo 6).
  *
  * Con sesión (ADR-0007) se monta con una `key` por generación de sesión: al cerrar, vencer o
  * cambiar de usuario, todo este estado (captura, resultados y consultas) se descarta.
  */
-import { useCallback, useEffect, useMemo, useReducer, useRef, useState, type ReactNode, type RefObject } from "react";
+import { useRef, useState, type ReactNode } from "react";
 import type { ServiciosApi } from "./api/servicios.ts";
-import { PanelResultado } from "./calculo/PanelResultado.tsx";
-import { useCalculo, type EstadoCalculo } from "./calculo/usarCalculo.ts";
-import { useOpcionesPrecio, useTiposAdicional, type OpcionesCargadas } from "./catalogos/hooks.ts";
-import { Aviso, Boton, Encabezado } from "./comunes/componentes.tsx";
-import { ProveedorCaptura } from "./captura/contexto.tsx";
-import { ESTADO_INICIAL, conceptosEnUso, reducir, type Captura } from "./captura/estado.ts";
-import { Progreso, type EstadoResultado } from "./captura/componentes/Progreso.tsx";
-import { SeccionAdicionales } from "./captura/componentes/SeccionAdicionales.tsx";
-import { SeccionOpciones } from "./captura/componentes/SeccionOpciones.tsx";
-import { SeccionPartidas } from "./captura/componentes/SeccionPartidas.tsx";
-import { armarSolicitud, huellaCaptura, validarCaptura, type ErroresCampo } from "./captura/solicitud.ts";
+import { Aviso, Boton } from "./comunes/componentes.tsx";
+import { Marco } from "./comunes/Marco.tsx";
+import type { Captura } from "./captura/estado.ts";
+import type { ErroresCampo } from "./captura/solicitud.ts";
+import { useCaptura, type EstadoEditorCaptura } from "./captura/usarCaptura.ts";
+import { VistaCaptura } from "./captura/VistaCaptura.tsx";
 import type { Ejemplo } from "./ejemplos/ejemplos.ts";
 import { Inicio, type EstadoCargaEjemplo } from "./inicio/Inicio.tsx";
 
@@ -25,60 +21,47 @@ export interface PropsApp {
   servicios: ServiciosApi;
   /** Identidad y cierre de sesión, en el encabezado. */
   barraSesion?: ReactNode;
+  /** Navegación entre secciones (módulo 6). */
+  navegacion?: ReactNode;
   /** Motivo por el que la función del usuario no permite calcular (solo presentación). */
   motivoSinCalculo?: string | null;
+  /**
+   * Si se indica, la captura ofrece «Guardar como cotización» (sin perderla). Devuelve los errores
+   * de formato que impiden guardarla, o `null` si se aceptó.
+   */
+  alGuardarComoCotizacion?: (captura: Captura) => ErroresCampo | null;
+  /** `false`: solo el contenido, para montarlo dentro del marco de la aplicación (módulo 6). */
+  conMarco?: boolean;
 }
 
-export function App({ servicios, barraSesion, motivoSinCalculo = null }: PropsApp) {
-  const [estado, despachar] = useReducer(reducir, ESTADO_INICIAL);
-  const captura = estado.captura;
-  const [mostrarErrores, setMostrarErrores] = useState(false);
+export function App(props: PropsApp) {
+  const editor = useCaptura(props.servicios);
+  return <Calculadora {...props} editor={editor} />;
+}
+
+/**
+ * La calculadora con un estado de captura recibido: la aplicación (módulo 6) lo conserva aunque la
+ * vista se desmonte al navegar a otra sección, sin dejar en el DOM campos con `id` repetidos.
+ */
+export function Calculadora({
+  servicios,
+  barraSesion,
+  navegacion,
+  motivoSinCalculo = null,
+  alGuardarComoCotizacion,
+  conMarco = true,
+  editor,
+}: PropsApp & { editor: EstadoEditorCaptura }) {
+  const { captura, despachar } = editor;
   const [carga, setCarga] = useState<EstadoCargaEjemplo>(null);
   const [confirmarSalida, setConfirmarSalida] = useState(false);
+  const [formatoInvalido, setFormatoInvalido] = useState(false);
   const cargaActual = useRef(0);
-  const refResumen = useRef<HTMLDivElement>(null);
-  const [enfocarResumen, setEnfocarResumen] = useState(0);
 
-  const conceptos = useMemo(() => (captura ? conceptosEnUso(captura) : []), [captura]);
-  const conciliar = useCallback(
-    (o: OpcionesCargadas) => despachar({ tipo: "CONCILIAR_OPCIONES", conceptos: o.conceptos, insumos: o.insumos }),
-    [],
-  );
-  const opciones = useOpcionesPrecio(servicios, conceptos, conciliar);
-  const tipos = useTiposAdicional(servicios);
-
-  const huella = captura ? huellaCaptura(captura) : null;
-  const calculo = useCalculo(servicios, huella);
-
-  // Opciones válidas solo si corresponden a la lista actual de conceptos.
-  const opcionesVigentes =
-    opciones.resultado.estado === "listo" && opciones.resultado.datos.conceptos.join(",") === conceptos.join(",")
-      ? opciones.resultado.datos.insumos
-      : null;
-  const erroresLocales = useMemo(() => (captura ? validarCaptura(captura, opcionesVigentes) : {}), [captura, opcionesVigentes]);
-
-  // Errores visibles junto a cada campo: los locales tras un intento de cálculo y los del servidor
-  // (400) mientras correspondan a la captura actual.
-  const erroresVisibles: ErroresCampo = useMemo(() => {
-    const e: ErroresCampo = mostrarErrores ? { ...erroresLocales } : {};
-    if (calculo.estado.fase === "rechazado" && calculo.estado.huella === huella) {
-      for (const c of calculo.estado.campos) e[c.ruta] ??= c.mensaje;
-    }
-    return e;
-  }, [mostrarErrores, erroresLocales, calculo.estado, huella]);
-
-  useEffect(() => {
-    if (enfocarResumen > 0) refResumen.current?.focus();
-  }, [enfocarResumen]);
-
-  const alCalcular = () => {
-    if (!captura || huella === null) return;
-    if (Object.keys(erroresLocales).length > 0) {
-      setMostrarErrores(true);
-      setEnfocarResumen((n) => n + 1);
-      return;
-    }
-    void calculo.calcular(armarSolicitud(captura), huella);
+  const guardarComoCotizacion = (c: Captura) => {
+    const errores = alGuardarComoCotizacion?.(c) ?? null;
+    setFormatoInvalido(errores !== null);
+    if (errores) editor.setErroresExternos(errores);
   };
 
   const cargarEjemplo = async (ej: Ejemplo) => {
@@ -93,157 +76,83 @@ export function App({ servicios, barraSesion, motivoSinCalculo = null }: PropsAp
       return;
     }
     const encontrados = respuestas.flatMap((r) => (r.ok ? r.datos.conceptos : [])).filter((c) => codigos.includes(c.codigo));
-    calculo.reiniciar();
-    setMostrarErrores(false);
+    editor.reiniciarResultado();
     setCarga(null);
     despachar({ tipo: "CARGAR_EJEMPLO", ejemplo: ej, conceptos: encontrados });
   };
 
   const iniciarPropia = () => {
     cargaActual.current++;
-    calculo.reiniciar();
-    setMostrarErrores(false);
+    editor.reiniciarResultado();
     setCarga(null);
     despachar({ tipo: "INICIAR_PROPIA" });
   };
 
   const volverAlInicio = () => {
-    calculo.reiniciar();
-    setMostrarErrores(false);
+    editor.reiniciarResultado();
     setConfirmarSalida(false);
     despachar({ tipo: "VOLVER_AL_INICIO" });
   };
 
-  return (
+  const titulo = captura?.origen.tipo === "ejemplo" ? captura.origen.titulo : "Captura propia";
+  const acciones = confirmarSalida ? (
+    <div className="confirmacion" role="group" aria-label="Confirmar salida">
+      <span>¿Descartar esta captura y volver al inicio?</span>
+      <Boton variante="peligro" onClick={volverAlInicio}>
+        Descartar
+      </Boton>
+      <Boton onClick={() => setConfirmarSalida(false)} autoFocus>
+        Seguir capturando
+      </Boton>
+    </div>
+  ) : (
     <>
-      <a className="saltar" href="#principal">
-        Saltar al contenido
-      </a>
-      <Encabezado>{barraSesion}</Encabezado>
-      <main id="principal" tabIndex={-1}>
-        {captura ? (
-          <ProveedorCaptura valor={{ despachar, errores: erroresVisibles }}>
-            <VistaCaptura
-              captura={captura}
-              servicios={servicios}
-              opciones={opciones}
-              tipos={tipos}
-              erroresLocales={erroresLocales}
-              mostrarErrores={mostrarErrores}
-              estadoCalculo={calculo.estado}
-              huella={huella ?? ""}
-              alCalcular={alCalcular}
-              refResumen={refResumen}
-              confirmarSalida={confirmarSalida}
-              setConfirmarSalida={setConfirmarSalida}
-              alVolver={volverAlInicio}
-              motivoSinCalculo={motivoSinCalculo}
-            />
-          </ProveedorCaptura>
-        ) : (
-          <Inicio carga={carga} alCargarEjemplo={(e) => void cargarEjemplo(e)} alIniciarPropia={iniciarPropia} />
-        )}
-      </main>
-      <footer className="pie">
-        <p>SoftArq · entorno DEMO local. La captura se conserva solo mientras esta página esté abierta.</p>
-      </footer>
+      {alGuardarComoCotizacion && captura ? (
+        <Boton variante="secundario" onClick={() => guardarComoCotizacion(captura)}>
+          Guardar como cotización
+        </Boton>
+      ) : null}
+      <Boton variante="enlace" onClick={() => setConfirmarSalida(true)}>
+        Volver al inicio
+      </Boton>
     </>
   );
-}
 
-function estadoResultado(e: EstadoCalculo, huella: string): EstadoResultado {
-  if (e.fase === "sin_calcular") return "sin_calcular";
-  if (e.fase === "calculando") return "calculando";
-  if (e.huella !== huella) return "pendiente";
-  if (e.fase === "calculado") return "calculado";
-  if (e.fase === "bloqueado") return "bloqueado";
-  if (e.fase === "cancelado") return "pendiente";
-  return "error";
-}
-
-function VistaCaptura(props: {
-  captura: Captura;
-  servicios: ServiciosApi;
-  opciones: ReturnType<typeof useOpcionesPrecio>;
-  tipos: ReturnType<typeof useTiposAdicional>;
-  erroresLocales: ErroresCampo;
-  mostrarErrores: boolean;
-  estadoCalculo: EstadoCalculo;
-  huella: string;
-  alCalcular: () => void;
-  refResumen: RefObject<HTMLDivElement | null>;
-  confirmarSalida: boolean;
-  setConfirmarSalida: (v: boolean) => void;
-  alVolver: () => void;
-  motivoSinCalculo: string | null;
-}) {
-  const { captura } = props;
-  const titulo = captura.origen.tipo === "ejemplo" ? captura.origen.titulo : "Captura propia";
+  const contenido = (
+    <>
+      {captura ? (
+        <VistaCaptura
+          editor={editor}
+          servicios={servicios}
+          titulo={titulo}
+          ayuda={
+            alGuardarComoCotizacion
+              ? "La captura se conserva mientras esta página esté abierta; para guardarla, use «Guardar como cotización»."
+              : "La captura se conserva mientras esta página esté abierta; no se guarda."
+          }
+          acciones={acciones}
+          avisos={
+            formatoInvalido ? (
+              <Aviso tono="error" titulo="No se puede guardar todavía" rol="alert">
+                <p>Hay valores con formato inválido (marcados en la captura). Corríjalos y vuelva a pulsar «Guardar como cotización».</p>
+              </Aviso>
+            ) : null
+          }
+          motivoSinCalculo={motivoSinCalculo}
+        />
+      ) : (
+        <Inicio carga={carga} alCargarEjemplo={(e) => void cargarEjemplo(e)} alIniciarPropia={iniciarPropia} />
+      )}
+    </>
+  );
+  if (!conMarco) return contenido;
   return (
-    <div className="captura">
-      <div className="captura-cabecera">
-        <div>
-          <h1 className="captura-titulo">{titulo}</h1>
-          <p className="ayuda">La captura se conserva mientras esta página esté abierta; no se guarda.</p>
-        </div>
-        <div className="captura-acciones">
-          {props.confirmarSalida ? (
-            <div className="confirmacion" role="group" aria-label="Confirmar salida">
-              <span>¿Descartar esta captura y volver al inicio?</span>
-              <Boton variante="peligro" onClick={props.alVolver}>
-                Descartar
-              </Boton>
-              <Boton onClick={() => props.setConfirmarSalida(false)} autoFocus>
-                Seguir capturando
-              </Boton>
-            </div>
-          ) : (
-            <Boton variante="enlace" onClick={() => props.setConfirmarSalida(true)}>
-              Volver al inicio
-            </Boton>
-          )}
-        </div>
-      </div>
-      {captura.avisosCarga.length > 0 ? (
-        <Aviso tono="aviso" titulo="El ejemplo no se cargó completo" rol="status">
-          <ul>
-            {captura.avisosCarga.map((a) => (
-              <li key={a}>{a}</li>
-            ))}
-          </ul>
-        </Aviso>
-      ) : null}
-      {Object.keys(captura.avisosSeleccion).length > 0 ? (
-        <Aviso tono="aviso" titulo="Hay opciones que ya no están disponibles" rol="status">
-          <p>
-            Elija otra opción para {Object.keys(captura.avisosSeleccion).join(", ")} en{" "}
-            <a href="#seccion-opciones">Opciones disponibles</a>. Nada se sustituyó automáticamente.
-          </p>
-        </Aviso>
-      ) : null}
-      <Progreso captura={captura} errores={props.erroresLocales} resultado={estadoResultado(props.estadoCalculo, props.huella)} />
-      <a className="ir-resultado" href="#seccion-resultado">
-        Ir a Calcular y resultado
-      </a>
-      <div className="rejilla-captura">
-        <div className="columna-captura">
-          <SeccionPartidas captura={captura} servicios={props.servicios} />
-          <SeccionOpciones captura={captura} opciones={props.opciones.resultado} reintentar={props.opciones.reintentar} />
-          <SeccionAdicionales captura={captura} tipos={props.tipos.resultado} reintentar={props.tipos.reintentar} />
-        </div>
-        <aside className="columna-resultado" id="seccion-resultado" aria-label="Resultado de la cotización">
-          <PanelResultado
-            estado={props.estadoCalculo}
-            huellaActual={props.huella}
-            erroresLocales={props.erroresLocales}
-            mostrarErrores={props.mostrarErrores}
-            alCalcular={props.alCalcular}
-            alActualizarOpciones={props.opciones.reintentar}
-            refResumen={props.refResumen}
-            motivoSinCalculo={props.motivoSinCalculo}
-          />
-        </aside>
-      </div>
-    </div>
+    <Marco
+      barraSesion={barraSesion}
+      navegacion={navegacion}
+      pie="SoftArq · entorno DEMO local. La captura se conserva solo mientras esta página esté abierta."
+    >
+      {contenido}
+    </Marco>
   );
 }

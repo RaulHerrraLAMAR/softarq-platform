@@ -1,5 +1,5 @@
 /** Traduce una entrada de fixture del motor a la captura HTTP (`SolicitudCalculoDemo`). */
-import type { EntradaCalculo, SolicitudCalculoDemo } from "@softarq/contracts";
+import type { CapturaBorrador, EntradaCalculo, SolicitudCalculoDemo } from "@softarq/contracts";
 
 /** Tipos de costo adicional del catálogo DEMO por categoría (CAD-00001 a CAD-00003). */
 export const TIPO_ADICIONAL_POR_CATEGORIA: Record<string, string> = {
@@ -30,5 +30,40 @@ export function solicitudDemoDesdeEntrada(e: EntradaCalculo): SolicitudCalculoDe
           },
     ),
     preciosElegidos: e.selecciones.map((s) => s.precioId),
+  };
+}
+
+/**
+ * Traduce una entrada de fixture del motor a un borrador de cotización (módulo 6): los mismos
+ * códigos, medidas y precios elegidos, con la selección por insumo.
+ */
+export function borradorDesdeEntrada(e: EntradaCalculo): CapturaBorrador {
+  return {
+    consolidarCompras: e.parametros.consolidarCompras,
+    partidas: e.partidas.map((p) =>
+      p.tipo === "CONCEPTO"
+        ? {
+            tipo: "CONCEPTO" as const,
+            conceptoCodigo: p.concepto.id,
+            descripcion: p.descripcion,
+            mediciones: p.mediciones.map((m) => ({
+              descripcion: m.descripcion,
+              signo: m.signo,
+              piezas: m.piezas,
+              largo: m.largo,
+              ancho: m.ancho,
+              alto: m.alto,
+              segundaMedida: m.alto !== null && m.ancho === null ? ("alto" as const) : ("ancho" as const),
+            })),
+          }
+        : {
+            tipo: "ADICIONAL" as const,
+            tipoAdicionalCodigo: TIPO_ADICIONAL_POR_CATEGORIA[p.categoria]!,
+            descripcion: p.descripcion,
+            cantidad: p.cantidad,
+            monto: p.monto,
+          },
+    ),
+    seleccion: e.selecciones.map((s) => ({ insumoCodigo: s.insumoId, precioCodigo: s.precioId })),
   };
 }

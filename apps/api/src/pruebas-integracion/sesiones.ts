@@ -107,6 +107,12 @@ export class ClienteHttp {
   post(ruta: string, cuerpo: unknown, o: OpcionesSolicitud = {}) {
     return this.solicitar("POST", ruta, { ...o, cuerpo });
   }
+  put(ruta: string, cuerpo: unknown, o: OpcionesSolicitud = {}) {
+    return this.solicitar("PUT", ruta, { ...o, cuerpo });
+  }
+  patch(ruta: string, cuerpo: unknown, o: OpcionesSolicitud = {}) {
+    return this.solicitar("PATCH", ruta, { ...o, cuerpo });
+  }
   delete(ruta: string, o?: OpcionesSolicitud) {
     return this.solicitar("DELETE", ruta, o);
   }

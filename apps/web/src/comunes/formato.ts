@@ -52,3 +52,19 @@ export function formatearFecha(iso: string): string {
   const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso);
   return m ? `${m[3]}/${m[2]}/${m[1]}` : iso;
 }
+
+const FORMATO_INSTANTE = new Intl.DateTimeFormat("es-MX", {
+  timeZone: "America/Mexico_City",
+  day: "2-digit",
+  month: "2-digit",
+  year: "numeric",
+  hour: "2-digit",
+  minute: "2-digit",
+  hour12: false,
+});
+
+/** Instante ISO 8601 → «03/10/2026, 14:05» en la hora del centro de México (zona de los folios). */
+export function formatearInstante(iso: string): string {
+  const d = new Date(iso);
+  return Number.isNaN(d.getTime()) ? iso : FORMATO_INSTANTE.format(d);
+}

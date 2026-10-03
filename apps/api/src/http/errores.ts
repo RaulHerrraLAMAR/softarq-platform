@@ -13,6 +13,7 @@ import { ThrottlerException } from "@nestjs/throttler";
 import type { CodigoErrorApi, RespuestaError } from "@softarq/contracts";
 import type { Request, Response } from "express";
 import { ErrorContrasenasSaturado } from "../modules/autenticacion/infraestructura/contrasenas.js";
+import { ErrorNegocio, type CodigoNegocio } from "../modules/cotizaciones/aplicacion/errores.js";
 
 /** Forma mínima de un issue de Standard Schema (la que entrega StandardSchemaValidationPipe). */
 interface IssueEsquema {
@@ -106,8 +107,24 @@ function errorDeCuerpo(error: unknown): ErrorApi | null {
   return null;
 }
 
+/** Estado HTTP de cada error de negocio de cotizaciones (ADR-0008). */
+const ESTADO_NEGOCIO: Record<CodigoNegocio, number> = {
+  NO_ENCONTRADO: 404,
+  SIN_PERMISO: 403,
+  CONFLICTO_EDICION: 409,
+  BORRADOR_DESACTUALIZADO: 409,
+  CAPTURA_INCOMPLETA: 422,
+  CALCULO_BLOQUEADO: 422,
+  REGISTRO_INACTIVO: 422,
+  IDEMPOTENCIA_CONFLICTO: 422,
+  IDEMPOTENCIA_CADUCADA: 422,
+};
+
 export function traducirError(error: unknown): ErrorApi {
   if (error instanceof ErrorApi) return error;
+  if (error instanceof ErrorNegocio) {
+    return new ErrorApi(ESTADO_NEGOCIO[error.codigo], error.codigo, error.message, error.detalle);
+  }
   const cuerpo = errorDeCuerpo(error);
   if (cuerpo) return cuerpo;
   if (error instanceof ErrorContrasenasSaturado) {

@@ -4,7 +4,7 @@
  * Para cada ruta, según sus metadatos:
  * - `@Publico()`: sin sesión (salud, OpenAPI, token CSRF previo).
  * - `@ConSesionPrevia()`: exige la sesión previa de la cookie y su token CSRF (inicio de sesión).
- * - Cualquier otra: exige una sesión de usuario vigente y la capacidad de `@Requiere(...)`. Una ruta
+ * - Cualquier otra: exige una sesión de usuario vigente y las capacidades de `@Requiere(...)`. Una ruta
  *   sin `@Requiere` se rechaza.
  *
  * En todo método con efectos (POST, PUT, PATCH, DELETE), incluidas las rutas públicas:
@@ -31,8 +31,11 @@ type Acceso = "publico" | "previa";
 export const Publico = () => SetMetadata(META_ACCESO, "publico" satisfies Acceso);
 /** Ruta que exige la sesión previa al acceso y su token CSRF (solo el inicio de sesión). */
 export const ConSesionPrevia = () => SetMetadata(META_ACCESO, "previa" satisfies Acceso);
-/** Capacidad que exige la ruta (matriz de ADR-0007). */
-export const Requiere = (capacidad: Capacidad) => SetMetadata(META_CAPACIDAD, capacidad);
+/**
+ * Capacidades que exige la ruta (matriz de ADR-0007 y ADR-0008); con varias, se exigen TODAS.
+ * La del método sustituye a la del controlador.
+ */
+export const Requiere = (...capacidades: [Capacidad, ...Capacidad[]]) => SetMetadata(META_CAPACIDAD, capacidades);
 
 const CLAVE_PREVIA = "sesionPrevia";
 
@@ -94,8 +97,8 @@ export class GuardiaSesion implements CanActivate {
     if (conEfectos && !this.servicio.csrfValido(csrf, r.sesion.sesionId)) {
       throw new ErrorApi(403, "CSRF_NO_VALIDO", "La solicitud no lleva un token CSRF válido para esta sesión.");
     }
-    const capacidad = this.reflector.getAllAndOverride<Capacidad | undefined>(META_CAPACIDAD, objetivos);
-    if (capacidad === undefined || !r.sesion.capacidades.includes(capacidad)) {
+    const exigidas = this.reflector.getAllAndOverride<readonly Capacidad[] | undefined>(META_CAPACIDAD, objetivos);
+    if (exigidas === undefined || exigidas.length === 0 || !exigidas.every((c) => r.sesion.capacidades.includes(c))) {
       throw new ErrorApi(403, "SIN_PERMISO", "Su función no permite esta operación.");
     }
     fijarSesion(req, r.sesion);

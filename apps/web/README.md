@@ -1,6 +1,6 @@
 # apps/web — Cliente web DEMO de SoftArq
 
-- **Estado (02/10/2026):** módulo 4, cliente web DEMO sobre la API local ([ADR-0006](../../docs/adr/0006-cliente-web-demo.md)); módulo 5, acceso con sesión ([ADR-0007](../../docs/adr/0007-autenticacion-sesiones.md)).
+- **Estado (03/10/2026):** módulo 4, cliente web DEMO sobre la API local ([ADR-0006](../../docs/adr/0006-cliente-web-demo.md)); módulo 5, acceso con sesión ([ADR-0007](../../docs/adr/0007-autenticacion-sesiones.md)); módulo 6, clientes, proyectos y cotizaciones guardadas con versiones ([ADR-0008](../../docs/adr/0008-cotizaciones-versiones-folios.md)).
 - **Tecnología:** React 19.3, TypeScript 7 (solo tipos), Vite 8.3, Zod 4.6 (los esquemas de `@softarq/contracts`), Vitest 5 con jsdom y Playwright 1.63 con Edge.
 
 ## Qué hace
@@ -11,11 +11,14 @@
 3. **Opciones disponibles:** selección explícita por insumo, sin preselección; la marca «Menor precio vigente» solo informa. Incluye la consolidación de compras.
 4. **Costos adicionales** (opcionales).
 5. **Resultado:** cálculo en el servidor, con total, subtotal, impuesto, avisos, detalle, bloqueos y estados de error. Con la función Revisor, «Calcular» aparece deshabilitado con su motivo (la API responde 403 de todos modos).
+6. **Navegación (módulo 6):** Calculadora DEMO (página inicial) · Cotizaciones · Clientes · Proyectos, con una URL por pantalla (`#/cotizaciones/{id}`…); al recargar se vuelve a la misma pantalla con lo guardado en el servidor.
+7. **Clientes y proyectos:** buscar, crear, editar, desactivar y reactivar (sin borrar).
+8. **Cotizaciones:** nueva cotización (cliente → proyecto → folio WEB DEMO), «Guardar como cotización» desde la calculadora sin perder la captura, borrador con «Guardar borrador» y aviso de cambios sin guardar, vista previa (no se guarda), «Calcular y guardar versión» (lo calcula y guarda el servidor), historial de versiones y eventos, consulta de cada versión tal como se guardó y resolución de conflictos entre pestañas sin pérdida. El Revisor solo consulta.
 
 **Lo que no hace:**
 - no calcula importes;
 - no conoce costos, precios de proveedor, consumos ni parámetros;
-- no guarda la captura;
+- no guarda la captura por su cuenta: el borrador lo guarda el servidor y la calculadora sigue sin guardarse;
 - no guarda tokens: la cookie de sesión es HttpOnly y el token CSRF vive solo en memoria (sin `localStorage` ni `sessionStorage`);
 - no contiene credenciales ni accesos automáticos.
 
@@ -43,7 +46,9 @@ pnpm verificar:e2e                       # Playwright: web compilada + API real 
 | `src/api/` | Cliente HTTP centralizado (validación con esquemas, clasificación de errores, cancelación, cookie con credenciales, CSRF en memoria y descarte por generación de sesión) y funciones por endpoint |
 | `src/sesion/` | Proveedor de sesión (restauración, acceso, cierre, vencimiento), pantalla de acceso, barra de sesión y raíz |
 | `src/catalogos/` | Consultas con `AbortController` y «la última gana» |
-| `src/captura/` | Reducer de la captura, armado y validación de la solicitud, huella, secciones de captura |
+| `src/captura/` | Reducer de la captura, armado y validación de la solicitud, huella, secciones de captura; `usarCaptura` y `VistaCaptura` (un solo formulario para calculadora y cotización); `borrador.ts` (captura ↔ borrador, cambios sin guardar y diferencias) |
+| `src/navegacion/` | Enrutador por hash con guarda de cambios sin guardar |
+| `src/clientes/`, `src/cotizaciones/` | Pantallas de clientes, proyectos, cotizaciones, editor del borrador y versiones |
 | `src/calculo/` | Estado del cálculo (sin duplicados, descarte de respuestas atrasadas) y panel de resultado |
 | `src/ejemplos/` | Entradas públicas de los 4 escenarios (copia de `docs/api/ejemplos`, sin totales) |
 | `src/inicio/`, `src/comunes/`, `src/estilos/`, `src/config/` | Inicio, componentes comunes y formato es-MX, sistema visual, configuración |
@@ -61,7 +66,7 @@ Sistema visual: [`docs/web/sistema-visual.md`](../../docs/web/sistema-visual.md)
 **Salidas:** en `D:\Proyecto_SoftArq\_work\`:
 - `playwright\informe`: informe HTML;
 - `playwright\resultados`: trazas de los fallos;
-- `evidencias\modulo4` y `evidencias\modulo5`: capturas de escritorio y móvil.
+- `evidencias\modulo4`, `evidencias\modulo5` y `evidencias\modulo6`: capturas de escritorio y móvil.
 
 No lo ejecutes a la vez que `pnpm verificar:integracion`: ambos usan `softarq_test`.
 

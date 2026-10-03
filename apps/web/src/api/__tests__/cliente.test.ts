@@ -116,9 +116,9 @@ describe("cliente HTTP con sesión (ADR-0007)", () => {
 
   it("clasifica 401 y 403 y avisa de la sesión vencida (salvo en los endpoints de acceso)", async () => {
     const alNoAutenticado = vi.fn();
-    const alCsrfNoValido = vi.fn();
+    const renovarCsrf = vi.fn(async () => false);
     const con = (estado: number, codigo: string, sinAviso = false) =>
-      crearClienteApi("http://localhost:3000", async () => respuesta(estado, error(codigo)), { alNoAutenticado, alCsrfNoValido }).obtener(
+      crearClienteApi("http://localhost:3000", async () => respuesta(estado, error(codigo)), { alNoAutenticado, renovarCsrf }).obtener(
         "/x",
         EsquemaRespuestaSalud,
         { sinAvisoDeSesion: sinAviso },
@@ -131,7 +131,57 @@ describe("cliente HTTP con sesión (ADR-0007)", () => {
     expect(await con(401, "CREDENCIALES_INVALIDAS", true)).toEqual({ ok: false, fallo: { tipo: "credenciales" } });
     expect(await con(403, "SIN_PERMISO")).toEqual({ ok: false, fallo: { tipo: "sin_permiso" } });
     expect(await con(403, "CSRF_NO_VALIDO")).toEqual({ ok: false, fallo: { tipo: "csrf" } });
-    expect(alCsrfNoValido).toHaveBeenCalledTimes(1);
+    // Sin token nuevo no se reintenta: el fallo llega a la interfaz.
+    expect(renovarCsrf).toHaveBeenCalledTimes(1);
+  });
+
+  it("CSRF caducado: renueva el token y reintenta UNA vez con la misma Idempotency-Key", async () => {
+    let token = "a".repeat(43);
+    const f = vi.fn(async (_u: string | URL | Request, init?: RequestInit) => {
+      const h = init?.headers as Record<string, string>;
+      return h["X-CSRF-Token"] === "b".repeat(43)
+        ? respuesta(200, { estado: "ok", baseDeDatos: "disponible" })
+        : respuesta(403, error("CSRF_NO_VALIDO"));
+    });
+    const renovarCsrf = vi.fn(async () => {
+      token = "b".repeat(43);
+      return true;
+    });
+    const cliente = crearClienteApi("http://localhost:3000", f, { csrf: () => token, renovarCsrf });
+    const r = await cliente.enviar("/api/v1/cotizaciones", EsquemaRespuestaSalud, {
+      cuerpo: { proyectoId: "p" },
+      cabeceras: { "Idempotency-Key": "clave-1" },
+    });
+    expect(r.ok).toBe(true);
+    expect(f).toHaveBeenCalledTimes(2);
+    expect(cabeceras(f, 0)["Idempotency-Key"]).toBe("clave-1");
+    expect(cabeceras(f, 1)["Idempotency-Key"]).toBe("clave-1");
+    expect((f.mock.calls[1] as unknown as [string, RequestInit])[1].body).toBe((f.mock.calls[0] as unknown as [string, RequestInit])[1].body);
+
+    // Si el reintento también falla, no hay un segundo reintento (sin bucles).
+    const siempre403 = vi.fn(async () => respuesta(403, error("CSRF_NO_VALIDO")));
+    const otro = crearClienteApi("http://localhost:3000", siempre403, { csrf: () => token, renovarCsrf: async () => true });
+    expect(await otro.enviar("/x", EsquemaRespuestaSalud, { cuerpo: {}, metodo: "PUT" })).toEqual({ ok: false, fallo: { tipo: "csrf" } });
+    expect(siempre403).toHaveBeenCalledTimes(2);
+    expect((siempre403.mock.calls[0] as unknown as [string, RequestInit])[1].method).toBe("PUT");
+  });
+
+  it("clasifica los errores de cotizaciones: 409 con el estado vigente y 422 incompleta, inactivo o idempotencia", async () => {
+    const actual = { revision: 3, actualizadoPor: "[DEMO] Otra", actualizadoEn: "2026-10-03T10:00:00.000Z", captura: { x: 1 } };
+    expect(await fallo(409, error("CONFLICTO_EDICION", { actual }))).toEqual({
+      tipo: "conflicto",
+      codigo: "CONFLICTO_EDICION",
+      mensaje: "m",
+      actual,
+    });
+    expect(await fallo(409, error("BORRADOR_DESACTUALIZADO"))).toMatchObject({ tipo: "conflicto", codigo: "BORRADOR_DESACTUALIZADO", actual: null });
+    expect(await fallo(422, error("CAPTURA_INCOMPLETA", { campos: [{ ruta: "partidas", mensaje: "falta" }] }))).toEqual({
+      tipo: "incompleta",
+      campos: [{ ruta: "partidas", mensaje: "falta" }],
+    });
+    expect(await fallo(422, error("REGISTRO_INACTIVO"))).toEqual({ tipo: "inactivo", mensaje: "m" });
+    expect(await fallo(422, error("IDEMPOTENCIA_CONFLICTO"))).toEqual({ tipo: "idempotencia", mensaje: "m" });
+    expect(await fallo(409, error("OTRO"))).toEqual({ tipo: "incompatible" });
   });
 
   it("cancelarTodo aborta lo pendiente y descarta respuestas que lleguen después", async () => {

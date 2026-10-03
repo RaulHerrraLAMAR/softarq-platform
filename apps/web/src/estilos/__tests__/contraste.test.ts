@@ -55,6 +55,11 @@ const PARES: [string, string, string][] = [
   ["botón «Cerrar sesión» (hover)", BLANCO, t("color-secundario")],
   ["error en la barra de sesión", t("color-error"), t("color-error-fondo")],
   ["aviso «Sesión cerrada»", t("color-texto"), t("color-correcto-fondo")],
+  // Módulo 6: navegación, estado del borrador y formularios.
+  ["sección actual de la navegación", t("color-accion"), t("color-tarjeta")],
+  ["atenuado en el estado «Cambios sin guardar»", t("color-texto-atenuado"), t("color-aviso-fondo")],
+  ["atenuado en formularios", t("color-texto-atenuado"), t("color-superficie-suave")],
+  ["insignia «Inactivo»", t("color-info"), t("color-info-fondo")],
 ];
 
 describe("contraste del sistema visual (WCAG AA, texto normal)", () => {

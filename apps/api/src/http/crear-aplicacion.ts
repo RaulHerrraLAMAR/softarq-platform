@@ -7,6 +7,9 @@
  *
  * Autenticación (ADR-0007): guardia global que niega por omisión, sesiones opacas en PostgreSQL,
  * CORS con credenciales para orígenes exactos y `Cache-Control: no-store`.
+ *
+ * Cotizaciones (ADR-0008): clientes, proyectos, borradores y versiones; PUT/PATCH y la cabecera
+ * `Idempotency-Key` se añaden a CORS.
  */
 import "reflect-metadata";
 import {
@@ -22,7 +25,7 @@ import { APP_FILTER, APP_GUARD, NestFactory, Reflector } from "@nestjs/core";
 import type { NestExpressApplication } from "@nestjs/platform-express";
 import { ThrottlerGuard, ThrottlerModule } from "@nestjs/throttler";
 import helmet from "helmet";
-import { CABECERA_CSRF } from "@softarq/contracts";
+import { CABECERA_CSRF, CABECERA_IDEMPOTENCIA, CABECERA_IDEMPOTENCIA_REPRODUCIDA } from "@softarq/contracts";
 import { z } from "zod";
 import type { ConfiguracionApi } from "../config/entorno.js";
 import { RepositorioCatalogos } from "../modules/catalogos/persistencia/repositorio-catalogos.js";
@@ -36,10 +39,14 @@ import {
 import { ServicioContrasenas } from "../modules/autenticacion/infraestructura/contrasenas.js";
 import { GeneradorCsrf } from "../modules/autenticacion/infraestructura/csrf.js";
 import { RepositorioSesiones } from "../modules/autenticacion/infraestructura/repositorio-sesiones.js";
+import { ServicioClientes } from "../modules/cotizaciones/aplicacion/servicio-clientes.js";
+import { ServicioCotizaciones, type MedidorTiempos } from "../modules/cotizaciones/aplicacion/servicio-cotizaciones.js";
+import { RepositorioCotizaciones } from "../modules/cotizaciones/infraestructura/repositorio-cotizaciones.js";
 import { ServicioBaseDeDatos } from "./base-de-datos.js";
 import { comprobarRolAplicacion } from "./contexto.js";
 import { AutenticacionController } from "./controlador-autenticacion.js";
 import { CalculosController, CatalogosController, OpenApiController, SaludController } from "./controladores.js";
+import { ClientesController, CotizacionesController, ProyectosController } from "./controladores-cotizaciones.js";
 import { FiltroErrores, errorDeValidacion } from "./errores.js";
 import { GuardiaSesion } from "./guardia-sesion.js";
 import { crearMiddlewareJson, crearMiddlewareRegistro, middlewareSinCache, middlewareSolicitudId } from "./solicitud.js";
@@ -50,6 +57,8 @@ import {
   RELOJ_SESIONES,
   REPOSITORIO_CATALOGOS,
   SERVICIO_AUTENTICACION,
+  SERVICIO_CLIENTES,
+  SERVICIO_COTIZACIONES,
 } from "./tokens.js";
 
 const VENTANA_LIMITADOR_MS = 60_000;
@@ -59,12 +68,14 @@ const VENTANA_LIMITADOR_MS = 60_000;
  * - `reloj`: fecha de negocio del cálculo (vigencias);
  * - `relojSesiones`: instante de la política de sesiones (expiración absoluta e inactividad);
  * - `sinComprobacionInicialDeRol`: permite arrancar con PostgreSQL inaccesible para comprobar las
- *   respuestas 503 (la guardia sigue exigiendo sesión y consultándola en la base).
+ *   respuestas 503 (la guardia sigue exigiendo sesión y consultándola en la base);
+ * - `medirTiempos`: observa la duración de las fases de «guardar versión» (medición del ADR-0008).
  */
 export interface OpcionesAplicacion {
   reloj?: Reloj;
   relojSesiones?: RelojSesiones;
   sinComprobacionInicialDeRol?: true;
+  medirTiempos?: MedidorTiempos;
 }
 
 function moduloRaiz(config: ConfiguracionApi, opciones: OpcionesAplicacion): DynamicModule {
@@ -92,7 +103,16 @@ function moduloRaiz(config: ConfiguracionApi, opciones: OpcionesAplicacion): Dyn
         ],
       }),
     ],
-    controllers: [SaludController, AutenticacionController, CatalogosController, CalculosController, OpenApiController],
+    controllers: [
+      SaludController,
+      AutenticacionController,
+      CatalogosController,
+      CalculosController,
+      ClientesController,
+      ProyectosController,
+      CotizacionesController,
+      OpenApiController,
+    ],
     providers: [
       { provide: CONFIGURACION, useValue: config },
       { provide: BASE_DE_DATOS, useFactory: () => new ServicioBaseDeDatos(config.databaseUrl) },
@@ -125,6 +145,18 @@ function moduloRaiz(config: ConfiguracionApi, opciones: OpcionesAplicacion): Dyn
       },
       { provide: RELOJ_SESIONES, useValue: opciones.relojSesiones ?? RELOJ_SESIONES_DEL_SISTEMA },
       { provide: RELOJ, useValue: opciones.reloj ?? new RelojDelSistema(config.zonaHoraria) },
+      {
+        provide: SERVICIO_CLIENTES,
+        useFactory: (bd: ServicioBaseDeDatos, instante: RelojSesiones) =>
+          new ServicioClientes(new RepositorioCotizaciones(bd.cliente), instante),
+        inject: [BASE_DE_DATOS, RELOJ_SESIONES],
+      },
+      {
+        provide: SERVICIO_COTIZACIONES,
+        useFactory: (bd: ServicioBaseDeDatos, reloj: Reloj, instante: RelojSesiones) =>
+          new ServicioCotizaciones(bd.cliente, reloj, instante, opciones.medirTiempos),
+        inject: [BASE_DE_DATOS, RELOJ, RELOJ_SESIONES],
+      },
       { provide: APP_GUARD, useClass: ThrottlerGuard },
       {
         // Después del limitador: niega por omisión (sesión, origen, CSRF y capacidad).
@@ -160,9 +192,9 @@ export async function crearAplicacion(
   app.use(helmet({ hsts: false })); // HTTP local: HSTS no aplica
   app.enableCors({
     origin: (origen, cb) => cb(null, origen !== undefined && config.origenesCors.includes(origen)),
-    methods: ["GET", "POST", "DELETE"],
-    allowedHeaders: ["Content-Type", CABECERA_CSRF],
-    exposedHeaders: ["X-Request-Id", "Retry-After"],
+    methods: ["GET", "POST", "PUT", "PATCH", "DELETE"],
+    allowedHeaders: ["Content-Type", CABECERA_CSRF, CABECERA_IDEMPOTENCIA],
+    exposedHeaders: ["X-Request-Id", "Retry-After", CABECERA_IDEMPOTENCIA_REPRODUCIDA],
     credentials: true, // cookie de sesión; solo para los orígenes exactos de la lista
 
     maxAge: 600,

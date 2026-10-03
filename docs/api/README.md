@@ -31,9 +31,25 @@ Variables (con sus valores por omisión) en [`.env.example`](../../.env.example)
 | GET | `/api/v1/catalogos/opciones-precio?conceptos=CON-00007,CON-00009` | `catalogos.consultar` | Para cada insumo de los conceptos (de 1 a 20), las opciones vigentes a la fecha del servidor: código de precio, producto, presentación, proveedor, vigencia y `esMenorPrecio`. **Sin precio ni contenido** |
 | GET | `/api/v1/catalogos/tipos-adicional?limite=` | `catalogos.consultar` | Tipos de costo adicional (CAD-…) |
 | POST | `/api/v1/calculos/demo` | `calculo.ejecutar` (Preparador) + `X-CSRF-Token` + `Origin` | Calcula con los datos de PostgreSQL y devuelve **solo** la proyección comercial |
+| GET | `/api/v1/clientes?buscar=&incluirInactivos=&limite=` | `clientes.consultar` | Clientes (activos por omisión) |
+| GET | `/api/v1/clientes/{id}` | `clientes.consultar` | Cliente, sus proyectos y número de cotizaciones abiertas |
+| POST | `/api/v1/clientes` | `clientes.gestionar` + `Idempotency-Key` | Crea un cliente `{ nombre }` con código `CLI-NNNNN` |
+| PATCH | `/api/v1/clientes/{id}` | `clientes.gestionar` | `{ revision, nombre?, activo? }`; desactivar no borra; revisión obsoleta: 409 |
+| GET | `/api/v1/proyectos?clienteId=&buscar=&incluirInactivos=&limite=` | `clientes.consultar` | Proyectos (activos con cliente activo, por omisión) |
+| GET | `/api/v1/proyectos/{id}` | `clientes.consultar` | Proyecto |
+| POST | `/api/v1/proyectos` | `clientes.gestionar` + `Idempotency-Key` | `{ clienteId, nombre, municipio?, entidadFederativa?, descripcion? }`; el cliente debe estar activo |
+| PATCH | `/api/v1/proyectos/{id}` | `clientes.gestionar` | `{ revision, …campos?, activo? }`; el cliente no cambia |
+| GET | `/api/v1/cotizaciones?buscar=&clienteId=&proyectoId=&limite=` | `cotizaciones.consultar` | Cotizaciones con folio WEB DEMO y última versión |
+| POST | `/api/v1/cotizaciones` | `cotizaciones.preparar` + `Idempotency-Key` | `{ proyectoId, captura? }`: reserva el folio `COT-AAAA-NNNNN` y crea el borrador (revisión 0) |
+| GET | `/api/v1/cotizaciones/{id}` | `cotizaciones.consultar` | Cotización, borrador (captura, revisión, autor y completitud), versiones y eventos recientes |
+| PUT | `/api/v1/cotizaciones/{id}/borrador` | `cotizaciones.preparar` | `{ revision, captura }`; puede estar incompleto; revisión obsoleta: 409 `CONFLICTO_EDICION` con `actual` |
+| POST | `/api/v1/cotizaciones/{id}/versiones` | `cotizaciones.preparar` + `calculo.ejecutar` + `Idempotency-Key` | `{ revisionBorrador, motivo? }`: el servidor calcula con el borrador guardado y guarda una versión inmutable (201). Sin captura ni importes del navegador |
+| GET | `/api/v1/cotizaciones/{id}/versiones/{numero}` | `cotizaciones.consultar` | La versión tal como se guardó (nunca se recalcula) |
 | GET | `/api/v1/openapi.json` | Público | Especificación |
 
-**Funciones y capacidades** (matriz completa en ADR-0007 §2): Preparador consulta y calcula; Revisor consulta, pero el cálculo le responde 403 (en el libro, `BTN_Calcular` exige la función Preparador).
+**Funciones y capacidades** (matriz completa en ADR-0007 §2 y ADR-0008 §3): Preparador consulta, calcula, gestiona clientes y proyectos y prepara cotizaciones; Revisor solo consulta (sus escrituras responden 403); Administrador del catálogo también gestiona clientes y proyectos.
+
+**Escrituras:** toda solicitud `POST`, `PUT`, `PATCH` o `DELETE` exige `X-CSRF-Token` y un `Origin` permitido. Las altas exigen además `Idempotency-Key` (UUID por intención): repetirla con el mismo contenido devuelve el recurso creado con `Idempotent-Replayed: true`; con otra operación u otro contenido, 422. Las claves duran 24 h (ADR-0008 §6).
 
 ### Cuerpo de `POST /api/v1/calculos/demo`
 
@@ -73,7 +89,7 @@ Todos los errores usan el mismo sobre:
              "problemas": [{ "codigo": "BL-03", "referencia": "version", "mensaje": "…" }] } }
 ```
 
-Según el error, el sobre lleva además `campos` (400), `faltantes` (404) o `problemas` (422).
+Según el error, el sobre lleva además `campos` (400 y 422 `CAPTURA_INCOMPLETA`), `faltantes` (404), `problemas` (422 `CALCULO_BLOQUEADO`) o `actual` (409 `CONFLICTO_EDICION`: revisión, autor, hora y, en borradores, la captura vigente).
 
 | HTTP | Código | Cuándo |
 |---|---|---|
@@ -83,11 +99,16 @@ Según el error, el sobre lleva además `campos` (400), `faltantes` (404) o `pro
 | 401 | `CREDENCIALES_INVALIDAS` | Acceso fallido, siempre con el mismo mensaje (no revela si la cuenta existe) |
 | 403 | `SIN_PERMISO` | La función no permite la operación (p. ej., Revisor al calcular) |
 | 403 | `CSRF_NO_VALIDO` | `X-CSRF-Token` ausente o de otra sesión |
-| 403 | `ORIGEN_NO_PERMITIDO` | `POST` o `DELETE` sin `Origin` permitido |
-| 404 | `NO_ENCONTRADO` | Ruta o códigos inexistentes en la organización de la sesión (los de otra organización responden igual) |
+| 403 | `ORIGEN_NO_PERMITIDO` | `POST`, `PUT`, `PATCH` o `DELETE` sin `Origin` permitido |
+| 404 | `NO_ENCONTRADO` | Ruta, id o códigos inexistentes en la organización de la sesión (los de otra organización responden igual) |
+| 409 | `CONFLICTO_EDICION` | Revisión obsoleta de borrador, cliente o proyecto: no se sobrescribió nada |
+| 409 | `BORRADOR_DESACTUALIZADO` | El borrador cambió después de la revisión indicada al guardar versión: no se guardó ninguna versión |
 | 413 | `CUERPO_DEMASIADO_GRANDE` | Más de `API_LIMITE_CUERPO_KB` |
 | 415 | `TIPO_DE_CONTENIDO_NO_ADMITIDO` | POST sin `application/json` |
-| 422 | `CALCULO_BLOQUEADO` | Bloqueos de negocio (BL-03, BL-04, BL-08, BL-12, BL-13…), sin importes |
+| 422 | `CALCULO_BLOQUEADO` | Bloqueos de negocio (BL-01, BL-02, BL-03, BL-04, BL-08, BL-12, BL-13…), sin importes; al guardar versión, ninguna versión |
+| 422 | `CAPTURA_INCOMPLETA` | El borrador no está completo para calcular: ninguna versión |
+| 422 | `REGISTRO_INACTIVO` | Cliente o proyecto inactivo para un registro nuevo |
+| 422 | `IDEMPOTENCIA_CONFLICTO` / `IDEMPOTENCIA_CADUCADA` | Clave reutilizada para otra operación o contenido, o con más de 24 h |
 | 429 | `DEMASIADAS_SOLICITUDES` | Límite general, de cálculo o de intentos de acceso (`Retry-After`) |
 | 503 | `SERVICIO_NO_DISPONIBLE` | PostgreSQL no disponible |
 | 500 | `ERROR_INTERNO` | Error inesperado (sin detalles internos) |
@@ -114,9 +135,29 @@ curl -s -b $JAR "$API/api/v1/catalogos/conceptos?limite=10"
 curl -s -b $JAR "$API/api/v1/catalogos/opciones-precio?conceptos=CON-00007"
 curl -s -b $JAR -X POST $API/api/v1/calculos/demo -H "$ORIGEN" -H "X-CSRF-Token: $CSRF" \
      -H "Content-Type: application/json" --data @docs/api/ejemplos/calculo-r1-faldones-10m.json
+
+# Cotización con folio, borrador y versión (ADR-0008). Cada alta lleva su propia Idempotency-Key.
+EF=(-b $JAR -H "$ORIGEN" -H "X-CSRF-Token: $CSRF" -H "Content-Type: application/json")
+CLI=$(curl -s "${EF[@]}" -X POST $API/api/v1/clientes -H "Idempotency-Key: $(node -p 'crypto.randomUUID()')" \
+      --data '{"nombre":"[DEMO] Cliente curl"}' | node -p "$JSON.id")
+PRY=$(curl -s "${EF[@]}" -X POST $API/api/v1/proyectos -H "Idempotency-Key: $(node -p 'crypto.randomUUID()')" \
+      --data "{\"clienteId\":\"$CLI\",\"nombre\":\"[DEMO] Obra curl\"}" | node -p "$JSON.id")
+# El cuerpo con acentos va desde un archivo UTF-8 (--data-binary @…): pasarlo como argumento en
+# Git Bash para Windows lo recodifica y daña los acentos.
+CUERPO=../_work/tmp/cotizacion-curl.json
+node -e 'const fs=require("fs");fs.writeFileSync(process.argv[2],JSON.stringify({proyectoId:process.argv[1],captura:JSON.parse(fs.readFileSync("docs/api/ejemplos/borrador-r1-faldones-10m.json","utf8"))}))' "$PRY" "$CUERPO"
+COT=$(curl -s "${EF[@]}" -X POST $API/api/v1/cotizaciones -H "Idempotency-Key: $(node -p 'crypto.randomUUID()')" \
+      --data-binary @$CUERPO | node -p "$JSON.cotizacion.id")
+curl -s -b $JAR $API/api/v1/cotizaciones/$COT | node -p "$JSON.cotizacion.folio"                # COT-AAAA-NNNNN
+curl -s "${EF[@]}" -X POST $API/api/v1/cotizaciones/$COT/versiones -H "Idempotency-Key: $(node -p 'crypto.randomUUID()')" \
+     --data '{"revisionBorrador":0}' | node -p "$JSON.cotizacion.total"                          # 54190.68
+curl -s -b $JAR $API/api/v1/cotizaciones/$COT/versiones/1 | node -p "$JSON.version.idVersion"     # COT-AAAA-NNNNN-v1
+
 curl -s -b $JAR -c $JAR -X DELETE $API/api/v1/auth/sesion -H "$ORIGEN" -H "X-CSRF-Token: $CSRF" -o /dev/null -w "%{http_code}\n"   # 204
-rm -f $JAR; unset SOFTARQ_CLAVE
+rm -f $JAR $CUERPO; unset SOFTARQ_CLAVE
 ```
+
+`docs/api/ejemplos/borrador-r1-faldones-10m.json` es la captura en borrador (`EsquemaCapturaBorrador`) del escenario R1: `null` = sin capturar, la selección es por insumo y no lleva resultados.
 
 | Ejemplo | Total esperado (MXN, DEMO) |
 |---|---|

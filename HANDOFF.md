@@ -2,7 +2,7 @@
 
 > Léelo al empezar. Actualízalo al terminar cada tarea (sección por sección, sin borrar el historial de la tabla 4). Reglas de trabajo: [`AGENTS.md`](AGENTS.md).
 
-**Última actualización:** 02/10/2026 · Claude Code (Opus 5.5) · módulo 5 (usuarios DEMO, sesiones y autorización por organización) terminado y verificado
+**Última actualización:** 03/10/2026 · Claude Code (Opus 5.5) · módulo 6 (clientes, proyectos y cotizaciones con folio, borrador y versiones) terminado y verificado
 
 ## 1. Estado actual
 
@@ -27,7 +27,7 @@
   - cuatro ejemplos verificados y captura propia, con selección explícita de opciones y costos adicionales;
   - el cálculo lo hace la API, y la web muestra el resultado comercial, los avisos y los bloqueos;
   - cada cambio deja el resultado pendiente de recalcular.
-- **Módulo 5, usuarios DEMO, sesiones y autorización (este commit):**
+- **Módulo 5, usuarios DEMO, sesiones y autorización** (`ff6da0d`):
   - tablas `usuario`, `membresia` (pertenencia con funciones del libro) y `sesion` (opaca; solo SHA-256 del token);
   - contraseñas con Argon2id (`@node-rs/argon2`, m = 64 MiB, t = 3, p = 4);
   - cookie `HttpOnly`, `SameSite=Strict`, `Path=/api/v1` y host-only;
@@ -35,7 +35,15 @@
   - la organización, la identidad y las funciones salen de la sesión; no queda ningún contexto DEMO anónimo;
   - matriz: Preparador consulta y calcula, Revisor consulta (403 al calcular);
   - web con pantalla de acceso, restauración de la sesión, barra de identidad, cierre y sesión vencida, y limpieza de la captura al cambiar de identidad.
-- **Todavía no existen:** registro o CRUD de usuarios, recuperación de contraseña, MFA, clientes, proyectos, cotizaciones persistidas, revisión, aprobación, emisión, PDF ni móvil.
+- **Módulo 6, clientes, proyectos y cotizaciones (este commit):**
+  - clientes (`CLI-NNNNN`) y proyectos (`PRY-NNNNN`) por organización: crear, editar, desactivar y reactivar sin borrar;
+  - cotizaciones con folio `COT-AAAA-NNNNN` de origen **WEB DEMO** (contador propio por organización y año; no continúa el del libro), reservado al crearlas;
+  - borrador con revisión (concurrencia optimista: 409 recuperable, sin sobrescrituras silenciosas), que puede guardarse incompleto y nunca tiene total;
+  - versiones **inmutables** calculadas por el servidor con el borrador guardado: lectura `REPEATABLE READ` de solo lectura + una sentencia atómica de escritura; entrada y resultado internos solo en el servidor;
+  - idempotencia en todas las altas (`Idempotency-Key`), eventos mínimos en `bitacora` e historial consultable;
+  - permisos: Preparador prepara y calcula; Revisor solo consulta; Administrador del catálogo gestiona clientes y proyectos;
+  - web con navegación por secciones y URL por pantalla, editor de cotización sobre el mismo formulario de la calculadora, vista previa, versiones, conflictos entre pestañas y «Guardar como cotización».
+- **Todavía no existen:** registro o CRUD de usuarios, recuperación de contraseña, MFA, descartar o duplicar cotizaciones, revisión, aprobación, emisión, PDF ni móvil.
 
 ## 2. Decisiones vigentes
 
@@ -48,6 +56,7 @@
 | ADR-0005 | API HTTP local: NestJS 12 ESM compilado con `tsc`; Zod en `contracts` como definición única (validación, tipos y OpenAPI); sobre de error único (400/404/413/415/422/429/503/500); solo `127.0.0.1`; CORS con lista explícita; rate limit en memoria; contexto DEMO fijo (no es autenticación); fecha de cálculo del servidor | [`docs/adr/0005-api-http-local.md`](docs/adr/0005-api-http-local.md) |
 | ADR-0006 | Web DEMO: React 19 + Vite 8 sin router ni librería de estado; solo `@softarq/contracts`; captura en reducer con decimales como texto; huella para «pendiente de recalcular»; sin duplicados ni respuestas atrasadas (abort + número de solicitud); sin preselección; `DIMENSIONES_POR_FORMULA` en contracts; Vite solo en loopback con `strictPort`, sin proxy, CSP y fuentes locales; Playwright con Edge contra la web compilada, la API real y `softarq_test` con `RelojFijo` | [`docs/adr/0006-cliente-web-demo.md`](docs/adr/0006-cliente-web-demo.md) |
 | ADR-0007 | Usuarios DEMO y sesiones opacas en PostgreSQL (solo el hash del token); Argon2id m = 64 MiB, t = 3, p = 4 con `@node-rs/argon2`; expiración de 8 h absoluta y 30 min por inactividad, renovación al autenticar y revocación con UPDATE; cookie `HttpOnly`, `SameSite=Strict`, `Path=/api/v1`, host-only, sin `Secure` solo en local; host `localhost` para la web y la API (escucha en 127.0.0.1); CSRF con HMAC por sesión y `Origin`; límites de acceso temporales; guardia que niega por omisión; matriz de funciones del libro (solo el Preparador calcula); `softarq_app` solo lee las tablas de identidad | [`docs/adr/0007-autenticacion-sesiones.md`](docs/adr/0007-autenticacion-sesiones.md) |
+| ADR-0008 | Clientes y proyectos por organización; cotización con folio `COT-AAAA-NNNNN` WEB DEMO por organización y año (contador atómico, sin MAX + 1); FK compuesta cotización → (organización, cliente, proyecto); borrador `jsonb` con revisión; versión inmutable (sin UPDATE/DELETE para `softarq_app` y trigger para el propietario) con instantánea interna, copias descriptivas, motor y huellas; estados alcanzables folio ACTIVO y versión BORRADOR; versión en dos fases (lectura RR solo lectura + función de una sentencia); idempotencia de 24 h por organización, usuario y clave; capacidades `clientes.*` y `cotizaciones.*` | [`docs/adr/0008-cotizaciones-versiones-folios.md`](docs/adr/0008-cotizaciones-versiones-folios.md) |
 | Propietario | Libro oficial `entrega\Cotizador_Estructuras_F1.xlsm`; COT-2026-00016/00017 y la persona en turno se conservan; evidencias citadas por archivo, escenario y caso | [`docs/fase1-estado-verificado.md`](docs/fase1-estado-verificado.md) §4 |
 | Entorno | Trabajo en `D:\Proyecto_SoftArq`; temporales y cachés en `_work`; sin remoto ni push | `AGENTS.md` §1 |
 
@@ -104,7 +113,8 @@ Credenciales: `apps/api/.env` y `.env.test` (locales, excluidos de Git). La cred
 | 02/10/2026 | Skills del proyecto (ui-ux-pro-max, caveman, grill-me + grilling) para Claude Code y Codex, con reglas de uso | Commit `fdcc8f4`; ver §9 |
 | 02/10/2026 | Módulo 3: API HTTP local (NestJS 12, contratos Zod, catálogos, cálculo DEMO, errores, transporte, OpenAPI, ADR-0005) | Commit `185fd26` |
 | 02/10/2026 | Módulo 4: cliente web DEMO (React + Vite), sistema visual, pruebas de componentes y de navegador, ADR-0006 | Commit `84f9218` |
-| 02/10/2026 | Módulo 5: usuarios DEMO, sesiones, CSRF, permisos y aislamiento por organización; pantalla de acceso; ADR-0007; conflicto de la skill resuelto con un mecanismo comprobado | Ver §5, §12 y §8 |
+| 02/10/2026 | Módulo 5: usuarios DEMO, sesiones, CSRF, permisos y aislamiento por organización; pantalla de acceso; ADR-0007; conflicto de la skill identificado, con alternativa comprobada (no resuelto) | Commit `ff6da0d` |
+| 03/10/2026 | Módulo 6: clientes, proyectos y cotizaciones con folio, borrador, versiones inmutables, concurrencia, idempotencia e historial; web integrada; ADR-0008 | Ver §5, §13 y §8 |
 
 ## 5. Comandos y resultados reales (02/10/2026)
 
@@ -199,6 +209,32 @@ Se revisaron una por una. Defecto corregido: el botón «Mostrar/Ocultar» tení
 
 **Registros:** `D:\Proyecto_SoftArq\_work\registros\modulo5\`.
 
+**Módulo 6 (clientes, proyectos y cotizaciones).** Automatizado y ejecutado en secuencia; integración y E2E usan `softarq_test`, nunca a la vez. Registros en `D:\Proyecto_SoftArq\_work\registros\modulo6\`.
+
+| Comando | Resultado |
+|---|---|
+| `db:nueva-migracion cotizaciones` | Migración `20261003062244_cotizaciones` generada contra la base sombra y completada a mano (CHECK, trigger y funciones). Un defecto propio (`TEXT[] \|\| 'literal'`) apareció en la primera corrida de integración y se corrigió con `array_append` antes de aplicarla en desarrollo |
+| `pnpm verificar` | **470/470**: 318 de la API (297 anteriores y 21 nuevas: 19 del dominio de cotizaciones, 1 de OpenAPI y 1 del ejemplo de borrador) y 152 de la web (122 anteriores y 30 nuevas: 15 de la revisión automática «sin datos internos» de los archivos nuevos, 9 de cotizaciones, 2 del cliente HTTP y 4 de contraste) |
+| `pnpm verificar:integracion` | **171/171** (147 anteriores y 24 nuevas: 12 de `cotizaciones`, 9 de `concurrencia-cotizaciones` y 3 de permisos en `migraciones`). Primera corrida del archivo nuevo: 11/12 por el defecto de la migración citado arriba |
+| Tiempos reales de «guardar versión» (integración) | Fase A (lectura + cálculo): p50 49–82 ms, p95 115–182 ms; fase B (sentencia de escritura): p50 4–5 ms, p95 11–15 ms. Sin errores de tiempo (ADR-0008 §6) |
+| `pnpm verificar:e2e` | Primera corrida: 9 anteriores en verde y 2 nuevas fallidas: una comprobación mal escrita en la prueba («Faldón norte» es el valor de un campo) y un **defecto real**: la calculadora quedaba montada y oculta y repetía los `id` de los campos del editor. Corregido (el estado de la calculadora vive en la aplicación y su vista se desmonta). Después, dos selectores ambiguos en la prueba nueva. Final: **35/35** (27 anteriores sin cambios y 8 nuevas), Edge con 1 worker, 1.8 min |
+| Segunda ronda completa, en secuencia y tras las correcciones visuales | `pnpm verificar` 470/470 · `pnpm verificar:integracion` 171/171 · `pnpm verificar:e2e` 35/35 (1.8 min) |
+| Revisión de secretos | 0 coincidencias de las 9 contraseñas locales (DEMO, E2E y PostgreSQL) en 414 archivos del repositorio y del bundle E2E; las únicas cadenas `postgresql://` son variables o valores ficticios de pruebas y scripts anteriores; el bundle no usa `localStorage` ni `sessionStorage` |
+| Prueba de humo en `softarq_dev` (API temporal en `127.0.0.1:3200`) | `db:migrar` aplicó la migración; flujo `curl` de `docs/api/README.md`: cliente → proyecto → `COT-2026-00002` → v1 = 54190.68 → reintento con la misma clave `Idempotent-Replayed: true` y 1 versión → cierre 204 → 401 |
+| Recorrido visual en `softarq_dev` (web temporal en 5273) | Acceso con el archivo local, editor y v1 = $54,190.68; tráfico solo a `localhost`; único error de consola: el 401 esperado de la comprobación inicial de sesión. Capturas `desarrollo-cotizacion-softarq_dev.png` y `desarrollo-version-softarq_dev.png` |
+| MD5 del libro oficial | `b60debc121957b8d8e3f2c2edd9a5b4f`, sin cambios |
+
+**Hallazgos de la revisión visual (corregidos):**
+- la tabla de versiones se recortaba en la columna lateral del editor; ahora se muestra como tarjetas;
+- los botones de la cabecera del editor quedaban pegados;
+- la primera cotización de humo (`COT-2026-00001` en `softarq_dev`) quedó con acentos dañados porque el `curl` pasaba el JSON como argumento en Git Bash (Windows lo recodifica). La documentación usa ahora `--data-binary @archivo` (verificado con `COT-2026-00002`). Esa cotización y su v1 son datos DEMO de prueba y no se pueden borrar ni corregir (versiones inmutables, sin DELETE).
+
+**Las 8 pruebas de navegador nuevas** (automatizadas; no son la prueba en persona): recorrido calculadora → cliente, proyecto y folio → recarga → v1 → edición → v2 con v1 intacta; borrador incompleto guardado y recuperado sin versión; dos pestañas con conflicto, comparación y recarga; respuesta perdida con reintento de la misma clave; CSRF caducado con un solo reintento; Revisor en solo lectura y 403 directo; aviso de cambios sin guardar y limpieza al cerrar sesión; pantalla de 390 px sin desbordes.
+
+**Evidencias visuales del módulo 6** (fuera de Git): `D:\Proyecto_SoftArq\_work\evidencias\modulo6\` (`escritorio-01…08`, `movil-01…03` y las dos de desarrollo). Revisadas.
+
+**Prueba intermitente corregida (módulo 5):** `autenticacion.test.ts` alteraba el último carácter del token CSRF, que en base64url de 32 bytes solo lleva 4 bits de datos; a veces el token alterado decodificaba igual. Ahora altera el primero; la expectativa no cambió (ADR-0008, «Cambios en pruebas existentes»).
+
 **Escenarios desde PostgreSQL** (módulo 2; por HTTP en el módulo 3; en la web en el módulo 4), comparados con los totales de las fuentes, no con el cálculo:
 
 | Escenario | Total |
@@ -217,7 +253,7 @@ En los cuatro, el resultado completo es idéntico al calculado con los fixtures 
    - Windows, Node y pnpm pueden escribir en el perfil de usuario.
 2. **Restricciones en SQL manual:** los CHECK y la exclusión viven en la migración. Revisa siempre el SQL de `db:nueva-migracion` antes de aplicarlo.
 3. **Sin DELETE para la aplicación:** las correcciones de catálogo se hacen desactivando o anulando. Hará falta un flujo administrativo explícito.
-4. **Sin guardar todavía:** mediciones, selecciones ni cotizaciones (forman parte de la solicitud de cálculo).
+4. **Partidas y selecciones** se guardan dentro del borrador y de cada versión (`jsonb`), no como tablas propias (ADR-0008).
 5. **Fuera del motor y del ensamblador:** BL-07 y BL-09 (vigencia a la emisión con excepciones).
 6. **PostgreSQL:** escucha en `*:5432`, pero `pg_hba.conf` solo admite conexiones locales. No se modificó el servicio ni su configuración.
 7. **Fase 1:** siguen abiertas la incidencia de cierre de Excel y la observación de hoja activa.
@@ -228,7 +264,7 @@ En los cuatro, el resultado completo es idéntico al calculado con los fixtures 
 10. **Avisos:** AV-01 y AV-03 se publican reescritos sin importes. AV-02, AV-04 y AV-05 corresponden a la revisión y la emisión.
 11. **Cierre por señal en Windows:** solo se comprobó dentro del mismo proceso; con Ctrl+C en la terminal funciona el mismo gancho (`enableShutdownHooks`).
 12. **Web DEMO:**
-    - la captura no se guarda (se pierde al recargar);
+    - la calculadora no guarda su captura (para conservarla, «Guardar como cotización»);
     - solo admite punto decimal;
     - hasta 20 conceptos distintos por consulta de opciones;
     - al vencer la sesión, la captura se descarta (es intencionado: no se conservan datos de una identidad anterior).
@@ -236,23 +272,31 @@ En los cuatro, el resultado completo es idéntico al calculado con los fixtures 
     - `pnpm verificar:e2e` vacía y recarga `softarq_test`, así que no debe ejecutarse a la vez que `verificar:integracion`;
     - usa el Edge instalado (canal `msedge`); con otro equipo sin Edge habría que configurar otro canal o descargar Chromium en `_work`.
 14. **Skills en Claude Code:** si la sesión se abre en `D:\Proyecto_SoftArq` en lugar de `softarq-platform`, la herramienta Skill resuelve los comandos personales homónimos (comprobado). Hay que abrir Claude Code en `softarq-platform` o leer el `SKILL.md` directamente (`docs/herramientas/skills.md` §4).
-15. **Prueba en persona pendiente:** las comprobaciones de los módulos 4 y 5 son automatizadas. Falta la prueba en persona con la guía de `docs/web/`, que ahora incluye los recorridos de acceso A1–A9; no se ha ejecutado y no tiene relación con las pruebas del Excel.
+15. **Prueba en persona pendiente:** las comprobaciones de los módulos 4, 5 y 6 son automatizadas. Falta la prueba en persona con la guía de `docs/web/` (acceso A1–A9, calculadora 1–14 y cotizaciones C1–C14); no se ha ejecutado y no tiene relación con las pruebas del Excel (PR-41 y PR-44 siguen pendientes).
 16. **Autenticación (ADR-0007):**
     - los límites de acceso y los limitadores viven en memoria (una instancia; se reinician con el proceso);
     - un tercero puede bloquear una cuenta temporalmente (15 min);
     - la purga de sesiones es manual (`db:purgar-sesiones`);
     - reiniciar la API invalida los tokens CSRF (la web obtiene uno nuevo y pide repetir la acción);
     - sin registro, recuperación, MFA ni selección de organización (el acceso exige una sola pertenencia activa).
-17. **Servidores del propietario en ejecución:** al terminar el módulo seguían activas una API en `127.0.0.1:3000` y Vite en `127.0.0.1:5173`, iniciadas antes de este trabajo. No se tocaron. Esa API es anterior al módulo 5 y no tiene `/api/v1/auth`: hay que **reiniciarla** con `pnpm --filter @softarq/api build && pnpm --filter @softarq/api start` para que la web (que ya pide sesión) funcione.
-18. **Disco y PostgreSQL:** se observaron `COMMIT` de más de 1 s (`WalWrite`) durante las pruebas de navegador. Por eso el código de sesiones evita las transacciones interactivas de Prisma, que tienen un tiempo máximo de 5 s.
+17. **Servidores del propietario:** durante el módulo 6 no había nada escuchando en `3000` ni `5173` (las pruebas de humo usaron `3200` y `5273`). Cualquier API iniciada antes de este commit no tiene los endpoints de cotizaciones: hay que **recompilarla y reiniciarla** (`pnpm --filter @softarq/api build && pnpm --filter @softarq/api start`) y aplicar la migración (`db:migrar`, ya aplicada en `softarq_dev`).
+18. **Disco y PostgreSQL:** se observaron `COMMIT` de más de 1 s (`WalWrite`) durante las pruebas de navegador del módulo 5. Por eso el código de sesiones evita las transacciones interactivas de Prisma; la única del módulo 6 es de solo lectura (sin escritura de WAL al confirmar) y su máximo medido fue 182 ms frente a un límite de 15 s.
+19. **Cotizaciones (ADR-0008):**
+    - sin descartar ni duplicar cotizaciones ni «precios anteriores» (B-34/B-35 del libro);
+    - el contacto del cliente y los datos del emisor llegarán con la emisión (BL-01);
+    - la purga de idempotencia es manual (`db:purgar-idempotencia`);
+    - listados limitados a 100 resultados, sin paginación;
+    - si un concepto del borrador desaparece del catálogo, su partida se conserva con un concepto provisional, pero la selección de precios de sus insumos no se conserva al volver a guardar;
+    - en `softarq_dev` quedan `COT-2026-00001` (acentos dañados por el `curl` de humo) y `COT-2026-00002`, datos DEMO de prueba; el siguiente folio web será `COT-2026-00003`.
 
 ## 7. Siguiente tarea
 
-1. **Prueba en persona de la web** con [`docs/web/guia-prueba-manual.md`](docs/web/guia-prueba-manual.md) (acceso A1–A9 y cotizador 1–14) y registro de observaciones. No cuenta como PR-41 ni PR-44.
-2. **Módulo 6 propuesto: clientes, proyectos y cotizaciones guardadas con versiones.**
-   - clientes y proyectos por organización (BL-01 y BL-02), con capacidades nuevas en la matriz (Preparador y Administrador del catálogo, según el libro);
-   - borradores y versiones (D-17) con folios que no se reutilizan (D-14), ligados al usuario que prepara;
-   - después, revisión y aprobación con un revisor distinto del preparador (BL-17, D-13), emisión y PDF comercial (D-16).
+1. **Prueba en persona de la web** con [`docs/web/guia-prueba-manual.md`](docs/web/guia-prueba-manual.md) (acceso A1–A9, calculadora 1–14 y cotizaciones C1–C14) y registro de observaciones. No cuenta como PR-41 ni PR-44.
+2. **Módulo 7 propuesto: revisión y aprobación.**
+   - «Enviar a revisión» de una versión concreta; observaciones y devolución a borrador;
+   - aprobación por un revisor **distinto del preparador** (BL-17, D-13), registrada en una tabla de estados de solo inserción (sin UPDATE de la versión);
+   - descartar cotizaciones (estado de folio DESCARTADO) y validaciones BL-01/BL-02 completas (contacto del cliente, ubicación y descripción del proyecto);
+   - después, emisión con datos del emisor y PDF comercial (D-16).
 
 Alternativas más cortas:
 - **web DEMO:** coma decimal, conservar el borrador durante la sesión y más de 20 conceptos por consulta;
@@ -264,8 +308,9 @@ Alternativas más cortas:
 - `fdcc8f4`: skills de proyecto y reglas de uso.
 - `185fd26`: Módulo 3, API HTTP local.
 - `84f9218`: Módulo 4, cliente web DEMO.
-- A continuación, el commit del módulo 5 (usuarios, sesiones y autorización): ver `git log --oneline -3`.
-- MD5 del libro oficial al cerrar el módulo 5: `b60debc121957b8d8e3f2c2edd9a5b4f` (sin cambios).
+- `ff6da0d`: Módulo 5, usuarios DEMO, sesiones y autorización.
+- A continuación, el commit del módulo 6 (clientes, proyectos y cotizaciones con versiones): ver `git log --oneline -3`.
+- MD5 del libro oficial al cerrar el módulo 6: `b60debc121957b8d8e3f2c2edd9a5b4f` (sin cambios).
 
 Rama `main`. Sin remoto ni push.
 
@@ -378,4 +423,41 @@ El servidor E2E crea cuentas de prueba nuevas en cada corrida (`_work\secrets\ac
 | API | `apps/api/src/modules/autenticacion/` (matriz, política, limitador, Argon2id, tokens, CSRF, repositorio y cuentas DEMO) y `apps/api/src/http/{guardia-sesion,cookies,controlador-autenticacion}.ts` |
 | Web | `apps/web/src/sesion/` y `apps/web/src/api/cliente.ts` |
 
-**Para continuar:** toda ruta nueva debe declarar `@Requiere(capacidad)` (o `@Publico()` con justificación) y filtrar por `organizacionDe(req)`. Las capacidades nuevas se añaden a `CAPACIDADES` (contracts) y a la matriz de `dominio/capacidades.ts`, contrastadas con el libro.
+**Para continuar:** toda ruta nueva debe declarar `@Requiere(capacidad, …)` (o `@Publico()` con justificación) y filtrar por `organizacionDe(req)`. Las capacidades nuevas se añaden a `CAPACIDADES` (contracts) y a la matriz de `dominio/capacidades.ts`, contrastadas con el libro.
+
+## 13. Clientes, proyectos y cotizaciones (módulo 6)
+
+Decisiones: [ADR-0008](docs/adr/0008-cotizaciones-versiones-folios.md). Modelo y matriz: [`docs/modelo-conceptual.md`](docs/modelo-conceptual.md) §6 y §7. Endpoints y `curl`: [`docs/api/README.md`](docs/api/README.md).
+
+**Migración:** `20261003062244_cotizaciones` (tablas `cliente`, `proyecto`, `cotizacion`, `cotizacion_borrador`, `cotizacion_version`, `contador`, `bitacora`, `idempotencia`; CHECK; trigger `cotizacion_version_inmutable_trg`; funciones `softarq_*`). Ya aplicada en `softarq_dev`.
+
+**Usar:**
+
+```
+pnpm --filter @softarq/api db:migrar                       # ya aplicado en softarq_dev
+pnpm --filter @softarq/api build && pnpm --filter @softarq/api start
+pnpm --filter @softarq/contracts build && pnpm --filter @softarq/web dev
+```
+
+Abre **http://localhost:5173**, entra como Preparador (accesos en §12) y usa la pestaña **Cotizaciones** o, desde la Calculadora DEMO, «Guardar como cotización».
+
+**Estados:** folio `ACTIVO`; versión `BORRADOR` («Borrador calculado · sin enviar a revisión»). APROBADA y EMITIDA no son alcanzables.
+
+**Garantías de concurrencia:**
+- borrador, cliente y proyecto: `UPDATE … WHERE revision = esperada` en una sentencia; obsoleta → 409 `CONFLICTO_EDICION` con el estado vigente;
+- versión: lectura coherente en `REPEATABLE READ READ ONLY` y escritura en **una** sentencia que exige la misma revisión del borrador, asigna el número con `UPDATE … RETURNING` y comprueba la versión anterior (reintenta la lectura si otra versión se adelantó);
+- folios y códigos: contador por organización y año con `INSERT … ON CONFLICT DO UPDATE` en la misma sentencia que el alta; UNIQUE como última garantía;
+- idempotencia: `Idempotency-Key` obligatoria en las altas; ámbito organización + usuario + clave; 24 h; se registra en la misma sentencia que el recurso.
+
+**Mantenimiento:** `pnpm --filter @softarq/api db:purgar-idempotencia` (rol migrador).
+
+**Código:**
+
+| Parte | Ubicación |
+|---|---|
+| API | `apps/api/src/modules/cotizaciones/` y `apps/api/src/http/controladores-cotizaciones.ts` |
+| Base | `apps/api/prisma/migrations/20261003062244_cotizaciones/migration.sql` y `apps/api/scripts/db/permisos-app.sql` |
+| Contratos | `packages/contracts/src/api/cotizaciones.ts` |
+| Web | `apps/web/src/{Aplicacion.tsx,navegacion,clientes,cotizaciones}`, `apps/web/src/captura/{usarCaptura.ts,VistaCaptura.tsx,borrador.ts}` |
+
+**Para continuar:** los estados de revisión y emisión deben ir en una tabla nueva de solo inserción; nunca concedas UPDATE sobre `cotizacion_version` ni retires su trigger.

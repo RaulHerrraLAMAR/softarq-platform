@@ -285,7 +285,16 @@ export type FuncionUsuario = (typeof FUNCIONES_USUARIO)[number];
  * Capacidades que la API comprueba en esta etapa. Solo es la enumeración: qué función concede cada
  * capacidad lo decide la API (matriz en ADR-0007); el cliente únicamente la muestra.
  */
-export const CAPACIDADES = ["sesion.propia", "catalogos.consultar", "calculo.ejecutar"] as const;
+export const CAPACIDADES = [
+  "sesion.propia",
+  "catalogos.consultar",
+  "calculo.ejecutar",
+  // Módulo 6 (ADR-0008): clientes, proyectos y cotizaciones.
+  "clientes.consultar",
+  "clientes.gestionar",
+  "cotizaciones.consultar",
+  "cotizaciones.preparar",
+] as const;
 export type Capacidad = (typeof CAPACIDADES)[number];
 
 /** Nombre de la cabecera con el token CSRF (patrón synchronizer token, ligado a la sesión). */
@@ -341,6 +350,13 @@ export const CODIGOS_ERROR_API = [
   "SIN_PERMISO",
   "CSRF_NO_VALIDO",
   "ORIGEN_NO_PERMITIDO",
+  // Módulo 6 (ADR-0008).
+  "CONFLICTO_EDICION",
+  "BORRADOR_DESACTUALIZADO",
+  "CAPTURA_INCOMPLETA",
+  "REGISTRO_INACTIVO",
+  "IDEMPOTENCIA_CONFLICTO",
+  "IDEMPOTENCIA_CADUCADA",
 ] as const;
 export type CodigoErrorApi = (typeof CODIGOS_ERROR_API)[number];
 
@@ -356,6 +372,18 @@ export const EsquemaRespuestaError = z.strictObject({
     /** 422: bloqueos del cálculo (sin importes). */
     problemas: z
       .array(z.strictObject({ codigo: z.string(), referencia: z.string(), mensaje: z.string() }))
+      .optional(),
+    /**
+     * 409 CONFLICTO_EDICION: estado vigente en el servidor, para comparar o recargar sin perder
+     * los cambios locales (la captura solo en borradores).
+     */
+    actual: z
+      .strictObject({
+        revision: z.number().int().nonnegative(),
+        actualizadoPor: z.string(),
+        actualizadoEn: z.string(),
+        captura: z.unknown().optional(),
+      })
       .optional(),
   }),
 });

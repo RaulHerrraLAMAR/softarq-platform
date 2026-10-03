@@ -1,6 +1,6 @@
 # Guía para probar la web DEMO en persona
 
-Esta guía es para una **prueba futura hecha por una persona**; **todavía no se ha ejecutado**. Las verificaciones automatizadas de los módulos 4 y 5 (Vitest y Playwright) están en `HANDOFF.md` §5 y **no sustituyen** esta prueba ni cuentan como PR-41 o PR-44 de la fase 1 (que son pruebas del libro de Excel).
+Esta guía es para una **prueba futura hecha por una persona**; **todavía no se ha ejecutado**. Las verificaciones automatizadas de los módulos 4, 5 y 6 (Vitest y Playwright) están en `HANDOFF.md` §5 y **no sustituyen** esta prueba ni cuentan como PR-41 o PR-44 de la fase 1 (que son pruebas del libro de Excel).
 
 Todos los datos son DEMO y no tienen validez comercial.
 
@@ -11,7 +11,7 @@ Requiere PostgreSQL con `softarq_dev` y el catálogo DEMO cargado: [`apps/api/RE
 ```
 pnpm install --frozen-lockfile
 pnpm --filter @softarq/contracts build
-pnpm --filter @softarq/api db:migrar               # aplica la migración de usuarios y sesiones
+pnpm --filter @softarq/api db:migrar               # aplica las migraciones (usuarios y sesiones; cotizaciones)
 pnpm --filter @softarq/api db:cargar-usuarios-demo # cuentas DEMO (Preparador y Revisor)
 ```
 
@@ -56,7 +56,7 @@ Anota lo que observes en cada paso. La fecha de cálculo es la de hoy; con el ca
 | A8 | Deja la página abierta más de 30 minutos sin usarla y pulsa «Calcular» | «Su sesión terminó»; hay que entrar de nuevo y la captura no se conserva |
 | A9 | Falla la contraseña 5 veces seguidas | «Demasiados intentos»: espera unos 15 minutos (no es un bloqueo permanente) |
 
-**Cotizador**
+**Calculadora DEMO** (página inicial)
 
 | # | Acción | Qué esperar |
 |---|---|---|
@@ -75,8 +75,28 @@ Anota lo que observes en cada paso. La fecha de cálculo es la de hoy; con el ca
 | 13 | Reduce la ventana a un ancho de teléfono | Una columna, tablas apiladas, sin desplazamiento horizontal |
 | 14 | Detén la API y pulsa «Calcular» | «No hay conexión…» y la captura intacta; al reanudarla, «Reintentar» funciona |
 
+**Clientes, proyectos y cotizaciones (módulo 6)** — como Preparador salvo que se indique
+
+| # | Acción | Qué esperar |
+|---|---|---|
+| C1 | En la calculadora carga el Ejemplo 1 y pulsa «Guardar como cotización» | «Nueva cotización» con el aviso «Se guardará la captura de la calculadora» |
+| C2 | «Nuevo cliente» (`[DEMO] …`), «Crear cliente»; «Nuevo proyecto» con municipio y entidad; «Crear cotización» | Se abre «Cotización COT-AAAA-NNNNN» con la insignia **WEB DEMO** y «Guardado · revisión 0» |
+| C3 | Recarga la página | La misma cotización y la misma captura, sin «Cambios sin guardar» |
+| C4 | Pulsa «Vista previa» | Total con la etiqueta «Calculado»; la ayuda dice que no se guarda |
+| C5 | Pulsa «Calcular y guardar versión» | «Versión COT-…-v1 guardada», total **$54,190.68** y v1 en la tabla de versiones |
+| C6 | Cambia las piezas del «Faldón norte» | «Cambios sin guardar.» y aviso de que la vista previa y las versiones no los incluyen |
+| C7 | Intenta ir a «Clientes» | «Hay cambios sin guardar»: «Seguir editando» conserva lo escrito |
+| C8 | Escribe un motivo y pulsa «Calcular y guardar versión» | Se guarda el borrador (revisión 1) y se crea v2 con otro total y su motivo |
+| C9 | Abre v1 desde la tabla | «Registro histórico: se muestra tal como se guardó» y $54,190.68 |
+| C10 | Abre la misma cotización en otra pestaña, guarda un cambio en una y luego otro en la otra | La segunda muestra «Otra pestaña o persona guardó este borrador antes»; tus cambios siguen; «Comparar», «Recargar la versión guardada» y «Guardar mis cambios sobre la revisión N» funcionan |
+| C11 | Borra un dato obligatorio, «Guardar borrador» y «Calcular y guardar versión» | Se guarda incompleto («faltan N datos»); la versión responde «Captura incompleta: no se guardó ninguna versión» |
+| C12 | En «Clientes», desactiva el cliente de una cotización (confirma) | Ya no se ofrece en «Nueva cotización»; su cotización se abre y edita, pero guardar versión queda bloqueado con BL-01; al reactivarlo vuelve a funcionar |
+| C13 | Entra con el Revisor y abre la cotización y sus versiones | Solo consulta: sin «Guardar borrador», sin «Calcular», sin «Nueva cotización» |
+| C14 | Reduce la ventana a un ancho de teléfono en listas, cotización y versión | Una columna, tablas como tarjetas y sin desplazamiento horizontal |
+
 ## 4. Qué no hace todavía
 
-- No guarda la captura: se pierde al recargar o cerrar la página.
-- Sin registro de usuarios, recuperación de contraseña, folios, revisión ni aprobación, emisión, PDF ni app móvil.
+- La calculadora DEMO no guarda su captura (para conservarla, «Guardar como cotización»).
+- Sin descartar ni duplicar cotizaciones, revisión, aprobación, emisión, PDF, correo ni app móvil.
+- Sin registro de usuarios ni recuperación de contraseña.
 - Solo punto decimal (por ejemplo, `0.12`).
