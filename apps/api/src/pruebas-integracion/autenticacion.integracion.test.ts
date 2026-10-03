@@ -112,6 +112,7 @@ describe("inicio de sesión", () => {
       "clientes.gestionar",
       "cotizaciones.consultar",
       "cotizaciones.preparar",
+      "revisiones.enviar",
     ]);
     expect(s.inactividadMinutos).toBe(30);
     expect(new Date(s.expiraEn).getTime()).toBe(instante.getTime() + POLITICA_SESION.absolutaMs);

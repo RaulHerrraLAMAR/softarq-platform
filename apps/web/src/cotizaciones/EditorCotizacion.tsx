@@ -12,9 +12,14 @@
  * (recargar) o guardar sobre la revisión vigente, siempre por decisión explícita.
  * Idempotencia: cada intención (crear versión con una revisión y un motivo) tiene su clave, que se
  * reutiliza al reintentar; un doble clic o una respuesta perdida no duplican versiones.
+ *
+ * Revisión (módulo 7, ADR-0009): solo se envía la ÚLTIMA versión y solo si corresponde a la
+ * captura guardada (sin cambios sin guardar ni pendientes de recalcular). Mientras la revisión está
+ * pendiente, la cotización se muestra en solo lectura con «Retirar la revisión»; el servidor
+ * también rechaza guardar o calcular (409 REVISION_PENDIENTE).
  */
-import { EsquemaCapturaBorrador, type CapturaBorrador, type DetalleCotizacion, type Version } from "@softarq/contracts";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { EsquemaCapturaBorrador, type CapturaBorrador, type DetalleCotizacion, type ResumenVersion, type Version } from "@softarq/contracts";
+import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { mensajeDeFallo, type FalloApi } from "../api/cliente.ts";
 import type { ServiciosApi } from "../api/servicios.ts";
 import type { ServiciosCotizaciones } from "../api/servicios-cotizaciones.ts";
@@ -31,6 +36,7 @@ import { useCaptura } from "../captura/usarCaptura.ts";
 import { VistaCaptura } from "../captura/VistaCaptura.tsx";
 import { Enlace, useRuta } from "../navegacion/ruta.tsx";
 import { ListaEventos, ResumenCaptura, TablaVersiones } from "./componentes.tsx";
+import { HistorialRevisiones, NOTA_NO_EMISION } from "./revisiones.tsx";
 
 interface Guardada {
   revision: number;
@@ -125,26 +131,129 @@ export function PantallaCotizacion({
   servicios,
   cotizaciones,
   puedePreparar,
+  puedeEnviarRevision,
   motivoSinCalculo,
 }: {
   id: string;
   servicios: ServiciosApi;
   cotizaciones: ServiciosCotizaciones;
   puedePreparar: boolean;
+  puedeEnviarRevision: boolean;
   motivoSinCalculo: string | null;
 }) {
   const { estado, recargar } = useCarga((s) => cotizaciones.detalleCotizacion(id, s), [id]);
   if (estado.fase === "cargando") return <Cargando etiqueta="Cargando la cotización…" />;
   if (estado.fase === "error") return <CargaFallida fallo={estado.fallo} alReintentar={recargar} />;
-  return puedePreparar ? (
-    <EditorBorrador key={id} inicial={estado.datos} servicios={servicios} cotizaciones={cotizaciones} motivoSinCalculo={motivoSinCalculo} />
-  ) : (
-    <ConsultaCotizacion detalle={estado.datos} />
+  const enRevision = estado.datos.versiones.find((v) => v.estado === "EN_REVISION") ?? null;
+  if (!puedePreparar || enRevision) {
+    return (
+      <ConsultaCotizacion
+        detalle={estado.datos}
+        subtitulo={
+          puedePreparar
+            ? "En revisión: la captura no se puede editar ni calcular mientras la revisión esté pendiente."
+            : "Consulta: su función permite ver la cotización y sus versiones, no editarla ni calcularla. Las decisiones de revisión se toman en «Revisiones»."
+        }
+        aviso={
+          enRevision ? (
+            <AvisoEnRevision
+              key={enRevision.revisionVigente?.id}
+              version={enRevision}
+              cotizaciones={cotizaciones}
+              puedeRetirar={puedeEnviarRevision}
+              alCambiar={recargar}
+            />
+          ) : null
+        }
+      />
+    );
+  }
+  return (
+    <EditorBorrador
+      key={id}
+      inicial={estado.datos}
+      servicios={servicios}
+      cotizaciones={cotizaciones}
+      motivoSinCalculo={motivoSinCalculo}
+      puedeEnviarRevision={puedeEnviarRevision}
+      alCambiarRevision={recargar}
+    />
   );
 }
 
-/** Solo lectura (Revisor u otras funciones sin `cotizaciones.preparar`): sin controles de edición ni cálculo. */
-function ConsultaCotizacion({ detalle }: { detalle: DetalleCotizacion }) {
+/** Versión en revisión: quién la envió, enlace a la revisión y, para el Preparador, retirarla. */
+function AvisoEnRevision({
+  version,
+  cotizaciones,
+  puedeRetirar,
+  alCambiar,
+}: {
+  version: ResumenVersion;
+  cotizaciones: ServiciosCotizaciones;
+  puedeRetirar: boolean;
+  alCambiar: () => void;
+}) {
+  const r = version.revisionVigente!;
+  const intenciones = useIntenciones();
+  const [confirmando, setConfirmando] = useState(false);
+  const [motivo, setMotivo] = useState("");
+  const [estado, setEstado] = useState<{ fase: "inactivo" } | { fase: "enviando" } | { fase: "error"; fallo: FalloApi }>({ fase: "inactivo" });
+  const retirar = async () => {
+    if (estado.fase === "enviando") return;
+    const contenido = { revision: r.revision, motivo: motivo.trim() };
+    setEstado({ fase: "enviando" });
+    const res = await cotizaciones.retirarRevision(r.id, r.revision, contenido.motivo || null, intenciones.clave(`retiro:${r.id}`, contenido));
+    if (res.ok) {
+      intenciones.olvidar(`retiro:${r.id}`, contenido);
+      alCambiar();
+      return;
+    }
+    if (!FALLOS_REINTENTABLES.has(res.fallo.tipo)) intenciones.olvidar(`retiro:${r.id}`, contenido);
+    setEstado({ fase: "error", fallo: res.fallo });
+  };
+  return (
+    <Aviso tono="info" titulo={`${version.idVersion} está en revisión`} rol="status">
+      <p>
+        Enviada el {formatearInstante(r.enviadoEn)} por {r.enviadoPor}. Total {formatearImporte(version.total, "MXN")}.{" "}
+        <Enlace a={{ pantalla: "revision", id: r.id }}>Abrir la revisión</Enlace>
+      </p>
+      {puedeRetirar ? (
+        confirmando ? (
+          <div className="confirmacion-bloque" role="group" aria-label="Confirmar retirada">
+            <p>Para corregir, retire la revisión. La cotización volverá a ser editable y deberá enviarse de nuevo.</p>
+            <div className="campo">
+              <label className="etiqueta" htmlFor="motivo-retiro">
+                Motivo <span className="ayuda">(opcional)</span>
+              </label>
+              <input id="motivo-retiro" type="text" maxLength={500} value={motivo} onChange={(e) => setMotivo(e.target.value)} />
+            </div>
+            <div className="formulario-acciones">
+              <Boton variante="peligro" onClick={() => void retirar()} disabled={estado.fase === "enviando"}>
+                {estado.fase === "enviando" ? "Retirando…" : "Confirmar retirada"}
+              </Boton>
+              <Boton onClick={() => setConfirmando(false)} disabled={estado.fase === "enviando"}>
+                Cancelar
+              </Boton>
+            </div>
+          </div>
+        ) : (
+          <Boton variante="peligro" onClick={() => setConfirmando(true)}>
+            Retirar la revisión para corregir…
+          </Boton>
+        )
+      ) : null}
+      {estado.fase === "error" ? (
+        <div role="alert">
+          <p>{mensajeDeFallo(estado.fallo)}</p>
+          <Boton onClick={alCambiar}>Actualizar</Boton>
+        </div>
+      ) : null}
+    </Aviso>
+  );
+}
+
+/** Solo lectura (Revisor, otras funciones o cotización en revisión): sin controles de edición ni cálculo. */
+function ConsultaCotizacion({ detalle, subtitulo, aviso }: { detalle: DetalleCotizacion; subtitulo: string; aviso: ReactNode }) {
   const b = detalle.borrador;
   return (
     <Pagina
@@ -153,10 +262,11 @@ function ConsultaCotizacion({ detalle }: { detalle: DetalleCotizacion }) {
           Cotización <span className="codigo">{detalle.cotizacion.folio}</span>
         </>
       }
-      subtitulo="Consulta: su función permite ver la cotización y sus versiones, no editarla, calcularla ni aprobarla."
+      subtitulo={subtitulo}
       acciones={<Enlace a={{ pantalla: "cotizaciones" }}>Volver a cotizaciones</Enlace>}
     >
       <EncabezadoCotizacion detalle={detalle} />
+      {aviso}
       <Aviso tono="info" titulo="Borrador actual" rol="status">
         <p>
           Revisión {b.revision}, guardada {formatearInstante(b.actualizadoEn)} por {b.actualizadoPor}.{" "}
@@ -170,6 +280,12 @@ function ConsultaCotizacion({ detalle }: { detalle: DetalleCotizacion }) {
         <TablaVersiones cotizacionId={detalle.cotizacion.id} versiones={detalle.versiones} />
       </section>
       <ResumenCaptura captura={b.captura} titulo="Captura del borrador" />
+      <section className="seccion" aria-labelledby="titulo-revisiones-consulta">
+        <h2 id="titulo-revisiones-consulta" className="seccion-titulo">
+          Revisiones
+        </h2>
+        <HistorialRevisiones revisiones={detalle.revisiones} />
+      </section>
       <section className="seccion" aria-labelledby="titulo-eventos-consulta">
         <h2 id="titulo-eventos-consulta" className="seccion-titulo">
           Historial de eventos
@@ -185,11 +301,16 @@ function EditorBorrador({
   servicios,
   cotizaciones,
   motivoSinCalculo,
+  puedeEnviarRevision,
+  alCambiarRevision,
 }: {
   inicial: DetalleCotizacion;
   servicios: ServiciosApi;
   cotizaciones: ServiciosCotizaciones;
   motivoSinCalculo: string | null;
+  puedeEnviarRevision: boolean;
+  /** Tras enviar (o un 409 de revisión): se vuelve a cargar la cotización desde el servidor. */
+  alCambiarRevision: () => void;
 }) {
   const id = inicial.cotizacion.id;
   const folio = inicial.cotizacion.folio;
@@ -263,10 +384,18 @@ function EditorBorrador({
   }, [sucio]);
 
   /** Versiones, eventos y datos de la cotización (no toca la captura en pantalla). */
-  const refrescar = useCallback(async () => {
+  // Varias consultas del detalle pueden estar en curso (tras guardar y tras crear la versión): solo
+  // la última solicitada se aplica; una respuesta atrasada nunca reemplaza datos más recientes.
+  const consultaDetalle = useRef(0);
+  const leerDetalle = useCallback(async () => {
+    const n = ++consultaDetalle.current;
     const r = await cotizaciones.detalleCotizacion(id);
-    if (r.ok) setDetalle(r.datos);
+    return n === consultaDetalle.current ? r : null;
   }, [cotizaciones, id]);
+  const refrescar = useCallback(async () => {
+    const r = await leerDetalle();
+    if (r?.ok) setDetalle(r.datos);
+  }, [leerDetalle]);
 
   const guardar = async (revisionForzada?: number): Promise<number | null> => {
     if (!captura || !guardada) return null;
@@ -315,14 +444,15 @@ function EditorBorrador({
       });
       return null;
     }
-    if (f.tipo === "invalida") setErroresExternos(erroresDeCampos(f.campos));
+    if (f.tipo === "invalida" || f.tipo === "referencia") setErroresExternos(erroresDeCampos(f.campos));
     setGuardado({ fase: "error", fallo: f });
     return null;
   };
 
   const recargarDelServidor = async () => {
     setConfirmarRecarga(false);
-    const r = await cotizaciones.detalleCotizacion(id);
+    const r = await leerDetalle();
+    if (!r) return;
     if (!r.ok) {
       setGuardado({ fase: "error", fallo: r.fallo });
       return;
@@ -371,8 +501,8 @@ function EditorBorrador({
 
   /** Tras un 409 al versionar: actualiza lo guardado; si el servidor tiene otra captura, conflicto. */
   const recargarMeta = async () => {
-    const r = await cotizaciones.detalleCotizacion(id);
-    if (!r.ok || !captura || !guardada) return;
+    const r = await leerDetalle();
+    if (!r || !r.ok || !captura || !guardada) return;
     setDetalle(r.datos);
     const local = serializarBorrador(captura);
     const b = r.datos.borrador;
@@ -436,7 +566,14 @@ function EditorBorrador({
       {guardado.fase === "error" ? (
         <Aviso tono="error" titulo="No se guardó el borrador" rol="alert">
           <p>{mensajeDeFallo(guardado.fallo)} Sus cambios siguen en pantalla.</p>
-          <Boton onClick={() => void guardar()}>Reintentar</Boton>
+          {guardado.fallo.tipo === "revision" ? (
+            <>
+              <p className="ayuda">Al actualizar, la cotización se muestra en solo lectura y los cambios sin guardar se descartan de la pantalla.</p>
+              <Boton onClick={alCambiarRevision}>Actualizar</Boton>
+            </>
+          ) : (
+            <Boton onClick={() => void guardar()}>Reintentar</Boton>
+          )}
         </Aviso>
       ) : null}
       {guardado.fase === "conflicto" ? (
@@ -538,11 +675,28 @@ function EditorBorrador({
             {FALLOS_REINTENTABLES.has(version.fallo.tipo) ? (
               <Boton onClick={() => void guardarVersion()}>Reintentar (sin duplicar)</Boton>
             ) : null}
+            {version.fallo.tipo === "revision" ? <Boton onClick={alCambiarRevision}>Actualizar</Boton> : null}
           </Aviso>
         ) : null}
       </div>
+      {ultima ? (
+        <PanelEnvioRevision
+          cotizacionId={id}
+          ultima={ultima}
+          sucio={sucio}
+          revisionGuardada={guardada.revision}
+          ocupado={ocupado}
+          puedeEnviar={puedeEnviarRevision}
+          cotizaciones={cotizaciones}
+          alEnviada={alCambiarRevision}
+        />
+      ) : null}
       <h3 className="subtitulo">Versiones</h3>
       <TablaVersiones cotizacionId={id} versiones={detalle.versiones} />
+      <details className="detalle">
+        <summary>Revisiones ({detalle.revisiones.length})</summary>
+        <HistorialRevisiones revisiones={detalle.revisiones} />
+      </details>
       <details className="detalle">
         <summary>Historial de eventos ({detalle.eventos.length})</summary>
         <ListaEventos eventos={detalle.eventos} />
@@ -606,5 +760,146 @@ function ResultadoGuardado({ version, cotizacionId, previa }: { version: Version
       <Detalle respuesta={{ estado: "CALCULADO", fechaCalculo: v.fechaCalculo, cotizacion: version.cotizacion, avisos: version.avisos }} />
       <Enlace a={{ pantalla: "version", id: cotizacionId, numero: v.numero }}>Abrir la versión {v.idVersion}</Enlace>
     </div>
+  );
+}
+
+/**
+ * Estado de revisión de la ÚLTIMA versión y envío explícito (B-26). El envío se deshabilita, con su
+ * motivo, si hay cambios sin guardar o un borrador guardado que esa versión no incluye: nunca se
+ * envía una versión anterior como si representara cambios pendientes. El servidor lo comprueba de
+ * nuevo (revisión del borrador vista) y verifica las condiciones vigentes sin modificar la versión.
+ */
+function PanelEnvioRevision({
+  cotizacionId,
+  ultima,
+  sucio,
+  revisionGuardada,
+  ocupado,
+  puedeEnviar,
+  cotizaciones,
+  alEnviada,
+}: {
+  cotizacionId: string;
+  ultima: ResumenVersion;
+  sucio: boolean;
+  revisionGuardada: number;
+  ocupado: boolean;
+  puedeEnviar: boolean;
+  cotizaciones: ServiciosCotizaciones;
+  alEnviada: () => void;
+}) {
+  const intenciones = useIntenciones();
+  const [confirmando, setConfirmando] = useState(false);
+  const [envio, setEnvio] = useState<
+    { fase: "inactivo" } | { fase: "enviando" } | { fase: "bloqueado"; problemas: { codigo: string; mensaje: string }[] } | { fase: "error"; fallo: FalloApi }
+  >({ fase: "inactivo" });
+  const r = ultima.revisionVigente;
+  const motivoNoEnviar = sucio
+    ? "Hay cambios sin guardar: guárdelos y calcule una versión nueva antes de enviar."
+    : ultima.revisionBorrador !== revisionGuardada
+      ? `El borrador guardado (revisión ${revisionGuardada}) cambió después de ${ultima.idVersion}: calcule una versión nueva antes de enviar.`
+      : null;
+
+  const enviar = async () => {
+    if (envio.fase === "enviando" || motivoNoEnviar) return;
+    const contenido = { numero: ultima.numero, revisionBorrador: ultima.revisionBorrador };
+    setEnvio({ fase: "enviando" });
+    const res = await cotizaciones.enviarRevision(cotizacionId, ultima.numero, ultima.revisionBorrador, intenciones.clave(`envio:${cotizacionId}`, contenido));
+    if (res.ok) {
+      intenciones.olvidar(`envio:${cotizacionId}`, contenido);
+      setConfirmando(false);
+      alEnviada();
+      return;
+    }
+    const f = res.fallo;
+    if (!FALLOS_REINTENTABLES.has(f.tipo)) intenciones.olvidar(`envio:${cotizacionId}`, contenido);
+    setEnvio(f.tipo === "bloqueado" ? { fase: "bloqueado", problemas: f.problemas } : { fase: "error", fallo: f });
+  };
+
+  return (
+    <section className="panel-revision" aria-labelledby="titulo-revision-version">
+      <h3 id="titulo-revision-version" className="subtitulo">
+        Revisión de {ultima.idVersion}
+      </h3>
+      {ultima.estado === "APROBADA" && r ? (
+        <Aviso tono="correcto" titulo={`${ultima.idVersion} aprobada por ${r.resueltaPor ?? "—"}`}>
+          <p>
+            {formatearInstante(r.resueltaEn ?? r.enviadoEn)}. {NOTA_NO_EMISION} Si cambia la captura, la versión nueva necesitará su propia revisión; esta
+            aprobación no se le aplica.
+          </p>
+        </Aviso>
+      ) : null}
+      {r?.estado === "CAMBIOS_SOLICITADOS" ? (
+        <Aviso tono="aviso" titulo={`Cambios solicitados por ${r.resueltaPor ?? "—"}`}>
+          <p className="observaciones">{r.observaciones}</p>
+          <p className="ayuda">Corrija, guarde y calcule una versión nueva; después envíela a revisión.</p>
+        </Aviso>
+      ) : null}
+      {r?.estado === "RETIRADA" ? (
+        <p className="ayuda">
+          Revisión retirada por {r.resueltaPor ?? "—"} el {formatearInstante(r.resueltaEn ?? r.enviadoEn)}
+          {r.observaciones ? ` (${r.observaciones})` : ""}.
+        </p>
+      ) : null}
+      {ultima.estado !== "APROBADA" && puedeEnviar ? (
+        <>
+          {motivoNoEnviar ? (
+            <p className="ayuda" id="motivo-no-enviar">
+              {motivoNoEnviar}
+            </p>
+          ) : null}
+          {confirmando && !motivoNoEnviar ? (
+            <div className="confirmacion-bloque" role="group" aria-labelledby="titulo-confirmar-envio">
+              <p id="titulo-confirmar-envio">
+                <strong>
+                  Enviar {ultima.idVersion} por {formatearImporte(ultima.total, "MXN")} a revisión.
+                </strong>{" "}
+                Mientras esté en revisión no podrá editar ni calcular; otra persona con función de revisor decidirá.
+              </p>
+              <div className="formulario-acciones">
+                <Boton variante="primario" onClick={() => void enviar()} disabled={envio.fase === "enviando"} aria-disabled={envio.fase === "enviando"}>
+                  {envio.fase === "enviando" ? "Enviando…" : `Confirmar envío de ${ultima.idVersion}`}
+                </Boton>
+                <Boton onClick={() => setConfirmando(false)} disabled={envio.fase === "enviando"}>
+                  Cancelar
+                </Boton>
+              </div>
+            </div>
+          ) : (
+            <Boton
+              onClick={() => setConfirmando(true)}
+              disabled={ocupado || motivoNoEnviar !== null}
+              aria-disabled={ocupado || motivoNoEnviar !== null}
+              aria-describedby={motivoNoEnviar ? "motivo-no-enviar" : undefined}
+            >
+              Enviar {ultima.idVersion} a revisión…
+            </Boton>
+          )}
+        </>
+      ) : null}
+      <div aria-live="polite">
+        {envio.fase === "bloqueado" ? (
+          <Aviso tono="error" titulo="No se puede enviar a revisión; el estado no cambió" rol="alert">
+            <ul className="lista-problemas">
+              {envio.problemas.map((p, i) => (
+                <li key={`${p.codigo}-${i}`}>
+                  <Codigo>{p.codigo}</Codigo> {p.mensaje}
+                </li>
+              ))}
+            </ul>
+          </Aviso>
+        ) : null}
+        {envio.fase === "error" ? (
+          <Aviso tono="error" titulo="No se envió a revisión" rol="alert">
+            <p>{mensajeDeFallo(envio.fallo)}</p>
+            {FALLOS_REINTENTABLES.has(envio.fallo.tipo) ? (
+              <Boton onClick={() => void enviar()}>Reintentar (sin duplicar)</Boton>
+            ) : (
+              <Boton onClick={alEnviada}>Actualizar</Boton>
+            )}
+          </Aviso>
+        ) : null}
+      </div>
+    </section>
   );
 }

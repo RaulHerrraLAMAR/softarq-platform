@@ -380,7 +380,7 @@ export function VistaVersion({ servicios, id, numero }: { servicios: ServiciosCo
       }
       subtitulo={
         <>
-          <Folio folio={v.folio} /> · <EstadoVersion estado={v.version.estado} />
+          <Folio folio={v.folio} /> · <EstadoVersion version={v.version} />
         </>
       }
       acciones={<Enlace a={{ pantalla: "cotizacion", id }}>Volver a la cotización</Enlace>}

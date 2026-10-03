@@ -5,7 +5,8 @@
   - **Implementado (módulo 2, ADR-0004):** `organizacion` y los catálogos que alimentan el cálculo, persistidos en PostgreSQL y aislados por organización (ver §4).
   - **Implementado (módulo 5, ADR-0007):** `usuario`, `membresia` (pertenencia con funciones) y `sesion`; matriz de permisos en §6.
   - **Implementado (módulo 6, ADR-0008):** `cliente`, `proyecto`, `cotizacion` (folio WEB DEMO), `cotizacion_borrador` (captura editable con revisión), `cotizacion_version` (inmutable), `contador`, `bitacora` e `idempotencia` (§7).
-  - **Sin implementar:** CRUD de usuarios, partidas y excepciones como tablas propias (hoy viven en la captura y en la instantánea de la versión), revisión, aprobación, emisión, PDF ni suscripciones.
+  - **Implementado (módulo 7, ADR-0009):** `revision` (una por envío de una versión concreta, con estado y ficha) y `revision_evento` (historial de solo alta) (§8).
+  - **Sin implementar:** CRUD de usuarios, partidas y excepciones como tablas propias (hoy viven en la captura y en la instantánea de la versión), emisión, PDF ni suscripciones.
 
 ## 1. Entidades y relaciones
 
@@ -19,6 +20,8 @@ Cotización (folio) N ── 1 Cliente
 Cotización (folio) N ── 1 Proyecto (del mismo cliente)
 Cotización   1 ── 1 Borrador       (captura editable con revisión; módulo 6)
 Cotización   1 ── N Versión        (v1, v2…; inmutables desde su creación en la web)
+Versión      1 ── N Revisión       (módulo 7; una sola PENDIENTE por cotización)
+Revisión     1 ── N Evento de revisión (solo alta)
 Versión      1 ── N Partida        (CONCEPTO con renglones de medición, o ADICIONAL)
 Versión      1 ── N Selección de precio (una por insumo)
 Versión      1 ── N Excepción      (rendimiento, precio vencido, concepto personalizado)
@@ -78,7 +81,7 @@ Toda relación entre datos propios es una FK compuesta con `organizacion_id`, de
 ## 5. Pendiente de decidir (módulos posteriores)
 
 - Selección o cambio de organización para usuarios con varias pertenencias.
-- Capacidades de revisión, aprobación, emisión y administración (módulos posteriores).
+- Capacidades de emisión y administración (módulos posteriores). Las de revisión están en §6 (módulo 7).
 - Si los catálogos se comparten entre organizaciones o son siempre propios.
 - Planes o suscripciones (fuera del DEMO).
 - Esquema de PostgreSQL y migración desde los CSV del libro (Prisma, según ADR-0003).
@@ -96,8 +99,13 @@ Toda relación entre datos propios es una FK compuesta con `organizacion_id`, de
 | `cotizaciones.consultar` | `GET /cotizaciones`, `/cotizaciones/{id}`, `/cotizaciones/{id}/versiones/{n}` | ✓ | ✓ | ✓ | ✓ | La hoja 16 HISTORIAL se abre sin función |
 | `cotizaciones.preparar` | `POST /cotizaciones`, `PUT /cotizaciones/{id}/borrador` | ✓ | ✗ | ✗ | ✗ | `Cot_Nueva` y `BTN_GuardarBorrador` exigen `FN_PREP` |
 | `cotizaciones.preparar` **y** `calculo.ejecutar` | `POST /cotizaciones/{id}/versiones` (organización DEMO) | ✓ | ✗ | ✗ | ✗ | Guardar versión = calcular (`BTN_Calcular`) |
+| `revisiones.enviar` | `POST /cotizaciones/{id}/versiones/{n}/revisiones`, `POST /revisiones/{id}/retiro` | ✓ | ✗ | ✗ | ✗ | `BTN_EnviarRevision`: `FN_PREP` (retirar es una adaptación de la web) |
+| `revisiones.decidir` | `POST /revisiones/{id}/decision` (aprobar o solicitar cambios) | ✗ | ✓ | ✗ | ✗ | `BTN_Observaciones` y `BTN_Aprobar`: `FN_REV` |
+| `cotizaciones.consultar` | `GET /revisiones`, `GET /revisiones/{id}` | ✓ | ✓ | ✓ | ✓ | La hoja 14 REVISION se abre sin función |
 
-**Previsto para módulos posteriores** (no implementado): registrar excepciones y enviar a revisión (Preparador); observaciones, autorizar excepciones, aprobar y emitir con un revisor **distinto del preparador** (Revisor, BL-17 y D-13); editar catálogos y aprobar conceptos (Administrador del catálogo); parámetros y personas (Administrador del sistema).
+**BL-17 no es una capacidad:** quien aprueba no puede ser el autor de la versión (identidad), aunque tenga o reciba después la función Revisor. Lo comprueban la API, la función de la base y un CHECK (ADR-0009 §5).
+
+**Previsto para módulos posteriores** (no implementado): registrar excepciones (Preparador); autorizar excepciones y emitir con un revisor distinto del preparador (Revisor, BL-17 y D-13); editar catálogos y aprobar conceptos (Administrador del catálogo); parámetros y personas (Administrador del sistema).
 
 ## 7. Clientes, proyectos y cotizaciones (módulo 6, ADR-0008)
 
@@ -110,4 +118,17 @@ Toda relación entre datos propios es una FK compuesta con `organizacion_id`, de
 | `cotizacion_version` | UNIQUE (cotización, número) | Inmutable (sin UPDATE/DELETE para la aplicación y trigger para el propietario). Entrada y resultado internos solo en el servidor |
 | `contador`, `bitacora`, `idempotencia` | Por organización | Folios y códigos atómicos; eventos mínimos; claves de idempotencia de 24 h |
 
-Estados alcanzables: folio **ACTIVO** y versión **BORRADOR** («Borrador calculado · sin enviar a revisión»). Revisión, aprobación y emisión añadirán estados en una tabla aparte de solo inserción.
+Estados alcanzables: folio **ACTIVO**; versión **BORRADOR**, **EN_REVISION** o **APROBADA**, derivados de su última revisión (§8). La emisión añadirá sus estados aparte.
+
+## 8. Revisión y aprobación (módulo 7, ADR-0009)
+
+| Tabla | Clave y relaciones | Notas |
+|---|---|---|
+| `revision` | FK (organización, cotización, número, id) → `cotizacion_version`; FK (organización, cotización, folio) → `cotizacion`; índice único parcial: una PENDIENTE por cotización | Estado PENDIENTE → APROBADA, CAMBIOS_SOLICITADOS o RETIRADA (terminales, trigger). `preparador_id` = autor de la versión. `total` copiado por la base. Ficha `revision` para la concurrencia. CHECK BL-17 |
+| `revision_evento` | FK (organización, revisión) | Solo alta (trigger para todos los roles): tipo, estados, persona y nombre copiado, observaciones, códigos de aviso presentes, instante |
+
+| Libro | Web |
+|---|---|
+| `tblVersiones.estado` (Borrador, En revisión, Aprobada…) escrito en la versión | Estado de la versión **derivado** de su última revisión; la versión no cambia |
+| `tblVersiones.revisor`, `fecha_aprobacion` | `revision.resuelta_por`, `resuelta_en` |
+| `tblRevisiones` (`id_revision`, `id_version`, `fecha_hora`, `persona`, `tipo`, `texto`) | `revision_evento` (con estados anterior y nuevo y códigos de aviso) |

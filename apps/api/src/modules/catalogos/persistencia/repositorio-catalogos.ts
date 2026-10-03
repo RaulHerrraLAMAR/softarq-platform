@@ -552,6 +552,16 @@ export class RepositorioCatalogos {
   }
 
   /** Devuelve exactamente los precios pedidos por código (no elige ni sustituye). */
+  /** Insumos (de los indicados) que tienen al menos un producto comercial activo (BL-07). */
+  async insumosConProductoActivo(ctx: ContextoOrganizacion, insumoCodigos: readonly string[]): Promise<Set<string>> {
+    if (insumoCodigos.length === 0) return new Set();
+    const filas = await this.db.producto.findMany({
+      where: { organizacionId: ctx.organizacionId, activo: true, insumo: { codigo: { in: [...insumoCodigos] } } },
+      select: { insumo: { select: { codigo: true } } },
+    });
+    return new Set(filas.map((f) => f.insumo.codigo));
+  }
+
   async obtenerPrecios(ctx: ContextoOrganizacion, codigos: readonly string[]): Promise<PrecioLeido[]> {
     const filas = await this.db.precio.findMany({
       where: { organizacionId: ctx.organizacionId, codigo: { in: [...codigos] } },

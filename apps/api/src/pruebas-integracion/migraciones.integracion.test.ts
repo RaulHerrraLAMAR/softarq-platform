@@ -101,6 +101,28 @@ describe("permisos del rol de la aplicación (softarq_app)", () => {
     });
   });
 
+  describe("revisiones (ADR-0009)", () => {
+    it("historial solo SELECT/INSERT; revisión con UPDATE solo de las columnas de la transición; sin DELETE", async () => {
+      const tablas = await app.$queryRaw<{ tabla: string; privilegio: string }[]>`
+        SELECT table_name AS tabla, privilege_type AS privilegio FROM information_schema.role_table_grants
+         WHERE grantee = 'softarq_app' AND table_name IN ('revision', 'revision_evento')
+         ORDER BY 1, 2`;
+      expect(tablas).toEqual([
+        { tabla: "revision", privilegio: "INSERT" },
+        { tabla: "revision", privilegio: "SELECT" },
+        { tabla: "revision_evento", privilegio: "INSERT" },
+        { tabla: "revision_evento", privilegio: "SELECT" },
+      ]);
+      const columnas = await app.$queryRaw<{ tabla: string; columna: string }[]>`
+        SELECT table_name AS tabla, column_name AS columna FROM information_schema.column_privileges
+         WHERE grantee = 'softarq_app' AND privilege_type = 'UPDATE' AND table_name IN ('revision', 'revision_evento')
+         ORDER BY 1, 2`;
+      expect(columnas).toEqual(
+        ["estado", "observaciones", "resuelta_en", "resuelta_por", "revision"].map((columna) => ({ tabla: "revision", columna })),
+      );
+    });
+  });
+
   describe("cotizaciones (ADR-0008)", () => {
     it("versiones, bitácora e idempotencia: solo SELECT e INSERT; sin UPDATE ni DELETE", async () => {
       const filas = await app.$queryRaw<{ tabla: string; privilegio: string }[]>`
@@ -146,10 +168,14 @@ describe("permisos del rol de la aplicación (softarq_app)", () => {
         "softarq_crear_cotizacion",
         "softarq_crear_proyecto",
         "softarq_crear_version",
+        "softarq_decidir_revision",
         "softarq_editar_cliente",
         "softarq_editar_proyecto",
+        "softarq_enviar_revision",
+        "softarq_exigir_funcion",
         "softarq_guardar_borrador",
         "softarq_registrar_idempotencia",
+        "softarq_retirar_revision",
         "softarq_siguiente",
       ]);
       for (const f of filas) expect(f, f.nombre).toMatchObject({ definer: false, publico: false, app: true });

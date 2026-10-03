@@ -24,6 +24,10 @@ GRANT UPDATE ("nombre", "municipio", "entidad_federativa", "descripcion", "activ
 GRANT UPDATE ("ultima_version") ON TABLE public."cotizacion" TO softarq_app;
 GRANT UPDATE ("captura", "revision", "actualizado_por", "actualizado_en") ON TABLE public."cotizacion_borrador" TO softarq_app;
 GRANT UPDATE ("ultimo") ON TABLE public."contador" TO softarq_app;
+-- Revisión (ADR-0009): alta y consulta; UPDATE solo de las columnas de la transición (un trigger
+-- limita las transiciones). El historial de revisión es de solo alta. Sin DELETE.
+REVOKE UPDATE ON TABLE public."revision", public."revision_evento" FROM softarq_app;
+GRANT UPDATE ("estado", "revision", "resuelta_por", "resuelta_en", "observaciones") ON TABLE public."revision" TO softarq_app;
 -- Funciones de escritura (SECURITY INVOKER: actúan con los permisos anteriores). Solo softarq_app.
 REVOKE ALL ON FUNCTION public."softarq_siguiente"(UUID, TEXT) FROM PUBLIC;
 REVOKE ALL ON FUNCTION public."softarq_registrar_idempotencia"(UUID, UUID, UUID, TEXT, BYTEA, TEXT, UUID, TIMESTAMPTZ) FROM PUBLIC;
@@ -44,3 +48,13 @@ GRANT EXECUTE ON FUNCTION public."softarq_editar_proyecto"(UUID, UUID, UUID, INT
 GRANT EXECUTE ON FUNCTION public."softarq_crear_cotizacion"(UUID, UUID, UUID, INTEGER, JSONB, UUID, TEXT, BYTEA, TIMESTAMPTZ) TO softarq_app;
 GRANT EXECUTE ON FUNCTION public."softarq_guardar_borrador"(UUID, UUID, UUID, INTEGER, JSONB) TO softarq_app;
 GRANT EXECUTE ON FUNCTION public."softarq_crear_version"(UUID, UUID, UUID, INTEGER, INTEGER, JSONB, UUID, TEXT, BYTEA, TIMESTAMPTZ) TO softarq_app;
+REVOKE ALL ON FUNCTION public."softarq_exigir_funcion"(UUID, UUID, TEXT) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public."softarq_enviar_revision"(UUID, UUID, UUID, INTEGER, INTEGER, JSONB, UUID, TEXT, BYTEA, TIMESTAMPTZ) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public."softarq_decidir_revision"(UUID, UUID, UUID, UUID, INTEGER, TEXT, TEXT, JSONB, UUID, TEXT, BYTEA, TIMESTAMPTZ) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public."softarq_retirar_revision"(UUID, UUID, UUID, INTEGER, TEXT, UUID, TEXT, BYTEA, TIMESTAMPTZ) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public."revision_transicion"() FROM PUBLIC;
+REVOKE ALL ON FUNCTION public."revision_evento_inmutable"() FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public."softarq_exigir_funcion"(UUID, UUID, TEXT) TO softarq_app;
+GRANT EXECUTE ON FUNCTION public."softarq_enviar_revision"(UUID, UUID, UUID, INTEGER, INTEGER, JSONB, UUID, TEXT, BYTEA, TIMESTAMPTZ) TO softarq_app;
+GRANT EXECUTE ON FUNCTION public."softarq_decidir_revision"(UUID, UUID, UUID, UUID, INTEGER, TEXT, TEXT, JSONB, UUID, TEXT, BYTEA, TIMESTAMPTZ) TO softarq_app;
+GRANT EXECUTE ON FUNCTION public."softarq_retirar_revision"(UUID, UUID, UUID, INTEGER, TEXT, UUID, TEXT, BYTEA, TIMESTAMPTZ) TO softarq_app;

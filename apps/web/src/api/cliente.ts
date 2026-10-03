@@ -23,7 +23,11 @@ import type { z } from "zod";
 
 export type FalloApi =
   | { tipo: "invalida"; campos: { ruta: string; mensaje: string }[] }
-  | { tipo: "bloqueado"; problemas: { codigo: string; referencia: string; mensaje: string }[] }
+  /**
+   * 422 con bloqueos (códigos BL, sin importes): CALCULO_BLOQUEADO y, en la revisión (módulo 7),
+   * ENVIO_BLOQUEADO, APROBACION_BLOQUEADA y DECISION_BLOQUEADA (BL-17). El estado no cambió.
+   */
+  | { tipo: "bloqueado"; problemas: { codigo: string; referencia: string; mensaje: string }[]; codigo?: string; mensaje?: string }
   | { tipo: "no_encontrado"; faltantes: { tipo: string; codigo: string }[] }
   | { tipo: "limite"; reintentarEnSegundos: number | null }
   | { tipo: "no_autenticado" }
@@ -36,6 +40,14 @@ export type FalloApi =
   | { tipo: "incompleta"; campos: { ruta: string; mensaje: string }[] }
   /** 422 REGISTRO_INACTIVO: el cliente o el proyecto no se ofrece para registros nuevos. */
   | { tipo: "inactivo"; mensaje: string }
+  /** 422 REFERENCIA_NO_DISPONIBLE: una referencia nueva no existe o no está disponible hoy. */
+  | { tipo: "referencia"; campos: { ruta: string; mensaje: string }[] }
+  /**
+   * 409 de la revisión (módulo 7): REVISION_PENDIENTE (no se edita ni se calcula mientras hay una
+   * revisión pendiente), VERSION_NO_VIGENTE o CONFLICTO_REVISION (cambió o ya se decidió).
+   * `revisionVigente` trae el estado actual, sin validar (la pantalla lo valida con el contrato).
+   */
+  | { tipo: "revision"; codigo: "REVISION_PENDIENTE" | "VERSION_NO_VIGENTE" | "CONFLICTO_REVISION"; mensaje: string; revisionVigente: unknown }
   /** 422 IDEMPOTENCIA_CONFLICTO o IDEMPOTENCIA_CADUCADA. */
   | { tipo: "idempotencia"; mensaje: string }
   | { tipo: "no_disponible" }
@@ -206,13 +218,23 @@ function falloPorEstado(respuesta: Response, error: RespuestaError | null): Fall
     case 404:
       return e ? { tipo: "no_encontrado", faltantes: e.faltantes ?? [] } : { tipo: "incompatible" };
     case 409:
-      return e?.codigo === "CONFLICTO_EDICION" || e?.codigo === "BORRADOR_DESACTUALIZADO"
-        ? { tipo: "conflicto", codigo: e.codigo, mensaje: e.mensaje, actual: e.actual ?? null }
-        : { tipo: "incompatible" };
+      if (e?.codigo === "CONFLICTO_EDICION" || e?.codigo === "BORRADOR_DESACTUALIZADO") {
+        return { tipo: "conflicto", codigo: e.codigo, mensaje: e.mensaje, actual: e.actual ?? null };
+      }
+      if (e?.codigo === "REVISION_PENDIENTE" || e?.codigo === "VERSION_NO_VIGENTE" || e?.codigo === "CONFLICTO_REVISION") {
+        return { tipo: "revision", codigo: e.codigo, mensaje: e.mensaje, revisionVigente: e.revisionVigente ?? null };
+      }
+      return { tipo: "incompatible" };
     case 422:
       switch (e?.codigo) {
         case "CALCULO_BLOQUEADO":
           return { tipo: "bloqueado", problemas: e.problemas ?? [] };
+        case "ENVIO_BLOQUEADO":
+        case "APROBACION_BLOQUEADA":
+        case "DECISION_BLOQUEADA":
+          return { tipo: "bloqueado", problemas: e.problemas ?? [], codigo: e.codigo, mensaje: e.mensaje };
+        case "REFERENCIA_NO_DISPONIBLE":
+          return { tipo: "referencia", campos: e.campos ?? [] };
         case "CAPTURA_INCOMPLETA":
           return { tipo: "incompleta", campos: e.campos ?? [] };
         case "REGISTRO_INACTIVO":
@@ -247,7 +269,11 @@ export function mensajeDeFallo(fallo: FalloApi): string {
     case "invalida":
       return "Hay datos que no se pueden usar. Revise los campos marcados.";
     case "bloqueado":
-      return "El cálculo está bloqueado por las reglas de la cotización.";
+      return fallo.mensaje ?? "El cálculo está bloqueado por las reglas de la cotización.";
+    case "referencia":
+      return "Hay referencias nuevas que no existen o no están disponibles hoy. Revise los campos marcados.";
+    case "revision":
+      return fallo.mensaje;
     case "no_encontrado":
       return "Algún elemento de la captura ya no existe en el catálogo.";
     case "limite":

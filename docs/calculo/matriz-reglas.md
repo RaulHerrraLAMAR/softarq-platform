@@ -77,15 +77,25 @@ Las medidas, precios y parámetros completos de cada escenario están en `domain
 
 ## 3. Fuera del alcance del motor (módulos posteriores)
 
-| Regla | Módulo previsto |
+| Regla | Módulo previsto / estado |
 |---|---|
-| BL-01 y BL-02 (cliente y proyecto), BL-04 para conceptos personalizados con excepción autorizada y BL-07 (producto activo) | Cotizaciones y revisión (BL-04 de estado y BL-08 de selección inválida ya están en el ensamblador del módulo 2) |
+| BL-01 y BL-02 (activos) | **Implementadas** al versionar (módulo 6) y al enviar y aprobar (módulo 7). Los campos mínimos completos (contacto, ubicación, descripción) quedan para la emisión |
+| BL-04 para conceptos personalizados con excepción autorizada | Excepciones y emisión (BL-04 de estado y BL-08 de selección inválida están en el ensamblador del módulo 2) |
 | BL-05 en su parte de trazabilidad (fuente, fecha y responsable técnico) | Catálogos (aprobación de conceptos) |
-| BL-09 (vigencia del precio a la emisión, con excepción autorizada) y AV-02 | Emisión |
-| BL-14 (vigencia comercial), BL-15 (emisor), BL-17 (revisor ≠ preparador), BL-19 (estado) y BL-20 (textos) | Revisión y emisión |
-| BL-16 (sello del cálculo) | Persistencia de versiones |
-| AV-04 y AV-05 | Revisión |
-| Folios, estados, inmutabilidad de lo emitido y PDF | Cotizaciones y emisión |
+| BL-07 (insumo sin producto activo) | **Implementada** en la verificación vigente al enviar y aprobar (módulo 7, `dominio/verificacion.ts`, `bl07`); se volverá a evaluar al emitir |
+| BL-09 (precio no vigente) | **Implementada** al enviar y aprobar con la fecha del servidor, sin excepciones (`bl09`). A la fecha de emisión y con excepción autorizada: emisión |
+| BL-14 (vigencia comercial) | **Implementada** en la verificación vigente (`bl14`) |
+| BL-15 (emisor) y BL-20 (textos) | Emisión |
+| BL-16 (sello del cálculo) | Versiones (módulo 6: huellas) y verificación vigente (módulo 7: huella comparable de la entrada, `bl16`) |
+| BL-17 (revisor ≠ preparador) | **Implementada** por identidad al aprobar: API, función `softarq_decidir_revision` y CHECK `revision_bl17_ck` (módulo 7). Al emitir: emisión |
+| BL-18 sobre la proyección guardada | **Implementada** en la verificación vigente (`bl18`) |
+| BL-19 (estado) | **Implementada** para enviar, decidir, guardar y calcular con revisión pendiente (módulo 7) |
+| AV-02 (precio vence antes del fin de la vigencia comercial) | **Implementado** como aviso con la fecha del servidor (`av02`). Con la fecha real: emisión |
+| AV-04 (excepciones autorizadas) | Excepciones (la web no tiene excepciones) |
+| AV-05 (concepto genérico o personalizado) | **Implementado** como aviso (`av05`) |
+| Folios, estados, inmutabilidad de lo emitido y PDF | Cotizaciones (módulos 6 y 7) y emisión |
+
+Pruebas: `apps/api/src/modules/cotizaciones/__tests__/verificacion.test.ts` (unitarias) y `revisiones.integracion.test.ts` (BL-08, BL-09, BL-10 y AV-02 con fechas distintas del servidor). Fuente: `Validar` y `Avisos` de `modValidacion.bas` y Word maestro §3.11.
 
 ## 4. Discrepancias entre fuentes y decisión
 

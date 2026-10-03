@@ -44,7 +44,12 @@ Variables (con sus valores por omisión) en [`.env.example`](../../.env.example)
 | GET | `/api/v1/cotizaciones/{id}` | `cotizaciones.consultar` | Cotización, borrador (captura, revisión, autor y completitud), versiones y eventos recientes |
 | PUT | `/api/v1/cotizaciones/{id}/borrador` | `cotizaciones.preparar` | `{ revision, captura }`; puede estar incompleto; revisión obsoleta: 409 `CONFLICTO_EDICION` con `actual`. Las referencias ya guardadas se conservan aunque dejen de estar disponibles; una referencia nueva no disponible: 422 `REFERENCIA_NO_DISPONIBLE` con `campos`. El detalle devuelve `borrador.referencias` (disponibilidad hoy) |
 | POST | `/api/v1/cotizaciones/{id}/versiones` | `cotizaciones.preparar` + `calculo.ejecutar` + `Idempotency-Key` | `{ revisionBorrador, motivo? }`: el servidor calcula con el borrador guardado y guarda una versión inmutable (201). Sin captura ni importes del navegador |
-| GET | `/api/v1/cotizaciones/{id}/versiones/{numero}` | `cotizaciones.consultar` | La versión tal como se guardó (nunca se recalcula) |
+| GET | `/api/v1/cotizaciones/{id}/versiones/{numero}` | `cotizaciones.consultar` | La versión tal como se guardó (nunca se recalcula). `version.estado` (BORRADOR, EN_REVISION, APROBADA) se deriva de su última revisión |
+| POST | `/api/v1/cotizaciones/{id}/versiones/{numero}/revisiones` | `revisiones.enviar` (Preparador) + `Idempotency-Key` | `{ revisionBorrador }`: envía a revisión la **última** versión si corresponde al borrador guardado. Verifica las condiciones vigentes sin modificar la versión. 409 `REVISION_PENDIENTE`, `VERSION_NO_VIGENTE` o `BORRADOR_DESACTUALIZADO`; 422 `ENVIO_BLOQUEADO` con `problemas` (201) |
+| GET | `/api/v1/revisiones?estado=&limite=` | `cotizaciones.consultar` | Bandeja (por omisión PENDIENTE, las más antiguas primero), con `acciones` permitidas a la sesión |
+| GET | `/api/v1/revisiones/{id}` | `cotizaciones.consultar` | Revisión, versión revisada (proyección comercial guardada), `verificacion` vigente (si está pendiente) y `eventos` |
+| POST | `/api/v1/revisiones/{id}/decision` | `revisiones.decidir` (Revisor) + `Idempotency-Key` | `{ decision: APROBAR\|SOLICITAR_CAMBIOS, versionId, revision, observaciones? }`. Observaciones obligatorias (≥ 10 caracteres) para solicitar cambios. 409 `CONFLICTO_REVISION` con `revisionVigente`; 422 `DECISION_BLOQUEADA` (BL-17: quien aprueba no puede ser el autor) o `APROBACION_BLOQUEADA` con `problemas`. **La aprobación no es una emisión** (200) |
+| POST | `/api/v1/revisiones/{id}/retiro` | `revisiones.enviar` (Preparador) + `Idempotency-Key` | `{ revision, motivo? }`: retira una revisión pendiente para corregir (200) |
 | GET | `/api/v1/openapi.json` | Público | Especificación |
 
 **Funciones y capacidades** (matriz completa en ADR-0007 §2 y ADR-0008 §3): Preparador consulta, calcula, gestiona clientes y proyectos y prepara cotizaciones; Revisor solo consulta (sus escrituras responden 403); Administrador del catálogo también gestiona clientes y proyectos.
@@ -109,6 +114,8 @@ Según el error, el sobre lleva además `campos` (400, 422 `CAPTURA_INCOMPLETA` 
 | 422 | `CAPTURA_INCOMPLETA` | El borrador no está completo para calcular: ninguna versión |
 | 422 | `REGISTRO_INACTIVO` | Cliente o proyecto inactivo para un registro nuevo |
 | 422 | `IDEMPOTENCIA_CONFLICTO` / `IDEMPOTENCIA_CADUCADA` | Clave reutilizada para otra operación o contenido, o con más de 24 h |
+| 409 | `REVISION_PENDIENTE` / `VERSION_NO_VIGENTE` / `CONFLICTO_REVISION` | Hay una versión en revisión (no se edita ni se calcula), no es la última versión, o la revisión cambió o ya se decidió (`revisionVigente`) |
+| 422 | `ENVIO_BLOQUEADO` / `APROBACION_BLOQUEADA` / `DECISION_BLOQUEADA` | Bloqueos de la verificación vigente o BL-17/BL-19 (`problemas`); el estado no cambió |
 | 422 | `REFERENCIA_NO_DISPONIBLE` | Concepto, tipo de adicional o precio nuevo en la captura que no existe en la organización o no está disponible hoy; `campos` lleva la ruta |
 | 429 | `DEMASIADAS_SOLICITUDES` | Límite general, de cálculo o de intentos de acceso (`Retry-After`) |
 | 503 | `SERVICIO_NO_DISPONIBLE` | PostgreSQL no disponible |
@@ -153,6 +160,18 @@ curl -s -b $JAR $API/api/v1/cotizaciones/$COT | node -p "$JSON.cotizacion.folio"
 curl -s "${EF[@]}" -X POST $API/api/v1/cotizaciones/$COT/versiones -H "Idempotency-Key: $(node -p 'crypto.randomUUID()')" \
      --data '{"revisionBorrador":0}' | node -p "$JSON.cotizacion.total"                          # 54190.68
 curl -s -b $JAR $API/api/v1/cotizaciones/$COT/versiones/1 | node -p "$JSON.version.idVersion"     # COT-AAAA-NNNNN-v1
+
+
+# Revisión (ADR-0009): el Preparador envía la última versión; el Revisor la aprueba con OTRA sesión
+# (repita el acceso con revisor.demo@softarq.test en un segundo archivo de cookies, $JAR_REV, y su
+# token en $CSRF_REV). Los cuerpos sin acentos pueden ir como argumento.
+REV=$(curl -s "${EF[@]}" -X POST $API/api/v1/cotizaciones/$COT/versiones/1/revisiones -H "Idempotency-Key: $(node -p 'crypto.randomUUID()')" \
+      --data '{"revisionBorrador":0}' | node -p "$JSON.revision.id")
+# … con la sesión del Revisor:
+# VID=$(curl -s -b $JAR_REV $API/api/v1/revisiones/$REV | node -p "$JSON.revision.version.id")
+# curl -s -b $JAR_REV -H "$ORIGEN" -H "X-CSRF-Token: $CSRF_REV" -H "Content-Type: application/json" \
+#      -X POST $API/api/v1/revisiones/$REV/decision -H "Idempotency-Key: $(node -p 'crypto.randomUUID()')" \
+#      --data "{\"decision\":\"APROBAR\",\"versionId\":\"$VID\",\"revision\":0}" | node -p "$JSON.revision.estado"   # APROBADA
 
 curl -s -b $JAR -c $JAR -X DELETE $API/api/v1/auth/sesion -H "$ORIGEN" -H "X-CSRF-Token: $CSRF" -o /dev/null -w "%{http_code}\n"   # 204
 rm -f $JAR $CUERPO; unset SOFTARQ_CLAVE

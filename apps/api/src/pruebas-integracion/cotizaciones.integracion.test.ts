@@ -262,7 +262,10 @@ describe("versiones inmutables e historial", () => {
       totalNuevo: version2.cotizacion.total,
     });
 
-    expect((await c.get(`/api/v1/cotizaciones/${id}/versiones/1`)).cuerpo).toEqual(v1.cuerpo);
+    // Contenido guardado idéntico. El estado derivado (`esUltima`, `estado`, `revisionVigente`,
+    // módulo 7) cambia porque ya existe v2; la fila de la versión no cambia.
+    const leidaV1 = (await c.get(`/api/v1/cotizaciones/${id}/versiones/1`)).cuerpo;
+    expect(leidaV1).toEqual({ ...v1.cuerpo, version: { ...v1.cuerpo.version, esUltima: false } });
     expect(await filaVersion(id, 1)).toEqual(filaAntes);
   });
 

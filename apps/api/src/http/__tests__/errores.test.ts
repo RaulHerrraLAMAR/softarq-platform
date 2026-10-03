@@ -78,9 +78,14 @@ describe("OpenAPI", () => {
       "/api/v1/cotizaciones/{id}/borrador",
       "/api/v1/cotizaciones/{id}/versiones",
       "/api/v1/cotizaciones/{id}/versiones/{numero}",
+      "/api/v1/cotizaciones/{id}/versiones/{numero}/revisiones",
       "/api/v1/openapi.json",
       "/api/v1/proyectos",
       "/api/v1/proyectos/{id}",
+      "/api/v1/revisiones",
+      "/api/v1/revisiones/{id}",
+      "/api/v1/revisiones/{id}/decision",
+      "/api/v1/revisiones/{id}/retiro",
       "/health",
     ]);
     expect(Object.keys(doc.components.schemas)).toContain("SolicitudCalculoDemo");
@@ -128,6 +133,30 @@ describe("OpenAPI", () => {
     }
     const version = JSON.stringify(doc.components.schemas["Version"]);
     expect(version).not.toMatch(/entradaCalculo|resultadoInterno|costoDirecto|recargo|margen|precioCompra|proveedor/i);
+  });
+
+  it("revisiones (ADR-0009): escrituras con CSRF e Idempotency-Key; respuestas sin datos internos ni identidad en los cuerpos", () => {
+    const d = doc as unknown as {
+      paths: Record<string, Record<string, { security?: unknown; parameters?: { name: string; in: string; required: boolean }[] }>>;
+    };
+    for (const ruta of [
+      "/api/v1/cotizaciones/{id}/versiones/{numero}/revisiones",
+      "/api/v1/revisiones/{id}/decision",
+      "/api/v1/revisiones/{id}/retiro",
+    ]) {
+      expect(d.paths[ruta]?.["post"]?.security, ruta).toEqual([{ cookieSesion: [], tokenCsrf: [] }]);
+      expect(d.paths[ruta]?.["post"]?.parameters).toEqual(
+        expect.arrayContaining([expect.objectContaining({ name: "Idempotency-Key", in: "header", required: true })]),
+      );
+    }
+    for (const nombre of ["SolicitudEnvioRevision", "DecisionRevision", "RetiroRevision"]) {
+      const s = JSON.stringify(doc.components.schemas[nombre]);
+      expect(s).toContain('"additionalProperties":false');
+      expect(s).not.toMatch(/preparador|revisor|aprobador|organizacion|usuario/i);
+    }
+    expect(JSON.stringify(doc.components.schemas["DetalleRevision"])).not.toMatch(
+      /entradaCalculo|resultadoInterno|costoDirecto|recargo|margen|precioCompra|proveedor/i,
+    );
   });
 
   it("docs/api/openapi.json está alineado con los contratos (regenerar con openapi:generar)", () => {

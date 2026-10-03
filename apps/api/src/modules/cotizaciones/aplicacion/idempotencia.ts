@@ -15,7 +15,15 @@ import { sha256 } from "../dominio/huella.js";
 
 export const DURACION_IDEMPOTENCIA_MS = 24 * 60 * 60 * 1000;
 
-export type OperacionIdempotente = "crear_cliente" | "crear_proyecto" | "crear_cotizacion" | "crear_version";
+export type OperacionIdempotente =
+  | "crear_cliente"
+  | "crear_proyecto"
+  | "crear_cotizacion"
+  | "crear_version"
+  // Módulo 7 (ADR-0009): envíos, decisiones y retiradas de revisión.
+  | "enviar_revision"
+  | "decidir_revision"
+  | "retirar_revision";
 
 export interface Idempotencia {
   readonly clave: string;

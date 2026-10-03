@@ -25,6 +25,12 @@ import {
   EsquemaSolicitudProyecto,
   EsquemaSolicitudVersion,
   EsquemaVersion,
+  EsquemaConsultaRevisiones,
+  EsquemaDecisionRevision,
+  EsquemaDetalleRevision,
+  EsquemaRespuestaRevisiones,
+  EsquemaRetiroRevision,
+  EsquemaSolicitudEnvioRevision,
   EsquemaConsultaConceptos,
   EsquemaConsultaOpcionesPrecio,
   EsquemaConsultaTiposAdicional,
@@ -59,10 +65,16 @@ const DESCRIPCION_ERROR: Record<number, string> = {
   401: "NO_AUTENTICADO (sin cookie de sesión) o SESION_NO_VALIDA (vencida, revocada o desconocida; se borra la cookie).",
   403: "SIN_PERMISO (la función no concede la capacidad), CSRF_NO_VALIDO u ORIGEN_NO_PERMITIDO.",
   404: "NO_ENCONTRADO: ruta, id o códigos inexistentes en la organización (un id de otra organización responde igual).",
-  409: "CONFLICTO_EDICION (revisión obsoleta; `actual` trae el estado vigente) o BORRADOR_DESACTUALIZADO (el borrador cambió; no se guardó ninguna versión).",
+  409:
+    "CONFLICTO_EDICION (revisión obsoleta; `actual` trae el estado vigente), BORRADOR_DESACTUALIZADO (el borrador cambió; no se guardó ni se envió nada), " +
+    "REVISION_PENDIENTE (hay una versión en revisión: no se edita ni se calcula), VERSION_NO_VIGENTE (solo se envía la última versión) " +
+    "o CONFLICTO_REVISION (la revisión cambió o ya se decidió; `revisionVigente` trae su estado).",
   413: "CUERPO_DEMASIADO_GRANDE.",
   415: "TIPO_DE_CONTENIDO_NO_ADMITIDO: el cuerpo debe ser application/json.",
-  422: "CALCULO_BLOQUEADO (códigos BL, sin importes), CAPTURA_INCOMPLETA (campos pendientes), REGISTRO_INACTIVO, IDEMPOTENCIA_CONFLICTO o IDEMPOTENCIA_CADUCADA.",
+  422:
+    "CALCULO_BLOQUEADO (códigos BL, sin importes), CAPTURA_INCOMPLETA (campos pendientes), REGISTRO_INACTIVO, REFERENCIA_NO_DISPONIBLE, " +
+    "ENVIO_BLOQUEADO / APROBACION_BLOQUEADA (bloqueos vigentes; el estado no cambió), DECISION_BLOQUEADA (BL-17: quien aprueba no puede ser el autor), " +
+    "IDEMPOTENCIA_CONFLICTO o IDEMPOTENCIA_CADUCADA.",
   429: "DEMASIADAS_SOLICITUDES (cabecera Retry-After).",
   503: "SERVICIO_NO_DISPONIBLE: PostgreSQL no disponible.",
   500: "ERROR_INTERNO.",
@@ -308,6 +320,60 @@ export function construirDocumentoOpenApi(): Record<string, unknown> {
           responses: { "200": ok("Version", "Versión."), ...errores(401, 403, 404, 429, 503, 500) },
         },
       },
+      "/api/v1/cotizaciones/{id}/versiones/{numero}/revisiones": {
+        post: {
+          summary:
+            "Envía a revisión la ÚLTIMA versión, que debe corresponder al borrador guardado (revisionBorrador); verifica las " +
+            "condiciones vigentes sin modificar la versión (capacidad revisiones.enviar: Preparador)",
+          security: CON_EFECTOS,
+          parameters: [PARAMETRO_ID, PARAMETRO_NUMERO, CABECERA_IDEMPOTENCIA],
+          requestBody: cuerpo("SolicitudEnvioRevision"),
+          responses: {
+            "201": ok("DetalleRevision", "Revisión PENDIENTE creada (o reproducida)."),
+            ...errores(400, 401, 403, 404, 409, 413, 415, 422, 429, 503, 500),
+          },
+        },
+      },
+      "/api/v1/revisiones": {
+        get: {
+          summary: "Bandeja de revisiones (por omisión, PENDIENTE; las más antiguas primero) con las acciones permitidas a la sesión",
+          parameters: parametrosQuery(EsquemaConsultaRevisiones),
+          responses: { "200": ok("RespuestaRevisiones", "Revisiones."), ...errores(400, 401, 403, 429, 503, 500) },
+        },
+      },
+      "/api/v1/revisiones/{id}": {
+        get: {
+          summary: "Revisión, versión revisada tal como se guardó (vista comercial), verificación vigente e historial",
+          parameters: [PARAMETRO_ID],
+          responses: { "200": ok("DetalleRevision", "Revisión."), ...errores(401, 403, 404, 429, 503, 500) },
+        },
+      },
+      "/api/v1/revisiones/{id}/decision": {
+        post: {
+          summary:
+            "Aprueba o solicita cambios sobre la versión y la ficha vistas (capacidad revisiones.decidir: Revisor; BL-17 por " +
+            "identidad: quien aprueba no es el autor de la versión). La aprobación no es emisión ni entrega al cliente",
+          security: CON_EFECTOS,
+          parameters: [PARAMETRO_ID, CABECERA_IDEMPOTENCIA],
+          requestBody: cuerpo("DecisionRevision"),
+          responses: {
+            "200": ok("DetalleRevision", "Revisión decidida (o reproducida)."),
+            ...errores(400, 401, 403, 404, 409, 413, 415, 422, 429, 503, 500),
+          },
+        },
+      },
+      "/api/v1/revisiones/{id}/retiro": {
+        post: {
+          summary: "Retira una revisión pendiente para corregir (capacidad revisiones.enviar: Preparador)",
+          security: CON_EFECTOS,
+          parameters: [PARAMETRO_ID, CABECERA_IDEMPOTENCIA],
+          requestBody: cuerpo("RetiroRevision"),
+          responses: {
+            "200": ok("DetalleRevision", "Revisión retirada (o reproducida)."),
+            ...errores(400, 401, 403, 404, 409, 413, 415, 422, 429, 503, 500),
+          },
+        },
+      },
       "/api/v1/openapi.json": {
         get: { summary: "Esta especificación", security: [], responses: { "200": { description: "Documento OpenAPI 3.1." } } },
       },
@@ -356,6 +422,11 @@ export function construirDocumentoOpenApi(): Record<string, unknown> {
         RespuestaBorradorGuardado: json(EsquemaRespuestaBorradorGuardado, "output"),
         SolicitudVersion: json(EsquemaSolicitudVersion, "input"),
         Version: json(EsquemaVersion, "output"),
+        SolicitudEnvioRevision: json(EsquemaSolicitudEnvioRevision, "input"),
+        DecisionRevision: json(EsquemaDecisionRevision, "input"),
+        RetiroRevision: json(EsquemaRetiroRevision, "input"),
+        RespuestaRevisiones: json(EsquemaRespuestaRevisiones, "output"),
+        DetalleRevision: json(EsquemaDetalleRevision, "output"),
       },
     },
   };

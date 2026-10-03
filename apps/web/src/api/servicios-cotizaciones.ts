@@ -14,7 +14,13 @@ import {
   EsquemaRespuestaCotizaciones,
   EsquemaRespuestaProyectos,
   EsquemaVersion,
+  EsquemaDetalleRevision,
+  EsquemaRespuestaRevisiones,
   type CapturaBorrador,
+  type DecisionRevision,
+  type DetalleRevision,
+  type EstadoRevision,
+  type RespuestaRevisiones,
   type Cliente,
   type DetalleCliente,
   type DetalleCotizacion,
@@ -51,6 +57,16 @@ export interface ServiciosCotizaciones {
   guardarBorrador(id: string, revision: number, captura: CapturaBorrador): Promise<ResultadoApi<RespuestaBorradorGuardado>>;
   crearVersion(id: string, revisionBorrador: number, motivo: string | null, clave: string): Promise<ResultadoApi<Version>>;
   consultarVersion(id: string, numero: number, signal?: AbortSignal): Promise<ResultadoApi<Version>>;
+  // Revisión (módulo 7, ADR-0009). La identidad sale de la sesión: los cuerpos no la llevan.
+  enviarRevision(id: string, numero: number, revisionBorrador: number, clave: string): Promise<ResultadoApi<DetalleRevision>>;
+  listarRevisiones(estado: EstadoRevision, signal?: AbortSignal): Promise<ResultadoApi<RespuestaRevisiones>>;
+  detalleRevision(id: string, signal?: AbortSignal): Promise<ResultadoApi<DetalleRevision>>;
+  decidirRevision(
+    id: string,
+    d: { decision: DecisionRevision; versionId: string; revision: number; observaciones: string | null },
+    clave: string,
+  ): Promise<ResultadoApi<DetalleRevision>>;
+  retirarRevision(id: string, revision: number, motivo: string | null, clave: string): Promise<ResultadoApi<DetalleRevision>>;
 }
 
 const conClave = (clave: string) => ({ [CABECERA_IDEMPOTENCIA]: clave });
@@ -112,5 +128,26 @@ export function crearServiciosCotizaciones(cliente: ClienteApi): ServiciosCotiza
       }),
     consultarVersion: (id, numero, signal) =>
       cliente.obtener(`/api/v1/cotizaciones/${encodeURIComponent(id)}/versiones/${numero}`, EsquemaVersion, { signal }),
+    enviarRevision: (id, numero, revisionBorrador, clave) =>
+      cliente.enviar(`/api/v1/cotizaciones/${encodeURIComponent(id)}/versiones/${numero}/revisiones`, EsquemaDetalleRevision, {
+        cuerpo: { revisionBorrador },
+        cabeceras: conClave(clave),
+        tiempoMaximo: 30_000,
+      }),
+    listarRevisiones: (estado, signal) =>
+      cliente.obtener(`/api/v1/revisiones${consulta({ estado })}`, EsquemaRespuestaRevisiones, { signal }),
+    detalleRevision: (id, signal) =>
+      cliente.obtener(`/api/v1/revisiones/${encodeURIComponent(id)}`, EsquemaDetalleRevision, { signal, tiempoMaximo: 30_000 }),
+    decidirRevision: (id, d, clave) =>
+      cliente.enviar(`/api/v1/revisiones/${encodeURIComponent(id)}/decision`, EsquemaDetalleRevision, {
+        cuerpo: { decision: d.decision, versionId: d.versionId, revision: d.revision, ...(d.observaciones ? { observaciones: d.observaciones } : {}) },
+        cabeceras: conClave(clave),
+        tiempoMaximo: 30_000,
+      }),
+    retirarRevision: (id, revision, motivo, clave) =>
+      cliente.enviar(`/api/v1/revisiones/${encodeURIComponent(id)}/retiro`, EsquemaDetalleRevision, {
+        cuerpo: { revision, ...(motivo ? { motivo } : {}) },
+        cabeceras: conClave(clave),
+      }),
   };
 }

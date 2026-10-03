@@ -14,12 +14,20 @@ export type CodigoNegocio =
   | "IDEMPOTENCIA_CONFLICTO"
   | "IDEMPOTENCIA_CADUCADA"
   | "REFERENCIA_NO_DISPONIBLE"
+  | "REVISION_PENDIENTE"
+  | "VERSION_NO_VIGENTE"
+  | "CONFLICTO_REVISION"
+  | "ENVIO_BLOQUEADO"
+  | "APROBACION_BLOQUEADA"
+  | "DECISION_BLOQUEADA"
   | "SIN_PERMISO";
 
 export interface DetalleError {
   campos?: { ruta: string; mensaje: string }[];
   problemas?: { codigo: string; referencia: string; mensaje: string }[];
   actual?: { revision: number; actualizadoPor: string; actualizadoEn: string; captura?: CapturaBorrador };
+  /** Estado vigente de una revisión (409 CONFLICTO_REVISION). */
+  revisionVigente?: unknown;
 }
 
 export class ErrorNegocio extends Error {
@@ -68,6 +76,11 @@ const MENSAJES: Record<string, [CodigoNegocio, string]> = {
   BORRADOR_DESACTUALIZADO: [
     "BORRADOR_DESACTUALIZADO",
     "El borrador cambió después de la revisión indicada; guarde o recargue antes de calcular.",
+  ],
+  // BL-19 (módulo 7): con una revisión pendiente no se guarda el borrador ni se crean versiones.
+  REVISION_PENDIENTE: [
+    "REVISION_PENDIENTE",
+    "La cotización tiene una versión en revisión: no se puede editar ni calcular. Retire la revisión para corregir.",
   ],
   CLIENTE_INACTIVO: ["REGISTRO_INACTIVO", "El cliente está inactivo: no se ofrece para registros nuevos."],
   PROYECTO_INACTIVO: ["REGISTRO_INACTIVO", "El proyecto está inactivo: no se ofrece para cotizaciones nuevas."],

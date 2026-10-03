@@ -18,6 +18,7 @@ import type {
   ResumenCambios,
   ResumenCotizacion,
   ResumenVersion,
+  RevisionDeVersion,
 } from "@softarq/contracts";
 import { EsquemaCapturaBorrador } from "@softarq/contracts";
 import type { Prisma } from "../../../generated/prisma/client.js";
@@ -57,6 +58,7 @@ const seleccionProyecto = {
 } satisfies Prisma.ProyectoSelect;
 
 const seleccionResumenVersion = {
+  id: true,
   numero: true,
   revisionBorrador: true,
   fechaCalculo: true,
@@ -192,11 +194,40 @@ function aProyecto(f: FilaProyecto): Proyecto {
   };
 }
 
-function aResumenVersion(folio: string, v: FilaResumenVersion): ResumenVersion {
+/**
+ * Estado de la versión DERIVADO de su última revisión (ADR-0009); la versión no cambia. Sin
+ * revisión, con cambios solicitados o retirada: Borrador, como en el libro.
+ */
+export function estadoDeVersion(r: RevisionDeVersion | null): ResumenVersion["estado"] {
+  if (r?.estado === "PENDIENTE") return "EN_REVISION";
+  if (r?.estado === "APROBADA") return "APROBADA";
+  return "BORRADOR";
+}
+
+/** Revisiones por versión: la más reciente de cada una. */
+export type RevisionesPorVersion = ReadonlyMap<string, RevisionDeVersion>;
+
+const seleccionRevisionDeVersion = {
+  id: true,
+  versionId: true,
+  estado: true,
+  revision: true,
+  enviadoEn: true,
+  resueltaEn: true,
+  observaciones: true,
+  emisor: nombreDeAutor,
+  resolutor: nombreDeAutor,
+} satisfies Prisma.RevisionSelect;
+
+function aResumenVersion(folio: string, v: FilaResumenVersion, ultima: number, revisiones: RevisionesPorVersion): ResumenVersion {
+  const r = revisiones.get(v.id) ?? null;
   return {
+    id: v.id,
     numero: v.numero,
     idVersion: `${folio}-v${v.numero}`,
-    estado: "BORRADOR",
+    estado: estadoDeVersion(r),
+    esUltima: v.numero === ultima,
+    revisionVigente: r,
     revisionBorrador: v.revisionBorrador,
     fechaCalculo: fechaIso(v.fechaCalculo),
     creadoEn: iso(v.creadoEn),
@@ -206,7 +237,7 @@ function aResumenVersion(folio: string, v: FilaResumenVersion): ResumenVersion {
   };
 }
 
-function aResumenCotizacion(f: FilaCotizacion, ultima: FilaResumenVersion | undefined): ResumenCotizacion {
+function aResumenCotizacion(f: FilaCotizacion, ultima: FilaResumenVersion | undefined, revisiones: RevisionesPorVersion): ResumenCotizacion {
   return {
     id: f.id,
     folio: f.folio,
@@ -218,7 +249,7 @@ function aResumenCotizacion(f: FilaCotizacion, ultima: FilaResumenVersion | unde
     creadoPor: f.autor.usuario.nombre,
     revisionBorrador: f.borrador?.revision ?? 0,
     borradorActualizadoEn: iso(f.borrador?.actualizadoEn ?? f.creadoEn),
-    ultimaVersion: ultima ? aResumenVersion(f.folio, ultima) : null,
+    ultimaVersion: ultima ? aResumenVersion(f.folio, ultima, f.ultimaVersion, revisiones) : null,
   };
 }
 
@@ -375,7 +406,8 @@ export class RepositorioCotizaciones {
       take: filtro.limite,
     });
     const ultimas = await this.ultimasVersiones(ctx, filas);
-    return filas.map((f) => aResumenCotizacion(f, ultimas.get(f.id)));
+    const revisiones = await this.revisionesDeVersiones(ctx, [...ultimas.values()].map((v) => v.id));
+    return filas.map((f) => aResumenCotizacion(f, ultimas.get(f.id), revisiones));
   }
 
   private async ultimasVersiones(ctx: ContextoOrganizacion, filas: readonly FilaCotizacion[]) {
@@ -409,9 +441,10 @@ export class RepositorioCotizaciones {
       orderBy: { ocurridoEn: "desc" },
       take: eventos,
     });
-    const versiones = f.versiones.map((v) => aResumenVersion(f.folio, v));
+    const revisiones = await this.revisionesDeVersiones(ctx, f.versiones.map((v) => v.id));
+    const versiones = f.versiones.map((v) => aResumenVersion(f.folio, v, f.ultimaVersion, revisiones));
     return {
-      cotizacion: aResumenCotizacion(f, f.versiones[0]),
+      cotizacion: aResumenCotizacion(f, f.versiones[0], revisiones),
       borrador: {
         revision: f.borrador.revision,
         captura: capturaDe(f.borrador.captura),
@@ -559,7 +592,7 @@ export class RepositorioCotizaciones {
       where: { organizacionId: ctx.organizacionId, cotizacionId, numero },
       select: {
         ...seleccionResumenVersion,
-        cotizacion: { select: { folio: true } },
+        cotizacion: { select: { folio: true, ultimaVersion: true } },
         clienteCodigo: true,
         clienteNombre: true,
         proyectoCodigo: true,
@@ -575,9 +608,10 @@ export class RepositorioCotizaciones {
       },
     });
     if (!v) return null;
+    const revisiones = await this.revisionesDeVersiones(ctx, [v.id]);
     return {
       folio: v.cotizacion.folio,
-      resumen: aResumenVersion(v.cotizacion.folio, v),
+      resumen: aResumenVersion(v.cotizacion.folio, v, v.cotizacion.ultimaVersion, revisiones),
       cliente: { codigo: v.clienteCodigo, nombre: v.clienteNombre },
       proyecto: {
         codigo: v.proyectoCodigo,
@@ -599,6 +633,31 @@ export class RepositorioCotizaciones {
       where: { id: versionId, organizacionId: ctx.organizacionId },
       select: { cotizacionId: true, numero: true },
     });
+  }
+
+  /** Última revisión de cada versión indicada (solo lectura; módulo 7). */
+  async revisionesDeVersiones(ctx: ContextoOrganizacion, versionIds: readonly string[]): Promise<Map<string, RevisionDeVersion>> {
+    const mapa = new Map<string, RevisionDeVersion>();
+    if (versionIds.length === 0) return mapa;
+    const filas = await this.db.revision.findMany({
+      where: { organizacionId: ctx.organizacionId, versionId: { in: [...versionIds] } },
+      select: seleccionRevisionDeVersion,
+      orderBy: [{ enviadoEn: "desc" }, { id: "desc" }],
+    });
+    for (const r of filas) {
+      if (mapa.has(r.versionId)) continue;
+      mapa.set(r.versionId, {
+        id: r.id,
+        estado: r.estado as RevisionDeVersion["estado"],
+        revision: r.revision,
+        enviadoPor: r.emisor.usuario.nombre,
+        enviadoEn: iso(r.enviadoEn),
+        resueltaPor: r.resolutor?.usuario.nombre ?? null,
+        resueltaEn: r.resueltaEn ? iso(r.resueltaEn) : null,
+        observaciones: r.observaciones,
+      });
+    }
+    return mapa;
   }
 
   // ------------------------------ idempotencia -----------------------------

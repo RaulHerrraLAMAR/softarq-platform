@@ -320,6 +320,11 @@ model Membresia {
   cotizacionesCreadas  Cotizacion[]
   borradoresGuardados  CotizacionBorrador[]
   versionesCreadas     CotizacionVersion[]
+  // Revisión (módulo 7, ADR-0009).
+  revisionesPreparadas Revision[]           @relation("RevisionPreparador")
+  revisionesEnviadas   Revision[]           @relation("RevisionEnviadaPor")
+  revisionesResueltas  Revision[]           @relation("RevisionResueltaPor")
+  eventosRevision      RevisionEvento[]
   eventos              Bitacora[]
   idempotencia         Idempotencia[]
 
@@ -433,13 +438,16 @@ model Cotizacion {
   creadoPor      String   @map("creado_por") @db.Uuid
   creadoEn       DateTime @default(now()) @map("creado_en") @db.Timestamptz(3)
 
-  proyecto  Proyecto            @relation(fields: [organizacionId, clienteId, proyectoId], references: [organizacionId, clienteId, id], onDelete: Restrict, onUpdate: Restrict)
-  autor     Membresia           @relation(fields: [organizacionId, creadoPor], references: [organizacionId, usuarioId], onDelete: Restrict, onUpdate: Restrict)
-  borrador  CotizacionBorrador?
-  versiones CotizacionVersion[]
+  proyecto   Proyecto            @relation(fields: [organizacionId, clienteId, proyectoId], references: [organizacionId, clienteId, id], onDelete: Restrict, onUpdate: Restrict)
+  autor      Membresia           @relation(fields: [organizacionId, creadoPor], references: [organizacionId, usuarioId], onDelete: Restrict, onUpdate: Restrict)
+  borrador   CotizacionBorrador?
+  versiones  CotizacionVersion[]
+  revisiones Revision[]
 
   @@unique([organizacionId, id])
   @@unique([organizacionId, folio])
+  /// Destino de la FK de `revision`: identificador, organización y folio coherentes (ADR-0009).
+  @@unique([organizacionId, id, folio])
   @@index([organizacionId, creadoEn])
   @@map("cotizacion")
 }
@@ -496,10 +504,76 @@ model CotizacionVersion {
 
   cotizacion Cotizacion @relation(fields: [organizacionId, cotizacionId], references: [organizacionId, id], onDelete: Restrict, onUpdate: Restrict)
   autor      Membresia  @relation(fields: [organizacionId, autorId], references: [organizacionId, usuarioId], onDelete: Restrict, onUpdate: Restrict)
+  revisiones Revision[]
 
   @@unique([cotizacionId, numero])
   @@unique([organizacionId, id])
+  /// Destino de la FK de `revision`: identificador, organización, cotización y número coherentes (ADR-0009).
+  @@unique([organizacionId, cotizacionId, numero, id])
   @@map("cotizacion_version")
+}
+
+/// Revisión de UNA versión inmutable (módulo 7, ADR-0009): estado propio, separado del contenido
+/// histórico. La versión nunca se modifica; la aprobación de vN no se aplica a otra versión.
+/// Estados: PENDIENTE → APROBADA | CAMBIOS_SOLICITADOS | RETIRADA (terminales; trigger en la base).
+model Revision {
+  id             String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organizacionId String    @map("organizacion_id") @db.Uuid
+  cotizacionId   String    @map("cotizacion_id") @db.Uuid
+  /// Copia del folio (FK compuesta con la cotización: no puede discrepar).
+  folio          String    @db.VarChar(20)
+  versionId      String    @map("version_id") @db.Uuid
+  versionNumero  Int       @map("version_numero")
+  /// Total de la versión revisada (copiado por la base desde la versión, nunca desde el cliente).
+  total          Decimal   @db.Decimal(18, 2)
+  /// Autor de la versión (BL-17: no puede aprobarla).
+  preparadorId   String    @map("preparador_id") @db.Uuid
+  estado         String    @db.VarChar(20)
+  /// Ficha de concurrencia optimista: cada transición la incrementa.
+  revision       Int       @default(0)
+  enviadoPor     String    @map("enviado_por") @db.Uuid
+  enviadoEn      DateTime  @default(now()) @map("enviado_en") @db.Timestamptz(3)
+  resueltaPor    String?   @map("resuelta_por") @db.Uuid
+  resueltaEn     DateTime? @map("resuelta_en") @db.Timestamptz(3)
+  /// Observaciones de la decisión o motivo de la retirada.
+  observaciones  String?   @db.VarChar(2000)
+
+  cotizacion Cotizacion        @relation(fields: [organizacionId, cotizacionId, folio], references: [organizacionId, id, folio], onDelete: Restrict, onUpdate: Restrict)
+  version    CotizacionVersion @relation(fields: [organizacionId, cotizacionId, versionNumero, versionId], references: [organizacionId, cotizacionId, numero, id], onDelete: Restrict, onUpdate: Restrict)
+  preparador Membresia         @relation("RevisionPreparador", fields: [organizacionId, preparadorId], references: [organizacionId, usuarioId], onDelete: Restrict, onUpdate: Restrict)
+  emisor     Membresia         @relation("RevisionEnviadaPor", fields: [organizacionId, enviadoPor], references: [organizacionId, usuarioId], onDelete: Restrict, onUpdate: Restrict)
+  resolutor  Membresia?        @relation("RevisionResueltaPor", fields: [organizacionId, resueltaPor], references: [organizacionId, usuarioId], onDelete: Restrict, onUpdate: Restrict)
+  eventos    RevisionEvento[]
+
+  @@unique([organizacionId, id])
+  @@index([organizacionId, estado, enviadoEn])
+  @@index([organizacionId, cotizacionId])
+  @@map("revision")
+}
+
+/// Historial de una revisión: solo alta (sin UPDATE ni DELETE, también para el propietario).
+model RevisionEvento {
+  id             String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organizacionId String   @map("organizacion_id") @db.Uuid
+  revisionId     String   @map("revision_id") @db.Uuid
+  secuencia      Int
+  /// ENVIADA | APROBADA | CAMBIOS_SOLICITADOS | RETIRADA
+  tipo           String   @db.VarChar(30)
+  estadoAnterior String?  @map("estado_anterior") @db.VarChar(20)
+  estadoNuevo    String   @map("estado_nuevo") @db.VarChar(20)
+  usuarioId      String   @map("usuario_id") @db.Uuid
+  /// Nombre copiado: el historial no cambia si cambia la cuenta.
+  usuarioNombre  String   @map("usuario_nombre") @db.VarChar(200)
+  observaciones  String?  @db.VarChar(2000)
+  /// Códigos de aviso presentes al registrar el evento (no se marcan como atendidos).
+  avisos         Json
+  ocurridoEn     DateTime @default(now()) @map("ocurrido_en") @db.Timestamptz(3)
+
+  revision Revision  @relation(fields: [organizacionId, revisionId], references: [organizacionId, id], onDelete: Restrict, onUpdate: Restrict)
+  usuario  Membresia @relation(fields: [organizacionId, usuarioId], references: [organizacionId, usuarioId], onDelete: Restrict, onUpdate: Restrict)
+
+  @@unique([revisionId, secuencia])
+  @@map("revision_evento")
 }
 
 /// Contadores de identificadores (tblContadores): CLI, PRY y COT-AAAA, por organización.

@@ -61,6 +61,7 @@ function detalle(revision = 3, versiones: DetalleCotizacion["versiones"] = []): 
       referencias: SIN_REFERENCIAS_NO_DISPONIBLES,
     },
     versiones,
+    revisiones: [],
     eventos: [],
   };
 }
@@ -69,9 +70,12 @@ const VERSION: Version = {
   folio: "COT-2026-00001",
   origen: "WEB_DEMO",
   version: {
+    id: "4d745608-0934-4e68-a067-0346beeec59c",
     numero: 1,
     idVersion: "COT-2026-00001-v1",
     estado: "BORRADOR",
+    esUltima: true,
+    revisionVigente: null,
     revisionBorrador: 4,
     fechaCalculo: "2026-09-25",
     creadoEn: "2026-10-03T15:10:00.000Z",
@@ -118,6 +122,11 @@ function cotizacionesFalsas(s: Partial<ServiciosCotizaciones> = {}): ServiciosCo
     guardarBorrador: vi.fn(),
     crearVersion: vi.fn(),
     consultarVersion: noUsar,
+    enviarRevision: vi.fn(),
+    listarRevisiones: noUsar,
+    detalleRevision: noUsar,
+    decidirRevision: vi.fn(),
+    retirarRevision: vi.fn(),
     ...s,
   };
 }
@@ -126,7 +135,10 @@ function abrir(cotizaciones: ServiciosCotizaciones, puedePreparar = true) {
   window.history.replaceState(null, "", hashDe({ pantalla: "cotizacion", id: ID }));
   return render(
     <ProveedorRuta>
-      <PantallaCotizacion id={ID} servicios={serviciosFalsos()} cotizaciones={cotizaciones} puedePreparar={puedePreparar} motivoSinCalculo={null} />
+      <PantallaCotizacion id={ID} servicios={serviciosFalsos()} cotizaciones={cotizaciones} puedePreparar={puedePreparar}
+        puedeEnviarRevision={puedePreparar}
+        motivoSinCalculo={null}
+      />
     </ProveedorRuta>,
   );
 }
@@ -294,6 +306,41 @@ describe("editor de cotización", () => {
     expect(b![3]).toBe(a![3]);
     expect(a![3]).toMatch(/^[0-9a-f-]{36}$/);
     expect(document.querySelector(".resultado-guardado [data-prueba=total]")?.textContent).toMatch(/2,320\.00/);
+  });
+
+  it("guardar y versionar: una consulta del detalle que responde tarde no reemplaza la más reciente (v1 no desaparece)", async () => {
+    // 1.ª consulta: al abrir. 2.ª: tras guardar el borrador (responde TARDE y sin versiones).
+    // 3.ª: tras crear la versión (responde antes, con v1).
+    let responderTarde: (r: ResultadoApi<DetalleCotizacion>) => void = () => {};
+    const detalleCotizacion = vi
+      .fn()
+      .mockResolvedValueOnce({ ok: true, datos: detalle(3) })
+      .mockImplementationOnce(() => new Promise((r) => (responderTarde = r)))
+      .mockResolvedValue({ ok: true, datos: detalle(4, [{ ...VERSION.version, revisionBorrador: 4 }]) });
+    const guardarBorrador = vi.fn(async (_id: string, revision: number) => ({
+      ok: true as const,
+      datos: {
+        revision: revision + 1,
+        actualizadoPor: "[DEMO] Preparador 1",
+        actualizadoEn: "2026-10-03T16:00:00.000Z",
+        completitud: { lista: true, pendientes: [] },
+        referencias: SIN_REFERENCIAS_NO_DISPONIBLES,
+      },
+    }));
+    const crearVersion = vi.fn().mockResolvedValue({ ok: true, datos: VERSION });
+    const usuario = userEvent.setup();
+    abrir(cotizacionesFalsas({ detalleCotizacion, guardarBorrador, crearVersion }));
+    await waitFor(() => expect(estado()).toMatch(/^Guardado · revisión 3/));
+    const largo = screen.getByLabelText(/Largo del renglón 1/);
+    await usuario.clear(largo);
+    await usuario.type(largo, "12");
+    await usuario.click(screen.getByRole("button", { name: "Calcular y guardar versión" }));
+    expect(await screen.findByRole("link", { name: "COT-2026-00001-v1" })).toBeTruthy();
+    // Llega la respuesta atrasada (sin versiones): se descarta.
+    responderTarde({ ok: true, datos: detalle(4) });
+    await new Promise((r) => setTimeout(r, 30));
+    expect(screen.getByRole("link", { name: "COT-2026-00001-v1" })).toBeTruthy();
+    expect(screen.queryByText(/Aún no hay versiones/)).toBeNull();
   });
 
   it("un cálculo bloqueado no guarda versión ni muestra importes", async () => {

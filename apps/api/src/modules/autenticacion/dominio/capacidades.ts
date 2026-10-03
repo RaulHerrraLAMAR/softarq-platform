@@ -11,7 +11,11 @@
  *   catálogo. Abrir las hojas 01 CLIENTES, 02 PROYECTOS y 16 HISTORIAL no exige función.
  * - Nueva cotización y guardar borrador (`Cot_Nueva`, `BTN_GuardarBorrador`): solo Preparador.
  *   Crear una versión exige además `calculo.ejecutar` (lo comprueba el controlador).
- * Revisión, aprobación y emisión (Revisor distinto del preparador, BL-17) son de un módulo futuro.
+ * - Módulo 7 (ADR-0009): `BTN_EnviarRevision` exige `FN_PREP` → `revisiones.enviar` (también
+ *   retirar, adaptación de la web). `BTN_Observaciones` y `BTN_Aprobar` exigen `FN_REV` →
+ *   `revisiones.decidir`. BL-17 (quien aprueba ≠ autor de la versión) se comprueba por identidad,
+ *   no por función: lo decide la API y la base, no esta matriz.
+ * La emisión es de un módulo futuro.
  */
 import { CAPACIDADES, type Capacidad, type FuncionUsuario } from "@softarq/contracts";
 
@@ -24,8 +28,9 @@ export const CAPACIDADES_POR_FUNCION: Readonly<Record<FuncionUsuario, readonly C
     "clientes.gestionar",
     "cotizaciones.consultar",
     "cotizaciones.preparar",
+    "revisiones.enviar",
   ],
-  REVISOR: ["sesion.propia", "catalogos.consultar", "clientes.consultar", "cotizaciones.consultar"],
+  REVISOR: ["sesion.propia", "catalogos.consultar", "clientes.consultar", "cotizaciones.consultar", "revisiones.decidir"],
   ADMIN_CATALOGO: ["sesion.propia", "catalogos.consultar", "clientes.consultar", "clientes.gestionar", "cotizaciones.consultar"],
   ADMIN_SISTEMA: ["sesion.propia", "catalogos.consultar", "clientes.consultar", "cotizaciones.consultar"],
 };

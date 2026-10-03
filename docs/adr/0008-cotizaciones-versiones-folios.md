@@ -56,6 +56,7 @@ Todas las tablas llevan `organizacion_id`; las relaciones son **FK compuestas** 
 
 - **Estados alcanzables:** folio `ACTIVO`; versión `BORRADOR`, que la web rotula «Borrador calculado · sin enviar a revisión». En el libro, una versión calculada y no enviada sigue en Borrador. Los contratos solo enumeran estos estados: APROBADA y EMITIDA no son alcanzables.
 - **Estados futuros:** revisión y emisión se registrarán en una tabla aparte de solo inserción; nunca con UPDATE sobre la versión.
+- **Módulo 7 ([ADR-0009](0009-revision-aprobacion.md)):** la revisión vive en `revision` y `revision_evento`. El estado de la versión (`BORRADOR`, `EN_REVISION`, `APROBADA`) se **deriva** de su última revisión y la versión sigue sin cambiar. Con una revisión pendiente, guardar el borrador o crear una versión responde 409 `REVISION_PENDIENTE` (BL-19).
 - **Cliente o proyecto desactivado:**
   - se consulta con «incluir inactivos» y en el historial;
   - no se ofrece para cotizaciones ni proyectos nuevos (422 `REGISTRO_INACTIVO`);

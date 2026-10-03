@@ -41,6 +41,7 @@ import { aSolicitudCalculo, evaluarCompletitud, type ConceptoParaCaptura } from 
 import { huellaReferencia, sha256 } from "../dominio/huella.js";
 import { codigosReferenciados, evaluarReferencias, referenciasNuevasInvalidas } from "../dominio/referencias.js";
 import { resumirCambios } from "../dominio/resumen-cambios.js";
+import { RepositorioRevisiones } from "../infraestructura/repositorio-revisiones.js";
 import {
   RepositorioCotizaciones,
   ubicacionDe,
@@ -91,6 +92,7 @@ export async function conceptosParaCaptura(
 export class ServicioCotizaciones {
   private readonly repo: RepositorioCotizaciones;
   private readonly catalogos: RepositorioCatalogos;
+  private readonly revisiones: RepositorioRevisiones;
 
   constructor(
     private readonly prisma: PrismaClient,
@@ -100,6 +102,7 @@ export class ServicioCotizaciones {
   ) {
     this.repo = new RepositorioCotizaciones(prisma);
     this.catalogos = new RepositorioCatalogos(prisma);
+    this.revisiones = new RepositorioRevisiones(prisma);
   }
 
   async listar(ctx: ContextoOrganizacion, c: ConsultaCotizaciones): Promise<RespuestaCotizaciones> {
@@ -119,6 +122,7 @@ export class ServicioCotizaciones {
     const conceptos = await conceptosParaCaptura(this.catalogos, ctx, d.borrador.captura);
     return {
       ...d,
+      revisiones: await this.revisiones.historialDeCotizacion(ctx, id),
       borrador: {
         ...d.borrador,
         completitud: evaluarCompletitud(d.borrador.captura, conceptos),

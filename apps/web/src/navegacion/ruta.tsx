@@ -18,6 +18,8 @@ export type Ruta =
   | { pantalla: "clientes" }
   | { pantalla: "cliente"; id: string }
   | { pantalla: "proyectos" }
+  | { pantalla: "revisiones" }
+  | { pantalla: "revision"; id: string }
   | { pantalla: "no-encontrada" };
 
 const UUID = "[0-9a-fA-F-]{36}";
@@ -43,6 +45,8 @@ export function interpretarHash(hash: string): Ruta | null {
   if (camino === "/clientes") return { pantalla: "clientes" };
   if ((m = new RegExp(`^/clientes/(${UUID})$`).exec(camino))) return { pantalla: "cliente", id: m[1]! };
   if (camino === "/proyectos") return { pantalla: "proyectos" };
+  if (camino === "/revisiones") return { pantalla: "revisiones" };
+  if ((m = new RegExp(`^/revisiones/(${UUID})$`).exec(camino))) return { pantalla: "revision", id: m[1]! };
   return { pantalla: "no-encontrada" };
 }
 
@@ -64,13 +68,17 @@ export function hashDe(r: Ruta): string {
       return `#/clientes/${r.id}`;
     case "proyectos":
       return "#/proyectos";
+    case "revisiones":
+      return "#/revisiones";
+    case "revision":
+      return `#/revisiones/${r.id}`;
     case "no-encontrada":
       return "#/no-encontrada";
   }
 }
 
 /** Sección de la navegación principal a la que pertenece una ruta. */
-export function seccionDe(r: Ruta): "calculadora" | "cotizaciones" | "clientes" | "proyectos" | null {
+export function seccionDe(r: Ruta): "calculadora" | "cotizaciones" | "revisiones" | "clientes" | "proyectos" | null {
   switch (r.pantalla) {
     case "calculadora":
       return "calculadora";
@@ -84,6 +92,9 @@ export function seccionDe(r: Ruta): "calculadora" | "cotizaciones" | "clientes" 
       return "clientes";
     case "proyectos":
       return "proyectos";
+    case "revisiones":
+    case "revision":
+      return "revisiones";
     default:
       return null;
   }

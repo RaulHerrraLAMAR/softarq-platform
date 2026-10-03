@@ -32,8 +32,21 @@ export const CABECERA_IDEMPOTENCIA_REPRODUCIDA = "Idempotent-Replayed";
 export const ORIGENES_COTIZACION = ["WEB_DEMO"] as const;
 /** Estados alcanzables en este módulo (el libro define más; ver ADR-0008 §3). */
 export const ESTADOS_FOLIO = ["ACTIVO"] as const;
-/** Una versión calculada y no enviada a revisión sigue en Borrador, como en el libro. */
-export const ESTADOS_VERSION = ["BORRADOR"] as const;
+/**
+ * Estado de una versión, DERIVADO de su última revisión (módulo 7, ADR-0009); nunca se escribe en
+ * la versión. Sin revisión, o con cambios solicitados o retirada: Borrador (como en el libro).
+ * EMITIDA y las demás del libro no son alcanzables todavía.
+ */
+export const ESTADOS_VERSION = ["BORRADOR", "EN_REVISION", "APROBADA"] as const;
+
+/**
+ * Estados de una revisión (máquina explícita): PENDIENTE → APROBADA | CAMBIOS_SOLICITADOS |
+ * RETIRADA, las tres terminales. Volver a enviar crea otra revisión.
+ */
+export const ESTADOS_REVISION = ["PENDIENTE", "APROBADA", "CAMBIOS_SOLICITADOS", "RETIRADA"] as const;
+export type EstadoRevision = (typeof ESTADOS_REVISION)[number];
+
+export const TIPOS_EVENTO_REVISION = ["ENVIADA", "APROBADA", "CAMBIOS_SOLICITADOS", "RETIRADA"] as const;
 
 const EsquemaUuid = z.uuid({ error: "Identificador inválido (UUID)." });
 
@@ -314,11 +327,31 @@ export type DetalleCliente = z.infer<typeof EsquemaDetalleCliente>;
 export const EsquemaRespuestaProyectos = z.strictObject({ proyectos: z.array(EsquemaProyecto), limite: z.number().int() });
 export type RespuestaProyectos = z.infer<typeof EsquemaRespuestaProyectos>;
 
+/** Última revisión de una versión (módulo 7). La ficha `revision` se usa al decidir o retirar. */
+export const EsquemaRevisionDeVersion = z.strictObject({
+  id: z.string(),
+  estado: z.enum(ESTADOS_REVISION),
+  revision: z.number().int().nonnegative(),
+  enviadoPor: z.string(),
+  enviadoEn: EsquemaInstante,
+  resueltaPor: z.string().nullable(),
+  resueltaEn: EsquemaInstante.nullable(),
+  observaciones: z.string().nullable(),
+});
+export type RevisionDeVersion = z.infer<typeof EsquemaRevisionDeVersion>;
+
 export const EsquemaResumenVersion = z.strictObject({
+  /** Identificador inmutable de la versión (lo cita la decisión de revisión). */
+  id: z.string(),
   numero: z.number().int().positive(),
   /** COT-AAAA-NNNNN-vN */
   idVersion: z.string(),
+  /** Derivado de `revisionVigente`; la versión no cambia. */
   estado: z.enum(ESTADOS_VERSION),
+  /** Es la última versión de la cotización (solo la última se puede enviar a revisión). */
+  esUltima: z.boolean(),
+  /** Última revisión de ESTA versión (`null` si nunca se envió). Una aprobación no pasa a otra versión. */
+  revisionVigente: EsquemaRevisionDeVersion.nullable(),
   revisionBorrador: z.number().int().nonnegative(),
   fechaCalculo: EsquemaFechaISO,
   creadoEn: EsquemaInstante,
@@ -393,10 +426,34 @@ export const EsquemaEvento = z.strictObject({
 });
 export type Evento = z.infer<typeof EsquemaEvento>;
 
+export const EsquemaEventoRevision = z.strictObject({
+  secuencia: z.number().int().positive(),
+  tipo: z.enum(TIPOS_EVENTO_REVISION),
+  estadoAnterior: z.enum(ESTADOS_REVISION).nullable(),
+  estadoNuevo: z.enum(ESTADOS_REVISION),
+  usuario: z.string(),
+  ocurridoEn: EsquemaInstante,
+  observaciones: z.string().nullable(),
+  /** Códigos de aviso presentes al registrar el evento (informativo; no se marcan como atendidos). */
+  avisos: z.array(z.string()),
+});
+export type EventoRevision = z.infer<typeof EsquemaEventoRevision>;
+
+/** Historial de revisiones de la cotización (todas sus versiones; la más reciente primero). */
+export const EsquemaHistorialRevision = z.strictObject({
+  id: z.string(),
+  versionNumero: z.number().int().positive(),
+  estado: z.enum(ESTADOS_REVISION),
+  eventos: z.array(EsquemaEventoRevision),
+});
+export type HistorialRevision = z.infer<typeof EsquemaHistorialRevision>;
+
 export const EsquemaDetalleCotizacion = z.strictObject({
   cotizacion: EsquemaResumenCotizacion,
   borrador: EsquemaBorrador,
   versiones: z.array(EsquemaResumenVersion),
+  /** Revisiones de sus versiones con sus decisiones y responsables (módulo 7). */
+  revisiones: z.array(EsquemaHistorialRevision),
   eventos: z.array(EsquemaEvento),
 });
 export type DetalleCotizacion = z.infer<typeof EsquemaDetalleCotizacion>;

@@ -1630,3 +1630,65 @@ textarea[aria-invalid="true"] {
   color: var(--color-texto-atenuado);
   font-weight: 500;
 }
+
+/* ------------------------------------------------------------------------
+ * Revisión y aprobación (módulo 7, ADR-0009)
+ * ------------------------------------------------------------------------ */
+
+/* Dentro de un aviso, los botones conservan su ancho (no se estiran en la rejilla). */
+.aviso > div > .boton,
+.aviso .formulario-acciones {
+  justify-self: start;
+}
+
+.confirmacion-bloque {
+  display: grid;
+  gap: var(--esp-3);
+  padding: var(--esp-3) var(--esp-4);
+  border: 1px solid var(--color-borde-fuerte);
+  border-radius: var(--radio);
+  background: var(--color-superficie-suave);
+}
+
+.confirmacion-bloque textarea {
+  width: 100%;
+  min-height: 6rem;
+  font: inherit;
+  padding: var(--esp-2) var(--esp-3);
+  border: 1px solid var(--color-borde-fuerte);
+  border-radius: var(--radio);
+  resize: vertical;
+}
+
+/* Observaciones de quien revisa: texto de la persona, conserva saltos de línea. */
+.observaciones {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.filtros {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--esp-2);
+  margin-block: var(--esp-3);
+}
+
+.panel-revision {
+  display: grid;
+  gap: var(--esp-2);
+  margin-block: var(--esp-4);
+  padding-top: var(--esp-3);
+  border-top: 1px solid var(--color-borde);
+}
+
+.panel-revision > .boton {
+  justify-self: start;
+}
+
+.historial-revisiones {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: var(--esp-3);
+}

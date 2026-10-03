@@ -41,12 +41,19 @@ import { GeneradorCsrf } from "../modules/autenticacion/infraestructura/csrf.js"
 import { RepositorioSesiones } from "../modules/autenticacion/infraestructura/repositorio-sesiones.js";
 import { ServicioClientes } from "../modules/cotizaciones/aplicacion/servicio-clientes.js";
 import { ServicioCotizaciones, type MedidorTiempos } from "../modules/cotizaciones/aplicacion/servicio-cotizaciones.js";
+import { ServicioRevisiones } from "../modules/cotizaciones/aplicacion/servicio-revisiones.js";
 import { RepositorioCotizaciones } from "../modules/cotizaciones/infraestructura/repositorio-cotizaciones.js";
 import { ServicioBaseDeDatos } from "./base-de-datos.js";
 import { comprobarRolAplicacion } from "./contexto.js";
 import { AutenticacionController } from "./controlador-autenticacion.js";
 import { CalculosController, CatalogosController, OpenApiController, SaludController } from "./controladores.js";
-import { ClientesController, CotizacionesController, ProyectosController } from "./controladores-cotizaciones.js";
+import {
+  ClientesController,
+  CotizacionesController,
+  EnvioRevisionController,
+  ProyectosController,
+  RevisionesController,
+} from "./controladores-cotizaciones.js";
 import { FiltroErrores, errorDeValidacion } from "./errores.js";
 import { GuardiaSesion } from "./guardia-sesion.js";
 import { crearMiddlewareJson, crearMiddlewareRegistro, middlewareSinCache, middlewareSolicitudId } from "./solicitud.js";
@@ -59,6 +66,7 @@ import {
   SERVICIO_AUTENTICACION,
   SERVICIO_CLIENTES,
   SERVICIO_COTIZACIONES,
+  SERVICIO_REVISIONES,
 } from "./tokens.js";
 
 const VENTANA_LIMITADOR_MS = 60_000;
@@ -111,6 +119,8 @@ function moduloRaiz(config: ConfiguracionApi, opciones: OpcionesAplicacion): Dyn
       ClientesController,
       ProyectosController,
       CotizacionesController,
+      EnvioRevisionController,
+      RevisionesController,
       OpenApiController,
     ],
     providers: [
@@ -155,6 +165,11 @@ function moduloRaiz(config: ConfiguracionApi, opciones: OpcionesAplicacion): Dyn
         provide: SERVICIO_COTIZACIONES,
         useFactory: (bd: ServicioBaseDeDatos, reloj: Reloj, instante: RelojSesiones) =>
           new ServicioCotizaciones(bd.cliente, reloj, instante, opciones.medirTiempos),
+        inject: [BASE_DE_DATOS, RELOJ, RELOJ_SESIONES],
+      },
+      {
+        provide: SERVICIO_REVISIONES,
+        useFactory: (bd: ServicioBaseDeDatos, reloj: Reloj, instante: RelojSesiones) => new ServicioRevisiones(bd.cliente, reloj, instante),
         inject: [BASE_DE_DATOS, RELOJ, RELOJ_SESIONES],
       },
       { provide: APP_GUARD, useClass: ThrottlerGuard },

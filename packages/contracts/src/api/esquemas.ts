@@ -294,6 +294,9 @@ export const CAPACIDADES = [
   "clientes.gestionar",
   "cotizaciones.consultar",
   "cotizaciones.preparar",
+  // Módulo 7 (ADR-0009): enviar y retirar revisiones (Preparador); decidir (Revisor).
+  "revisiones.enviar",
+  "revisiones.decidir",
 ] as const;
 export type Capacidad = (typeof CAPACIDADES)[number];
 
@@ -359,6 +362,13 @@ export const CODIGOS_ERROR_API = [
   "IDEMPOTENCIA_CADUCADA",
   // Conservación de selecciones del borrador (corrección previa al módulo 7).
   "REFERENCIA_NO_DISPONIBLE",
+  // Módulo 7 (ADR-0009): revisión y aprobación.
+  "REVISION_PENDIENTE",
+  "VERSION_NO_VIGENTE",
+  "CONFLICTO_REVISION",
+  "ENVIO_BLOQUEADO",
+  "APROBACION_BLOQUEADA",
+  "DECISION_BLOQUEADA",
 ] as const;
 export type CodigoErrorApi = (typeof CODIGOS_ERROR_API)[number];
 
@@ -387,6 +397,11 @@ export const EsquemaRespuestaError = z.strictObject({
         captura: z.unknown().optional(),
       })
       .optional(),
+    /**
+     * 409 CONFLICTO_REVISION / REVISION_PENDIENTE: estado vigente de la revisión
+     * (`EsquemaResumenRevision`), para actualizar la pantalla sin perder lo escrito.
+     */
+    revisionVigente: z.unknown().optional(),
   }),
 });
 export type RespuestaError = z.infer<typeof EsquemaRespuestaError>;

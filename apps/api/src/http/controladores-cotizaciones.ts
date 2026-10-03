@@ -17,6 +17,11 @@ import {
   EsquemaConsultaClientes,
   EsquemaConsultaCotizaciones,
   EsquemaConsultaProyectos,
+  EsquemaConsultaRevisiones,
+  EsquemaDecisionRevision,
+  EsquemaParametroNumeroVersion,
+  EsquemaRetiroRevision,
+  EsquemaSolicitudEnvioRevision,
   EsquemaEdicionCliente,
   EsquemaEdicionProyecto,
   EsquemaParametroId,
@@ -30,6 +35,12 @@ import {
   type ConsultaClientes,
   type ConsultaCotizaciones,
   type ConsultaProyectos,
+  type ConsultaRevisiones,
+  type DecisionRevisionSolicitud,
+  type DetalleRevision,
+  type RespuestaRevisiones,
+  type RetiroRevision,
+  type SolicitudEnvioRevision,
   type DetalleCliente,
   type DetalleCotizacion,
   type EdicionCliente,
@@ -50,10 +61,11 @@ import type { Request, Response } from "express";
 import { z } from "zod";
 import type { ServicioClientes } from "../modules/cotizaciones/aplicacion/servicio-clientes.js";
 import type { ServicioCotizaciones } from "../modules/cotizaciones/aplicacion/servicio-cotizaciones.js";
+import type { ServicioRevisiones } from "../modules/cotizaciones/aplicacion/servicio-revisiones.js";
 import { organizacionDe, sesionDe } from "./contexto.js";
 import { ErrorApi } from "./errores.js";
 import { Requiere } from "./guardia-sesion.js";
-import { SERVICIO_CLIENTES, SERVICIO_COTIZACIONES } from "./tokens.js";
+import { SERVICIO_CLIENTES, SERVICIO_COTIZACIONES, SERVICIO_REVISIONES } from "./tokens.js";
 
 const EsquemaClaveIdempotencia = z.uuid();
 
@@ -242,5 +254,92 @@ export class CotizacionesController {
     const r = EsquemaParametroVersion.safeParse(params);
     if (!r.success) throw new ErrorApi(404, "NO_ENCONTRADO", "La versión no existe en su organización.");
     return this.servicio.consultarVersion(organizacionDe(req), r.data.id, r.data.numero);
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Revisión y aprobación (módulo 7, ADR-0009)
+// ---------------------------------------------------------------------------
+
+function actorDe(req: Request) {
+  const s = sesionDe(req);
+  return { usuarioId: s.usuario.id, capacidades: s.capacidades };
+}
+
+/** Enviar a revisión una versión concreta: `POST /cotizaciones/{id}/versiones/{numero}/revisiones`. */
+@Controller("cotizaciones")
+@SkipThrottle({ calculo: true })
+export class EnvioRevisionController {
+  constructor(@Inject(SERVICIO_REVISIONES) private readonly servicio: ServicioRevisiones) {}
+
+  @Post(":id/versiones/:numero/revisiones")
+  @HttpCode(201)
+  @Requiere("revisiones.enviar")
+  async enviar(
+    @Req() req: Request,
+    @Res({ passthrough: true }) res: Response,
+    @Param() params: unknown,
+    @Body({ schema: EsquemaSolicitudEnvioRevision }) s: SolicitudEnvioRevision,
+  ): Promise<DetalleRevision> {
+    const r = EsquemaParametroNumeroVersion.safeParse(params);
+    if (!r.success) throw new ErrorApi(404, "NO_ENCONTRADO", "La versión no existe en su organización.");
+    const clave = claveIdempotencia(req);
+    const e = await this.servicio.enviar(organizacionDe(req), actorDe(req), r.data.id, r.data.numero, s, clave);
+    marcarReproducida(res, e.reproducida);
+    return e.detalle;
+  }
+}
+
+@Controller("revisiones")
+@SkipThrottle({ calculo: true })
+export class RevisionesController {
+  constructor(@Inject(SERVICIO_REVISIONES) private readonly servicio: ServicioRevisiones) {}
+
+  /** Bandeja: por omisión, las pendientes (las más antiguas primero). */
+  @Get()
+  @Requiere("cotizaciones.consultar")
+  listar(@Req() req: Request, @Query({ schema: EsquemaConsultaRevisiones }) c: ConsultaRevisiones): Promise<RespuestaRevisiones> {
+    return this.servicio.listar(organizacionDe(req), actorDe(req), c);
+  }
+
+  /** Revisión, versión revisada (proyección comercial guardada), verificación vigente e historial. */
+  @Get(":id")
+  @Requiere("cotizaciones.consultar")
+  detalle(@Req() req: Request, @Param() params: unknown): Promise<DetalleRevision> {
+    return this.servicio.detalle(organizacionDe(req), actorDe(req), idDeRuta(params));
+  }
+
+  /** Aprobar o solicitar cambios sobre la versión y la ficha vistas (BL-17 por identidad). */
+  @Post(":id/decision")
+  @HttpCode(200)
+  @Requiere("revisiones.decidir")
+  async decidir(
+    @Req() req: Request,
+    @Res({ passthrough: true }) res: Response,
+    @Param() params: unknown,
+    @Body({ schema: EsquemaDecisionRevision }) s: DecisionRevisionSolicitud,
+  ): Promise<DetalleRevision> {
+    const id = idDeRuta(params);
+    const clave = claveIdempotencia(req);
+    const r = await this.servicio.decidir(organizacionDe(req), actorDe(req), id, s, clave);
+    marcarReproducida(res, r.reproducida);
+    return r.detalle;
+  }
+
+  /** Retirar una revisión pendiente para corregir (Preparador). */
+  @Post(":id/retiro")
+  @HttpCode(200)
+  @Requiere("revisiones.enviar")
+  async retirar(
+    @Req() req: Request,
+    @Res({ passthrough: true }) res: Response,
+    @Param() params: unknown,
+    @Body({ schema: EsquemaRetiroRevision }) s: RetiroRevision,
+  ): Promise<DetalleRevision> {
+    const id = idDeRuta(params);
+    const clave = claveIdempotencia(req);
+    const r = await this.servicio.retirar(organizacionDe(req), actorDe(req), id, s, clave);
+    marcarReproducida(res, r.reproducida);
+    return r.detalle;
   }
 }

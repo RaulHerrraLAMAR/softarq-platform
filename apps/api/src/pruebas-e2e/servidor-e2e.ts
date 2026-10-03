@@ -44,8 +44,13 @@ async function principal(): Promise<void> {
   const migrador = await prismaMigrador();
   try {
     const r = await cargarUsuariosDemo(migrador, new ServicioContrasenas(), { organizacion: "DEMO" });
+    // Módulo 7: una persona con las dos funciones, para comprobar BL-17 por identidad en el navegador.
+    const ambas = await cargarUsuariosDemo(migrador, new ServicioContrasenas(), {
+      organizacion: "DEMO",
+      cuentas: [{ correo: "ambas.e2e@softarq.test", nombre: "[DEMO] Preparador y revisor E2E", funciones: ["PREPARADOR", "REVISOR"] }],
+    });
     const cuenta = (correo: string) => {
-      const c = r.creadas.find((x) => x.correo === correo);
+      const c = [...r.creadas, ...ambas.creadas].find((x) => x.correo === correo);
       if (!c) throw new Error(`No se creó la cuenta de prueba ${correo}.`);
       return { correo: c.correo, contrasena: c.contrasena, nombre: c.nombre };
     };
@@ -57,6 +62,7 @@ async function principal(): Promise<void> {
           advertencia: "Accesos de las pruebas de navegador (solo softarq_test); se regeneran en cada corrida. NO VERSIONAR.",
           preparador: cuenta(CUENTAS_DEMO[0]!.correo),
           revisor: cuenta(CUENTAS_DEMO[1]!.correo),
+          ambas: cuenta("ambas.e2e@softarq.test"),
         },
         null,
         2,

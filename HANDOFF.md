@@ -2,7 +2,7 @@
 
 > Léelo al empezar. Actualízalo al terminar cada tarea (sección por sección, sin borrar el historial de la tabla 4). Reglas de trabajo: [`AGENTS.md`](AGENTS.md).
 
-**Última actualización:** 03/10/2026 · Claude Code (Opus 5.5) · corrección del borrador (conservar selecciones no disponibles) y registro de la revisión personal; módulo 7 en curso
+**Última actualización:** 03/10/2026 · Claude Code (Opus 5.5) · módulo 7 (revisión y aprobación por un revisor distinto del preparador) terminado y verificado, tras la corrección del borrador (commit `97e69d5`)
 
 ## 1. Estado actual
 
@@ -43,9 +43,19 @@
   - idempotencia en todas las altas (`Idempotency-Key`), eventos mínimos en `bitacora` e historial consultable;
   - permisos: Preparador prepara y calcula; Revisor solo consulta; Administrador del catálogo gestiona clientes y proyectos;
   - web con navegación por secciones y URL por pantalla, editor de cotización sobre el mismo formulario de la calculadora, vista previa, versiones, conflictos entre pestañas y «Guardar como cotización».
-- **Corrección del borrador (commit posterior al módulo 6):** guardar ya no elimina en silencio las selecciones de un concepto, proveedor o precio que dejó de estar disponible. Se conservan, marcadas, hasta que el usuario las sustituya o quite; las referencias nuevas inválidas se rechazan (422 `REFERENCIA_NO_DISPONIBLE`). Ver ADR-0008, «Corrección posterior».
+- **Módulo 7, revisión y aprobación (ADR-0009, este commit):**
+  - el Preparador envía explícitamente la **última** versión, solo si corresponde al borrador guardado (sin cambios sin guardar ni pendientes de recalcular);
+  - el Revisor consulta la bandeja, abre la versión (proyección comercial guardada, verificación vigente y avisos) y **solicita cambios** (con explicación) o **aprueba**;
+  - el Preparador puede **retirar** una revisión pendiente para corregir (adaptación de la web);
+  - **BL-17 por identidad:** quien aprueba no puede ser el autor de la versión, aunque tenga o reciba la función Revisor (API, función de la base y CHECK);
+  - la revisión vive en `revision` (estado por envío, terminal tras decidir o retirar) y `revision_evento` (solo alta). La versión **no cambia**: su estado (`BORRADOR`, `EN_REVISION`, `APROBADA`) se deriva y la aprobación de v1 no se aplica a v2;
+  - verificación vigente al enviar y aprobar (BL-01/02, 04, 07, 08, 09, 10–14, 16, 18 y AV-01/02/03/05) en una lectura de solo lectura, **sin recalcular ni reemplazar importes**;
+  - concurrencia: una sola transición confirmada (409 `CONFLICTO_REVISION` con el estado vigente); idempotencia de envíos, decisiones y retiradas;
+  - con una revisión pendiente no se guarda el borrador ni se calcula (409 `REVISION_PENDIENTE`, BL-19);
+  - **la aprobación no es una emisión ni una entrega al cliente.**
+- **Corrección del borrador (commit `97e69d5`):** guardar ya no elimina en silencio las selecciones de un concepto, proveedor o precio que dejó de estar disponible. Se conservan, marcadas, hasta que el usuario las sustituya o quite; las referencias nuevas inválidas se rechazan (422 `REFERENCIA_NO_DISPONIBLE`). Ver ADR-0008, «Corrección posterior».
 - **Revisión personal de la web:** el propietario declaró que revisa manualmente los resultados de la web (registrado el 03/10/2026). Es una declaración, sin recorridos, casos ni evidencias atribuidos. La ejecución formal de los casos de la guía (A1–A9, 1–14, C1–C15) sigue sin registro, y ninguna de las dos cuenta como PR-41 ni PR-44 del Excel.
-- **Todavía no existen:** registro o CRUD de usuarios, recuperación de contraseña, MFA, descartar o duplicar cotizaciones, revisión, aprobación, emisión, PDF ni móvil.
+- **Todavía no existen:** registro o CRUD de usuarios, recuperación de contraseña, MFA, descartar o duplicar cotizaciones, excepciones, anular una aprobación, emisión, PDF ni móvil.
 
 ## 2. Decisiones vigentes
 
@@ -59,10 +69,11 @@
 | ADR-0006 | Web DEMO: React 19 + Vite 8 sin router ni librería de estado; solo `@softarq/contracts`; captura en reducer con decimales como texto; huella para «pendiente de recalcular»; sin duplicados ni respuestas atrasadas (abort + número de solicitud); sin preselección; `DIMENSIONES_POR_FORMULA` en contracts; Vite solo en loopback con `strictPort`, sin proxy, CSP y fuentes locales; Playwright con Edge contra la web compilada, la API real y `softarq_test` con `RelojFijo` | [`docs/adr/0006-cliente-web-demo.md`](docs/adr/0006-cliente-web-demo.md) |
 | ADR-0007 | Usuarios DEMO y sesiones opacas en PostgreSQL (solo el hash del token); Argon2id m = 64 MiB, t = 3, p = 4 con `@node-rs/argon2`; expiración de 8 h absoluta y 30 min por inactividad, renovación al autenticar y revocación con UPDATE; cookie `HttpOnly`, `SameSite=Strict`, `Path=/api/v1`, host-only, sin `Secure` solo en local; host `localhost` para la web y la API (escucha en 127.0.0.1); CSRF con HMAC por sesión y `Origin`; límites de acceso temporales; guardia que niega por omisión; matriz de funciones del libro (solo el Preparador calcula); `softarq_app` solo lee las tablas de identidad | [`docs/adr/0007-autenticacion-sesiones.md`](docs/adr/0007-autenticacion-sesiones.md) |
 | ADR-0008 | Clientes y proyectos por organización; cotización con folio `COT-AAAA-NNNNN` WEB DEMO por organización y año (contador atómico, sin MAX + 1); FK compuesta cotización → (organización, cliente, proyecto); borrador `jsonb` con revisión; versión inmutable (sin UPDATE/DELETE para `softarq_app` y trigger para el propietario) con instantánea interna, copias descriptivas, motor y huellas; estados alcanzables folio ACTIVO y versión BORRADOR; versión en dos fases (lectura RR solo lectura + función de una sentencia); idempotencia de 24 h por organización, usuario y clave; capacidades `clientes.*` y `cotizaciones.*` | [`docs/adr/0008-cotizaciones-versiones-folios.md`](docs/adr/0008-cotizaciones-versiones-folios.md) |
+| ADR-0009 | Revisión por versión inmutable en `revision` (PENDIENTE → APROBADA, CAMBIOS_SOLICITADOS o RETIRADA, terminales; trigger e índice parcial) y `revision_evento` (solo alta); estado de la versión derivado; solo se envía la última versión si coincide con el borrador; verificación vigente de solo lectura sin recalcular importes; BL-17 por identidad (API, función y CHECK); retirada por el Preparador; capacidades `revisiones.enviar` y `revisiones.decidir`; 409 por ficha obsoleta; idempotencia; BL-19 en guardar y calcular | [`docs/adr/0009-revision-aprobacion.md`](docs/adr/0009-revision-aprobacion.md) |
 | Propietario | Libro oficial `entrega\Cotizador_Estructuras_F1.xlsm`; COT-2026-00016/00017 y la persona en turno se conservan; evidencias citadas por archivo, escenario y caso | [`docs/fase1-estado-verificado.md`](docs/fase1-estado-verificado.md) §4 |
 | Entorno | Trabajo en `D:\Proyecto_SoftArq`; temporales y cachés en `_work`; sin remoto ni push | `AGENTS.md` §1 |
 
-Pendiente de decidir: selección de organización para usuarios con varias pertenencias, capacidades de revisión y aprobación, almacén compartido de los limitadores para varias instancias, TLS y proxy antes de publicar, generación de PDF y alcance de la app móvil.
+Pendiente de decidir: selección de organización para usuarios con varias pertenencias, anular una aprobación antes de emitir, almacén compartido de los limitadores para varias instancias, TLS y proxy antes de publicar, generación de PDF y alcance de la app móvil.
 
 ## 3. Esquema implementado (migración `20261002000000_catalogos`)
 
@@ -92,6 +103,14 @@ Detalle en ADR-0004 y en [`docs/modelo-conceptual.md`](docs/modelo-conceptual.md
 
 Permisos de `softarq_app`: solo `SELECT` en `usuario` y `membresia`; en `sesion`, `SELECT` e `INSERT` y `UPDATE` solo de `ultima_actividad_en`, `revocada_en` y `motivo_revocacion`. Sin DELETE. Aplicada en `softarq_dev` el 02/10/2026 con `db:migrar`.
 
+**Migración `20261003160000_revisiones` (módulo 7, ADR-0009):**
+- tablas `revision` y `revision_evento`; UNIQUE nuevos en `cotizacion` (organización, id, folio) y `cotizacion_version` (organización, cotización, número, id) como destino de las FK;
+- CHECK (estados, resolución, observaciones, BL-17), índice único parcial `revision_pendiente_unica`, triggers `revision_transicion_trg` y `revision_evento_inmutable_trg`;
+- funciones `softarq_exigir_funcion`, `softarq_enviar_revision`, `softarq_decidir_revision` y `softarq_retirar_revision`; `softarq_guardar_borrador` y `softarq_crear_version` reemplazadas (misma firma) para BL-19;
+- `softarq_app`: `revision` SELECT/INSERT y UPDATE solo de `estado`, `revision`, `resuelta_por`, `resuelta_en` y `observaciones`; `revision_evento` SELECT/INSERT; sin DELETE.
+
+Aplicada en `softarq_test` (cada corrida de integración) y en `softarq_dev` el 03/10/2026 con `db:migrar` (rol migrador).
+
 **Recursos de PostgreSQL creados (02/10/2026):**
 
 | Recurso | Características |
@@ -116,7 +135,9 @@ Credenciales: `apps/api/.env` y `.env.test` (locales, excluidos de Git). La cred
 | 02/10/2026 | Módulo 3: API HTTP local (NestJS 12, contratos Zod, catálogos, cálculo DEMO, errores, transporte, OpenAPI, ADR-0005) | Commit `185fd26` |
 | 02/10/2026 | Módulo 4: cliente web DEMO (React + Vite), sistema visual, pruebas de componentes y de navegador, ADR-0006 | Commit `84f9218` |
 | 02/10/2026 | Módulo 5: usuarios DEMO, sesiones, CSRF, permisos y aislamiento por organización; pantalla de acceso; ADR-0007; conflicto de la skill identificado, con alternativa comprobada (no resuelto) | Commit `ff6da0d` |
-| 03/10/2026 | Módulo 6: clientes, proyectos y cotizaciones con folio, borrador, versiones inmutables, concurrencia, idempotencia e historial; web integrada; ADR-0008 | Ver §5, §13 y §8 |
+| 03/10/2026 | Módulo 6: clientes, proyectos y cotizaciones con folio, borrador, versiones inmutables, concurrencia, idempotencia e historial; web integrada; ADR-0008 | Commit `26ce1a5` |
+| 03/10/2026 | Corrección del borrador (selecciones no disponibles conservadas) y registro de la revisión personal del propietario | Commit `97e69d5` |
+| 03/10/2026 | Módulo 7: revisión y aprobación por un revisor distinto del preparador; ADR-0009 | Ver §5, §14 y §8 |
 
 ## 5. Comandos y resultados reales (02/10/2026)
 
@@ -246,6 +267,33 @@ Se revisaron una por una. Defecto corregido: el botón «Mostrar/Ocultar» tení
 | `pnpm verificar:integracion` | **173/173** (171 + 2 con el catálogo real de `softarq_test`: concepto en Borrador y precio anulado → guardar otra partida, recargar y recuperar sin perder selecciones; v1 intacta; referencias nuevas inválidas → 422). En la primera corrida falló 1 prueba nueva por una expectativa equivocada mía: la completitud no depende del catálogo. Ahora comprueba el bloqueo real con BL-04 y BL-08 |
 | `pnpm verificar:e2e` | **36/36** (35 + 1: concepto no disponible y opción no disponible conservados tras guardar y recargar; «Quitar selección» y elegir otra solo por decisión del usuario), Edge con 1 worker, 2.1 min |
 | Revisión de capturas (`_work/evidencias/modulo7/escritorio-00a/00b`) | Correcto. Defecto de texto corregido: paréntesis anidados en el aviso del concepto no disponible |
+| Defecto detectado después (corregido en el commit del módulo 7) | La web clasificaba el 422 `REFERENCIA_NO_DISPONIBLE` como «respuesta incompatible». Ahora muestra los campos marcados |
+
+**Módulo 7 (revisión y aprobación).** Automatizado y ejecutado en secuencia; integración y E2E usan `softarq_test`, nunca a la vez. Registros en `D:\Proyecto_SoftArq\_work\registros\modulo7\` (`05-…` a `13-…`).
+
+| Comando | Resultado |
+|---|---|
+| Generación de la migración | `migrate dev --create-only` se negó sin terminal por los avisos de índices únicos; el SQL se generó con `prisma migrate diff --from-migrations --to-schema --script` (base sombra) y se completó a mano |
+| `revisiones.integracion.test.ts`, primera corrida | 6/14: los 8 fallos tenían una sola causa, mía: Nest respondía 201 en `decision` y `retiro` (se documentó 200). Se añadió `@HttpCode(200)`. Después, 14/14 |
+| `concurrencia-revisiones.integracion.test.ts` | 7/7 a la primera, incluida una prueba sin la API: una retirada sin confirmar bloquea la aprobación, que falla con `CONFLICTO_REVISION` al confirmarse la retirada |
+| `pnpm verificar:integracion`, primera corrida completa | 191/194. Tres pruebas anteriores, cambiadas a propósito (ADR-0009, «Cambios en pruebas existentes»): capacidades del Preparador, inventario de funciones y `esUltima` derivado de v1 tras crear v2 (la fila de la versión sigue idéntica) |
+| `pnpm verificar` (final) | **500/500**: 333 de la API (323 + 10 de `verificacion.test.ts` y OpenAPI) y 167 de la web (158 + 7 de `revisiones.test.tsx`, 1 de respuestas fuera de orden en el editor y 1 de la revisión automática de archivos nuevos) |
+| `pnpm verificar:integracion` (final) | **195/195** (173 + 14 de `revisiones` + 7 de `concurrencia-revisiones` + 1 de permisos de `revision`) |
+| `pnpm verificar:e2e` | Primera corrida: 39/41. (1) Reescribí un subtítulo que una prueba anterior comprueba; ahora conserva el texto original y solo retira «ni aprobarla». (2) Mi ayudante de la prueba no volvía la calculadora al inicio. Una corrida parcial mostró además un **fallo intermitente real** de la prueba del módulo 6: dos consultas del detalle en vuelo y la más antigua borraba v2 de la tabla. Corregido (solo se aplica la última), con prueba unitaria que falla sin la corrección. Final: **41/41 en dos corridas completas seguidas** (2.6 y 2.7 min; 36 anteriores + 5 nuevas), Edge con 1 worker |
+| Humo en `softarq_dev` (API temporal en `127.0.0.1:3200`; 3000, 5173, 3200 y 5273 estaban libres) | `db:migrar` aplicó la migración. Flujo con dos sesiones: `COT-2026-00003` → v1 = 54190.68 → envío (201) → mismo envío con la misma clave `Idempotent-Replayed: true` → guardar en revisión 409 → el Preparador decide 403 → bandeja `COT-2026-00003-v1 PENDIENTE` → verificación sin bloqueos, aviso AV-03 → aprobación por [DEMO] Revisor 1, total 54190.68 → v1 `APROBADA` → cierres 204. API detenida al terminar |
+| Revisión de secretos | 0 coincidencias de las 7 contraseñas locales (DEMO, E2E y PostgreSQL) en 416 archivos del repositorio y en el bundle |
+| MD5 del libro oficial | `b60debc121957b8d8e3f2c2edd9a5b4f`, sin cambios |
+
+**Incidencia propia en la prueba de humo:** pasé el nombre del cliente y del proyecto con acento como argumento de `curl` en Git Bash, justo lo que `docs/api/README.md` advierte. `CLI-00003` y `PRY-00003` quedaron con U+FFFD; se corrigieron con `PATCH` y cuerpos UTF-8 (comprobado: U+00F3). La v1 de `COT-2026-00003` conserva la copia dañada del nombre en su instantánea, que es inmutable por diseño. Es un dato DEMO de prueba, como `COT-2026-00001`. El script (`_work/tmp/m7/humo-revision.sh`) ya usa archivos.
+
+**Las 5 pruebas de navegador nuevas** (automatizadas; acceso con el formulario normal y un contexto por persona):
+- recorrido completo: cambios sin guardar y borrador sin calcular impiden enviar → v2 → envío con confirmación de folio, versión y total → solo lectura → el Revisor solicita cambios → v3 → envío → aprobación → estado exacto de v1, v2 y v3;
+- BL-17 con una cuenta E2E que es Preparador y Revisor: sin «Aprobar…», motivo visible y 422 en el intento directo; después aprueba otra persona;
+- pantalla obsoleta: otra persona aprueba antes; el 409 conserva las observaciones y «Actualizar» muestra la aprobación;
+- respuesta atrasada de otra revisión descartada;
+- 390 px sin desbordes (cotización en revisión, bandeja, detalle y retirada).
+
+**Evidencias visuales del módulo 7** (fuera de Git): `D:\Proyecto_SoftArq\_work\evidencias\modulo7\` (`escritorio-00a…09`, `movil-10…12`). Revisadas una por una. Defecto corregido: los botones «Actualizar» y «Retirar la revisión para corregir…» se estiraban a todo el ancho del aviso.
 
 **Escenarios desde PostgreSQL** (módulo 2; por HTTP en el módulo 3; en la web en el módulo 4), comparados con los totales de las fuentes, no con el cálculo:
 
@@ -273,7 +321,10 @@ En los cuatro, el resultado completo es idéntico al calculado con los fixtures 
    - solo escucha en `127.0.0.1` y la cookie no lleva `Secure` (HTTP local);
    - no debe exponerse en red, Expo ni despliegue sin TLS, `Secure` y `__Host-`, proxy y almacén compartido de los limitadores (ADR-0007 §5).
 9. **Rate limiting en memoria:** vale para una instancia; con varias hará falta un almacén compartido.
-10. **Avisos:** AV-01 y AV-03 se publican reescritos sin importes. AV-02, AV-04 y AV-05 corresponden a la revisión y la emisión.
+10. **Avisos:**
+    - AV-01 y AV-03 se publican reescritos sin importes;
+    - AV-02 y AV-05 se evalúan en la revisión con la fecha del servidor (AV-02 se volverá a evaluar con la fecha de emisión);
+    - AV-04 no aplica hasta que existan excepciones.
 11. **Cierre por señal en Windows:** solo se comprobó dentro del mismo proceso; con Ctrl+C en la terminal funciona el mismo gancho (`enableShutdownHooks`).
 12. **Web DEMO:**
     - la calculadora no guarda su captura (para conservarla, «Guardar como cotización»);
@@ -295,7 +346,7 @@ En los cuatro, el resultado completo es idéntico al calculado con los fixtures 
     - la purga de sesiones es manual (`db:purgar-sesiones`);
     - reiniciar la API invalida los tokens CSRF (la web obtiene uno nuevo y pide repetir la acción);
     - sin registro, recuperación, MFA ni selección de organización (el acceso exige una sola pertenencia activa).
-17. **Servidores del propietario:** durante el módulo 6 no había nada escuchando en `3000` ni `5173` (las pruebas de humo usaron `3200` y `5273`). Cualquier API iniciada antes de este commit no tiene los endpoints de cotizaciones: hay que **recompilarla y reiniciarla** (`pnpm --filter @softarq/api build && pnpm --filter @softarq/api start`) y aplicar la migración (`db:migrar`, ya aplicada en `softarq_dev`).
+17. **Servidores del propietario:** durante los módulos 6 y 7 no había nada escuchando en `3000` ni `5173`; las pruebas de humo usaron `3200` y la API temporal se detuvo. Cualquier API o web iniciada antes de este commit no tiene la revisión: hay que **recompilar y reiniciar** (`pnpm --filter @softarq/contracts build && pnpm --filter @softarq/api build && pnpm --filter @softarq/api start`, y la web). La migración ya está aplicada en `softarq_dev`.
 18. **Disco y PostgreSQL:** se observaron `COMMIT` de más de 1 s (`WalWrite`) durante las pruebas de navegador del módulo 5. Por eso el código de sesiones evita las transacciones interactivas de Prisma; la única del módulo 6 es de solo lectura (sin escritura de WAL al confirmar) y su máximo medido fue 182 ms frente a un límite de 15 s.
 19. **Cotizaciones (ADR-0008):**
     - sin descartar ni duplicar cotizaciones ni «precios anteriores» (B-34/B-35 del libro);
@@ -303,16 +354,22 @@ En los cuatro, el resultado completo es idéntico al calculado con los fixtures 
     - la purga de idempotencia es manual (`db:purgar-idempotencia`);
     - listados limitados a 100 resultados, sin paginación;
     - ~~la selección de un concepto que desaparece del catálogo se perdía al volver a guardar~~: corregido (ADR-0008, «Corrección posterior»);
-    - en `softarq_dev` quedan `COT-2026-00001` (acentos dañados por el `curl` de humo) y `COT-2026-00002`, datos DEMO de prueba; el siguiente folio web será `COT-2026-00003`.
+    - en `softarq_dev` quedan `COT-2026-00001` (acentos dañados por el `curl` de humo) y `COT-2026-00002`, datos DEMO de prueba sin cambios, y `COT-2026-00003` (humo del módulo 7: v1 aprobada; su instantánea conserva el nombre dañado, ver §5). El siguiente folio web será `COT-2026-00004`.
+20. **Revisión (ADR-0009):**
+    - la aprobación no se puede anular ni «observar» después (en el libro sí); queda para el módulo de emisión;
+    - sin excepciones (B-22): BL-09 siempre bloquea y AV-04 no aplica;
+    - la verificación vigente recalcula en memoria al abrir una revisión pendiente, al enviar y al aprobar (el mismo trabajo que la fase A de ADR-0008; no se midió aparte);
+    - el catálogo puede cambiar entre la verificación y la sentencia de escritura; la verificación refleja el instante de su lectura;
+    - las cuentas DEMO de `softarq_dev` tienen una función cada una; BL-17 en pantalla solo se ve con una cuenta con las dos (las pruebas E2E crean `ambas.e2e@softarq.test` en `softarq_test`).
 
 ## 7. Siguiente tarea
 
-1. **Ejecución formal de la guía manual** [`docs/web/guia-prueba-manual.md`](docs/web/guia-prueba-manual.md) (A1–A9, 1–14 y C1–C15), con el registro de la §5. Complementa la revisión personal ya declarada. No cuenta como PR-41 ni PR-44.
-2. **Módulo 7 propuesto: revisión y aprobación.**
-   - «Enviar a revisión» de una versión concreta; observaciones y devolución a borrador;
-   - aprobación por un revisor **distinto del preparador** (BL-17, D-13), registrada en una tabla de estados de solo inserción (sin UPDATE de la versión);
-   - descartar cotizaciones (estado de folio DESCARTADO) y validaciones BL-01/BL-02 completas (contacto del cliente, ubicación y descripción del proyecto);
-   - después, emisión con datos del emisor y PDF comercial (D-16).
+1. **Ejecución formal de la guía manual** [`docs/web/guia-prueba-manual.md`](docs/web/guia-prueba-manual.md) (A1–A9, 1–14, C1–C15 y R1–R10), con el registro de la §5. Complementa la revisión personal ya declarada. No cuenta como PR-41 ni PR-44.
+2. **Módulo 8 propuesto: emisión.**
+   - datos del emisor y contacto del cliente; BL-01, BL-02, BL-15 y BL-20 completos (contacto, ubicación, descripción, emisor y textos);
+   - emitir solo una versión APROBADA (BL-17 con revisor registrado ≠ preparador), con BL-09 y AV-02 a la fecha de emisión;
+   - estado EMITIDA en una tabla aparte, sin UPDATE de la versión; anular una aprobación antes de emitir;
+   - PDF comercial (D-16) y descartar cotizaciones (folio DESCARTADO).
 
 Alternativas más cortas:
 - **web DEMO:** coma decimal, conservar el borrador durante la sesión y más de 20 conceptos por consulta;
@@ -325,8 +382,10 @@ Alternativas más cortas:
 - `185fd26`: Módulo 3, API HTTP local.
 - `84f9218`: Módulo 4, cliente web DEMO.
 - `ff6da0d`: Módulo 5, usuarios DEMO, sesiones y autorización.
-- A continuación, el commit del módulo 6 (clientes, proyectos y cotizaciones con versiones): ver `git log --oneline -3`.
-- MD5 del libro oficial al cerrar el módulo 6: `b60debc121957b8d8e3f2c2edd9a5b4f` (sin cambios).
+- `26ce1a5`: Módulo 6, clientes, proyectos y cotizaciones con versiones.
+- `97e69d5`: corrección del borrador (selecciones no disponibles conservadas) y registro de la revisión personal.
+- A continuación, el commit del módulo 7 (revisión y aprobación): ver `git log --oneline -3`.
+- MD5 del libro oficial al cerrar el módulo 7: `b60debc121957b8d8e3f2c2edd9a5b4f` (sin cambios).
 
 Rama `main`. Sin remoto ni push.
 
@@ -477,3 +536,36 @@ Abre **http://localhost:5173**, entra como Preparador (accesos en §12) y usa la
 | Web | `apps/web/src/{Aplicacion.tsx,navegacion,clientes,cotizaciones}`, `apps/web/src/captura/{usarCaptura.ts,VistaCaptura.tsx,borrador.ts}` |
 
 **Para continuar:** los estados de revisión y emisión deben ir en una tabla nueva de solo inserción; nunca concedas UPDATE sobre `cotizacion_version` ni retires su trigger.
+
+## 14. Revisión y aprobación (módulo 7)
+
+Decisiones: [ADR-0009](docs/adr/0009-revision-aprobacion.md). Matriz: [`docs/modelo-conceptual.md`](docs/modelo-conceptual.md) §6 y §8. Endpoints y `curl`: [`docs/api/README.md`](docs/api/README.md). Prueba en persona: guía R1–R10.
+
+**Usar** (la migración ya está aplicada en `softarq_dev`):
+
+```
+pnpm --filter @softarq/contracts build
+pnpm --filter @softarq/api build && pnpm --filter @softarq/api start   # http://127.0.0.1:3000
+pnpm --filter @softarq/web dev                                         # http://localhost:5173
+```
+
+1. Entra como Preparador (accesos en §12), abre una cotización y pulsa «Calcular y guardar versión».
+2. Pulsa «Enviar vN a revisión…» y confirma.
+3. En otro navegador o ventana privada, entra como Revisor, abre **Revisiones**, abre la versión y elige «Solicitar cambios…» o «Aprobar…».
+4. El Preparador ve la decisión al recargar la cotización; con una revisión pendiente puede «Retirar la revisión para corregir…».
+
+**Probar:** `pnpm verificar`, `pnpm verificar:integracion` y `pnpm verificar:e2e`, en secuencia.
+
+**Código:**
+
+| Parte | Ubicación |
+|---|---|
+| API | `apps/api/src/modules/cotizaciones/{aplicacion/servicio-revisiones.ts,dominio/verificacion.ts,infraestructura/repositorio-revisiones.ts}` y `apps/api/src/http/controladores-cotizaciones.ts` |
+| Base | `apps/api/prisma/migrations/20261003160000_revisiones/migration.sql` y `apps/api/scripts/db/permisos-app.sql` |
+| Contratos | `packages/contracts/src/api/revisiones.ts` y los estados de `cotizaciones.ts` |
+| Web | `apps/web/src/cotizaciones/{revisiones.tsx,EditorCotizacion.tsx,componentes.tsx}` |
+
+**Para continuar:**
+- la emisión debe exigir una revisión APROBADA de la **misma** versión (`revision.version_id`) y registrar su estado en otra tabla de solo alta;
+- nunca concedas UPDATE sobre `cotizacion_version` ni `revision_evento` ni retires sus triggers;
+- toda decisión nueva debe citar la versión y la ficha vistas.

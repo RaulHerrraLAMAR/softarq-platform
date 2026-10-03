@@ -3,20 +3,24 @@
  * eventos. Solo muestran lo que entrega la API (proyección comercial y captura), sin cálculos.
  */
 import type { CapturaBorrador, Evento, ResumenCambios, ResumenVersion } from "@softarq/contracts";
-import { Codigo, Insignia } from "../comunes/componentes.tsx";
+import { Codigo } from "../comunes/componentes.tsx";
+import { EstadoVersion } from "./revisiones.tsx";
 import { formatearImporte, formatearInstante } from "../comunes/formato.ts";
 import { Enlace } from "../navegacion/ruta.tsx";
 
-/** Estado alcanzable en este módulo: una versión calculada y no enviada a revisión (libro: Borrador). */
-export function EstadoVersion({ estado }: { estado: ResumenVersion["estado"] }) {
-  return estado === "BORRADOR" ? <Insignia tono="neutra">Borrador calculado · sin enviar a revisión</Insignia> : null;
-}
+export { EstadoVersion } from "./revisiones.tsx";
 
 const NOMBRE_EVENTO: Record<string, string> = {
   COTIZACION_CREADA: "Cotización creada (folio reservado)",
   BORRADOR_GUARDADO: "Borrador guardado",
   VERSION_CREADA: "Versión calculada y guardada",
   CALCULO_BLOQUEADO: "Intento de versión bloqueado (sin guardar)",
+  REVISION_ENVIADA: "Versión enviada a revisión",
+  REVISION_RETIRADA: "Revisión retirada",
+  CAMBIOS_SOLICITADOS: "Cambios solicitados por el revisor",
+  VERSION_APROBADA: "Versión aprobada (no es emisión)",
+  ENVIO_BLOQUEADO: "Intento de envío bloqueado (sin cambios)",
+  APROBACION_BLOQUEADA: "Intento de aprobación bloqueado (sin cambios)",
 };
 
 function detalleEvento(e: Evento): string {
@@ -25,6 +29,10 @@ function detalleEvento(e: Evento): string {
   if (e.tipo === "VERSION_CREADA" && typeof d["numero"] === "number") return `v${d["numero"]} desde la revisión ${String(d["revisionBorrador"])}`;
   if (e.tipo === "CALCULO_BLOQUEADO" && Array.isArray(d["codigos"])) return (d["codigos"] as unknown[]).join(", ");
   if (e.tipo === "COTIZACION_CREADA" && typeof d["folio"] === "string") return d["folio"];
+  if (typeof d["numero"] === "number" && /REVISION|CAMBIOS|APROBA|ENVIO/.test(e.tipo)) {
+    const codigos = Array.isArray(d["codigos"]) ? ` · ${(d["codigos"] as unknown[]).join(", ")}` : "";
+    return `v${d["numero"]}${codigos}`;
+  }
   return "";
 }
 
@@ -53,6 +61,7 @@ export function TablaVersiones({ cotizacionId, versiones }: { cotizacionId: stri
         <thead>
           <tr>
             <th scope="col">Versión</th>
+            <th scope="col">Estado</th>
             <th scope="col">Guardada</th>
             <th scope="col">Autor</th>
             <th scope="col">Revisión del borrador</th>
@@ -69,6 +78,14 @@ export function TablaVersiones({ cotizacionId, versiones }: { cotizacionId: stri
                 <Enlace a={{ pantalla: "version", id: cotizacionId, numero: v.numero }}>
                   <span className="codigo">{v.idVersion}</span>
                 </Enlace>
+              </td>
+              <td data-etiqueta="Estado">
+                <EstadoVersion version={v} />
+                {v.revisionVigente ? (
+                  <span className="bloque">
+                    <Enlace a={{ pantalla: "revision", id: v.revisionVigente.id }}>Ver revisión</Enlace>
+                  </span>
+                ) : null}
               </td>
               <td data-etiqueta="Guardada">{formatearInstante(v.creadoEn)}</td>
               <td data-etiqueta="Autor">{v.autor}</td>

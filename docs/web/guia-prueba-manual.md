@@ -5,7 +5,7 @@ Esta guía es para la **prueba de la web hecha por una persona**. Distingue tres
 | Qué | Estado |
 |---|---|
 | **Revisión personal del propietario** | **Declarada.** El propietario declaró que revisa manualmente los resultados de la web (registrado el 03/10/2026). Es una declaración: no detalla recorridos, casos, fechas ni evidencias, y no se le atribuye ninguno |
-| **Ejecución formal de esta guía** (A1–A9, 1–14, C1–C15) | **Sin registro.** No hay constancia de casos ejecutados uno por uno con su resultado. Al hacerlo, anota fecha, caso, resultado y observaciones en la §5 |
+| **Ejecución formal de esta guía** (A1–A9, 1–14, C1–C15, R1–R10) | **Sin registro.** No hay constancia de casos ejecutados uno por uno con su resultado. Al hacerlo, anota fecha, caso, resultado y observaciones en la §5 |
 | **Pruebas automatizadas** (Vitest y Playwright) | En `HANDOFF.md` §5. **No sustituyen** esta prueba |
 
 Ninguna de las tres equivale a PR-41 ni a PR-44 de la fase 1, que son pruebas del libro de Excel y siguen pendientes.
@@ -103,10 +103,30 @@ Anota lo que observes en cada paso. La fecha de cálculo es la de hoy; con el ca
 | C14 | Reduce la ventana a un ancho de teléfono en listas, cotización y versión | Una columna, tablas como tarjetas y sin desplazamiento horizontal |
 | C15 | Con una cotización guardada, deja de ofrecer un concepto o una opción de precio (p. ej. desactiva el proveedor PRV-00002 en la base de pruebas), recarga, cambia otra partida y guarda; recarga otra vez | La partida, sus medidas y la opción elegida **se conservan** con el aviso «ya no está disponible»; nada se sustituye. Calcular pide decidir; «Quitar selección» o elegir otra opción es decisión tuya |
 
+### Revisión y aprobación (R1–R10, módulo 7)
+
+Usa dos navegadores o una ventana privada: una sesión del Preparador y otra del Revisor.
+
+| Caso | Acción | Resultado esperado |
+|---|---|---|
+| R1 | Preparador: en una cotización con v1, cambia una medida sin guardar | «Enviar …-v1 a revisión…» deshabilitado: «Hay cambios sin guardar…» |
+| R2 | Guarda el borrador sin calcular | Sigue deshabilitado: «El borrador guardado … cambió después de …-v1: calcule una versión nueva» |
+| R3 | «Calcular y guardar versión» y luego «Enviar …-v2 a revisión…» | La confirmación muestra folio, v2 y su total; al confirmar, la cotización queda en solo lectura con «…-v2 está en revisión» |
+| R4 | Revisor: «Revisiones» → abre la v2 | Contenido comercial guardado, «Verificación al …» con bloqueos y avisos, historial; sin costos internos |
+| R5 | «Solicitar cambios…» con un texto corto; luego con una explicación | El texto corto se rechaza junto al campo; con la explicación: «Cambios solicitados en …-v2» |
+| R6 | Preparador: recarga la cotización | Ve las observaciones y quién las hizo; corrige, calcula v3 y la envía |
+| R7 | Revisor: aprueba la v3 | La confirmación dice «Va a aprobar … por $…» y que no es una emisión; tras la respuesta: «…-v3 aprobada por …» |
+| R8 | Preparador: recarga | v3 «Aprobada por …», v2 «Borrador · cambios solicitados», v1 «Borrador calculado · sin enviar a revisión». Si edita y calcula v4, la v4 aparece sin aprobar |
+| R9 | Revisor: abre una revisión pendiente en dos pestañas; aprueba en una y solicita cambios en la otra | La segunda muestra «La revisión cambió mientras la tenía abierta», conserva el texto y ofrece «Actualizar» |
+| R10 | Preparador con revisión pendiente: «Retirar la revisión para corregir…» | Vuelve a ser editable; el historial muestra la retirada |
+
+BL-17 (quien aprueba ≠ autor de la versión) solo se ve con una cuenta que tenga las dos funciones; las cuentas DEMO de `softarq_dev` tienen una cada una.
+
 ## 4. Qué no hace todavía
 
 - La calculadora DEMO no guarda su captura (para conservarla, «Guardar como cotización»).
-- Sin descartar ni duplicar cotizaciones, revisión, aprobación, emisión, PDF, correo ni app móvil.
+- La aprobación **no es una emisión** ni una entrega al cliente.
+- Sin descartar ni duplicar cotizaciones, excepciones, emisión, PDF, correo ni app móvil.
 - Sin registro de usuarios ni recuperación de contraseña.
 - Solo punto decimal (por ejemplo, `0.12`).
 

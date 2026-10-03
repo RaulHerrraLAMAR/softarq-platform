@@ -21,6 +21,7 @@ import { useCaptura } from "./captura/usarCaptura.ts";
 import { DetalleClientePantalla, ListaClientes, ListaProyectos } from "./clientes/PantallasClientes.tsx";
 import { PantallaCotizacion } from "./cotizaciones/EditorCotizacion.tsx";
 import { ListaCotizaciones, NuevaCotizacion, VistaVersion } from "./cotizaciones/PantallasCotizaciones.tsx";
+import { BandejaRevisiones, PantallaRevision } from "./cotizaciones/revisiones.tsx";
 import { Enlace, ProveedorRuta, hashDe, seccionDe, useRuta, type Ruta } from "./navegacion/ruta.tsx";
 
 export interface PropsAplicacion {
@@ -42,6 +43,7 @@ export function Aplicacion(props: PropsAplicacion) {
 const SECCIONES: { ruta: Ruta; texto: string; seccion: NonNullable<ReturnType<typeof seccionDe>> }[] = [
   { ruta: { pantalla: "calculadora" }, texto: "Calculadora DEMO", seccion: "calculadora" },
   { ruta: { pantalla: "cotizaciones" }, texto: "Cotizaciones", seccion: "cotizaciones" },
+  { ruta: { pantalla: "revisiones" }, texto: "Revisiones", seccion: "revisiones" },
   { ruta: { pantalla: "clientes" }, texto: "Clientes", seccion: "clientes" },
   { ruta: { pantalla: "proyectos" }, texto: "Proyectos", seccion: "proyectos" },
 ];
@@ -68,6 +70,7 @@ function Contenido({ sesion, servicios, cotizaciones, barraSesion, motivoSinCalc
   const puede = (c: Capacidad) => sesion.capacidades.includes(c);
   const puedePreparar = puede("cotizaciones.preparar");
   const puedeGestionar = puede("clientes.gestionar");
+  const puedeEnviarRevision = puede("revisiones.enviar");
   const [capturaPendiente, setCapturaPendiente] = useState<CapturaBorrador | null>(null);
   const editorCalculadora = useCaptura(servicios);
 
@@ -115,9 +118,14 @@ function Contenido({ sesion, servicios, cotizaciones, barraSesion, motivoSinCalc
             servicios={servicios}
             cotizaciones={cotizaciones}
             puedePreparar={puedePreparar}
+            puedeEnviarRevision={puedeEnviarRevision}
             motivoSinCalculo={motivoSinCalculo}
           />
         );
+      case "revisiones":
+        return <BandejaRevisiones servicios={cotizaciones} />;
+      case "revision":
+        return <PantallaRevision servicios={cotizaciones} id={ruta.id} />;
       case "version":
         return <VistaVersion servicios={cotizaciones} id={ruta.id} numero={ruta.numero} />;
       case "clientes":
