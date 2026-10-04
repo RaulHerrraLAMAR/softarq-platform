@@ -60,6 +60,9 @@ ios/
 .metro-health-check*
 __pycache__/
 *.py[cod]
+# Grafo de código local (Graphify; regenerable con pnpm grafo:actualizar, ADR-0011)
+graphify-out/
+.graphify/
 
 # ---------------------------------------------------------------
 # Pruebas y cobertura

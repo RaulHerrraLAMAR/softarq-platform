@@ -14,6 +14,10 @@
     "test": "pnpm -r run test",
     "verificar": "pnpm run build && pnpm run typecheck && pnpm run test",
     "verificar:integracion": "pnpm --filter @softarq/api run test:integracion",
-    "verificar:e2e": "pnpm --filter @softarq/contracts run build && pnpm --filter @softarq/api run build:e2e && pnpm --filter @softarq/web run e2e"
+    "verificar:e2e": "pnpm --filter @softarq/contracts run build && pnpm --filter @softarq/api run build:e2e && pnpm --filter @softarq/web run e2e",
+    "grafo:actualizar": "node scripts/grafo/grafo.mjs actualizar",
+    "grafo:estado": "node scripts/grafo/grafo.mjs estado",
+    "grafo:archivos": "node scripts/grafo/grafo.mjs archivos",
+    "grafo:instalar-hooks": "node scripts/grafo/grafo.mjs instalar-hooks"
   }
 }

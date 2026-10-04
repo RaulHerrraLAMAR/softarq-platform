@@ -1,0 +1,84 @@
+# Exclusiones del grafo de código (Graphify 0.8.5, sintaxis gitignore; ver docs/herramientas/graphify.md).
+# El grafo solo cubre código propio: apps/api, apps/web, packages/contracts, esquema/migraciones y scripts.
+# Comprobar el conjunto real con:  pnpm grafo:archivos
+
+# --- Secretos y credenciales (Graphify además omite archivos sensibles por su cuenta) ---
+.env
+.env.*
+*.pem
+*.key
+*.p12
+*.pfx
+credentials*.json
+secrets*.json
+service-account*.json
+.npmrc
+.npmrc.*
+
+# --- Dependencias, compilaciones, cobertura, cachés y registros ---
+node_modules/
+dist/
+dist-e2e/
+build/
+out/
+coverage/
+test-results/
+playwright-report/
+.cache/
+.turbo/
+.vite/
+*.tsbuildinfo
+*.log
+pnpm-lock.yaml
+
+# --- Temporales, datos, respaldos y documentos emitidos ---
+_work/
+tmp/
+temp/
+datos/
+documentos-*/
+respaldos/
+Respaldos/
+*.dump
+*.backup
+pgdata/
+
+# --- Fase 1, documentos de Office, PDF e imágenes ---
+*.pdf
+*.xlsm
+*.xlsx
+*.xls
+*.docx
+*.doc
+*.pptx
+*.png
+*.jpg
+*.jpeg
+*.svg
+*.ico
+
+# --- Salidas del propio Graphify ---
+graphify-out/
+.graphify/
+
+# --- Código generado sin estructura propia del proyecto ---
+apps/api/src/generated/
+apps/web/public/
+
+# --- Skills de terceros y su configuración ---
+.agents/
+.claude/
+.codex/
+scripts/skills/
+
+# --- Documentación: se consulta con lectura dirigida, no se procesa en el grafo ---
+docs/
+*.md
+apps/mobile/
+
+# --- JSON de configuración y datos sin relaciones de código útiles ---
+*.json
+
+# --- SQL y esquema Prisma: Graphify 0.8.5 los detecta pero no los extrae (sin tree_sitter_sql;
+#     .prisma no soportado). Se leen directamente: apps/api/prisma/schema.prisma y migrations/.
+*.sql

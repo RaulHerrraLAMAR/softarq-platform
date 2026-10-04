@@ -2,7 +2,7 @@
 
 > Léelo al empezar. Actualízalo al terminar cada tarea (sección por sección, sin borrar el historial de la tabla 4). Reglas de trabajo: [`AGENTS.md`](AGENTS.md).
 
-**Última actualización:** 03/10/2026 · Claude Code (Opus 5.5) · módulo 8 (emisión de versiones aprobadas, PDF DEMO, anulación de aprobación y descarte) terminado y verificado
+**Última actualización:** 04/10/2026 · Claude Code (Opus 5.5) · grafo de código local (Graphify) integrado para Claude Code y Codex; sobre el módulo 8 (`da4a1ff`)
 
 ## 1. Estado actual
 
@@ -86,6 +86,10 @@
   - **el documento es DEMO:** no hay correo ni envío al cliente y no es una cotización comercial real.
 - **Corrección del borrador (commit `97e69d5`):** guardar ya no elimina en silencio las selecciones de un concepto, proveedor o precio que dejó de estar disponible. Se conservan, marcadas, hasta que el usuario las sustituya o quite; las referencias nuevas inválidas se rechazan (422 `REFERENCIA_NO_DISPONIBLE`). Ver ADR-0008, «Corrección posterior».
 - **Revisión personal de la web:** el propietario declaró que revisa manualmente los resultados de la web (registrado el 03/10/2026). Es una declaración, sin recorridos, casos ni evidencias atribuidos. La ejecución formal de los casos de la guía (A1–A9, 1–14, C1–C15) sigue sin registro, y ninguna de las dos cuenta como PR-41 ni PR-44 del Excel.
+- **Grafo de código local (Graphify 0.8.5, ADR-0011):**
+  - solo AST, sin modelos ni servicios externos;
+  - indexa el código propio de API, web, contratos y scripts (204 archivos al 04/10/2026);
+  - rutina de los agentes en `AGENTS.md` §12; detalle en §16 y en [`docs/herramientas/graphify.md`](docs/herramientas/graphify.md).
 - **Todavía no existen:** registro o CRUD de usuarios, recuperación de contraseña, MFA, duplicar cotizaciones, respuesta del cliente (Aceptada o Rechazada), vencimiento automático, excepciones, correo, anulación de documentos emitidos ni móvil.
 
 ## 2. Decisiones vigentes
@@ -187,7 +191,8 @@ Credenciales: `apps/api/.env` y `.env.test` (locales, excluidos de Git). La cred
 | 03/10/2026 | Módulo 6: clientes, proyectos y cotizaciones con folio, borrador, versiones inmutables, concurrencia, idempotencia e historial; web integrada; ADR-0008 | Commit `26ce1a5` |
 | 03/10/2026 | Corrección del borrador (selecciones no disponibles conservadas) y registro de la revisión personal del propietario | Commit `97e69d5` |
 | 03/10/2026 | Módulo 7: revisión y aprobación por un revisor distinto del preparador; ADR-0009 | Commit `b58ed43` |
-| 03/10/2026 | Módulo 8: emisión de versiones aprobadas, PDF DEMO, anulación de aprobación, descarte, contacto del cliente, emisor y textos por versión; ayudante UTF-8 para pruebas por HTTP; ADR-0010 | Ver §5, §15 y §8 |
+| 03/10/2026 | Módulo 8: emisión de versiones aprobadas, PDF DEMO, anulación de aprobación, descarte, contacto del cliente, emisor y textos por versión; ayudante UTF-8 para pruebas por HTTP; ADR-0010 | Commit `da4a1ff` |
+| 04/10/2026 | Grafo de código local con Graphify (solo AST) para Claude Code y Codex: exclusiones, script de vigencia y actualización, hooks, rutina en `AGENTS.md` §12, ADR-0011 | Ver §16 y §8 |
 
 ## 5. Comandos y resultados reales (02/10/2026)
 
@@ -476,6 +481,14 @@ En los cuatro, el resultado completo es idéntico al calculado con los fixtures 
     - las fuentes del PDF cubren el alfabeto latino: un carácter sin glifo impide generar (`DOCUMENTO_NO_GENERADO`) en lugar de imprimirlo mal;
     - **el documento es DEMO** («DEMOSTRACIÓN» en cada página) y los datos del emisor son ficticios. No es apto para cotizaciones reales mientras falten los datos y validaciones del Word maestro (capítulo 8).
 22. **Pruebas por HTTP con acentos:** use `scripts/http/api-json.mjs` (cuerpos JSON desde archivos UTF-8 y `comprobar-acentos` antes de crear datos). No pase JSON como argumento de `curl` en Git Bash.
+23. **Grafo de código (Graphify 0.8.5):**
+    - no contiene SQL, `schema.prisma`, documentación, cadenas ni comentarios (códigos BL o CR);
+    - Graphify omite como «sensibles» los `tokens.ts` de sesión y CSRF;
+    - `graphify update .` conserva nodos antiguos, así que se usa siempre `pnpm grafo:actualizar` (reconstrucción limpia);
+    - los hooks de Git no se versionan: hay que ejecutar `pnpm grafo:instalar-hooks` en cada clon;
+    - el ahorro de tokens no se ha medido.
+
+    Detalle: [`docs/herramientas/graphify.md`](docs/herramientas/graphify.md) §3 y §6.
 
 ## 7. Siguiente tarea
 
@@ -497,7 +510,8 @@ Alternativas más cortas:
 - `26ce1a5`: Módulo 6, clientes, proyectos y cotizaciones con versiones.
 - `97e69d5`: corrección del borrador (selecciones no disponibles conservadas) y registro de la revisión personal.
 - `b58ed43`: Módulo 7, revisión y aprobación.
-- A continuación, el commit del módulo 8 (emisión, PDF DEMO, anulación y descarte): ver `git log --oneline -3`.
+- `da4a1ff`: Módulo 8, emisión, PDF DEMO, anulación y descarte.
+- A continuación, el commit del grafo de código (Graphify): ver `git log --oneline -3`.
 - MD5 del libro oficial al cerrar el módulo 8: `b60debc121957b8d8e3f2c2edd9a5b4f` (sin cambios).
 
 Rama `main`. Sin remoto ni push.
@@ -727,3 +741,24 @@ pnpm --filter @softarq/web dev                                         # http://
 - un documento emitido no se regenera;
 - un cambio de diseño del PDF incrementa `PLANTILLA_PDF`;
 - toda operación nueva sobre una emisión debe citar la versión y la aprobación vistas.
+
+## 16. Grafo de código local (Graphify)
+
+Guía completa: [`docs/herramientas/graphify.md`](docs/herramientas/graphify.md). Decisión: [ADR-0011](docs/adr/0011-grafo-de-codigo-graphify.md). Rutina: `AGENTS.md` §12.
+
+| Dato | Valor |
+|---|---|
+| Versión | `graphifyy` 0.8.5 del propietario (`C:\Users\RAUL\AppData\Local\Python\pythoncore-3.14-64\Scripts\graphify.exe`). `safishamsi/graphify` redirige a `Graphify-Labs/graphify`: es el mismo proyecto. No se reinstaló. |
+| Alcance | `apps/api/src`, `apps/web/src`, `apps/web/e2e`, `packages/contracts/src`, `apps/api/scripts`, `scripts/grafo`, `scripts/http` y `*.config.ts`: **204 archivos, 2.222 nodos y unas 4.700 aristas** (04/10/2026). Exclusiones en `.graphifyignore`; lista exacta con `pnpm grafo:archivos`. |
+| Salida | `softarq-platform\graphify-out\` (D:, ignorada por Git). Se regenera con `pnpm grafo:actualizar` si se borra. |
+| Vigencia | `pnpm grafo:estado` → VIGENTE, DESACTUALIZADO (lista los archivos), PENDIENTE (reconstrucción en curso o fallida) o AUSENTE. Solo VIGENTE significa que refleja los archivos actuales. |
+| Actualización | `pnpm grafo:actualizar` tras cambios relevantes y al cerrar cada módulo. Los hooks de Git (`pnpm grafo:instalar-hooks`, ya instalados en este clon) la lanzan en segundo plano tras `git switch` o `git merge`. |
+| Claude Code | Hook `SessionStart` (`.claude/settings.json`): una línea de estado; no reconstruye. |
+| Codex | Sin hook: sigue `AGENTS.md` §12. |
+
+**Comprobado el 04/10/2026:**
+- consultas sobre sesiones/CSRF, motor/contratos, revisión/BL-17 y emisión/PDF contrastadas con los `import` reales;
+- prueba controlada de añadir, cambiar y eliminar una dependencia, que **descubrió y corrigió** la conservación de nodos de `graphify update`;
+- hooks de Git sin bloqueo (1 s) y con candado;
+- ninguna escritura fuera de D: (salvo las normales de Python);
+- `~/.claude` y `~/.codex` intactos.

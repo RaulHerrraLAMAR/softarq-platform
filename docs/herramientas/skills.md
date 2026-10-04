@@ -8,6 +8,8 @@
   Ninguno de los dos agentes explora la carpeta del otro, así que no hay doble instalación en una ubicación escaneada.
 - **Reglas de uso:** [`AGENTS.md`](../../AGENTS.md) §11 y [`CLAUDE.md`](../../CLAUDE.md).
 
+> **Grafo de código (Graphify):** no es una skill. Se integra como herramienta de línea de comandos con su propia guía: [`graphify.md`](graphify.md) (`AGENTS.md` §12). La skill `/graphify` no se instala porque usa modelos.
+
 ## 1. Inventario
 
 | Skill | Fuente | Versión instalada | Licencia | Claude Code | Codex |

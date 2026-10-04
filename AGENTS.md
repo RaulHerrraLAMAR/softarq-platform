@@ -84,3 +84,30 @@ Instaladas con alcance de proyecto para Claude Code (`.claude/skills/`) y Codex 
   - solo cuando el usuario la invoca para examinar decisiones abiertas;
   - **no** se activa durante migraciones, pruebas ni implementación con alcance aprobado;
   - no vuelve a preguntar decisiones ya documentadas (ADR, `HANDOFF.md`, `docs/`) salvo que haya evidencia nueva.
+
+## 12. Grafo de código (Graphify)
+
+Grafo estructural local del código propio, solo AST, sin modelos ni servicios externos. Alcance, comandos y limitaciones: [`docs/herramientas/graphify.md`](docs/herramientas/graphify.md) (ADR-0011). Es una ayuda para orientarse, no una fuente de verdad.
+
+**Rutina al empezar y durante cada tarea:**
+
+1. Lee estas reglas y el estado breve de `HANDOFF.md` (§1, §6 y §7); el resto, solo con lectura dirigida.
+2. Ejecuta `pnpm grafo:estado`. Si no dice VIGENTE, ejecuta `pnpm grafo:actualizar`, o trabaja con búsquedas dirigidas (`rg`) mientras tanto. **Nunca bloquees el trabajo por el grafo.**
+3. Consulta el grafo con preguntas concretas del módulo:
+   - `graphify query "<pregunta>" --budget 800`;
+   - `graphify explain "<símbolo o archivo>"`;
+   - `graphify path "<A>" "<B>"`.
+
+   **No cargues `graphify-out/graph.json`, `GRAPH_REPORT.md` ni `graph.html` completos en el contexto.**
+4. Abre los archivos y las pruebas relevantes antes de editar. Verifica en las fuentes toda relación que muestre el grafo, sobre todo las `INFERRED`.
+5. El grafo no contiene:
+   - SQL, `schema.prisma`, documentación, cadenas ni comentarios (códigos como `BL-17` o `CR-16`);
+   - los archivos `tokens.ts`, que Graphify omite como sensibles.
+
+   Búscalos con `rg` o léelos directamente.
+
+**Mantenimiento:**
+- `pnpm grafo:actualizar` después de cambios relevantes en código, contratos, esquema o migraciones, y al cerrar cada módulo. No lo ejecutes tras cada edición.
+- Tras cambiar de rama o integrar cambios, los hooks de Git (`pnpm grafo:instalar-hooks`) lanzan una actualización en segundo plano. Mientras corre, `estado` dice PENDIENTE.
+- No uses `graphify extract`, `/graphify`, `graphify add` ni `graphify watch`, ni los instaladores `graphify install`, `claude install` o `codex install`: invocan modelos, dejan procesos permanentes o reescriben estas reglas.
+- No afirmes que el grafo está actualizado si `pnpm grafo:estado` no dice VIGENTE.
