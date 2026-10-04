@@ -237,6 +237,7 @@ La base y el sistema de archivos no comparten transacción. **Orden de las opera
 **Los PDF son originales, no caché.**
 - **Respaldo:** la carpeta se respalda **junto con** la base (`pg_dump` de `softarq_dev`). Primero la base y después la carpeta: un archivo sin registro se limpia; un registro sin archivo no se puede reconstruir.
 - **Restauración:** se restauran ambas y se ejecuta `documentos:revisar`.
+- **Procedimiento implementado (04/10/2026):** [ADR-0012](0012-respaldo-y-restauracion-local.md) y [`docs/operacion/respaldo-y-restauracion.md`](../operacion/respaldo-y-restauracion.md).
 
 **`pnpm --filter @softarq/api documentos:revisar [-- --limpiar] [--antiguedad-minutos=60]`:**
 - informa los temporales, los archivos propios sin registro, los registros con archivo ausente o dañado y los archivos ajenos;

@@ -2,7 +2,7 @@
 
 > Léelo al empezar. Actualízalo al terminar cada tarea (sección por sección, sin borrar el historial de la tabla 4). Reglas de trabajo: [`AGENTS.md`](AGENTS.md).
 
-**Última actualización:** 04/10/2026 · Claude Code (Opus 5.5) · grafo de código local (Graphify) integrado para Claude Code y Codex; sobre el módulo 8 (`da4a1ff`)
+**Última actualización:** 04/10/2026 · Claude Code (Opus 5.5) · grafo de código local (Graphify, `3c352b6`) y respaldo y recuperación local verificables de `softarq_dev` y sus PDF; sobre el módulo 8 (`da4a1ff`)
 
 ## 1. Estado actual
 
@@ -90,6 +90,11 @@
   - solo AST, sin modelos ni servicios externos;
   - indexa el código propio de API, web, contratos y scripts (204 archivos al 04/10/2026);
   - rutina de los agentes en `AGENTS.md` §12; detalle en §16 y en [`docs/herramientas/graphify.md`](docs/herramientas/graphify.md).
+- **Respaldo y recuperación local (ADR-0012):**
+  - respaldo coherente de `softarq_dev` y sus PDF originales con manifiesto y hashes;
+  - restauración solo en `softarq_restauracion`;
+  - prueba completa 30/30, con descarga del PDF por una API temporal;
+  - detalle en §17.
 - **Todavía no existen:** registro o CRUD de usuarios, recuperación de contraseña, MFA, duplicar cotizaciones, respuesta del cliente (Aceptada o Rechazada), vencimiento automático, excepciones, correo, anulación de documentos emitidos ni móvil.
 
 ## 2. Decisiones vigentes
@@ -192,7 +197,8 @@ Credenciales: `apps/api/.env` y `.env.test` (locales, excluidos de Git). La cred
 | 03/10/2026 | Corrección del borrador (selecciones no disponibles conservadas) y registro de la revisión personal del propietario | Commit `97e69d5` |
 | 03/10/2026 | Módulo 7: revisión y aprobación por un revisor distinto del preparador; ADR-0009 | Commit `b58ed43` |
 | 03/10/2026 | Módulo 8: emisión de versiones aprobadas, PDF DEMO, anulación de aprobación, descarte, contacto del cliente, emisor y textos por versión; ayudante UTF-8 para pruebas por HTTP; ADR-0010 | Commit `da4a1ff` |
-| 04/10/2026 | Grafo de código local con Graphify (solo AST) para Claude Code y Codex: exclusiones, script de vigencia y actualización, hooks, rutina en `AGENTS.md` §12, ADR-0011 | Ver §16 y §8 |
+| 04/10/2026 | Grafo de código local con Graphify (solo AST) para Claude Code y Codex: exclusiones, script de vigencia y actualización, hooks, rutina en `AGENTS.md` §12, ADR-0011 | Commit `3c352b6` |
+| 04/10/2026 | Respaldo y recuperación local: rol `softarq_respaldo`, base aislada `softarq_restauracion`, scripts `respaldo:*`, prueba completa 30/30, ADR-0012 | Ver §17 y §8 |
 
 ## 5. Comandos y resultados reales (02/10/2026)
 
@@ -473,7 +479,7 @@ En los cuatro, el resultado completo es idéntico al calculado con los fixtures 
       - viven en `SOFTARQ_DIR_DOCUMENTOS` (desarrollo: `D:\Proyecto_SoftArq\datos\softarq_dev\documentos`);
       - se respaldan **junto con** la base: primero `pg_dump` de `softarq_dev` y después una copia de la carpeta;
       - al restaurar, se restauran ambas y se ejecuta `documentos:revisar`;
-      - todavía no hay respaldo automatizado;
+      - respaldo y restauración de prueba con `respaldo:*` (§17); no hay tareas programadas;
     - una interrupción entre el archivo y el registro deja un archivo propio sin registro: `documentos:revisar -- --limpiar` lo borra cuando tiene más de 60 min;
     - un archivo ausente o dañado no se regenera (500 `DOCUMENTO_NO_DISPONIBLE`): se restaura desde el respaldo;
     - sin respuesta del cliente, vencimiento automático ni anulación de documentos emitidos; sin excepciones (BL-09 siempre bloquea y AV-04 no aplica);
@@ -494,7 +500,7 @@ En los cuatro, el resultado completo es idéntico al calculado con los fixtures 
 
 1. **Recompilar y reiniciar** la API y la web del propietario (§6, punto 17).
 2. **Ejecución formal de la guía manual** [`docs/web/guia-prueba-manual.md`](docs/web/guia-prueba-manual.md) (A1–A9, 1–14, C1–C15, R1–R10 y E1–E12), con el registro de la §5. Complementa la revisión personal ya declarada. No cuenta como PR-41 ni PR-44.
-3. **Módulo 9 propuesto:** respuesta del cliente (Aceptada o Rechazada, solo sobre emitidas) y vencimiento automático (A-01, CR-16), o excepciones (B-22: BL-04, BL-05 y BL-09 con autorización del revisor, AV-04). El respaldo automatizado de base y documentos puede hacerse antes.
+3. **Módulo 9 propuesto:** respuesta del cliente (Aceptada o Rechazada, solo sobre emitidas) y vencimiento automático (A-01, CR-16), o excepciones (B-22: BL-04, BL-05 y BL-09 con autorización del revisor, AV-04). El respaldo y la recuperación local ya están hechos (§17). Falta, si se decide, la copia externa periódica.
 
 Alternativas más cortas:
 - **web DEMO:** coma decimal, conservar el borrador durante la sesión y más de 20 conceptos por consulta;
@@ -511,7 +517,8 @@ Alternativas más cortas:
 - `97e69d5`: corrección del borrador (selecciones no disponibles conservadas) y registro de la revisión personal.
 - `b58ed43`: Módulo 7, revisión y aprobación.
 - `da4a1ff`: Módulo 8, emisión, PDF DEMO, anulación y descarte.
-- A continuación, el commit del grafo de código (Graphify): ver `git log --oneline -3`.
+- `3c352b6`: grafo de código local con Graphify.
+- A continuación, el commit de respaldo y recuperación: ver `git log --oneline -3`.
 - MD5 del libro oficial al cerrar el módulo 8: `b60debc121957b8d8e3f2c2edd9a5b4f` (sin cambios).
 
 Rama `main`. Sin remoto ni push.
@@ -762,3 +769,35 @@ Guía completa: [`docs/herramientas/graphify.md`](docs/herramientas/graphify.md)
 - hooks de Git sin bloqueo (1 s) y con candado;
 - ninguna escritura fuera de D: (salvo las normales de Python);
 - `~/.claude` y `~/.codex` intactos.
+
+## 17. Respaldo y recuperación local
+
+Guía: [`docs/operacion/respaldo-y-restauracion.md`](docs/operacion/respaldo-y-restauracion.md). Decisión: [ADR-0012](docs/adr/0012-respaldo-y-restauracion-local.md).
+
+```
+cd apps/api
+pnpm respaldo:crear                        # → D:\Proyecto_SoftArq\respaldos\softarq_dev\<ID>
+pnpm respaldo:verificar <carpeta>          # 0 solo si es COMPLETO y coinciden todos los SHA-256
+pnpm respaldo:restaurar <carpeta>          # solo en softarq_restauracion (+ _work\restauracion)
+pnpm respaldo:probar-restauracion          # prueba completa con API temporal en 127.0.0.1:3100
+```
+
+| Dato | Valor |
+|---|---|
+| Respaldos | `D:\Proyecto_SoftArq\respaldos\softarq_dev\` (fuera del repositorio y de `_work`). Primer respaldo: `softarq_dev-20261004T075403Z-e6dcda`, COMPLETO y verificado |
+| Rol | `softarq_respaldo`: solo lectura de `softarq_dev`; credencial en `apps/api/.env.respaldo`, excluida de Git |
+| Destino de prueba | `softarq_restauracion` (única base permitida) y documentos en `_work\restauracion\softarq_restauracion\documentos` |
+| Aprovisionamiento | `aprovisionar-respaldo.ps1`, ya ejecutado con DPAPI y `-EliminarCredencial` (archivo borrado). Solo hace falta repetirlo si se recrean los roles o las bases |
+| Resultado | **30/30** comprobaciones (tabla siguiente); `pnpm verificar` 556/556 |
+| Conservación | Los 10 últimos COMPLETOS más el primero de cada mes; borrado manual tras verificar uno más reciente. Sin tareas programadas |
+
+**Comandos y resultados reales:**
+
+| Comando | Resultado |
+|---|---|
+| `aprovisionar-respaldo.ps1 -ArchivoCredencial … -EliminarCredencial` (04/10/2026) | Código 0: rol `softarq_respaldo` (SELECT en 28/28 tablas y secuencias, 0 escrituras, solo lectura, sin atributos especiales) y base `softarq_restauracion`; archivo DPAPI eliminado |
+| `pnpm respaldo:probar-restauracion` (04/10/2026) | **30/30**: respaldo COMPLETO y verificado, restauración aislada, 7 relaciones sin incoherencias, permisos y disparadores, sesiones revocadas, descarga del PDF por API temporal (127.0.0.1:3100) con los mismos bytes, 7 casos de fallo rechazados y `softarq_dev` y sus PDF intactos |
+| `pnpm verificar` (04/10/2026, con las pruebas de guardas) | 556/556 (api 377, incluidas 21 de guardas de respaldo; web 179) |
+
+- **Límite:** el respaldo está en el mismo disco D:. Protege frente a errores operativos, no frente a la pérdida del disco: copie la carpeta a un medio externo de vez en cuando.
+- **No se automatiza** ninguna restauración sobre `softarq_dev`: véase la guía, §5.

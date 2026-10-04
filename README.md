@@ -75,6 +75,14 @@ pnpm --filter @softarq/web dev
 pnpm verificar:e2e      # pruebas de navegador: web compilada + API real + softarq_test
 ```
 
+5. Respaldo y recuperación local de `softarq_dev` y sus PDF ([guía](docs/operacion/respaldo-y-restauracion.md); aprovisionamiento único con `apps\api\scripts\db\aprovisionar-respaldo.ps1`):
+
+```
+pnpm --filter @softarq/api respaldo:crear                  # → D:\Proyecto_SoftArq\respaldos\softarq_dev\<ID>
+pnpm --filter @softarq/api respaldo:verificar <carpeta>
+pnpm --filter @softarq/api respaldo:probar-restauracion    # restauración aislada en softarq_restauracion
+```
+
 `.env.example` documenta las variables; los archivos reales (`apps/api/.env`, `.env.test`) los genera `db:credenciales` y no se versionan.
 
 Para mantener los temporales fuera de `C:`, en la sesión de terminal:

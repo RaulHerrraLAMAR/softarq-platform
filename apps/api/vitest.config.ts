@@ -4,7 +4,7 @@ export default defineConfig({
   test: {
     // Pruebas unitarias: sin base de datos. Las de integración (*.integracion.test.ts)
     // se ejecutan con vitest.integracion.config.ts.
-    include: ["src/**/*.test.ts"],
+    include: ["src/**/*.test.ts", "scripts/**/*.test.mjs"],
     exclude: ["src/**/*.integracion.test.ts", "node_modules/**"],
     environment: "node",
     // Sin variables globales: cada prueba importa describe/it/expect.

@@ -16,6 +16,8 @@
 | [`adr/0009-revision-aprobacion.md`](adr/0009-revision-aprobacion.md) | Revisión y aprobación: contraste con el libro, estados por revisión, verificación vigente sin recalcular, BL-17 por identidad, concurrencia, idempotencia e historial de solo alta. |
 | [`adr/0010-emision-pdf-anulacion-descarte.md`](adr/0010-emision-pdf-anulacion-descarte.md) | Emisión de versiones aprobadas (quién emite: adaptación autorizada), textos por versión, registro inmutable, PDF DEMO con PDFKit, carpeta persistente, consistencia base y disco, recuperación, anulación de la aprobación y descarte. |
 | [`adr/0011-grafo-de-codigo-graphify.md`](adr/0011-grafo-de-codigo-graphify.md) | Grafo de código local con Graphify para Claude Code y Codex: solo AST, sin instaladores, reconstrucción limpia, vigencia verificable y hooks. |
+| [`adr/0012-respaldo-y-restauracion-local.md`](adr/0012-respaldo-y-restauracion-local.md) | Respaldo coherente de softarq_dev y sus PDF (instantánea compartida), rol de solo lectura, restauración solo en un destino aislado y prueba de recuperación real. |
+| [`operacion/respaldo-y-restauracion.md`](operacion/respaldo-y-restauracion.md) | Comandos de respaldo, verificación y restauración; manifiesto; tratamiento de roles, permisos y sesiones; conservación; resultados verificados. |
 | [`api/README.md`](api/README.md) | Endpoints, errores, límites y ejemplos `curl` de la API v1 ([`openapi.json`](api/openapi.json)). |
 | [`web/sistema-visual.md`](web/sistema-visual.md) | Sistema visual de la web: tokens, contraste medido, componentes y estados. |
 | [`web/guia-prueba-manual.md`](web/guia-prueba-manual.md) | Guía para probar la web en persona (distinta de las pruebas automatizadas). |
