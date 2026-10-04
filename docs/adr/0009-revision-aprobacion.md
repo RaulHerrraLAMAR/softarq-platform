@@ -175,3 +175,9 @@ Volver a enviar crea **otra** revisión, de la misma versión si sigue siendo la
   - una aprobación no se puede anular antes de emitir (módulo de emisión);
   - sin excepciones (B-22): BL-09 siempre bloquea y AV-04 no aplica;
   - listados limitados a 100, sin paginación.
+
+## Nota posterior (módulo 8, ADR-0010)
+
+- **Anulación:** la aprobación se puede anular antes de emitir. La anula un Revisor, con motivo, mediante un evento `APROBACION_ANULADA` que cita la revisión; la fila y su evento APROBADA no cambian. Una aprobación anulada ya no impide reenviar la misma versión.
+- **BL-20:** la verificación vigente incluye ahora BL-20 (textos de la versión), así que una versión sin textos no se envía ni se aprueba.
+- **Emisión:** la emisión es un paso aparte (ADR-0010). Emiten un Preparador o un Revisor distinto del autor, siempre con una aprobación vigente de otra persona.

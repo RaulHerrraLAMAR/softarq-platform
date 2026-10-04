@@ -23,7 +23,11 @@ export type OperacionIdempotente =
   // Módulo 7 (ADR-0009): envíos, decisiones y retiradas de revisión.
   | "enviar_revision"
   | "decidir_revision"
-  | "retirar_revision";
+  | "retirar_revision"
+  // Módulo 8 (ADR-0010): emisiones, anulaciones de aprobación y descartes.
+  | "emitir_version"
+  | "anular_aprobacion"
+  | "descartar_cotizacion";
 
 export interface Idempotencia {
   readonly clave: string;

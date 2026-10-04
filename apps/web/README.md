@@ -1,6 +1,6 @@
 # apps/web — Cliente web DEMO de SoftArq
 
-- **Estado (03/10/2026):** módulo 4, cliente web DEMO sobre la API local ([ADR-0006](../../docs/adr/0006-cliente-web-demo.md)); módulo 5, acceso con sesión ([ADR-0007](../../docs/adr/0007-autenticacion-sesiones.md)); módulo 6, clientes, proyectos y cotizaciones guardadas con versiones ([ADR-0008](../../docs/adr/0008-cotizaciones-versiones-folios.md)); módulo 7, revisión y aprobación ([ADR-0009](../../docs/adr/0009-revision-aprobacion.md)).
+- **Estado (03/10/2026):** módulo 4, cliente web DEMO sobre la API local ([ADR-0006](../../docs/adr/0006-cliente-web-demo.md)); módulo 5, acceso con sesión ([ADR-0007](../../docs/adr/0007-autenticacion-sesiones.md)); módulo 6, clientes, proyectos y cotizaciones guardadas con versiones ([ADR-0008](../../docs/adr/0008-cotizaciones-versiones-folios.md)); módulo 7, revisión y aprobación ([ADR-0009](../../docs/adr/0009-revision-aprobacion.md)); módulo 8, emisión con PDF DEMO, anulación y descarte ([ADR-0010](../../docs/adr/0010-emision-pdf-anulacion-descarte.md)).
 - **Tecnología:** React 19.3, TypeScript 7 (solo tipos), Vite 8.3, Zod 4.6 (los esquemas de `@softarq/contracts`), Vitest 5 con jsdom y Playwright 1.63 con Edge.
 
 ## Qué hace
@@ -15,6 +15,17 @@
 7. **Clientes y proyectos:** buscar, crear, editar, desactivar y reactivar (sin borrar).
 8. **Cotizaciones:** nueva cotización (cliente → proyecto → folio WEB DEMO), «Guardar como cotización» desde la calculadora sin perder la captura, borrador con «Guardar borrador» y aviso de cambios sin guardar, vista previa (no se guarda), «Calcular y guardar versión» (lo calcula y guarda el servidor), historial de versiones y eventos, consulta de cada versión tal como se guardó y resolución de conflictos entre pestañas sin pérdida. El Revisor no edita ni calcula.
 9. **Revisiones (módulo 7):** «Enviar vN a revisión…» (solo la última versión y sin cambios pendientes; confirmación con folio, versión y total), cotización en solo lectura mientras la revisión está pendiente con «Retirar la revisión para corregir…», bandeja `#/revisiones` y detalle `#/revisiones/{id}` con la versión guardada, la verificación vigente y el historial; «Solicitar cambios…» y «Aprobar…» según lo que permita el servidor (BL-17). La aprobación no es una emisión.
+10. **Emisión (módulo 8):**
+    - **Clientes y textos:** los clientes tienen contacto. El borrador tiene «Textos de la cotización» (alcance, condiciones y exclusiones), con contador y «Restablecer textos DEMO…». Forman parte de la versión, no del cálculo, y el revisor los ve antes de aprobar.
+    - **Sección «Emisión»** (última versión aprobada):
+      - valida en el servidor y muestra lo que falta y los bloqueos (con cómo corregirlos) y los avisos;
+      - confirma folio, versión, destinatario, fecha, vigencia y total;
+      - muestra «Generando el documento…»; éxito solo tras el 201; ante un fallo, reintenta con la misma clave.
+    - **Tarjeta EMITIDA** (distinta de APROBADA): quién preparó, aprobó y emitió, tamaño y SHA-256, y «Descargar PDF» (fetch con la sesión; el archivo emitido, sin regenerarlo).
+    - **Revisor:** «Anular la aprobación…» con motivo.
+    - **Preparador:** «Descartar la cotización…» con motivo; descartada, queda en solo lectura.
+    - **Sección «Emisor»:** la edita el Administrador del sistema.
+    - No hay correo ni envío al cliente.
 
 **Lo que no hace:**
 - no calcula importes;

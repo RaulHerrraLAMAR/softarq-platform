@@ -21,6 +21,11 @@ const NOMBRE_EVENTO: Record<string, string> = {
   VERSION_APROBADA: "Versión aprobada (no es emisión)",
   ENVIO_BLOQUEADO: "Intento de envío bloqueado (sin cambios)",
   APROBACION_BLOQUEADA: "Intento de aprobación bloqueado (sin cambios)",
+  // Módulo 8 (ADR-0010).
+  APROBACION_ANULADA: "Aprobación anulada antes de emitir",
+  VERSION_EMITIDA: "Versión emitida (documento PDF DEMO)",
+  EMISION_BLOQUEADA: "Intento de emisión bloqueado (sin emitir)",
+  COTIZACION_DESCARTADA: "Cotización descartada",
 };
 
 function detalleEvento(e: Evento): string {
@@ -29,7 +34,7 @@ function detalleEvento(e: Evento): string {
   if (e.tipo === "VERSION_CREADA" && typeof d["numero"] === "number") return `v${d["numero"]} desde la revisión ${String(d["revisionBorrador"])}`;
   if (e.tipo === "CALCULO_BLOQUEADO" && Array.isArray(d["codigos"])) return (d["codigos"] as unknown[]).join(", ");
   if (e.tipo === "COTIZACION_CREADA" && typeof d["folio"] === "string") return d["folio"];
-  if (typeof d["numero"] === "number" && /REVISION|CAMBIOS|APROBA|ENVIO/.test(e.tipo)) {
+  if (typeof d["numero"] === "number" && /REVISION|CAMBIOS|APROBA|ENVIO|EMISION|EMITIDA/.test(e.tipo)) {
     const codigos = Array.isArray(d["codigos"]) ? ` · ${(d["codigos"] as unknown[]).join(", ")}` : "";
     return `v${d["numero"]}${codigos}`;
   }

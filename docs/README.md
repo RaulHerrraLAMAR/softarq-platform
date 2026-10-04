@@ -14,6 +14,7 @@
 | [`adr/0007-autenticacion-sesiones.md`](adr/0007-autenticacion-sesiones.md) | Usuarios DEMO, sesiones opacas en PostgreSQL, Argon2id, cookie, CSRF, límites de acceso, matriz de permisos y aislamiento por organización. |
 | [`adr/0008-cotizaciones-versiones-folios.md`](adr/0008-cotizaciones-versiones-folios.md) | Clientes, proyectos y cotizaciones: folios WEB DEMO, borrador con revisión, versiones inmutables en dos fases, idempotencia, estados y permisos. |
 | [`adr/0009-revision-aprobacion.md`](adr/0009-revision-aprobacion.md) | Revisión y aprobación: contraste con el libro, estados por revisión, verificación vigente sin recalcular, BL-17 por identidad, concurrencia, idempotencia e historial de solo alta. |
+| [`adr/0010-emision-pdf-anulacion-descarte.md`](adr/0010-emision-pdf-anulacion-descarte.md) | Emisión de versiones aprobadas (quién emite: adaptación autorizada), textos por versión, registro inmutable, PDF DEMO con PDFKit, carpeta persistente, consistencia base y disco, recuperación, anulación de la aprobación y descarte. |
 | [`api/README.md`](api/README.md) | Endpoints, errores, límites y ejemplos `curl` de la API v1 ([`openapi.json`](api/openapi.json)). |
 | [`web/sistema-visual.md`](web/sistema-visual.md) | Sistema visual de la web: tokens, contraste medido, componentes y estados. |
 | [`web/guia-prueba-manual.md`](web/guia-prueba-manual.md) | Guía para probar la web en persona (distinta de las pruebas automatizadas). |

@@ -5,7 +5,7 @@ Esta guía es para la **prueba de la web hecha por una persona**. Distingue tres
 | Qué | Estado |
 |---|---|
 | **Revisión personal del propietario** | **Declarada.** El propietario declaró que revisa manualmente los resultados de la web (registrado el 03/10/2026). Es una declaración: no detalla recorridos, casos, fechas ni evidencias, y no se le atribuye ninguno |
-| **Ejecución formal de esta guía** (A1–A9, 1–14, C1–C15, R1–R10) | **Sin registro.** No hay constancia de casos ejecutados uno por uno con su resultado. Al hacerlo, anota fecha, caso, resultado y observaciones en la §5 |
+| **Ejecución formal de esta guía** (A1–A9, 1–14, C1–C15, R1–R10, E1–E12) | **Sin registro.** No hay constancia de casos ejecutados uno por uno con su resultado. Al hacerlo, anota fecha, caso, resultado y observaciones en la §5 |
 | **Pruebas automatizadas** (Vitest y Playwright) | En `HANDOFF.md` §5. **No sustituyen** esta prueba |
 
 Ninguna de las tres equivale a PR-41 ni a PR-44 de la fase 1, que son pruebas del libro de Excel y siguen pendientes.
@@ -122,11 +122,30 @@ Usa dos navegadores o una ventana privada: una sesión del Preparador y otra del
 
 BL-17 (quien aprueba ≠ autor de la versión) solo se ve con una cuenta que tenga las dos funciones; las cuentas DEMO de `softarq_dev` tienen una cada una.
 
+### Emisión, anulación y descarte (E1–E12, módulo 8)
+
+Antes de empezar: API recompilada y reiniciada con `SOFTARQ_DIR_DOCUMENTOS` y `db:cargar-demo` ejecutado (emisor DEMO). Usa las sesiones del Preparador y del Revisor; para E10, la del Administrador (`administrador.demo@softarq.test`).
+
+| Caso | Acción | Resultado esperado |
+|---|---|---|
+| E1 | Preparador: «Nuevo cliente» con nombre y contacto (nombre y teléfono o correo); proyecto con municipio, entidad y descripción; cotización y v1 | La cotización trae «Textos de la cotización» con los textos [DEMO]; el cliente muestra su contacto |
+| E2 | Cambia el alcance, guarda y mira «Enviar …» | Pide calcular una versión nueva (los textos son de la versión); el total de la v2 no cambia por los textos |
+| E3 | Envía la última versión; Revisor: abre la revisión | Ve «Textos de la versión» antes de aprobar; aprueba |
+| E4 | Preparador: recarga; sección «Emisión» | Fecha de emisión, vigencia (15 días naturales), aprobación, destinatario con contacto y emisor DEMO; sin bloqueos. «Emitir …» abre una confirmación con folio, versión, destinatario y total |
+| E5 | Confirma la emisión | «Generando el documento…» y después la tarjeta **Emitida** (distinta de Aprobada) con preparó, aprobó, emitió y SHA-256; la versión aparece «Emitida» |
+| E6 | «Descargar PDF» y ábrelo | `COT-AAAA-NNNNN-vN.pdf`: «DEMOSTRACIÓN» en cada página, emisor, folio, versión, fechas, cliente, contacto, proyecto, partidas, total igual al de la versión, textos y «Página 1 de 1»; ningún costo, proveedor ni margen. Descargarlo otra vez da el mismo archivo |
+| E7 | Con otra cotización aprobada cuyo cliente no tiene contacto | «Emisión» muestra BL-01 con cómo corregirlo y «Emitir» deshabilitado; al completar el contacto en el cliente y «Volver a validar», se emite |
+| E8 | Revisor: en una versión aprobada sin emitir, «Anular la aprobación…» con motivo corto y luego útil | El corto se rechaza; con el útil, «Aprobación anulada por …»; el historial conserva «Aprobada» y añade «Aprobación anulada». El Preparador ya no ve «Emisión» y puede reenviar |
+| E9 | Revisor: con una aprobación nueva, abre la cotización y emite | Emite un Revisor que no preparó la versión: preparó, aprobó y emitió quedan registrados por separado |
+| E10 | Administrador: «Emisor» → editar con motivo | Guarda. Las emisiones anteriores y sus PDF no cambian; las nuevas usan los datos nuevos |
+| E11 | Preparador: «Descartar la cotización…» en una cotización sin aprobación ni revisión pendiente | Pide motivo; tras confirmar, «… está descartada», solo lectura y folio conservado. Con revisión pendiente, aprobación o emisión no se ofrece y se explica por qué |
+| E12 | Ancho de teléfono en «Emisión», la tarjeta emitida y «Emisor» | Una columna y sin desplazamiento horizontal |
+
 ## 4. Qué no hace todavía
 
 - La calculadora DEMO no guarda su captura (para conservarla, «Guardar como cotización»).
-- La aprobación **no es una emisión** ni una entrega al cliente.
-- Sin descartar ni duplicar cotizaciones, excepciones, emisión, PDF, correo ni app móvil.
+- La aprobación **no es una emisión** ni una entrega al cliente. La emisión (módulo 8) genera un PDF **DEMO**: no se envía por correo ni al cliente y no es una cotización comercial real.
+- Sin duplicar cotizaciones, respuesta del cliente (Aceptada o Rechazada), vencimiento automático, excepciones, correo ni app móvil.
 - Sin registro de usuarios ni recuperación de contraseña.
 - Solo punto decimal (por ejemplo, `0.12`).
 

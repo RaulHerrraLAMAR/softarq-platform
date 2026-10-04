@@ -1,12 +1,13 @@
 /**
  * Formularios de cliente y proyecto (módulo 6). Solo los campos que este flujo necesita y que el
- * libro respalda (tblClientes, tblProyectos); sin datos fiscales ni de contacto. La validación
+ * libro respalda (tblClientes, tblProyectos): nombre y, desde el módulo 8, el contacto que exige la
+ * emisión (BL-01: nombre de contacto y teléfono o correo). Sin datos fiscales. La validación
  * definitiva es del servidor; aquí solo se evita enviar un nombre vacío.
  */
 import { LIMITES_COTIZACIONES } from "@softarq/contracts";
 import { useId, useState, type FormEvent } from "react";
 import { mensajeDeFallo, type FalloApi, type ResultadoApi } from "../api/cliente.ts";
-import type { DatosProyecto } from "../api/servicios-cotizaciones.ts";
+import type { DatosContacto, DatosProyecto } from "../api/servicios-cotizaciones.ts";
 import { Aviso, Boton } from "../comunes/componentes.tsx";
 
 function Campo({
@@ -18,6 +19,8 @@ function Campo({
   error,
   ayuda,
   multilinea = false,
+  tipo = "text",
+  autocompletar = "off",
 }: {
   etiqueta: string;
   valor: string;
@@ -27,6 +30,8 @@ function Campo({
   error?: string | null;
   ayuda?: string;
   multilinea?: boolean;
+  tipo?: "text" | "tel" | "email";
+  autocompletar?: string;
 }) {
   const id = useId();
   const describe = [error ? `${id}-error` : null, ayuda ? `${id}-ayuda` : null].filter(Boolean).join(" ") || undefined;
@@ -48,7 +53,7 @@ function Campo({
       {multilinea ? (
         <textarea {...comunes} rows={2} onChange={(e) => alCambiar(e.target.value)} />
       ) : (
-        <input {...comunes} type="text" autoComplete="off" onChange={(e) => alCambiar(e.target.value)} />
+        <input {...comunes} type={tipo} autoComplete={autocompletar} onChange={(e) => alCambiar(e.target.value)} />
       )}
       {ayuda ? (
         <p className="ayuda" id={`${id}-ayuda`}>
@@ -69,20 +74,26 @@ function errorDeServidor(fallo: FalloApi | null, ruta: string): string | null {
   return fallo.campos.find((c) => c.ruta === ruta)?.mensaje ?? null;
 }
 
+export type DatosCliente = { nombre: string } & DatosContacto;
+
 export function FormularioCliente({
   titulo,
-  inicial = "",
+  inicial,
   textoBoton,
   alGuardar,
   alCancelar,
 }: {
   titulo: string;
-  inicial?: string;
+  inicial?: Partial<DatosCliente>;
   textoBoton: string;
-  alGuardar: (nombre: string) => Promise<ResultadoApi<unknown>>;
+  alGuardar: (datos: DatosCliente) => Promise<ResultadoApi<unknown>>;
   alCancelar?: () => void;
 }) {
-  const [nombre, setNombre] = useState(inicial);
+  const [nombre, setNombre] = useState(inicial?.nombre ?? "");
+  const [contacto, setContacto] = useState(inicial?.contactoNombre ?? "");
+  const [telefono, setTelefono] = useState(inicial?.contactoTelefono ?? "");
+  const [correo, setCorreo] = useState(inicial?.contactoCorreo ?? "");
+  const opcional = (t: string) => (t.trim() === "" ? null : t.trim());
   const [enviando, setEnviando] = useState(false);
   const [fallo, setFallo] = useState<FalloApi | null>(null);
   const [intentado, setIntentado] = useState(false);
@@ -94,7 +105,12 @@ export function FormularioCliente({
     if (vacio || enviando) return;
     setEnviando(true);
     setFallo(null);
-    const r = await alGuardar(nombre.trim());
+    const r = await alGuardar({
+      nombre: nombre.trim(),
+      contactoNombre: opcional(contacto),
+      contactoTelefono: opcional(telefono),
+      contactoCorreo: opcional(correo),
+    });
     setEnviando(false);
     if (!r.ok && r.fallo.tipo !== "cancelado") setFallo(r.fallo);
   };
@@ -111,6 +127,38 @@ export function FormularioCliente({
         error={intentado && vacio ? "Escriba el nombre o la razón social." : errorDeServidor(fallo, "nombre")}
         ayuda="Datos DEMO: use la marca [DEMO] en el nombre."
       />
+      <fieldset className="grupo-campos">
+        <legend className="etiqueta">Contacto</legend>
+        <p className="ayuda">Para emitir hacen falta el nombre del contacto y un teléfono o un correo (BL-01). Puede completarlos después.</p>
+        <Campo
+          etiqueta="Nombre del contacto"
+          valor={contacto}
+          alCambiar={setContacto}
+          max={LIMITES_COTIZACIONES.longitudContactoNombre}
+          error={errorDeServidor(fallo, "contactoNombre")}
+          autocompletar="name"
+        />
+        <div className="formulario-fila">
+          <Campo
+            etiqueta="Teléfono"
+            valor={telefono}
+            alCambiar={setTelefono}
+            max={LIMITES_COTIZACIONES.longitudTelefono}
+            tipo="tel"
+            autocompletar="tel"
+            error={errorDeServidor(fallo, "contactoTelefono")}
+          />
+          <Campo
+            etiqueta="Correo"
+            valor={correo}
+            alCambiar={setCorreo}
+            max={LIMITES_COTIZACIONES.longitudCorreo}
+            tipo="email"
+            autocompletar="email"
+            error={errorDeServidor(fallo, "contactoCorreo")}
+          />
+        </div>
+      </fieldset>
       {fallo && fallo.tipo !== "invalida" ? (
         <Aviso tono="error" titulo="No se guardó" rol="alert">
           <p>{mensajeDeFallo(fallo)}</p>

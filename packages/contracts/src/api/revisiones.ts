@@ -71,6 +71,27 @@ export const EsquemaDecisionRevision = z
   });
 export type DecisionRevisionSolicitud = z.infer<typeof EsquemaDecisionRevision>;
 
+/**
+ * Anular una aprobación antes de emitir (módulo 8, ADR-0010): sobre la revisión aprobada que la
+ * persona vio (`revision` = ficha) y con un motivo útil. Crea un evento nuevo; nada se borra.
+ */
+export const EsquemaAnulacionAprobacion = z
+  .strictObject({
+    revision: z.number().int().nonnegative(),
+    motivo: textoOpcional(LIMITES_REVISIONES.longitudObservaciones, "Motivo"),
+  })
+  .superRefine((d, ctx) => {
+    const t = d.motivo ?? "";
+    if (t.length < LIMITES_REVISIONES.minimoObservaciones || !/\p{L}/u.test(t)) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["motivo"],
+        message: `Explique por qué se anula la aprobación (al menos ${LIMITES_REVISIONES.minimoObservaciones} caracteres).`,
+      });
+    }
+  });
+export type AnulacionAprobacion = z.infer<typeof EsquemaAnulacionAprobacion>;
+
 export const EsquemaRetiroRevision = z.strictObject({
   revision: z.number().int().nonnegative(),
   motivo: textoOpcional(LIMITES_REVISIONES.longitudMotivoRetiro, "Motivo"),
@@ -131,11 +152,17 @@ export const EsquemaResumenRevision = z.strictObject({
   resueltaPor: z.string().nullable(),
   resueltaEn: EsquemaInstante.nullable(),
   observaciones: z.string().nullable(),
+  /** Anulación de la aprobación (módulo 8); `null` si no se anuló. */
+  anulacion: z.strictObject({ por: z.string(), en: EsquemaInstante, motivo: z.string() }).nullable(),
+  /** La versión revisada ya se emitió (su aprobación ya no se puede anular). */
+  emitida: z.boolean(),
   /** Permisos de la sesión actual sobre esta revisión, calculados por el servidor. */
   acciones: z.strictObject({
     aprobar: z.boolean(),
     solicitarCambios: z.boolean(),
     retirar: z.boolean(),
+    /** Aprobada, sin anular, sin emitir y la sesión es Revisor. */
+    anularAprobacion: z.boolean(),
     /** Por qué no puede aprobar (p. ej. BL-17), si tiene la función de revisor. */
     motivoNoAprobar: z.string().nullable(),
   }),

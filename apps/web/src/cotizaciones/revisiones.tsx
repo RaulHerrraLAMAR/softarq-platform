@@ -8,7 +8,9 @@
  *   está obsoleta, el servidor responde 409 con el estado vigente; lo escrito se conserva.
  * - Nada se anuncia como aprobado antes de la respuesta del servidor; una respuesta atrasada de
  *   otra revisión o de una solicitud anterior se descarta.
- * - La aprobación NO es emisión ni entrega al cliente (la emisión es de un módulo posterior).
+ * - La aprobación NO es emisión ni entrega al cliente (módulo 8: la emisión es un paso aparte).
+ * - Módulo 8 (ADR-0010): el revisor ve los textos de la versión antes de aprobar y puede ANULAR una
+ *   aprobación antes de emitir, con motivo (evento nuevo; la aprobación original se conserva).
  */
 import {
   EsquemaResumenRevision,
@@ -31,6 +33,7 @@ import { useIntenciones } from "../comunes/intencion.ts";
 import { CargaFallida, Cargando, Folio, Pagina, SinResultados } from "../comunes/pagina.tsx";
 import { useCarga } from "../comunes/usarCarga.ts";
 import { Enlace } from "../navegacion/ruta.tsx";
+import { TextosVersion } from "./emision.tsx";
 
 export const NOTA_NO_EMISION = "La aprobación no es una emisión ni una entrega al cliente.";
 
@@ -49,7 +52,10 @@ export function EstadoRevisionInsignia({ estado }: { estado: EstadoRevision }) {
 /** Estado de una versión con su motivo (derivado por el servidor de su última revisión). */
 export function EstadoVersion({ version }: { version: Pick<ResumenVersion, "estado" | "revisionVigente"> }) {
   const r = version.revisionVigente;
+  if (version.estado === "EMITIDA") return <Insignia tono="emitida">Emitida</Insignia>;
+  if (version.estado === "SUSTITUIDA") return <Insignia tono="neutra">Emitida · sustituida por una posterior</Insignia>;
   if (version.estado === "EN_REVISION") return <Insignia tono="demo">En revisión</Insignia>;
+  if (r?.estado === "APROBADA" && r.anulacion) return <Insignia tono="menor">Borrador · aprobación anulada</Insignia>;
   if (version.estado === "APROBADA") return <Insignia tono="estado">Aprobada{r?.resueltaPor ? ` por ${r.resueltaPor}` : ""}</Insignia>;
   if (r?.estado === "CAMBIOS_SOLICITADOS") return <Insignia tono="menor">Borrador · cambios solicitados</Insignia>;
   if (r?.estado === "RETIRADA") return <Insignia tono="neutra">Borrador · revisión retirada</Insignia>;
@@ -61,6 +67,7 @@ const NOMBRE_TIPO: Record<EventoRevision["tipo"], string> = {
   APROBADA: "Aprobada",
   CAMBIOS_SOLICITADOS: "Cambios solicitados",
   RETIRADA: "Revisión retirada",
+  APROBACION_ANULADA: "Aprobación anulada",
 };
 
 export function EventosRevision({ eventos }: { eventos: EventoRevision[] }) {
@@ -181,7 +188,7 @@ export function BandejaRevisiones({ servicios }: { servicios: ServiciosCotizacio
 // Detalle y decisión
 // ---------------------------------------------------------------------------
 
-type Accion = "aprobar" | "cambios" | "retirar";
+type Accion = "aprobar" | "cambios" | "retirar" | "anular";
 
 type EstadoEnvio =
   | { fase: "inactivo" }
@@ -243,6 +250,11 @@ function DetalleRevisionVista({
       setErrorObs(`Explique qué debe cambiar (al menos ${LIMITES_REVISIONES.minimoObservaciones} caracteres).`);
       return;
     }
+    const mot = motivo.trim();
+    if (accion === "anular" && (mot.length < LIMITES_REVISIONES.minimoObservaciones || !/\p{L}/u.test(mot))) {
+      setErrorObs(`Explique por qué se anula la aprobación (al menos ${LIMITES_REVISIONES.minimoObservaciones} caracteres).`);
+      return;
+    }
     setErrorObs(null);
     const n = ++solicitud.current;
     setEnvio({ fase: "enviando", accion });
@@ -251,6 +263,9 @@ function DetalleRevisionVista({
     if (accion === "retirar") {
       contenido = { revision: r.revision, motivo: motivo.trim() };
       resultado = await servicios.retirarRevision(r.id, r.revision, motivo.trim() || null, intenciones.clave(`retiro:${r.id}`, contenido));
+    } else if (accion === "anular") {
+      contenido = { revision: r.revision, motivo: mot };
+      resultado = await servicios.anularAprobacion(r.id, r.revision, mot, intenciones.clave(`anulacion:${r.id}`, contenido));
     } else {
       const decision: DecisionRevision = accion === "aprobar" ? "APROBAR" : "SOLICITAR_CAMBIOS";
       contenido = { decision, revision: r.revision, versionId: r.version.id, obs };
@@ -261,7 +276,7 @@ function DetalleRevisionVista({
       );
     }
     if (n !== solicitud.current) return; // respuesta atrasada: se descarta
-    const ambito = accion === "retirar" ? `retiro:${r.id}` : `decision:${r.id}`;
+    const ambito = accion === "retirar" ? `retiro:${r.id}` : accion === "anular" ? `anulacion:${r.id}` : `decision:${r.id}`;
     if (resultado.ok) {
       intenciones.olvidar(ambito, contenido);
       setAbierta(null);
@@ -276,9 +291,11 @@ function DetalleRevisionVista({
     if (f.tipo === "revision") {
       const vigente = EsquemaResumenRevision.safeParse(f.revisionVigente);
       setEnvio({ fase: "conflicto", mensaje: f.mensaje, vigente: vigente.success ? vigente.data : null });
+    } else if (f.tipo === "estado") {
+      setEnvio({ fase: "conflicto", mensaje: f.mensaje, vigente: null });
     } else if (f.tipo === "bloqueado") {
       setEnvio({ fase: "bloqueado", mensaje: mensajeDeFallo(f), problemas: f.problemas });
-    } else if (f.tipo === "invalida" && accion === "cambios") {
+    } else if (f.tipo === "invalida" && (accion === "cambios" || accion === "anular")) {
       setErrorObs(f.campos[0]?.mensaje ?? "Revise las observaciones.");
       setEnvio({ fase: "inactivo" });
     } else {
@@ -365,14 +382,31 @@ function DetalleRevisionVista({
         {envio.fase === "hecho" ? (
           <Aviso tono="correcto" titulo={tituloHecho(r)} rol="status">
             <p>
-              {r.estado === "APROBADA" ? `${NOTA_NO_EMISION} ` : ""}La versión {r.version.idVersion} no cambió.
+              {envio.accion === "anular"
+                ? "Se registró la anulación con su motivo; la aprobación original queda en el historial. "
+                : r.estado === "APROBADA"
+                  ? `${NOTA_NO_EMISION} `
+                  : ""}
+              La versión {r.version.idVersion} no cambió.
             </p>
           </Aviso>
         ) : null}
       </div>
-      {r.estado === "APROBADA" && envio.fase !== "hecho" ? (
+      {r.estado === "APROBADA" && !r.anulacion && envio.fase !== "hecho" ? (
         <Aviso tono="correcto" titulo={`Aprobada por ${r.resueltaPor ?? "—"}`}>
-          <p>{NOTA_NO_EMISION} La aprobación corresponde solo a esta versión; una versión nueva requiere su propia revisión.</p>
+          <p>
+            {r.emitida
+              ? "La versión ya se emitió: la aprobación se conserva y ya no se puede anular."
+              : `${NOTA_NO_EMISION} La aprobación corresponde solo a esta versión; una versión nueva requiere su propia revisión.`}
+          </p>
+        </Aviso>
+      ) : null}
+      {r.anulacion ? (
+        <Aviso tono="aviso" titulo={`Aprobación anulada por ${r.anulacion.por}`}>
+          <p>
+            {formatearInstante(r.anulacion.en)}. <span className="observaciones">{r.anulacion.motivo}</span>
+          </p>
+          <p className="ayuda">La aprobación original sigue en el historial. Para emitir, la versión debe enviarse y aprobarse de nuevo.</p>
         </Aviso>
       ) : null}
       {r.observaciones && r.estado !== "PENDIENTE" ? (
@@ -450,6 +484,56 @@ function DetalleRevisionVista({
             </Aviso>
           ) : (
             <p className="ayuda">Sin avisos.</p>
+          )}
+        </section>
+      ) : null}
+
+      {r.acciones.anularAprobacion ? (
+        <section className="seccion panel-decision" aria-labelledby="titulo-anular">
+          <h2 id="titulo-anular" className="seccion-titulo">
+            Anular la aprobación
+          </h2>
+          <p className="ayuda">Solo antes de emitir. Se registra como un evento nuevo con su motivo; nada se borra. Después hará falta otra aprobación.</p>
+          {abierta === "anular" ? (
+            <div className="confirmacion-bloque" role="group" aria-labelledby="titulo-confirmar-anular">
+              <p id="titulo-confirmar-anular">
+                <strong>
+                  Anular la aprobación de {r.version.idVersion} por {total}.
+                </strong>{" "}
+                La versión volverá a Borrador y no se podrá emitir hasta una nueva aprobación.
+              </p>
+              <div className="campo">
+                <label className="etiqueta" htmlFor={idMotivo}>
+                  Motivo de la anulación <span className="ayuda">(obligatorio)</span>
+                </label>
+                <textarea
+                  id={idMotivo}
+                  rows={3}
+                  maxLength={LIMITES_REVISIONES.longitudObservaciones}
+                  value={motivo}
+                  onChange={(e) => setMotivo(e.target.value)}
+                  aria-invalid={errorObs ? true : undefined}
+                  aria-describedby={errorObs ? `${idMotivo}-error` : undefined}
+                />
+                {errorObs ? (
+                  <p className="error-campo" id={`${idMotivo}-error`} role="alert">
+                    {errorObs}
+                  </p>
+                ) : null}
+              </div>
+              <div className="formulario-acciones">
+                <Boton variante="peligro" onClick={() => void confirmar("anular")} disabled={ocupado} aria-disabled={ocupado}>
+                  {ocupado ? "Registrando…" : "Confirmar anulación"}
+                </Boton>
+                <Boton onClick={() => (setAbierta(null), setErrorObs(null))} disabled={ocupado}>
+                  Cancelar
+                </Boton>
+              </div>
+            </div>
+          ) : (
+            <Boton variante="peligro" onClick={() => setAbierta("anular")} disabled={ocupado}>
+              Anular la aprobación…
+            </Boton>
           )}
         </section>
       ) : null}
@@ -560,6 +644,8 @@ function DetalleRevisionVista({
         </section>
       ) : null}
 
+      <TextosVersion textos={v.captura.textos ?? null} titulo="Textos de la versión (alcance, condiciones y exclusiones)" />
+
       <section className="panel-resultado" aria-labelledby="titulo-contenido-revision">
         <h2 id="titulo-contenido-revision" className="seccion-titulo">
           Contenido comercial de la versión
@@ -587,6 +673,7 @@ function DetalleRevisionVista({
 }
 
 function tituloHecho(r: ResumenRevision): string {
+  if (r.anulacion) return `Aprobación de ${r.version.idVersion} anulada`;
   if (r.estado === "APROBADA") return `${r.version.idVersion} aprobada por ${r.resueltaPor ?? "—"}`;
   if (r.estado === "CAMBIOS_SOLICITADOS") return `Cambios solicitados en ${r.version.idVersion}`;
   if (r.estado === "RETIRADA") return `Revisión de ${r.version.idVersion} retirada`;

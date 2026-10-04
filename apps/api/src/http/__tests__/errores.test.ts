@@ -76,18 +76,29 @@ describe("OpenAPI", () => {
       "/api/v1/cotizaciones",
       "/api/v1/cotizaciones/{id}",
       "/api/v1/cotizaciones/{id}/borrador",
+      "/api/v1/cotizaciones/{id}/descarte",
       "/api/v1/cotizaciones/{id}/versiones",
       "/api/v1/cotizaciones/{id}/versiones/{numero}",
+      "/api/v1/cotizaciones/{id}/versiones/{numero}/emision",
+      "/api/v1/cotizaciones/{id}/versiones/{numero}/emision/validacion",
       "/api/v1/cotizaciones/{id}/versiones/{numero}/revisiones",
+      "/api/v1/emisiones/{id}",
+      "/api/v1/emisiones/{id}/documento",
+      "/api/v1/emisor",
       "/api/v1/openapi.json",
       "/api/v1/proyectos",
       "/api/v1/proyectos/{id}",
       "/api/v1/revisiones",
       "/api/v1/revisiones/{id}",
+      "/api/v1/revisiones/{id}/anulacion",
       "/api/v1/revisiones/{id}/decision",
       "/api/v1/revisiones/{id}/retiro",
       "/health",
     ]);
+    // Módulo 8 (ADR-0010).
+    expect(Object.keys(doc.components.schemas)).toEqual(
+      expect.arrayContaining(["SolicitudEmision", "ValidacionEmision", "DetalleEmision", "Emisor", "AnulacionAprobacion", "DescarteCotizacion"]),
+    );
     expect(Object.keys(doc.components.schemas)).toContain("SolicitudCalculoDemo");
     expect(Object.keys(doc.components.schemas)).toEqual(
       expect.arrayContaining(["CapturaBorrador", "SolicitudBorrador", "SolicitudVersion", "Version", "DetalleCotizacion"]),

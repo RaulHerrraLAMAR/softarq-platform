@@ -207,3 +207,9 @@ Los valores se escriben en `_work/registros/modulo6/tiempos-fases-integracion.js
 - `estado-solicitud.test.ts`: «una selección que desaparece de las opciones vigentes se retira con aviso» pasa a «se conserva con aviso (no se retira ni se sustituye)», y comprueba que calcular exige decidir y que «Quitar selección» la retira;
 - `bloqueos.spec.ts` (E2E): además de lo anterior, comprueba que la selección no disponible ofrece «Quitar selección»;
 - los datos de prueba del detalle del borrador incluyen `referencias`.
+
+## Nota posterior (módulo 8, ADR-0010)
+
+- El folio alcanza `DESCARTADO`: descarte con motivo por el Preparador y solo sin emisiones, revisión pendiente ni aprobación vigente. Un trigger limita la transición a ACTIVO → DESCARTADO, sin vuelta atrás ni DELETE. El folio sigue sin reutilizarse.
+- El cliente gana su contacto (BL-01). El borrador y las versiones guardan los textos de la versión en `captura.textos`, que no intervienen en el cálculo.
+- `softarq_guardar_borrador` y `softarq_crear_version` rechazan un folio descartado (FOLIO_NO_ACTIVO).

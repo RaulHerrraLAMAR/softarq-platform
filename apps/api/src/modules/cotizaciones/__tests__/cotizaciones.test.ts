@@ -221,6 +221,8 @@ describe("resumen de cambios frente a la versión anterior", () => {
       seleccionCambiada: ["INS-00001"],
       consolidacionCambiada: false,
       datosDescriptivosCambiados: ["cliente.nombre"],
+      // Módulo 8: textos de la versión (ninguno cambió en este caso).
+      textosCambiados: [],
       condicionesCambiadas: true,
       totalAnterior: "100.00",
       totalNuevo: "90.00",

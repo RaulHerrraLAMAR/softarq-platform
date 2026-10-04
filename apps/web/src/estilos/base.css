@@ -1692,3 +1692,105 @@ textarea[aria-invalid="true"] {
   display: grid;
   gap: var(--esp-3);
 }
+
+/* ---------- Emisión (módulo 8) ---------- */
+/* EMITIDA se distingue de APROBADA (verde) con el color primario: texto blanco sobre #0f172a (17.85:1). */
+.insignia-emitida {
+  background: var(--color-primario);
+  color: var(--color-sobre-accion);
+  border-color: var(--color-primario);
+}
+
+.panel-emision,
+.tarjeta-emision {
+  display: grid;
+  gap: var(--esp-3);
+  padding: var(--esp-4);
+  border: 1px solid var(--color-borde);
+  border-radius: var(--radio);
+  background: var(--color-tarjeta);
+}
+
+.tarjeta-emision {
+  border-left: 4px solid var(--color-primario);
+}
+
+.tarjeta-emision + .tarjeta-emision,
+.panel-emision + .tarjeta-emision {
+  margin-top: var(--esp-3);
+}
+
+.tarjeta-emision-titulo {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--esp-2);
+  margin: 0;
+}
+
+.lista-textos {
+  display: grid;
+  gap: var(--esp-3);
+  margin: 0;
+}
+
+.lista-textos dt {
+  font-weight: 600;
+  font-size: var(--texto-sm);
+  color: var(--color-secundario);
+}
+
+.lista-textos dd {
+  margin: 0;
+}
+
+.texto-largo {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  line-height: 1.6;
+  max-width: 75ch;
+}
+
+.editor-textos textarea {
+  width: 100%;
+  min-height: 4.5rem;
+  resize: vertical;
+}
+
+.contador {
+  text-align: right;
+  margin: var(--esp-1) 0 0;
+}
+
+.aviso-en-linea {
+  color: var(--color-aviso);
+  font-weight: 600;
+}
+
+.grupo-campos {
+  border: 1px solid var(--color-borde);
+  border-radius: var(--radio);
+  padding: var(--esp-3) var(--esp-4);
+  margin: 0;
+  min-width: 0;
+}
+
+.grupo-campos > legend {
+  padding: 0 var(--esp-1);
+}
+
+.panel-descarte .confirmacion-bloque,
+.panel-emision .confirmacion-bloque {
+  margin-top: var(--esp-2);
+}
+
+/* Botones y estados de las secciones nuevas: a su ancho, no estirados por la rejilla. */
+.editor-textos > .boton,
+.editor-textos > .confirmacion,
+.panel-descarte > .boton,
+.seccion-emision .insignia,
+.panel-guardar .insignia {
+  justify-self: start;
+  width: max-content;
+  max-width: 100%;
+}

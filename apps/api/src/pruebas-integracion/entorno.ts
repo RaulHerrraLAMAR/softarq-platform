@@ -2,8 +2,8 @@
  * Entorno de las pruebas de integración. ÚNICA base permitida: softarq_test en localhost.
  * Se comprueba el destino antes de cualquier operación; nunca se imprime una URL completa.
  */
-import { existsSync } from "node:fs";
-import { join } from "node:path";
+import { existsSync, mkdirSync, rmSync } from "node:fs";
+import { isAbsolute, join, relative, resolve } from "node:path";
 import { crearPrisma, type ClientePrisma } from "../infraestructura/prisma/cliente.js";
 
 export const BASE_DE_PRUEBA = "softarq_test";
@@ -44,4 +44,25 @@ export async function confirmarBase(prisma: ClientePrisma): Promise<void> {
 /** Cliente con el rol de la aplicación (softarq_app) sobre softarq_test. */
 export function prismaApp(): ClientePrisma {
   return crearPrisma(urlDePrueba("DATABASE_URL"));
+}
+
+/**
+ * Carpeta de documentos emitidos de las pruebas (módulo 8): SIEMPRE bajo
+ * D:\Proyecto_SoftArq\_work\pruebas\documentos-<nombre>, nunca la de desarrollo.
+ */
+export const RAIZ_PRUEBAS_DOCUMENTOS = resolve(RAIZ_API, "..", "..", "..", "_work", "pruebas");
+
+export function directorioDocumentosPrueba(nombre: "integracion" | "e2e"): string {
+  return join(RAIZ_PRUEBAS_DOCUMENTOS, `documentos-${nombre}`);
+}
+
+/** Vacía una carpeta de documentos de prueba; se niega con cualquier otra ruta. */
+export function vaciarDocumentosPrueba(ruta: string): void {
+  const r = resolve(ruta);
+  const rel = relative(RAIZ_PRUEBAS_DOCUMENTOS, r);
+  if (rel.startsWith("..") || isAbsolute(rel) || !/^documentos-[a-z0-9-]+$/.test(rel)) {
+    throw new Error(`Solo se vacían carpetas de documentos de prueba bajo _work\pruebas (recibido: ${r}).`);
+  }
+  rmSync(r, { recursive: true, force: true });
+  mkdirSync(r, { recursive: true });
 }

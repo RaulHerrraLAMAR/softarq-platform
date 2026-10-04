@@ -81,11 +81,11 @@ Toda relación entre datos propios es una FK compuesta con `organizacion_id`, de
 ## 5. Pendiente de decidir (módulos posteriores)
 
 - Selección o cambio de organización para usuarios con varias pertenencias.
-- Capacidades de emisión y administración (módulos posteriores). Las de revisión están en §6 (módulo 7).
+- Capacidades de administración (alta de personas, catálogos). Las de revisión y emisión están en §6 (módulos 7 y 8).
 - Si los catálogos se comparten entre organizaciones o son siempre propios.
 - Planes o suscripciones (fuera del DEMO).
 - Esquema de PostgreSQL y migración desde los CSV del libro (Prisma, según ADR-0003).
-- Descartar y duplicar cotizaciones, «precios anteriores» en una versión nueva, contacto del cliente y datos del emisor (con la emisión).
+- Duplicar cotizaciones, «precios anteriores» en una versión nueva, respuesta del cliente (Aceptada o Rechazada), vencimiento automático y excepciones. Descarte, contacto y emisor: módulo 8 (§9).
 
 ## 6. Matriz de permisos vigente (módulo 5, ADR-0007 §2)
 
@@ -102,23 +102,30 @@ Toda relación entre datos propios es una FK compuesta con `organizacion_id`, de
 | `revisiones.enviar` | `POST /cotizaciones/{id}/versiones/{n}/revisiones`, `POST /revisiones/{id}/retiro` | ✓ | ✗ | ✗ | ✗ | `BTN_EnviarRevision`: `FN_PREP` (retirar es una adaptación de la web) |
 | `revisiones.decidir` | `POST /revisiones/{id}/decision` (aprobar o solicitar cambios) | ✗ | ✓ | ✗ | ✗ | `BTN_Observaciones` y `BTN_Aprobar`: `FN_REV` |
 | `cotizaciones.consultar` | `GET /revisiones`, `GET /revisiones/{id}` | ✓ | ✓ | ✓ | ✓ | La hoja 14 REVISION se abre sin función |
+| `revisiones.decidir` | `POST /revisiones/{id}/anulacion` (anular una aprobación antes de emitir, con motivo) | ✗ | ✓ | ✗ | ✗ | `Rev_Observar` admite una versión Aprobada: `FN_REV` (módulo 8) |
+| `emisiones.emitir` | `POST /cotizaciones/{id}/versiones/{n}/emision` | ✓ | ✓ ¹ | ✗ | ✗ | `BTN_Emitir`: `FN_REV` ≠ preparador. **Adaptación autorizada** (ADR-0010 §2): también el Preparador |
+| `cotizaciones.preparar` | `POST /cotizaciones/{id}/descarte` | ✓ | ✗ | ✗ | ✗ | `BTN_Descartar` (B-37): `FN_PREP` |
+| `cotizaciones.consultar` | `GET /cotizaciones/{id}/versiones/{n}/emision/validacion`, `GET /emisiones/{id}`, `GET /emisiones/{id}/documento`, `GET /emisor` | ✓ | ✓ | ✓ | ✓ | «Abrir PDF» no exige función |
+| `emisor.configurar` | `PUT /emisor` | ✗ | ✗ | ✗ | ✓ | 17 CONFIG (`EMISOR_*`): el Administrador del sistema cambia los parámetros |
+
+¹ Por identidad, además de la capacidad: un Revisor no emite una versión que él preparó. Y siempre hace falta una aprobación vigente de esa versión, hecha por una persona distinta de su autor. Poder emitir no concede aprobar.
 
 **BL-17 no es una capacidad:** quien aprueba no puede ser el autor de la versión (identidad), aunque tenga o reciba después la función Revisor. Lo comprueban la API, la función de la base y un CHECK (ADR-0009 §5).
 
-**Previsto para módulos posteriores** (no implementado): registrar excepciones (Preparador); autorizar excepciones y emitir con un revisor distinto del preparador (Revisor, BL-17 y D-13); editar catálogos y aprobar conceptos (Administrador del catálogo); parámetros y personas (Administrador del sistema).
+**Previsto para módulos posteriores** (no implementado): registrar excepciones (Preparador); autorizar excepciones (Revisor, D-13); editar catálogos y aprobar conceptos (Administrador del catálogo); parámetros distintos del emisor y personas (Administrador del sistema).
 
 ## 7. Clientes, proyectos y cotizaciones (módulo 6, ADR-0008)
 
 | Tabla | Clave y relaciones | Notas |
 |---|---|---|
-| `cliente` | `CLI-NNNNN` por organización | Nombre o razón social y `activo`; sin datos fiscales ni de contacto |
+| `cliente` | `CLI-NNNNN` por organización | Nombre o razón social, `activo` y, desde el módulo 8, contacto (nombre, teléfono, correo; BL-01). Sin datos fiscales |
 | `proyecto` | `PRY-NNNNN`; FK (organización, cliente) | Nombre, municipio, entidad y descripción (opcionales salvo el nombre) |
 | `cotizacion` | Folio por organización; **FK (organización, cliente, proyecto) → proyecto** | Origen `WEB_DEMO`, estado del folio `ACTIVO`, último número de versión |
 | `cotizacion_borrador` | 1:1 con la cotización | Captura (`jsonb`), revisión, quién y cuándo |
 | `cotizacion_version` | UNIQUE (cotización, número) | Inmutable (sin UPDATE/DELETE para la aplicación y trigger para el propietario). Entrada y resultado internos solo en el servidor |
 | `contador`, `bitacora`, `idempotencia` | Por organización | Folios y códigos atómicos; eventos mínimos; claves de idempotencia de 24 h |
 
-Estados alcanzables: folio **ACTIVO**; versión **BORRADOR**, **EN_REVISION** o **APROBADA**, derivados de su última revisión (§8). La emisión añadirá sus estados aparte.
+Estados alcanzables: folio **ACTIVO** o **DESCARTADO** (módulo 8); versión **BORRADOR**, **EN_REVISION**, **APROBADA**, **EMITIDA** o **SUSTITUIDA**, derivados de su última revisión (§8) y de su emisión (§9).
 
 ## 8. Revisión y aprobación (módulo 7, ADR-0009)
 
@@ -132,3 +139,24 @@ Estados alcanzables: folio **ACTIVO**; versión **BORRADOR**, **EN_REVISION** o 
 | `tblVersiones.estado` (Borrador, En revisión, Aprobada…) escrito en la versión | Estado de la versión **derivado** de su última revisión; la versión no cambia |
 | `tblVersiones.revisor`, `fecha_aprobacion` | `revision.resuelta_por`, `resuelta_en` |
 | `tblRevisiones` (`id_revision`, `id_version`, `fecha_hora`, `persona`, `tipo`, `texto`) | `revision_evento` (con estados anterior y nuevo y códigos de aviso) |
+
+## 9. Emisión, emisor, anulación y descarte (módulo 8, ADR-0010)
+
+| Tabla o columna | Clave y relaciones | Notas |
+|---|---|---|
+| `emision` | UNIQUE(`version_id`), UNIQUE(`archivo_clave`); FK (organización, cotización, número, id) → versión; FK (organización, id, versión) → `revision` | Inmutable (trigger). Aprobación usada; quién preparó, aprobó y emitió (ids y nombres); fecha de emisión, vigencia (CR-16); total; `contenido` = estructura comercial exacta del PDF; versión de la plantilla; clave, tamaño y SHA-256 del archivo. CHECK BL-17 |
+| `emisor` | Una fila por organización | Nombre, domicilio, teléfono, correo, logotipo (`DEMO`), `es_demo`, ficha de concurrencia. BL-15 |
+| `cliente.contacto_*` | — | Nombre, teléfono y correo del contacto (BL-01) |
+| `cotizacion.descartada_*`, `motivo_descarte` | — | Descarte (B-37): solo ACTIVO → DESCARTADO (trigger) |
+| `revision_evento` tipo `APROBACION_ANULADA` | Una por revisión (índice parcial) | Anulación antes de emitir; la aprobación original se conserva |
+| `captura.textos` (borrador y versión) | — | Alcance, condiciones y exclusiones de la versión (BL-20); fuera del cálculo |
+
+| Libro | Web |
+|---|---|
+| `tblVersiones.estado = Emitida`, `fecha_emision`, `vigente_hasta`, `emisor_*`, `cli_*`, `pry_*`, `emitido_por`, `archivo_pdf` | Fila de `emision` aparte; la versión no cambia. Nombres del cliente y del proyecto: los de la versión. Contacto y emisor: copiados al emitir |
+| `Sustituida` al emitir vN+1 | Estado derivado `SUSTITUIDA` |
+| `Regenerar PDF` desde los datos congelados | **No se regenera**: se descarga el archivo emitido, cuyo hash se comprueba |
+| `Descartada` (versión en Borrador), folio `Descartado` | Folio `DESCARTADO` con motivo; las versiones se conservan |
+| `Rev_Observar` sobre una Aprobada | Anulación con motivo (evento nuevo) |
+| `EMISOR_*`, `DEMO_EMISOR_*` en 17 CONFIG | Tabla `emisor` (datos DEMO de la carga, editables por el Administrador del sistema) |
+| `TEXTO_*`, `DEMO_TEXTO_*` copiados a cada versión | `captura.textos`, copiados al crear la cotización |

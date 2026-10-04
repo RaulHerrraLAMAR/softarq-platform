@@ -16,6 +16,13 @@ import {
   EsquemaVersion,
   EsquemaDetalleRevision,
   EsquemaRespuestaRevisiones,
+  EsquemaDetalleEmision,
+  EsquemaEmisor,
+  EsquemaValidacionEmision,
+  type DetalleEmision,
+  type EdicionEmisor,
+  type Emisor,
+  type ValidacionEmision,
   type CapturaBorrador,
   type DecisionRevision,
   type DetalleRevision,
@@ -40,11 +47,21 @@ export interface DatosProyecto {
   descripcion: string | null;
 }
 
+/** Contacto del cliente (BL-01; módulo 8): `null` = sin capturar. */
+export interface DatosContacto {
+  contactoNombre: string | null;
+  contactoTelefono: string | null;
+  contactoCorreo: string | null;
+}
+
 export interface ServiciosCotizaciones {
   listarClientes(f: { buscar?: string; incluirInactivos?: boolean }, signal?: AbortSignal): Promise<ResultadoApi<RespuestaClientes>>;
   detalleCliente(id: string, signal?: AbortSignal): Promise<ResultadoApi<DetalleCliente>>;
-  crearCliente(nombre: string, clave: string): Promise<ResultadoApi<Cliente>>;
-  editarCliente(id: string, cambios: { revision: number; nombre?: string; activo?: boolean }): Promise<ResultadoApi<Cliente>>;
+  crearCliente(datos: { nombre: string } & Partial<DatosContacto>, clave: string): Promise<ResultadoApi<Cliente>>;
+  editarCliente(
+    id: string,
+    cambios: { revision: number; nombre?: string; activo?: boolean } & Partial<DatosContacto>,
+  ): Promise<ResultadoApi<Cliente>>;
   listarProyectos(
     f: { clienteId?: string; buscar?: string; incluirInactivos?: boolean },
     signal?: AbortSignal,
@@ -67,6 +84,15 @@ export interface ServiciosCotizaciones {
     clave: string,
   ): Promise<ResultadoApi<DetalleRevision>>;
   retirarRevision(id: string, revision: number, motivo: string | null, clave: string): Promise<ResultadoApi<DetalleRevision>>;
+  // Emisión, anulación, descarte y emisor (módulo 8, ADR-0010).
+  anularAprobacion(id: string, revision: number, motivo: string, clave: string): Promise<ResultadoApi<DetalleRevision>>;
+  descartarCotizacion(id: string, motivo: string, clave: string): Promise<ResultadoApi<DetalleCotizacion>>;
+  validarEmision(id: string, numero: number, signal?: AbortSignal): Promise<ResultadoApi<ValidacionEmision>>;
+  emitir(id: string, numero: number, d: { versionId: string; revisionId: string }, clave: string): Promise<ResultadoApi<DetalleEmision>>;
+  detalleEmision(id: string, signal?: AbortSignal): Promise<ResultadoApi<DetalleEmision>>;
+  descargarDocumento(emisionId: string): Promise<ResultadoApi<Blob>>;
+  emisor(signal?: AbortSignal): Promise<ResultadoApi<Emisor>>;
+  guardarEmisor(datos: EdicionEmisor): Promise<ResultadoApi<Emisor>>;
 }
 
 const conClave = (clave: string) => ({ [CABECERA_IDEMPOTENCIA]: clave });
@@ -92,8 +118,7 @@ export function crearServiciosCotizaciones(cliente: ClienteApi): ServiciosCotiza
         { signal },
       ),
     detalleCliente: (id, signal) => cliente.obtener(`/api/v1/clientes/${encodeURIComponent(id)}`, EsquemaDetalleCliente, { signal }),
-    crearCliente: (nombre, clave) =>
-      cliente.enviar("/api/v1/clientes", EsquemaCliente, { cuerpo: { nombre }, cabeceras: conClave(clave) }),
+    crearCliente: (datos, clave) => cliente.enviar("/api/v1/clientes", EsquemaCliente, { cuerpo: datos, cabeceras: conClave(clave) }),
     editarCliente: (id, cambios) =>
       cliente.enviar(`/api/v1/clientes/${encodeURIComponent(id)}`, EsquemaCliente, { metodo: "PATCH", cuerpo: cambios }),
     listarProyectos: (f, signal) =>
@@ -149,5 +174,31 @@ export function crearServiciosCotizaciones(cliente: ClienteApi): ServiciosCotiza
         cuerpo: { revision, ...(motivo ? { motivo } : {}) },
         cabeceras: conClave(clave),
       }),
+    anularAprobacion: (id, revision, motivo, clave) =>
+      cliente.enviar(`/api/v1/revisiones/${encodeURIComponent(id)}/anulacion`, EsquemaDetalleRevision, {
+        cuerpo: { revision, motivo },
+        cabeceras: conClave(clave),
+      }),
+    descartarCotizacion: (id, motivo, clave) =>
+      cliente.enviar(`/api/v1/cotizaciones/${encodeURIComponent(id)}/descarte`, EsquemaDetalleCotizacion, {
+        cuerpo: { motivo },
+        cabeceras: conClave(clave),
+      }),
+    validarEmision: (id, numero, signal) =>
+      cliente.obtener(`/api/v1/cotizaciones/${encodeURIComponent(id)}/versiones/${numero}/emision/validacion`, EsquemaValidacionEmision, {
+        signal,
+        tiempoMaximo: 30_000,
+      }),
+    emitir: (id, numero, d, clave) =>
+      cliente.enviar(`/api/v1/cotizaciones/${encodeURIComponent(id)}/versiones/${numero}/emision`, EsquemaDetalleEmision, {
+        cuerpo: { versionId: d.versionId, revisionId: d.revisionId },
+        cabeceras: conClave(clave),
+        tiempoMaximo: 60_000,
+      }),
+    detalleEmision: (id, signal) => cliente.obtener(`/api/v1/emisiones/${encodeURIComponent(id)}`, EsquemaDetalleEmision, { signal }),
+    descargarDocumento: (emisionId) =>
+      cliente.descargar(`/api/v1/emisiones/${encodeURIComponent(emisionId)}/documento`, "application/pdf", { tiempoMaximo: 30_000 }),
+    emisor: (signal) => cliente.obtener("/api/v1/emisor", EsquemaEmisor, { signal }),
+    guardarEmisor: (datos) => cliente.enviar("/api/v1/emisor", EsquemaEmisor, { metodo: "PUT", cuerpo: datos }),
   };
 }

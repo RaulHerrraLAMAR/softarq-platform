@@ -100,6 +100,10 @@ yarn-error.log*
 pgdata/
 postgres-data/
 docker-data/
+# Documentos emitidos (módulo 8, ADR-0010): viven en SOFTARQ_DIR_DOCUMENTOS, fuera del repositorio.
+# Guarda por si alguien la configura aquí por error (la API además se niega a arrancar).
+datos/
+documentos-*/
 
 # ---------------------------------------------------------------
 # Archivos de la fase 1 y documentos de Office

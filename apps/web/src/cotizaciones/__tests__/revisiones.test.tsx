@@ -33,7 +33,9 @@ const resumen = (cambios: Partial<ResumenRevision> = {}): ResumenRevision => ({
   resueltaPor: null,
   resueltaEn: null,
   observaciones: null,
-  acciones: { aprobar: true, solicitarCambios: true, retirar: false, motivoNoAprobar: null },
+  anulacion: null,
+  emitida: false,
+  acciones: { aprobar: true, solicitarCambios: true, retirar: false, anularAprobacion: false, motivoNoAprobar: null },
   ...cambios,
 });
 
@@ -49,6 +51,7 @@ const detalle = (r: ResumenRevision = resumen()): DetalleRevision => ({
       estado: r.estado === "APROBADA" ? "APROBADA" : r.estado === "PENDIENTE" ? "EN_REVISION" : "BORRADOR",
       esUltima: true,
       revisionVigente: null,
+      emision: null,
       revisionBorrador: 0,
       fechaCalculo: "2026-09-25",
       creadoEn: "2026-10-03T14:00:00.000Z",
@@ -104,6 +107,14 @@ function servicios(s: Partial<ServiciosCotizaciones>): ServiciosCotizaciones {
     detalleRevision: () => ok(detalle()),
     decidirRevision: noUsar,
     retirarRevision: noUsar,
+    anularAprobacion: noUsar,
+    descartarCotizacion: noUsar,
+    validarEmision: noUsar,
+    emitir: noUsar,
+    detalleEmision: noUsar,
+    descargarDocumento: noUsar,
+    emisor: noUsar,
+    guardarEmisor: noUsar,
     ...s,
   };
 }
@@ -178,7 +189,7 @@ describe("decisión del revisor", () => {
   });
 
   it("BL-17: si la sesión preparó la versión, no se ofrece aprobar y se explica por qué", async () => {
-    const r = resumen({ acciones: { aprobar: false, solicitarCambios: true, retirar: false, motivoNoAprobar: "BL-17: usted preparó esta versión." } });
+    const r = resumen({ acciones: { aprobar: false, solicitarCambios: true, retirar: false, anularAprobacion: false, motivoNoAprobar: "BL-17: usted preparó esta versión." } });
     abrir(servicios({ detalleRevision: () => ok(detalle(r)) }));
     expect(await screen.findByText("BL-17: usted preparó esta versión.")).toBeTruthy();
     expect(screen.queryByRole("button", { name: "Aprobar…" })).toBeNull();
@@ -242,5 +253,36 @@ describe("rutas de revisión", () => {
     expect(interpretarHash(hashDe({ pantalla: "revisiones" }))).toEqual({ pantalla: "revisiones" });
     expect(interpretarHash(hashDe({ pantalla: "revision", id: ID }))).toEqual({ pantalla: "revision", id: ID });
     expect(interpretarHash("#/revisiones/no-es-uuid")).toEqual({ pantalla: "no-encontrada" });
+  });
+});
+
+describe("anulación de la aprobación (módulo 8)", () => {
+  it("solo con motivo útil; registra la anulación y la muestra sin borrar la aprobación", async () => {
+    const aprobada = resumen({
+      estado: "APROBADA",
+      revision: 1,
+      resueltaPor: "[DEMO] Revisor 1",
+      resueltaEn: "2026-10-03T15:10:00.000Z",
+      acciones: { aprobar: false, solicitarCambios: false, retirar: false, anularAprobacion: true, motivoNoAprobar: null },
+    });
+    const anulada = resumen({
+      ...aprobada,
+      anulacion: { por: "[DEMO] Revisor 1", en: "2026-10-03T16:00:00.000Z", motivo: "El cliente pidió cambiar el alcance." },
+      acciones: { aprobar: false, solicitarCambios: false, retirar: false, anularAprobacion: false, motivoNoAprobar: null },
+    });
+    const anularAprobacion = vi.fn(() => ok(detalle(anulada)));
+    const u = userEvent.setup();
+    abrir(servicios({ detalleRevision: () => ok(detalle(aprobada)), anularAprobacion }));
+    await u.click(await screen.findByRole("button", { name: "Anular la aprobación…" }));
+    await u.type(screen.getByLabelText(/Motivo de la anulación/), "no");
+    await u.click(screen.getByRole("button", { name: "Confirmar anulación" }));
+    expect((await screen.findByRole("alert")).textContent).toMatch(/al menos 10 caracteres/);
+    expect(anularAprobacion).not.toHaveBeenCalled();
+    await u.clear(screen.getByLabelText(/Motivo de la anulación/));
+    await u.type(screen.getByLabelText(/Motivo de la anulación/), "El cliente pidió cambiar el alcance.");
+    await u.click(screen.getByRole("button", { name: "Confirmar anulación" }));
+    expect(anularAprobacion).toHaveBeenCalledWith(ID, 1, "El cliente pidió cambiar el alcance.", expect.any(String));
+    expect(await screen.findByText("Aprobación anulada por [DEMO] Revisor 1")).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Anular la aprobación…" })).toBeNull();
   });
 });

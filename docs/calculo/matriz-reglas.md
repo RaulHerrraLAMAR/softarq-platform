@@ -79,23 +79,24 @@ Las medidas, precios y parámetros completos de cada escenario están en `domain
 
 | Regla | Módulo previsto / estado |
 |---|---|
-| BL-01 y BL-02 (activos) | **Implementadas** al versionar (módulo 6) y al enviar y aprobar (módulo 7). Los campos mínimos completos (contacto, ubicación, descripción) quedan para la emisión |
+| BL-01 y BL-02 | **Implementadas**: activos al versionar (módulo 6) y al enviar y aprobar (módulo 7); al emitir, completas (contacto, ubicación, descripción, proyecto del cliente) y coherentes con las copias de la versión (módulo 8, `dominio/emision.ts`, `bl01` y `bl02`) |
 | BL-04 para conceptos personalizados con excepción autorizada | Excepciones y emisión (BL-04 de estado y BL-08 de selección inválida están en el ensamblador del módulo 2) |
 | BL-05 en su parte de trazabilidad (fuente, fecha y responsable técnico) | Catálogos (aprobación de conceptos) |
-| BL-07 (insumo sin producto activo) | **Implementada** en la verificación vigente al enviar y aprobar (módulo 7, `dominio/verificacion.ts`, `bl07`); se volverá a evaluar al emitir |
-| BL-09 (precio no vigente) | **Implementada** al enviar y aprobar con la fecha del servidor, sin excepciones (`bl09`). A la fecha de emisión y con excepción autorizada: emisión |
+| BL-07 (insumo sin producto activo) | **Implementada** en la verificación vigente al enviar, aprobar y emitir (`bl07`) |
+| BL-09 (precio no vigente) | **Implementada** al enviar, aprobar y emitir, con la fecha del servidor, que al emitir es la fecha de emisión (`bl09`). Sin excepciones: siempre bloquea |
 | BL-14 (vigencia comercial) | **Implementada** en la verificación vigente (`bl14`) |
-| BL-15 (emisor) y BL-20 (textos) | Emisión |
+| BL-15 (emisor) | **Implementada** al emitir (módulo 8, `faltantesEmisor` y `bl15`): nombre, domicilio, teléfono, correo y logotipo existente |
+| BL-20 (textos) | **Implementada** (módulo 8, `dominio/textos.ts`, `bl20`): textos de la versión al enviar, aprobar y emitir; no intervienen en el cálculo |
 | BL-16 (sello del cálculo) | Versiones (módulo 6: huellas) y verificación vigente (módulo 7: huella comparable de la entrada, `bl16`) |
-| BL-17 (revisor ≠ preparador) | **Implementada** por identidad al aprobar: API, función `softarq_decidir_revision` y CHECK `revision_bl17_ck` (módulo 7). Al emitir: emisión |
+| BL-17 (revisor ≠ preparador) | **Implementada** por identidad al aprobar (módulo 7) y al emitir (módulo 8: aprobación vigente de esa versión por otra persona, `bl17`, `softarq_emitir_version` y CHECK `emision_bl17_ck`; quién emite: ADR-0010 §2) |
 | BL-18 sobre la proyección guardada | **Implementada** en la verificación vigente (`bl18`) |
-| BL-19 (estado) | **Implementada** para enviar, decidir, guardar y calcular con revisión pendiente (módulo 7) |
-| AV-02 (precio vence antes del fin de la vigencia comercial) | **Implementado** como aviso con la fecha del servidor (`av02`). Con la fecha real: emisión |
+| BL-19 (estado) | **Implementada** para enviar, decidir, guardar y calcular con revisión pendiente (módulo 7) y para emitir (ya emitida, no es la última, descartada, revisión pendiente; módulo 8, `bl19`) |
+| AV-02 (precio vence antes del fin de la vigencia comercial) | **Implementado** como aviso con la fecha del servidor (`av02`); al emitir, con la fecha de emisión + `VIGENCIA_DIAS` (CR-16) |
 | AV-04 (excepciones autorizadas) | Excepciones (la web no tiene excepciones) |
 | AV-05 (concepto genérico o personalizado) | **Implementado** como aviso (`av05`) |
-| Folios, estados, inmutabilidad de lo emitido y PDF | Cotizaciones (módulos 6 y 7) y emisión |
+| Folios, estados, inmutabilidad de lo emitido y PDF | **Implementados** (módulos 6 a 8): emisión inmutable, PDF DEMO con hash, descarte (ADR-0010) |
 
-Pruebas: `apps/api/src/modules/cotizaciones/__tests__/verificacion.test.ts` (unitarias) y `revisiones.integracion.test.ts` (BL-08, BL-09, BL-10 y AV-02 con fechas distintas del servidor). Fuente: `Validar` y `Avisos` de `modValidacion.bas` y Word maestro §3.11.
+Pruebas: `apps/api/src/modules/cotizaciones/__tests__/verificacion.test.ts` y `emision.test.ts` (unitarias), `revisiones.integracion.test.ts` y `emision.integracion.test.ts` (BL-01, 02, 08, 09, 10, 15, 17, 19, 20 y AV-02 con fechas distintas del servidor; los cuatro totales de referencia emitidos y leídos del PDF). Fuente: `Validar` y `Avisos` de `modValidacion.bas` y Word maestro §3.11 y §3.12.
 
 ## 4. Discrepancias entre fuentes y decisión
 

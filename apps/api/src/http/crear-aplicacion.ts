@@ -41,7 +41,14 @@ import { GeneradorCsrf } from "../modules/autenticacion/infraestructura/csrf.js"
 import { RepositorioSesiones } from "../modules/autenticacion/infraestructura/repositorio-sesiones.js";
 import { ServicioClientes } from "../modules/cotizaciones/aplicacion/servicio-clientes.js";
 import { ServicioCotizaciones, type MedidorTiempos } from "../modules/cotizaciones/aplicacion/servicio-cotizaciones.js";
+import { ServicioEmisiones, type GanchosEmision } from "../modules/cotizaciones/aplicacion/servicio-emisiones.js";
 import { ServicioRevisiones } from "../modules/cotizaciones/aplicacion/servicio-revisiones.js";
+import { generarPdf, type GeneradorPdf } from "../modules/cotizaciones/dominio/pdf/generador-pdf.js";
+import {
+  AlmacenArchivos,
+  AlmacenNoConfigurado,
+  type AlmacenDocumentos,
+} from "../modules/cotizaciones/infraestructura/almacen-documentos.js";
 import { RepositorioCotizaciones } from "../modules/cotizaciones/infraestructura/repositorio-cotizaciones.js";
 import { ServicioBaseDeDatos } from "./base-de-datos.js";
 import { comprobarRolAplicacion } from "./contexto.js";
@@ -50,6 +57,9 @@ import { CalculosController, CatalogosController, OpenApiController, SaludContro
 import {
   ClientesController,
   CotizacionesController,
+  EmisionesController,
+  EmisionVersionController,
+  EmisorController,
   EnvioRevisionController,
   ProyectosController,
   RevisionesController,
@@ -66,6 +76,7 @@ import {
   SERVICIO_AUTENTICACION,
   SERVICIO_CLIENTES,
   SERVICIO_COTIZACIONES,
+  SERVICIO_EMISIONES,
   SERVICIO_REVISIONES,
 } from "./tokens.js";
 
@@ -77,13 +88,16 @@ const VENTANA_LIMITADOR_MS = 60_000;
  * - `relojSesiones`: instante de la política de sesiones (expiración absoluta e inactividad);
  * - `sinComprobacionInicialDeRol`: permite arrancar con PostgreSQL inaccesible para comprobar las
  *   respuestas 503 (la guardia sigue exigiendo sesión y consultándola en la base);
- * - `medirTiempos`: observa la duración de las fases de «guardar versión» (medición del ADR-0008).
+ * - `medirTiempos`: observa la duración de las fases de «guardar versión» (medición del ADR-0008);
+ * - `documentos`: almacén, generador del PDF o ganchos de la emisión, para provocar fallos de
+ *   generación, escritura, movimiento o registro (ADR-0010). Nunca cambian permisos ni reglas.
  */
 export interface OpcionesAplicacion {
   reloj?: Reloj;
   relojSesiones?: RelojSesiones;
   sinComprobacionInicialDeRol?: true;
   medirTiempos?: MedidorTiempos;
+  documentos?: { almacen?: AlmacenDocumentos; generador?: GeneradorPdf; ganchos?: GanchosEmision };
 }
 
 function moduloRaiz(config: ConfiguracionApi, opciones: OpcionesAplicacion): DynamicModule {
@@ -121,6 +135,9 @@ function moduloRaiz(config: ConfiguracionApi, opciones: OpcionesAplicacion): Dyn
       CotizacionesController,
       EnvioRevisionController,
       RevisionesController,
+      EmisionVersionController,
+      EmisionesController,
+      EmisorController,
       OpenApiController,
     ],
     providers: [
@@ -171,6 +188,31 @@ function moduloRaiz(config: ConfiguracionApi, opciones: OpcionesAplicacion): Dyn
         provide: SERVICIO_REVISIONES,
         useFactory: (bd: ServicioBaseDeDatos, reloj: Reloj, instante: RelojSesiones) => new ServicioRevisiones(bd.cliente, reloj, instante),
         inject: [BASE_DE_DATOS, RELOJ, RELOJ_SESIONES],
+      },
+      {
+        provide: SERVICIO_EMISIONES,
+        useFactory: async (bd: ServicioBaseDeDatos, reloj: Reloj, instante: RelojSesiones, revisiones: ServicioRevisiones) => {
+          let almacen = opciones.documentos?.almacen;
+          if (!almacen) {
+            if (config.dirDocumentos) {
+              const archivos = new AlmacenArchivos(config.dirDocumentos);
+              await archivos.preparar(); // carpeta escribible y fuera del repositorio, o no arranca
+              almacen = archivos;
+            } else {
+              almacen = new AlmacenNoConfigurado();
+            }
+          }
+          return new ServicioEmisiones(
+            bd.cliente,
+            reloj,
+            instante,
+            revisiones,
+            almacen,
+            opciones.documentos?.generador ?? generarPdf,
+            opciones.documentos?.ganchos,
+          );
+        },
+        inject: [BASE_DE_DATOS, RELOJ, RELOJ_SESIONES, SERVICIO_REVISIONES],
       },
       { provide: APP_GUARD, useClass: ThrottlerGuard },
       {

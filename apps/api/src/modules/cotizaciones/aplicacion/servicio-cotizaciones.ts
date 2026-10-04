@@ -20,6 +20,7 @@ import {
   LIMITES_COTIZACIONES,
   type CapturaBorrador,
   type ConsultaCotizaciones,
+  type DescarteCotizacion,
   type ReferenciasBorrador,
   type DetalleCotizacion,
   type RespuestaBorradorGuardado,
@@ -41,6 +42,8 @@ import { aSolicitudCalculo, evaluarCompletitud, type ConceptoParaCaptura } from 
 import { huellaReferencia, sha256 } from "../dominio/huella.js";
 import { codigosReferenciados, evaluarReferencias, referenciasNuevasInvalidas } from "../dominio/referencias.js";
 import { resumirCambios } from "../dominio/resumen-cambios.js";
+import { conTextosIniciales, textosPredeterminados } from "../dominio/textos.js";
+import { RepositorioEmisiones } from "../infraestructura/repositorio-emisiones.js";
 import { RepositorioRevisiones } from "../infraestructura/repositorio-revisiones.js";
 import {
   RepositorioCotizaciones,
@@ -93,6 +96,7 @@ export class ServicioCotizaciones {
   private readonly repo: RepositorioCotizaciones;
   private readonly catalogos: RepositorioCatalogos;
   private readonly revisiones: RepositorioRevisiones;
+  private readonly emisiones: RepositorioEmisiones;
 
   constructor(
     private readonly prisma: PrismaClient,
@@ -103,6 +107,7 @@ export class ServicioCotizaciones {
     this.repo = new RepositorioCotizaciones(prisma);
     this.catalogos = new RepositorioCatalogos(prisma);
     this.revisiones = new RepositorioRevisiones(prisma);
+    this.emisiones = new RepositorioEmisiones(prisma);
   }
 
   async listar(ctx: ContextoOrganizacion, c: ConsultaCotizaciones): Promise<RespuestaCotizaciones> {
@@ -122,13 +127,62 @@ export class ServicioCotizaciones {
     const conceptos = await conceptosParaCaptura(this.catalogos, ctx, d.borrador.captura);
     return {
       ...d,
+      descartar: descartePermitido(d),
       revisiones: await this.revisiones.historialDeCotizacion(ctx, id),
       borrador: {
         ...d.borrador,
+        textosPredeterminados: textosPredeterminados(await this.emisiones.ambiente(ctx)),
         completitud: evaluarCompletitud(d.borrador.captura, conceptos),
         referencias: await this.referencias(ctx, d.borrador.captura),
       },
     };
+  }
+
+  /**
+   * Descartar la cotización (B-37, adaptado al folio; ADR-0010): con motivo, solo un Preparador y
+   * solo si no hay emisiones, revisión pendiente ni aprobación vigente. El folio, las versiones y
+   * los eventos se conservan; el folio no se reutiliza.
+   */
+  async descartar(
+    ctx: ContextoOrganizacion,
+    autor: Autor,
+    id: string,
+    s: DescarteCotizacion,
+    clave: string,
+  ): Promise<{ detalle: DetalleCotizacion; reproducida: boolean }> {
+    const ahora = this.relojInstante.ahora();
+    const idem = prepararIdempotencia(clave, "descartar_cotizacion", { cotizacionId: id }, s, ahora);
+    const previo = await this.repo.buscarIdempotencia(ctx, autor, idem.clave);
+    if (previo) return { detalle: await this.detalle(ctx, reproducible(previo, idem, ahora)), reproducida: true };
+
+    const d = await this.repo.obtenerCotizacion(ctx, id, 0);
+    if (!d) throw NO_ENCONTRADO();
+    const permiso = descartePermitido(d);
+    if (!permiso.permitido) {
+      throw new ErrorNegocio("DESCARTE_BLOQUEADO", permiso.motivoNoPermitido ?? "El estado no permite descartar la cotización.");
+    }
+    try {
+      await this.emisiones.descartar(ctx, autor, id, s.motivo, idem);
+    } catch (e) {
+      const r = reconocerErrorBase(e);
+      if (r?.tipo === "idempotencia_repetida") {
+        const otro = await this.repo.buscarIdempotencia(ctx, autor, idem.clave);
+        if (otro) return { detalle: await this.detalle(ctx, reproducible(otro, idem, ahora)), reproducida: true };
+      }
+      if (r?.tipo === "negocio") {
+        const motivos: Record<string, string> = {
+          DESCARTE_EMITIDA: "Tiene una versión emitida: no se descarta (el documento emitido se conserva).",
+          DESCARTE_APROBADA: "Tiene una aprobación vigente: un Revisor debe anularla antes de descartar.",
+          REVISION_PENDIENTE: "Hay una versión en revisión: retírela antes de descartar.",
+          FOLIO_NO_ACTIVO: "La cotización ya está descartada.",
+          MOTIVO_REQUERIDO: "Indique el motivo del descarte.",
+        };
+        if (motivos[r.codigo]) throw new ErrorNegocio("DESCARTE_BLOQUEADO", motivos[r.codigo]!);
+        if (r.codigo === "SIN_PERMISO") throw new ErrorNegocio("SIN_PERMISO", "Su pertenencia ya no tiene la función necesaria para descartar.");
+      }
+      throw traducirErrorBase(e);
+    }
+    return { detalle: await this.detalle(ctx, id), reproducida: false };
   }
 
   /** Disponibilidad hoy de las referencias de una captura (solo lectura; la captura no cambia). */
@@ -165,7 +219,10 @@ export class ServicioCotizaciones {
           );
         }
       }
-      return this.repo.crearCotizacion(ctx, autor, s.proyectoId, anio, s.captura ?? CAPTURA_BORRADOR_VACIA, idem);
+      // Textos de la versión (BL-20): se COPIAN los predeterminados del ambiente si la captura no
+      // trae los suyos; después son del borrador y el Preparador los edita.
+      const inicial = conTextosIniciales(s.captura ?? CAPTURA_BORRADOR_VACIA, textosPredeterminados(await this.emisiones.ambiente(ctx)));
+      return this.repo.crearCotizacion(ctx, autor, s.proyectoId, anio, inicial, idem);
     });
     return { detalle: await this.detalle(ctx, r.id), reproducida: r.reproducida };
   }
@@ -406,6 +463,20 @@ export class ServicioCotizaciones {
     }
     return r;
   }
+}
+
+type CotizacionLeida = NonNullable<Awaited<ReturnType<RepositorioCotizaciones["obtenerCotizacion"]>>>;
+
+/** ¿El estado permite descartar? (no se eluden revisiones pendientes ni aprobaciones vigentes). */
+function descartePermitido(d: CotizacionLeida): { permitido: boolean; motivoNoPermitido: string | null } {
+  const no = (motivo: string) => ({ permitido: false, motivoNoPermitido: motivo });
+  if (d.cotizacion.estadoFolio !== "ACTIVO") return no("La cotización ya está descartada.");
+  if (d.versiones.some((v) => v.emision)) return no("Tiene una versión emitida: no se descarta (el documento emitido se conserva).");
+  const pendiente = d.versiones.find((v) => v.revisionVigente?.estado === "PENDIENTE");
+  if (pendiente) return no(`La versión v${pendiente.numero} está en revisión: retírela antes de descartar.`);
+  const aprobada = d.versiones.find((v) => v.revisionVigente?.estado === "APROBADA" && !v.revisionVigente.anulacion);
+  if (aprobada) return no(`La versión v${aprobada.numero} está aprobada: un Revisor debe anular la aprobación antes de descartar.`);
+  return { permitido: true, motivoNoPermitido: null };
 }
 
 function problemaInactivo(codigo: "BL-01" | "BL-02", d: DatosVersion) {

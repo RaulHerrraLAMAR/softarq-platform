@@ -7,6 +7,10 @@
  * 3. Crea las cuentas DEMO (Preparador y Revisor) con el rol migrador y contraseñas nuevas en cada
  *    corrida, que guarda en D:\Proyecto_SoftArq\_work\secrets\accesos-e2e.json (fuera del repositorio)
  *    para que las lean las pruebas. No hay ningún atajo de autenticación: la web inicia sesión.
+ * 3b. Carga el emisor DEMO y usa una carpeta de documentos EXCLUSIVA de estas pruebas
+ *    (_work\pruebas\documentos-e2e), que vacía al empezar; nunca la de desarrollo. Si existe el
+ *    archivo `fallar-proxima-generacion` en esa carpeta, la siguiente generación del PDF falla una
+ *    vez (prueba de «fallo de generación con el contexto conservado»; solo en dist-e2e).
  * 4. Arranca la API con una fecha de cálculo fija (`RelojFijo`), el mismo mecanismo que las pruebas
  *    HTTP, en 127.0.0.1:3101 y con CORS solo para la web de pruebas (http://localhost:4173). El
  *    navegador usa http://localhost:3101 (mismo site que la web, para la cookie de sesión).
@@ -14,7 +18,7 @@
  * Nunca toca softarq_dev. Compilado con tsconfig.e2e.json en dist-e2e/ (no forma parte de dist/).
  */
 import "reflect-metadata";
-import { mkdirSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { leerConfiguracion } from "../config/entorno.js";
 import { CUENTAS_DEMO, cargarUsuariosDemo } from "../modules/autenticacion/demo/cargar-usuarios-demo.js";
@@ -23,7 +27,9 @@ import { prismaMigrador } from "../pruebas-integracion/sesiones.js";
 import { crearAplicacion } from "../http/crear-aplicacion.js";
 import { RelojFijo } from "../modules/calculo/aplicacion/reloj.js";
 import { cargarDemo } from "../modules/catalogos/demo/cargar-demo.js";
-import { confirmarBase, prismaApp } from "../pruebas-integracion/entorno.js";
+import { cargarEmisorDemo } from "../modules/cotizaciones/demo/cargar-emisor-demo.js";
+import { generarPdf } from "../modules/cotizaciones/dominio/pdf/generador-pdf.js";
+import { confirmarBase, directorioDocumentosPrueba, prismaApp, vaciarDocumentosPrueba } from "../pruebas-integracion/entorno.js";
 import prepararBase from "../pruebas-integracion/preparar-base.js";
 
 const FECHA_E2E = "2026-09-25";
@@ -37,7 +43,8 @@ async function principal(): Promise<void> {
   const prisma = prismaApp();
   try {
     await confirmarBase(prisma);
-    await cargarDemo(prisma);
+    const demo = await cargarDemo(prisma);
+    await cargarEmisorDemo(prisma, demo.organizacionId);
   } finally {
     await prisma.$disconnect();
   }
@@ -63,6 +70,7 @@ async function principal(): Promise<void> {
           preparador: cuenta(CUENTAS_DEMO[0]!.correo),
           revisor: cuenta(CUENTAS_DEMO[1]!.correo),
           ambas: cuenta("ambas.e2e@softarq.test"),
+          administrador: cuenta(CUENTAS_DEMO[2]!.correo),
         },
         null,
         2,
@@ -74,8 +82,12 @@ async function principal(): Promise<void> {
     await migrador.$disconnect();
   }
 
+  const dirDocumentos = directorioDocumentosPrueba("e2e");
+  vaciarDocumentosPrueba(dirDocumentos);
+  const marcaFallo = join(dirDocumentos, "fallar-proxima-generacion");
   const config = leerConfiguracion({
     ...process.env,
+    SOFTARQ_DIR_DOCUMENTOS: dirDocumentos,
     API_HOST: "127.0.0.1",
     API_PORT: String(PUERTO_E2E),
     API_CORS_ORIGINS: ORIGEN_WEB_E2E,
@@ -86,7 +98,18 @@ async function principal(): Promise<void> {
     API_ACCESO_INTENTOS_IP: "1000",
     API_REGISTRO: "errores",
   });
-  const app = await crearAplicacion(config, { reloj: new RelojFijo(FECHA_E2E) });
+  const app = await crearAplicacion(config, {
+    reloj: new RelojFijo(FECHA_E2E),
+    documentos: {
+      generador: async (d) => {
+        if (existsSync(marcaFallo)) {
+          rmSync(marcaFallo, { force: true });
+          throw new Error("Fallo de generación provocado por la prueba E2E.");
+        }
+        return generarPdf(d);
+      },
+    },
+  });
   await app.listen(config.puerto, config.host);
   console.log(`[e2e] API de pruebas en http://${config.host}:${config.puerto} (softarq_test, fecha ${FECHA_E2E}).`);
 }

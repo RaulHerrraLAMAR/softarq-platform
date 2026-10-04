@@ -3,7 +3,7 @@
   "info": {
     "title": "SoftArq API (DEMO local)",
     "version": "1.0.0",
-    "description": "API local de SoftArq: catálogos DEMO y cálculo de cotizaciones con datos de PostgreSQL. Solo escucha en 127.0.0.1. Autenticación con sesión opaca en una cookie HttpOnly (`softarq_sesion`); la organización, la identidad y las funciones salen de la sesión (ADR-0007). Las solicitudes POST, PUT, PATCH y DELETE exigen la cabecera X-CSRF-Token de la sesión y un Origin permitido. Clientes, proyectos y cotizaciones con folio WEB DEMO, borrador con revisión y versiones inmutables calculadas en el servidor (ADR-0008); las altas exigen Idempotency-Key. Los importes y cantidades viajan como texto decimal. Todos los datos son DEMO y no tienen validez comercial."
+    "description": "API local de SoftArq: catálogos DEMO y cálculo de cotizaciones con datos de PostgreSQL. Solo escucha en 127.0.0.1. Autenticación con sesión opaca en una cookie HttpOnly (`softarq_sesion`); la organización, la identidad y las funciones salen de la sesión (ADR-0007). Las solicitudes POST, PUT, PATCH y DELETE exigen la cabecera X-CSRF-Token de la sesión y un Origin permitido. Clientes, proyectos y cotizaciones con folio WEB DEMO, borrador con revisión y versiones inmutables calculadas en el servidor (ADR-0008); las altas exigen Idempotency-Key. Revisión y aprobación por otra persona (ADR-0009); emisión de versiones aprobadas con PDF DEMO, anulación de aprobaciones y descarte de cotizaciones (ADR-0010). Los importes y cantidades viajan como texto decimal. Todos los datos son DEMO y no tienen validez comercial."
   },
   "servers": [
     {
@@ -81,7 +81,7 @@
             }
           },
           "500": {
-            "description": "ERROR_INTERNO.",
+            "description": "ERROR_INTERNO, DOCUMENTO_NO_GENERADO (no se generó o guardó el PDF; no hay emisión y se puede reintentar) o DOCUMENTO_NO_DISPONIBLE (el archivo emitido falta o no coincide con su registro; nunca se regenera).",
             "content": {
               "application/json": {
                 "schema": {
@@ -194,7 +194,7 @@
             }
           },
           "500": {
-            "description": "ERROR_INTERNO.",
+            "description": "ERROR_INTERNO, DOCUMENTO_NO_GENERADO (no se generó o guardó el PDF; no hay emisión y se puede reintentar) o DOCUMENTO_NO_DISPONIBLE (el archivo emitido falta o no coincide con su registro; nunca se regenera).",
             "content": {
               "application/json": {
                 "schema": {
@@ -249,7 +249,7 @@
             }
           },
           "500": {
-            "description": "ERROR_INTERNO.",
+            "description": "ERROR_INTERNO, DOCUMENTO_NO_GENERADO (no se generó o guardó el PDF; no hay emisión y se puede reintentar) o DOCUMENTO_NO_DISPONIBLE (el archivo emitido falta o no coincide con su registro; nunca se regenera).",
             "content": {
               "application/json": {
                 "schema": {
@@ -313,7 +313,7 @@
             }
           },
           "500": {
-            "description": "ERROR_INTERNO.",
+            "description": "ERROR_INTERNO, DOCUMENTO_NO_GENERADO (no se generó o guardó el PDF; no hay emisión y se puede reintentar) o DOCUMENTO_NO_DISPONIBLE (el archivo emitido falta o no coincide con su registro; nunca se regenera).",
             "content": {
               "application/json": {
                 "schema": {
@@ -411,7 +411,7 @@
             }
           },
           "500": {
-            "description": "ERROR_INTERNO.",
+            "description": "ERROR_INTERNO, DOCUMENTO_NO_GENERADO (no se generó o guardó el PDF; no hay emisión y se puede reintentar) o DOCUMENTO_NO_DISPONIBLE (el archivo emitido falta o no coincide con su registro; nunca se regenera).",
             "content": {
               "application/json": {
                 "schema": {
@@ -508,7 +508,7 @@
             }
           },
           "500": {
-            "description": "ERROR_INTERNO.",
+            "description": "ERROR_INTERNO, DOCUMENTO_NO_GENERADO (no se generó o guardó el PDF; no hay emisión y se puede reintentar) o DOCUMENTO_NO_DISPONIBLE (el archivo emitido falta o no coincide con su registro; nunca se regenera).",
             "content": {
               "application/json": {
                 "schema": {
@@ -596,7 +596,7 @@
             }
           },
           "500": {
-            "description": "ERROR_INTERNO.",
+            "description": "ERROR_INTERNO, DOCUMENTO_NO_GENERADO (no se generó o guardó el PDF; no hay emisión y se puede reintentar) o DOCUMENTO_NO_DISPONIBLE (el archivo emitido falta o no coincide con su registro; nunca se regenera).",
             "content": {
               "application/json": {
                 "schema": {
@@ -709,7 +709,7 @@
             }
           },
           "422": {
-            "description": "CALCULO_BLOQUEADO (códigos BL, sin importes), CAPTURA_INCOMPLETA (campos pendientes), REGISTRO_INACTIVO, REFERENCIA_NO_DISPONIBLE, ENVIO_BLOQUEADO / APROBACION_BLOQUEADA (bloqueos vigentes; el estado no cambió), DECISION_BLOQUEADA (BL-17: quien aprueba no puede ser el autor), IDEMPOTENCIA_CONFLICTO o IDEMPOTENCIA_CADUCADA.",
+            "description": "CALCULO_BLOQUEADO (códigos BL, sin importes), CAPTURA_INCOMPLETA (campos pendientes), REGISTRO_INACTIVO, REFERENCIA_NO_DISPONIBLE, ENVIO_BLOQUEADO / APROBACION_BLOQUEADA (bloqueos vigentes; el estado no cambió), DECISION_BLOQUEADA (BL-17: quien aprueba no puede ser el autor), EMISION_BLOQUEADA (BL-01 a BL-20 a la fecha de emisión; nada cambió), DESCARTE_BLOQUEADO (estado que no permite descartar), IDEMPOTENCIA_CONFLICTO o IDEMPOTENCIA_CADUCADA.",
             "content": {
               "application/json": {
                 "schema": {
@@ -729,7 +729,7 @@
             }
           },
           "500": {
-            "description": "ERROR_INTERNO.",
+            "description": "ERROR_INTERNO, DOCUMENTO_NO_GENERADO (no se generó o guardó el PDF; no hay emisión y se puede reintentar) o DOCUMENTO_NO_DISPONIBLE (el archivo emitido falta o no coincide con su registro; nunca se regenera).",
             "content": {
               "application/json": {
                 "schema": {
@@ -839,7 +839,7 @@
             }
           },
           "500": {
-            "description": "ERROR_INTERNO.",
+            "description": "ERROR_INTERNO, DOCUMENTO_NO_GENERADO (no se generó o guardó el PDF; no hay emisión y se puede reintentar) o DOCUMENTO_NO_DISPONIBLE (el archivo emitido falta o no coincide con su registro; nunca se regenera).",
             "content": {
               "application/json": {
                 "schema": {
@@ -952,7 +952,7 @@
             }
           },
           "422": {
-            "description": "CALCULO_BLOQUEADO (códigos BL, sin importes), CAPTURA_INCOMPLETA (campos pendientes), REGISTRO_INACTIVO, REFERENCIA_NO_DISPONIBLE, ENVIO_BLOQUEADO / APROBACION_BLOQUEADA (bloqueos vigentes; el estado no cambió), DECISION_BLOQUEADA (BL-17: quien aprueba no puede ser el autor), IDEMPOTENCIA_CONFLICTO o IDEMPOTENCIA_CADUCADA.",
+            "description": "CALCULO_BLOQUEADO (códigos BL, sin importes), CAPTURA_INCOMPLETA (campos pendientes), REGISTRO_INACTIVO, REFERENCIA_NO_DISPONIBLE, ENVIO_BLOQUEADO / APROBACION_BLOQUEADA (bloqueos vigentes; el estado no cambió), DECISION_BLOQUEADA (BL-17: quien aprueba no puede ser el autor), EMISION_BLOQUEADA (BL-01 a BL-20 a la fecha de emisión; nada cambió), DESCARTE_BLOQUEADO (estado que no permite descartar), IDEMPOTENCIA_CONFLICTO o IDEMPOTENCIA_CADUCADA.",
             "content": {
               "application/json": {
                 "schema": {
@@ -972,7 +972,7 @@
             }
           },
           "500": {
-            "description": "ERROR_INTERNO.",
+            "description": "ERROR_INTERNO, DOCUMENTO_NO_GENERADO (no se generó o guardó el PDF; no hay emisión y se puede reintentar) o DOCUMENTO_NO_DISPONIBLE (el archivo emitido falta o no coincide con su registro; nunca se regenera).",
             "content": {
               "application/json": {
                 "schema": {
@@ -1060,7 +1060,7 @@
             }
           },
           "500": {
-            "description": "ERROR_INTERNO.",
+            "description": "ERROR_INTERNO, DOCUMENTO_NO_GENERADO (no se generó o guardó el PDF; no hay emisión y se puede reintentar) o DOCUMENTO_NO_DISPONIBLE (el archivo emitido falta o no coincide con su registro; nunca se regenera).",
             "content": {
               "application/json": {
                 "schema": {
@@ -1162,7 +1162,7 @@
             }
           },
           "409": {
-            "description": "CONFLICTO_EDICION (revisión obsoleta; `actual` trae el estado vigente), BORRADOR_DESACTUALIZADO (el borrador cambió; no se guardó ni se envió nada), REVISION_PENDIENTE (hay una versión en revisión: no se edita ni se calcula), VERSION_NO_VIGENTE (solo se envía la última versión) o CONFLICTO_REVISION (la revisión cambió o ya se decidió; `revisionVigente` trae su estado).",
+            "description": "CONFLICTO_EDICION (revisión obsoleta; `actual` trae el estado vigente), BORRADOR_DESACTUALIZADO (el borrador cambió; no se guardó ni se envió nada), REVISION_PENDIENTE (hay una versión en revisión: no se edita ni se calcula), VERSION_NO_VIGENTE (solo se envía la última versión) CONFLICTO_REVISION (la revisión cambió o ya se decidió; `revisionVigente` trae su estado), VERSION_EMITIDA (la versión ya se emitió), APROBACION_NO_VIGENTE (la aprobación se anuló o cambió), CONFLICTO_EMISION (la versión o la aprobación vistas ya no son las vigentes) o FOLIO_NO_ACTIVO (cotización descartada).",
             "content": {
               "application/json": {
                 "schema": {
@@ -1202,7 +1202,7 @@
             }
           },
           "500": {
-            "description": "ERROR_INTERNO.",
+            "description": "ERROR_INTERNO, DOCUMENTO_NO_GENERADO (no se generó o guardó el PDF; no hay emisión y se puede reintentar) o DOCUMENTO_NO_DISPONIBLE (el archivo emitido falta o no coincide con su registro; nunca se regenera).",
             "content": {
               "application/json": {
                 "schema": {
@@ -1322,7 +1322,7 @@
             }
           },
           "500": {
-            "description": "ERROR_INTERNO.",
+            "description": "ERROR_INTERNO, DOCUMENTO_NO_GENERADO (no se generó o guardó el PDF; no hay emisión y se puede reintentar) o DOCUMENTO_NO_DISPONIBLE (el archivo emitido falta o no coincide con su registro; nunca se regenera).",
             "content": {
               "application/json": {
                 "schema": {
@@ -1445,7 +1445,7 @@
             }
           },
           "422": {
-            "description": "CALCULO_BLOQUEADO (códigos BL, sin importes), CAPTURA_INCOMPLETA (campos pendientes), REGISTRO_INACTIVO, REFERENCIA_NO_DISPONIBLE, ENVIO_BLOQUEADO / APROBACION_BLOQUEADA (bloqueos vigentes; el estado no cambió), DECISION_BLOQUEADA (BL-17: quien aprueba no puede ser el autor), IDEMPOTENCIA_CONFLICTO o IDEMPOTENCIA_CADUCADA.",
+            "description": "CALCULO_BLOQUEADO (códigos BL, sin importes), CAPTURA_INCOMPLETA (campos pendientes), REGISTRO_INACTIVO, REFERENCIA_NO_DISPONIBLE, ENVIO_BLOQUEADO / APROBACION_BLOQUEADA (bloqueos vigentes; el estado no cambió), DECISION_BLOQUEADA (BL-17: quien aprueba no puede ser el autor), EMISION_BLOQUEADA (BL-01 a BL-20 a la fecha de emisión; nada cambió), DESCARTE_BLOQUEADO (estado que no permite descartar), IDEMPOTENCIA_CONFLICTO o IDEMPOTENCIA_CADUCADA.",
             "content": {
               "application/json": {
                 "schema": {
@@ -1465,7 +1465,7 @@
             }
           },
           "500": {
-            "description": "ERROR_INTERNO.",
+            "description": "ERROR_INTERNO, DOCUMENTO_NO_GENERADO (no se generó o guardó el PDF; no hay emisión y se puede reintentar) o DOCUMENTO_NO_DISPONIBLE (el archivo emitido falta o no coincide con su registro; nunca se regenera).",
             "content": {
               "application/json": {
                 "schema": {
@@ -1553,7 +1553,7 @@
             }
           },
           "500": {
-            "description": "ERROR_INTERNO.",
+            "description": "ERROR_INTERNO, DOCUMENTO_NO_GENERADO (no se generó o guardó el PDF; no hay emisión y se puede reintentar) o DOCUMENTO_NO_DISPONIBLE (el archivo emitido falta o no coincide con su registro; nunca se regenera).",
             "content": {
               "application/json": {
                 "schema": {
@@ -1655,7 +1655,7 @@
             }
           },
           "409": {
-            "description": "CONFLICTO_EDICION (revisión obsoleta; `actual` trae el estado vigente), BORRADOR_DESACTUALIZADO (el borrador cambió; no se guardó ni se envió nada), REVISION_PENDIENTE (hay una versión en revisión: no se edita ni se calcula), VERSION_NO_VIGENTE (solo se envía la última versión) o CONFLICTO_REVISION (la revisión cambió o ya se decidió; `revisionVigente` trae su estado).",
+            "description": "CONFLICTO_EDICION (revisión obsoleta; `actual` trae el estado vigente), BORRADOR_DESACTUALIZADO (el borrador cambió; no se guardó ni se envió nada), REVISION_PENDIENTE (hay una versión en revisión: no se edita ni se calcula), VERSION_NO_VIGENTE (solo se envía la última versión) CONFLICTO_REVISION (la revisión cambió o ya se decidió; `revisionVigente` trae su estado), VERSION_EMITIDA (la versión ya se emitió), APROBACION_NO_VIGENTE (la aprobación se anuló o cambió), CONFLICTO_EMISION (la versión o la aprobación vistas ya no son las vigentes) o FOLIO_NO_ACTIVO (cotización descartada).",
             "content": {
               "application/json": {
                 "schema": {
@@ -1695,7 +1695,7 @@
             }
           },
           "500": {
-            "description": "ERROR_INTERNO.",
+            "description": "ERROR_INTERNO, DOCUMENTO_NO_GENERADO (no se generó o guardó el PDF; no hay emisión y se puede reintentar) o DOCUMENTO_NO_DISPONIBLE (el archivo emitido falta o no coincide con su registro; nunca se regenera).",
             "content": {
               "application/json": {
                 "schema": {
@@ -1813,7 +1813,7 @@
             }
           },
           "500": {
-            "description": "ERROR_INTERNO.",
+            "description": "ERROR_INTERNO, DOCUMENTO_NO_GENERADO (no se generó o guardó el PDF; no hay emisión y se puede reintentar) o DOCUMENTO_NO_DISPONIBLE (el archivo emitido falta o no coincide con su registro; nunca se regenera).",
             "content": {
               "application/json": {
                 "schema": {
@@ -1936,7 +1936,7 @@
             }
           },
           "422": {
-            "description": "CALCULO_BLOQUEADO (códigos BL, sin importes), CAPTURA_INCOMPLETA (campos pendientes), REGISTRO_INACTIVO, REFERENCIA_NO_DISPONIBLE, ENVIO_BLOQUEADO / APROBACION_BLOQUEADA (bloqueos vigentes; el estado no cambió), DECISION_BLOQUEADA (BL-17: quien aprueba no puede ser el autor), IDEMPOTENCIA_CONFLICTO o IDEMPOTENCIA_CADUCADA.",
+            "description": "CALCULO_BLOQUEADO (códigos BL, sin importes), CAPTURA_INCOMPLETA (campos pendientes), REGISTRO_INACTIVO, REFERENCIA_NO_DISPONIBLE, ENVIO_BLOQUEADO / APROBACION_BLOQUEADA (bloqueos vigentes; el estado no cambió), DECISION_BLOQUEADA (BL-17: quien aprueba no puede ser el autor), EMISION_BLOQUEADA (BL-01 a BL-20 a la fecha de emisión; nada cambió), DESCARTE_BLOQUEADO (estado que no permite descartar), IDEMPOTENCIA_CONFLICTO o IDEMPOTENCIA_CADUCADA.",
             "content": {
               "application/json": {
                 "schema": {
@@ -1956,7 +1956,7 @@
             }
           },
           "500": {
-            "description": "ERROR_INTERNO.",
+            "description": "ERROR_INTERNO, DOCUMENTO_NO_GENERADO (no se generó o guardó el PDF; no hay emisión y se puede reintentar) o DOCUMENTO_NO_DISPONIBLE (el archivo emitido falta o no coincide con su registro; nunca se regenera).",
             "content": {
               "application/json": {
                 "schema": {
@@ -2044,7 +2044,7 @@
             }
           },
           "500": {
-            "description": "ERROR_INTERNO.",
+            "description": "ERROR_INTERNO, DOCUMENTO_NO_GENERADO (no se generó o guardó el PDF; no hay emisión y se puede reintentar) o DOCUMENTO_NO_DISPONIBLE (el archivo emitido falta o no coincide con su registro; nunca se regenera).",
             "content": {
               "application/json": {
                 "schema": {
@@ -2148,7 +2148,7 @@
             }
           },
           "409": {
-            "description": "CONFLICTO_EDICION (revisión obsoleta; `actual` trae el estado vigente), BORRADOR_DESACTUALIZADO (el borrador cambió; no se guardó ni se envió nada), REVISION_PENDIENTE (hay una versión en revisión: no se edita ni se calcula), VERSION_NO_VIGENTE (solo se envía la última versión) o CONFLICTO_REVISION (la revisión cambió o ya se decidió; `revisionVigente` trae su estado).",
+            "description": "CONFLICTO_EDICION (revisión obsoleta; `actual` trae el estado vigente), BORRADOR_DESACTUALIZADO (el borrador cambió; no se guardó ni se envió nada), REVISION_PENDIENTE (hay una versión en revisión: no se edita ni se calcula), VERSION_NO_VIGENTE (solo se envía la última versión) CONFLICTO_REVISION (la revisión cambió o ya se decidió; `revisionVigente` trae su estado), VERSION_EMITIDA (la versión ya se emitió), APROBACION_NO_VIGENTE (la aprobación se anuló o cambió), CONFLICTO_EMISION (la versión o la aprobación vistas ya no son las vigentes) o FOLIO_NO_ACTIVO (cotización descartada).",
             "content": {
               "application/json": {
                 "schema": {
@@ -2188,7 +2188,7 @@
             }
           },
           "500": {
-            "description": "ERROR_INTERNO.",
+            "description": "ERROR_INTERNO, DOCUMENTO_NO_GENERADO (no se generó o guardó el PDF; no hay emisión y se puede reintentar) o DOCUMENTO_NO_DISPONIBLE (el archivo emitido falta o no coincide con su registro; nunca se regenera).",
             "content": {
               "application/json": {
                 "schema": {
@@ -2302,7 +2302,7 @@
             }
           },
           "409": {
-            "description": "CONFLICTO_EDICION (revisión obsoleta; `actual` trae el estado vigente), BORRADOR_DESACTUALIZADO (el borrador cambió; no se guardó ni se envió nada), REVISION_PENDIENTE (hay una versión en revisión: no se edita ni se calcula), VERSION_NO_VIGENTE (solo se envía la última versión) o CONFLICTO_REVISION (la revisión cambió o ya se decidió; `revisionVigente` trae su estado).",
+            "description": "CONFLICTO_EDICION (revisión obsoleta; `actual` trae el estado vigente), BORRADOR_DESACTUALIZADO (el borrador cambió; no se guardó ni se envió nada), REVISION_PENDIENTE (hay una versión en revisión: no se edita ni se calcula), VERSION_NO_VIGENTE (solo se envía la última versión) CONFLICTO_REVISION (la revisión cambió o ya se decidió; `revisionVigente` trae su estado), VERSION_EMITIDA (la versión ya se emitió), APROBACION_NO_VIGENTE (la aprobación se anuló o cambió), CONFLICTO_EMISION (la versión o la aprobación vistas ya no son las vigentes) o FOLIO_NO_ACTIVO (cotización descartada).",
             "content": {
               "application/json": {
                 "schema": {
@@ -2332,7 +2332,7 @@
             }
           },
           "422": {
-            "description": "CALCULO_BLOQUEADO (códigos BL, sin importes), CAPTURA_INCOMPLETA (campos pendientes), REGISTRO_INACTIVO, REFERENCIA_NO_DISPONIBLE, ENVIO_BLOQUEADO / APROBACION_BLOQUEADA (bloqueos vigentes; el estado no cambió), DECISION_BLOQUEADA (BL-17: quien aprueba no puede ser el autor), IDEMPOTENCIA_CONFLICTO o IDEMPOTENCIA_CADUCADA.",
+            "description": "CALCULO_BLOQUEADO (códigos BL, sin importes), CAPTURA_INCOMPLETA (campos pendientes), REGISTRO_INACTIVO, REFERENCIA_NO_DISPONIBLE, ENVIO_BLOQUEADO / APROBACION_BLOQUEADA (bloqueos vigentes; el estado no cambió), DECISION_BLOQUEADA (BL-17: quien aprueba no puede ser el autor), EMISION_BLOQUEADA (BL-01 a BL-20 a la fecha de emisión; nada cambió), DESCARTE_BLOQUEADO (estado que no permite descartar), IDEMPOTENCIA_CONFLICTO o IDEMPOTENCIA_CADUCADA.",
             "content": {
               "application/json": {
                 "schema": {
@@ -2352,7 +2352,7 @@
             }
           },
           "500": {
-            "description": "ERROR_INTERNO.",
+            "description": "ERROR_INTERNO, DOCUMENTO_NO_GENERADO (no se generó o guardó el PDF; no hay emisión y se puede reintentar) o DOCUMENTO_NO_DISPONIBLE (el archivo emitido falta o no coincide con su registro; nunca se regenera).",
             "content": {
               "application/json": {
                 "schema": {
@@ -2449,7 +2449,7 @@
             }
           },
           "500": {
-            "description": "ERROR_INTERNO.",
+            "description": "ERROR_INTERNO, DOCUMENTO_NO_GENERADO (no se generó o guardó el PDF; no hay emisión y se puede reintentar) o DOCUMENTO_NO_DISPONIBLE (el archivo emitido falta o no coincide con su registro; nunca se regenera).",
             "content": {
               "application/json": {
                 "schema": {
@@ -2572,7 +2572,7 @@
             }
           },
           "409": {
-            "description": "CONFLICTO_EDICION (revisión obsoleta; `actual` trae el estado vigente), BORRADOR_DESACTUALIZADO (el borrador cambió; no se guardó ni se envió nada), REVISION_PENDIENTE (hay una versión en revisión: no se edita ni se calcula), VERSION_NO_VIGENTE (solo se envía la última versión) o CONFLICTO_REVISION (la revisión cambió o ya se decidió; `revisionVigente` trae su estado).",
+            "description": "CONFLICTO_EDICION (revisión obsoleta; `actual` trae el estado vigente), BORRADOR_DESACTUALIZADO (el borrador cambió; no se guardó ni se envió nada), REVISION_PENDIENTE (hay una versión en revisión: no se edita ni se calcula), VERSION_NO_VIGENTE (solo se envía la última versión) CONFLICTO_REVISION (la revisión cambió o ya se decidió; `revisionVigente` trae su estado), VERSION_EMITIDA (la versión ya se emitió), APROBACION_NO_VIGENTE (la aprobación se anuló o cambió), CONFLICTO_EMISION (la versión o la aprobación vistas ya no son las vigentes) o FOLIO_NO_ACTIVO (cotización descartada).",
             "content": {
               "application/json": {
                 "schema": {
@@ -2602,7 +2602,7 @@
             }
           },
           "422": {
-            "description": "CALCULO_BLOQUEADO (códigos BL, sin importes), CAPTURA_INCOMPLETA (campos pendientes), REGISTRO_INACTIVO, REFERENCIA_NO_DISPONIBLE, ENVIO_BLOQUEADO / APROBACION_BLOQUEADA (bloqueos vigentes; el estado no cambió), DECISION_BLOQUEADA (BL-17: quien aprueba no puede ser el autor), IDEMPOTENCIA_CONFLICTO o IDEMPOTENCIA_CADUCADA.",
+            "description": "CALCULO_BLOQUEADO (códigos BL, sin importes), CAPTURA_INCOMPLETA (campos pendientes), REGISTRO_INACTIVO, REFERENCIA_NO_DISPONIBLE, ENVIO_BLOQUEADO / APROBACION_BLOQUEADA (bloqueos vigentes; el estado no cambió), DECISION_BLOQUEADA (BL-17: quien aprueba no puede ser el autor), EMISION_BLOQUEADA (BL-01 a BL-20 a la fecha de emisión; nada cambió), DESCARTE_BLOQUEADO (estado que no permite descartar), IDEMPOTENCIA_CONFLICTO o IDEMPOTENCIA_CADUCADA.",
             "content": {
               "application/json": {
                 "schema": {
@@ -2622,7 +2622,7 @@
             }
           },
           "500": {
-            "description": "ERROR_INTERNO.",
+            "description": "ERROR_INTERNO, DOCUMENTO_NO_GENERADO (no se generó o guardó el PDF; no hay emisión y se puede reintentar) o DOCUMENTO_NO_DISPONIBLE (el archivo emitido falta o no coincide con su registro; nunca se regenera).",
             "content": {
               "application/json": {
                 "schema": {
@@ -2724,7 +2724,7 @@
             }
           },
           "500": {
-            "description": "ERROR_INTERNO.",
+            "description": "ERROR_INTERNO, DOCUMENTO_NO_GENERADO (no se generó o guardó el PDF; no hay emisión y se puede reintentar) o DOCUMENTO_NO_DISPONIBLE (el archivo emitido falta o no coincide con su registro; nunca se regenera).",
             "content": {
               "application/json": {
                 "schema": {
@@ -2812,7 +2812,7 @@
             }
           },
           "500": {
-            "description": "ERROR_INTERNO.",
+            "description": "ERROR_INTERNO, DOCUMENTO_NO_GENERADO (no se generó o guardó el PDF; no hay emisión y se puede reintentar) o DOCUMENTO_NO_DISPONIBLE (el archivo emitido falta o no coincide con su registro; nunca se regenera).",
             "content": {
               "application/json": {
                 "schema": {
@@ -2926,7 +2926,7 @@
             }
           },
           "409": {
-            "description": "CONFLICTO_EDICION (revisión obsoleta; `actual` trae el estado vigente), BORRADOR_DESACTUALIZADO (el borrador cambió; no se guardó ni se envió nada), REVISION_PENDIENTE (hay una versión en revisión: no se edita ni se calcula), VERSION_NO_VIGENTE (solo se envía la última versión) o CONFLICTO_REVISION (la revisión cambió o ya se decidió; `revisionVigente` trae su estado).",
+            "description": "CONFLICTO_EDICION (revisión obsoleta; `actual` trae el estado vigente), BORRADOR_DESACTUALIZADO (el borrador cambió; no se guardó ni se envió nada), REVISION_PENDIENTE (hay una versión en revisión: no se edita ni se calcula), VERSION_NO_VIGENTE (solo se envía la última versión) CONFLICTO_REVISION (la revisión cambió o ya se decidió; `revisionVigente` trae su estado), VERSION_EMITIDA (la versión ya se emitió), APROBACION_NO_VIGENTE (la aprobación se anuló o cambió), CONFLICTO_EMISION (la versión o la aprobación vistas ya no son las vigentes) o FOLIO_NO_ACTIVO (cotización descartada).",
             "content": {
               "application/json": {
                 "schema": {
@@ -2956,7 +2956,7 @@
             }
           },
           "422": {
-            "description": "CALCULO_BLOQUEADO (códigos BL, sin importes), CAPTURA_INCOMPLETA (campos pendientes), REGISTRO_INACTIVO, REFERENCIA_NO_DISPONIBLE, ENVIO_BLOQUEADO / APROBACION_BLOQUEADA (bloqueos vigentes; el estado no cambió), DECISION_BLOQUEADA (BL-17: quien aprueba no puede ser el autor), IDEMPOTENCIA_CONFLICTO o IDEMPOTENCIA_CADUCADA.",
+            "description": "CALCULO_BLOQUEADO (códigos BL, sin importes), CAPTURA_INCOMPLETA (campos pendientes), REGISTRO_INACTIVO, REFERENCIA_NO_DISPONIBLE, ENVIO_BLOQUEADO / APROBACION_BLOQUEADA (bloqueos vigentes; el estado no cambió), DECISION_BLOQUEADA (BL-17: quien aprueba no puede ser el autor), EMISION_BLOQUEADA (BL-01 a BL-20 a la fecha de emisión; nada cambió), DESCARTE_BLOQUEADO (estado que no permite descartar), IDEMPOTENCIA_CONFLICTO o IDEMPOTENCIA_CADUCADA.",
             "content": {
               "application/json": {
                 "schema": {
@@ -2976,7 +2976,7 @@
             }
           },
           "500": {
-            "description": "ERROR_INTERNO.",
+            "description": "ERROR_INTERNO, DOCUMENTO_NO_GENERADO (no se generó o guardó el PDF; no hay emisión y se puede reintentar) o DOCUMENTO_NO_DISPONIBLE (el archivo emitido falta o no coincide con su registro; nunca se regenera).",
             "content": {
               "application/json": {
                 "schema": {
@@ -3090,7 +3090,7 @@
             }
           },
           "409": {
-            "description": "CONFLICTO_EDICION (revisión obsoleta; `actual` trae el estado vigente), BORRADOR_DESACTUALIZADO (el borrador cambió; no se guardó ni se envió nada), REVISION_PENDIENTE (hay una versión en revisión: no se edita ni se calcula), VERSION_NO_VIGENTE (solo se envía la última versión) o CONFLICTO_REVISION (la revisión cambió o ya se decidió; `revisionVigente` trae su estado).",
+            "description": "CONFLICTO_EDICION (revisión obsoleta; `actual` trae el estado vigente), BORRADOR_DESACTUALIZADO (el borrador cambió; no se guardó ni se envió nada), REVISION_PENDIENTE (hay una versión en revisión: no se edita ni se calcula), VERSION_NO_VIGENTE (solo se envía la última versión) CONFLICTO_REVISION (la revisión cambió o ya se decidió; `revisionVigente` trae su estado), VERSION_EMITIDA (la versión ya se emitió), APROBACION_NO_VIGENTE (la aprobación se anuló o cambió), CONFLICTO_EMISION (la versión o la aprobación vistas ya no son las vigentes) o FOLIO_NO_ACTIVO (cotización descartada).",
             "content": {
               "application/json": {
                 "schema": {
@@ -3120,7 +3120,7 @@
             }
           },
           "422": {
-            "description": "CALCULO_BLOQUEADO (códigos BL, sin importes), CAPTURA_INCOMPLETA (campos pendientes), REGISTRO_INACTIVO, REFERENCIA_NO_DISPONIBLE, ENVIO_BLOQUEADO / APROBACION_BLOQUEADA (bloqueos vigentes; el estado no cambió), DECISION_BLOQUEADA (BL-17: quien aprueba no puede ser el autor), IDEMPOTENCIA_CONFLICTO o IDEMPOTENCIA_CADUCADA.",
+            "description": "CALCULO_BLOQUEADO (códigos BL, sin importes), CAPTURA_INCOMPLETA (campos pendientes), REGISTRO_INACTIVO, REFERENCIA_NO_DISPONIBLE, ENVIO_BLOQUEADO / APROBACION_BLOQUEADA (bloqueos vigentes; el estado no cambió), DECISION_BLOQUEADA (BL-17: quien aprueba no puede ser el autor), EMISION_BLOQUEADA (BL-01 a BL-20 a la fecha de emisión; nada cambió), DESCARTE_BLOQUEADO (estado que no permite descartar), IDEMPOTENCIA_CONFLICTO o IDEMPOTENCIA_CADUCADA.",
             "content": {
               "application/json": {
                 "schema": {
@@ -3140,7 +3140,936 @@
             }
           },
           "500": {
-            "description": "ERROR_INTERNO.",
+            "description": "ERROR_INTERNO, DOCUMENTO_NO_GENERADO (no se generó o guardó el PDF; no hay emisión y se puede reintentar) o DOCUMENTO_NO_DISPONIBLE (el archivo emitido falta o no coincide con su registro; nunca se regenera).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "SERVICIO_NO_DISPONIBLE: PostgreSQL no disponible.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/cotizaciones/{id}/descarte": {
+      "post": {
+        "summary": "Descarta la cotización con motivo (capacidad cotizaciones.preparar: Preparador; ADR-0010)",
+        "description": "Solo si el folio está activo, sin emisiones, sin revisión pendiente y sin aprobación vigente. Conserva folio, versiones y eventos; el folio no se reutiliza y la cotización queda de solo lectura.",
+        "security": [
+          {
+            "cookieSesion": [],
+            "tokenCsrf": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "description": "UUID de la intención (obligatorio en las altas). Repetirlo con el mismo contenido reproduce el resultado (cabecera de respuesta Idempotent-Replayed: true); con otra operación u otro contenido responde 422. Vigencia: 24 h.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DescarteCotizacion"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Cotización descartada (o reproducida).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DetalleCotizacion"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "SOLICITUD_INVALIDA: no cumple el contrato (campos con su ruta) o JSON mal formado.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "NO_AUTENTICADO (sin cookie de sesión) o SESION_NO_VALIDA (vencida, revocada o desconocida; se borra la cookie).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "SIN_PERMISO (la función no concede la capacidad), CSRF_NO_VALIDO u ORIGEN_NO_PERMITIDO.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "NO_ENCONTRADO: ruta, id o códigos inexistentes en la organización (un id de otra organización responde igual).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "CONFLICTO_EDICION (revisión obsoleta; `actual` trae el estado vigente), BORRADOR_DESACTUALIZADO (el borrador cambió; no se guardó ni se envió nada), REVISION_PENDIENTE (hay una versión en revisión: no se edita ni se calcula), VERSION_NO_VIGENTE (solo se envía la última versión) CONFLICTO_REVISION (la revisión cambió o ya se decidió; `revisionVigente` trae su estado), VERSION_EMITIDA (la versión ya se emitió), APROBACION_NO_VIGENTE (la aprobación se anuló o cambió), CONFLICTO_EMISION (la versión o la aprobación vistas ya no son las vigentes) o FOLIO_NO_ACTIVO (cotización descartada).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "CUERPO_DEMASIADO_GRANDE.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "TIPO_DE_CONTENIDO_NO_ADMITIDO: el cuerpo debe ser application/json.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "CALCULO_BLOQUEADO (códigos BL, sin importes), CAPTURA_INCOMPLETA (campos pendientes), REGISTRO_INACTIVO, REFERENCIA_NO_DISPONIBLE, ENVIO_BLOQUEADO / APROBACION_BLOQUEADA (bloqueos vigentes; el estado no cambió), DECISION_BLOQUEADA (BL-17: quien aprueba no puede ser el autor), EMISION_BLOQUEADA (BL-01 a BL-20 a la fecha de emisión; nada cambió), DESCARTE_BLOQUEADO (estado que no permite descartar), IDEMPOTENCIA_CONFLICTO o IDEMPOTENCIA_CADUCADA.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "DEMASIADAS_SOLICITUDES (cabecera Retry-After).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "ERROR_INTERNO, DOCUMENTO_NO_GENERADO (no se generó o guardó el PDF; no hay emisión y se puede reintentar) o DOCUMENTO_NO_DISPONIBLE (el archivo emitido falta o no coincide con su registro; nunca se regenera).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "SERVICIO_NO_DISPONIBLE: PostgreSQL no disponible.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/cotizaciones/{id}/versiones/{numero}/emision/validacion": {
+      "get": {
+        "summary": "Validación previa a la emisión (solo lectura)",
+        "description": "Lo que se emitiría hoy (fecha del servidor): destinatario, emisor, textos, vigencia y total, con los bloqueos BL-01 a BL-20 y los avisos vigentes, y si la sesión puede emitir.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "numero",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Validación.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidacionEmision"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "NO_AUTENTICADO (sin cookie de sesión) o SESION_NO_VALIDA (vencida, revocada o desconocida; se borra la cookie).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "NO_ENCONTRADO: ruta, id o códigos inexistentes en la organización (un id de otra organización responde igual).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "DEMASIADAS_SOLICITUDES (cabecera Retry-After).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "ERROR_INTERNO, DOCUMENTO_NO_GENERADO (no se generó o guardó el PDF; no hay emisión y se puede reintentar) o DOCUMENTO_NO_DISPONIBLE (el archivo emitido falta o no coincide con su registro; nunca se regenera).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "SERVICIO_NO_DISPONIBLE: PostgreSQL no disponible.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/cotizaciones/{id}/versiones/{numero}/emision": {
+      "post": {
+        "summary": "Emite la versión aprobada (capacidad emisiones.emitir: Preparador, o Revisor distinto del autor)",
+        "description": "Comprueba de nuevo permisos, aprobación vigente de ESA versión por otra persona, versión, borrador y bloqueos; genera el PDF DEMO, lo guarda y registra la emisión con tamaño y SHA-256. 201 solo cuando existen el archivo y el registro. No recalcula importes.",
+        "security": [
+          {
+            "cookieSesion": [],
+            "tokenCsrf": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "numero",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "description": "UUID de la intención (obligatorio en las altas). Repetirlo con el mismo contenido reproduce el resultado (cabecera de respuesta Idempotent-Replayed: true); con otra operación u otro contenido responde 422. Vigencia: 24 h.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SolicitudEmision"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Versión emitida (o reproducida con Idempotent-Replayed: true).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DetalleEmision"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "SOLICITUD_INVALIDA: no cumple el contrato (campos con su ruta) o JSON mal formado.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "NO_AUTENTICADO (sin cookie de sesión) o SESION_NO_VALIDA (vencida, revocada o desconocida; se borra la cookie).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "SIN_PERMISO (la función no concede la capacidad), CSRF_NO_VALIDO u ORIGEN_NO_PERMITIDO.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "NO_ENCONTRADO: ruta, id o códigos inexistentes en la organización (un id de otra organización responde igual).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "CONFLICTO_EDICION (revisión obsoleta; `actual` trae el estado vigente), BORRADOR_DESACTUALIZADO (el borrador cambió; no se guardó ni se envió nada), REVISION_PENDIENTE (hay una versión en revisión: no se edita ni se calcula), VERSION_NO_VIGENTE (solo se envía la última versión) CONFLICTO_REVISION (la revisión cambió o ya se decidió; `revisionVigente` trae su estado), VERSION_EMITIDA (la versión ya se emitió), APROBACION_NO_VIGENTE (la aprobación se anuló o cambió), CONFLICTO_EMISION (la versión o la aprobación vistas ya no son las vigentes) o FOLIO_NO_ACTIVO (cotización descartada).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "CUERPO_DEMASIADO_GRANDE.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "TIPO_DE_CONTENIDO_NO_ADMITIDO: el cuerpo debe ser application/json.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "CALCULO_BLOQUEADO (códigos BL, sin importes), CAPTURA_INCOMPLETA (campos pendientes), REGISTRO_INACTIVO, REFERENCIA_NO_DISPONIBLE, ENVIO_BLOQUEADO / APROBACION_BLOQUEADA (bloqueos vigentes; el estado no cambió), DECISION_BLOQUEADA (BL-17: quien aprueba no puede ser el autor), EMISION_BLOQUEADA (BL-01 a BL-20 a la fecha de emisión; nada cambió), DESCARTE_BLOQUEADO (estado que no permite descartar), IDEMPOTENCIA_CONFLICTO o IDEMPOTENCIA_CADUCADA.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "DEMASIADAS_SOLICITUDES (cabecera Retry-After).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "ERROR_INTERNO, DOCUMENTO_NO_GENERADO (no se generó o guardó el PDF; no hay emisión y se puede reintentar) o DOCUMENTO_NO_DISPONIBLE (el archivo emitido falta o no coincide con su registro; nunca se regenera).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "SERVICIO_NO_DISPONIBLE: PostgreSQL no disponible.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/emisiones/{id}": {
+      "get": {
+        "summary": "Registro de una emisión y contenido exacto del documento emitido",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Emisión.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DetalleEmision"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "NO_AUTENTICADO (sin cookie de sesión) o SESION_NO_VALIDA (vencida, revocada o desconocida; se borra la cookie).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "NO_ENCONTRADO: ruta, id o códigos inexistentes en la organización (un id de otra organización responde igual).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "DEMASIADAS_SOLICITUDES (cabecera Retry-After).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "ERROR_INTERNO, DOCUMENTO_NO_GENERADO (no se generó o guardó el PDF; no hay emisión y se puede reintentar) o DOCUMENTO_NO_DISPONIBLE (el archivo emitido falta o no coincide con su registro; nunca se regenera).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "SERVICIO_NO_DISPONIBLE: PostgreSQL no disponible.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/emisiones/{id}/documento": {
+      "get": {
+        "summary": "Descarga autenticada del PDF emitido (los mismos bytes registrados)",
+        "description": "Content-Type application/pdf, Content-Disposition attachment con el nombre COT-AAAA-NNNNN-vN.pdf y Repr-Digest (SHA-256). Si el archivo falta o no coincide con su registro: 500 DOCUMENTO_NO_DISPONIBLE (nunca se regenera).",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "PDF emitido.",
+            "content": {
+              "application/pdf": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "NO_AUTENTICADO (sin cookie de sesión) o SESION_NO_VALIDA (vencida, revocada o desconocida; se borra la cookie).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "NO_ENCONTRADO: ruta, id o códigos inexistentes en la organización (un id de otra organización responde igual).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "DEMASIADAS_SOLICITUDES (cabecera Retry-After).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "ERROR_INTERNO, DOCUMENTO_NO_GENERADO (no se generó o guardó el PDF; no hay emisión y se puede reintentar) o DOCUMENTO_NO_DISPONIBLE (el archivo emitido falta o no coincide con su registro; nunca se regenera).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "SERVICIO_NO_DISPONIBLE: PostgreSQL no disponible.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/emisor": {
+      "get": {
+        "summary": "Datos del emisor de la organización (BL-15) y lo que falta para emitir",
+        "responses": {
+          "200": {
+            "description": "Emisor.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Emisor"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "NO_AUTENTICADO (sin cookie de sesión) o SESION_NO_VALIDA (vencida, revocada o desconocida; se borra la cookie).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "DEMASIADAS_SOLICITUDES (cabecera Retry-After).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "ERROR_INTERNO, DOCUMENTO_NO_GENERADO (no se generó o guardó el PDF; no hay emisión y se puede reintentar) o DOCUMENTO_NO_DISPONIBLE (el archivo emitido falta o no coincide con su registro; nunca se regenera).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "SERVICIO_NO_DISPONIBLE: PostgreSQL no disponible.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "summary": "Guarda los datos del emisor (capacidad emisor.configurar: Administrador del sistema)",
+        "description": "Concurrencia optimista por `revision` (0 = aún no configurado) y motivo obligatorio. No altera documentos ya emitidos.",
+        "security": [
+          {
+            "cookieSesion": [],
+            "tokenCsrf": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EdicionEmisor"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Emisor guardado.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Emisor"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "SOLICITUD_INVALIDA: no cumple el contrato (campos con su ruta) o JSON mal formado.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "NO_AUTENTICADO (sin cookie de sesión) o SESION_NO_VALIDA (vencida, revocada o desconocida; se borra la cookie).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "SIN_PERMISO (la función no concede la capacidad), CSRF_NO_VALIDO u ORIGEN_NO_PERMITIDO.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "CONFLICTO_EDICION (revisión obsoleta; `actual` trae el estado vigente), BORRADOR_DESACTUALIZADO (el borrador cambió; no se guardó ni se envió nada), REVISION_PENDIENTE (hay una versión en revisión: no se edita ni se calcula), VERSION_NO_VIGENTE (solo se envía la última versión) CONFLICTO_REVISION (la revisión cambió o ya se decidió; `revisionVigente` trae su estado), VERSION_EMITIDA (la versión ya se emitió), APROBACION_NO_VIGENTE (la aprobación se anuló o cambió), CONFLICTO_EMISION (la versión o la aprobación vistas ya no son las vigentes) o FOLIO_NO_ACTIVO (cotización descartada).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "CUERPO_DEMASIADO_GRANDE.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "TIPO_DE_CONTENIDO_NO_ADMITIDO: el cuerpo debe ser application/json.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "DEMASIADAS_SOLICITUDES (cabecera Retry-After).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "ERROR_INTERNO, DOCUMENTO_NO_GENERADO (no se generó o guardó el PDF; no hay emisión y se puede reintentar) o DOCUMENTO_NO_DISPONIBLE (el archivo emitido falta o no coincide con su registro; nunca se regenera).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "SERVICIO_NO_DISPONIBLE: PostgreSQL no disponible.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/revisiones/{id}/anulacion": {
+      "post": {
+        "summary": "Anula una aprobación antes de emitir, con motivo (capacidad revisiones.decidir: Revisor)",
+        "description": "Crea un evento nuevo que cita la aprobación; la revisión y su evento de aprobación no cambian.",
+        "security": [
+          {
+            "cookieSesion": [],
+            "tokenCsrf": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "description": "UUID de la intención (obligatorio en las altas). Repetirlo con el mismo contenido reproduce el resultado (cabecera de respuesta Idempotent-Replayed: true); con otra operación u otro contenido responde 422. Vigencia: 24 h.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AnulacionAprobacion"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Aprobación anulada (o reproducida).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DetalleRevision"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "SOLICITUD_INVALIDA: no cumple el contrato (campos con su ruta) o JSON mal formado.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "NO_AUTENTICADO (sin cookie de sesión) o SESION_NO_VALIDA (vencida, revocada o desconocida; se borra la cookie).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "SIN_PERMISO (la función no concede la capacidad), CSRF_NO_VALIDO u ORIGEN_NO_PERMITIDO.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "NO_ENCONTRADO: ruta, id o códigos inexistentes en la organización (un id de otra organización responde igual).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "CONFLICTO_EDICION (revisión obsoleta; `actual` trae el estado vigente), BORRADOR_DESACTUALIZADO (el borrador cambió; no se guardó ni se envió nada), REVISION_PENDIENTE (hay una versión en revisión: no se edita ni se calcula), VERSION_NO_VIGENTE (solo se envía la última versión) CONFLICTO_REVISION (la revisión cambió o ya se decidió; `revisionVigente` trae su estado), VERSION_EMITIDA (la versión ya se emitió), APROBACION_NO_VIGENTE (la aprobación se anuló o cambió), CONFLICTO_EMISION (la versión o la aprobación vistas ya no son las vigentes) o FOLIO_NO_ACTIVO (cotización descartada).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "CUERPO_DEMASIADO_GRANDE.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "TIPO_DE_CONTENIDO_NO_ADMITIDO: el cuerpo debe ser application/json.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "CALCULO_BLOQUEADO (códigos BL, sin importes), CAPTURA_INCOMPLETA (campos pendientes), REGISTRO_INACTIVO, REFERENCIA_NO_DISPONIBLE, ENVIO_BLOQUEADO / APROBACION_BLOQUEADA (bloqueos vigentes; el estado no cambió), DECISION_BLOQUEADA (BL-17: quien aprueba no puede ser el autor), EMISION_BLOQUEADA (BL-01 a BL-20 a la fecha de emisión; nada cambió), DESCARTE_BLOQUEADO (estado que no permite descartar), IDEMPOTENCIA_CONFLICTO o IDEMPOTENCIA_CADUCADA.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "DEMASIADAS_SOLICITUDES (cabecera Retry-After).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "ERROR_INTERNO, DOCUMENTO_NO_GENERADO (no se generó o guardó el PDF; no hay emisión y se puede reintentar) o DOCUMENTO_NO_DISPONIBLE (el archivo emitido falta o no coincide con su registro; nunca se regenera).",
             "content": {
               "application/json": {
                 "schema": {
@@ -3287,7 +4216,9 @@
                 "cotizaciones.consultar",
                 "cotizaciones.preparar",
                 "revisiones.enviar",
-                "revisiones.decidir"
+                "revisiones.decidir",
+                "emisiones.emitir",
+                "emisor.configurar"
               ]
             }
           },
@@ -3892,7 +4823,15 @@
                   "CONFLICTO_REVISION",
                   "ENVIO_BLOQUEADO",
                   "APROBACION_BLOQUEADA",
-                  "DECISION_BLOQUEADA"
+                  "DECISION_BLOQUEADA",
+                  "EMISION_BLOQUEADA",
+                  "VERSION_EMITIDA",
+                  "APROBACION_NO_VIGENTE",
+                  "CONFLICTO_EMISION",
+                  "FOLIO_NO_ACTIVO",
+                  "DESCARTE_BLOQUEADO",
+                  "DOCUMENTO_NO_GENERADO",
+                  "DOCUMENTO_NO_DISPONIBLE"
                 ]
               },
               "mensaje": {
@@ -4197,6 +5136,29 @@
               ],
               "additionalProperties": false
             }
+          },
+          "textos": {
+            "type": "object",
+            "properties": {
+              "alcance": {
+                "type": "string",
+                "maxLength": 2000
+              },
+              "condiciones": {
+                "type": "string",
+                "maxLength": 2000
+              },
+              "exclusiones": {
+                "type": "string",
+                "maxLength": 2000
+              }
+            },
+            "required": [
+              "alcance",
+              "condiciones",
+              "exclusiones"
+            ],
+            "additionalProperties": false
           }
         },
         "required": [
@@ -4213,6 +5175,39 @@
             "type": "string",
             "minLength": 1,
             "maxLength": 200
+          },
+          "contactoNombre": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 200
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "contactoTelefono": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 40
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "contactoCorreo": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 254
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "required": [
@@ -4232,6 +5227,39 @@
             "type": "string",
             "minLength": 1,
             "maxLength": 200
+          },
+          "contactoNombre": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 200
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "contactoTelefono": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 40
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "contactoCorreo": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 254
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "activo": {
             "type": "boolean"
@@ -4253,6 +5281,24 @@
           },
           "nombre": {
             "type": "string"
+          },
+          "contactoNombre": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "contactoTelefono": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "contactoCorreo": {
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "activo": {
             "type": "boolean"
@@ -4276,6 +5322,9 @@
           "id",
           "codigo",
           "nombre",
+          "contactoNombre",
+          "contactoTelefono",
+          "contactoCorreo",
           "activo",
           "revision",
           "creadoEn",
@@ -4301,6 +5350,24 @@
                 "nombre": {
                   "type": "string"
                 },
+                "contactoNombre": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "contactoTelefono": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "contactoCorreo": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
                 "activo": {
                   "type": "boolean"
                 },
@@ -4323,6 +5390,9 @@
                 "id",
                 "codigo",
                 "nombre",
+                "contactoNombre",
+                "contactoTelefono",
+                "contactoCorreo",
                 "activo",
                 "revision",
                 "creadoEn",
@@ -4359,6 +5429,24 @@
               "nombre": {
                 "type": "string"
               },
+              "contactoNombre": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "contactoTelefono": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "contactoCorreo": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
               "activo": {
                 "type": "boolean"
               },
@@ -4381,6 +5469,9 @@
               "id",
               "codigo",
               "nombre",
+              "contactoNombre",
+              "contactoTelefono",
+              "contactoCorreo",
               "activo",
               "revision",
               "creadoEn",
@@ -5000,6 +6091,29 @@
                   ],
                   "additionalProperties": false
                 }
+              },
+              "textos": {
+                "type": "object",
+                "properties": {
+                  "alcance": {
+                    "type": "string",
+                    "maxLength": 2000
+                  },
+                  "condiciones": {
+                    "type": "string",
+                    "maxLength": 2000
+                  },
+                  "exclusiones": {
+                    "type": "string",
+                    "maxLength": 2000
+                  }
+                },
+                "required": [
+                  "alcance",
+                  "condiciones",
+                  "exclusiones"
+                ],
+                "additionalProperties": false
               }
             },
             "required": [
@@ -5038,7 +6152,35 @@
                 "estadoFolio": {
                   "type": "string",
                   "enum": [
-                    "ACTIVO"
+                    "ACTIVO",
+                    "DESCARTADO"
+                  ]
+                },
+                "descarte": {
+                  "anyOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "por": {
+                          "type": "string"
+                        },
+                        "en": {
+                          "type": "string"
+                        },
+                        "motivo": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "por",
+                        "en",
+                        "motivo"
+                      ],
+                      "additionalProperties": false
+                    },
+                    {
+                      "type": "null"
+                    }
                   ]
                 },
                 "cliente": {
@@ -5124,7 +6266,9 @@
                           "enum": [
                             "BORRADOR",
                             "EN_REVISION",
-                            "APROBADA"
+                            "APROBADA",
+                            "EMITIDA",
+                            "SUSTITUIDA"
                           ]
                         },
                         "esUltima": {
@@ -5175,6 +6319,33 @@
                                     "string",
                                     "null"
                                   ]
+                                },
+                                "anulacion": {
+                                  "anyOf": [
+                                    {
+                                      "type": "object",
+                                      "properties": {
+                                        "por": {
+                                          "type": "string"
+                                        },
+                                        "en": {
+                                          "type": "string"
+                                        },
+                                        "motivo": {
+                                          "type": "string"
+                                        }
+                                      },
+                                      "required": [
+                                        "por",
+                                        "en",
+                                        "motivo"
+                                      ],
+                                      "additionalProperties": false
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ]
                                 }
                               },
                               "required": [
@@ -5185,7 +6356,116 @@
                                 "enviadoEn",
                                 "resueltaPor",
                                 "resueltaEn",
-                                "observaciones"
+                                "observaciones",
+                                "anulacion"
+                              ],
+                              "additionalProperties": false
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "emision": {
+                          "anyOf": [
+                            {
+                              "type": "object",
+                              "properties": {
+                                "id": {
+                                  "type": "string"
+                                },
+                                "folio": {
+                                  "type": "string"
+                                },
+                                "versionNumero": {
+                                  "type": "integer",
+                                  "exclusiveMinimum": 0,
+                                  "maximum": 9007199254740991
+                                },
+                                "idVersion": {
+                                  "type": "string"
+                                },
+                                "origen": {
+                                  "type": "string",
+                                  "enum": [
+                                    "WEB_DEMO"
+                                  ]
+                                },
+                                "fechaEmision": {
+                                  "type": "string",
+                                  "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                                },
+                                "vigenciaDias": {
+                                  "type": "integer",
+                                  "exclusiveMinimum": 0,
+                                  "maximum": 9007199254740991
+                                },
+                                "vigenteHasta": {
+                                  "type": "string",
+                                  "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                                },
+                                "total": {
+                                  "type": "string",
+                                  "pattern": "^-?(0|[1-9]\\d{0,14})(\\.\\d{1,10})?$"
+                                },
+                                "preparadoPor": {
+                                  "type": "string"
+                                },
+                                "aprobadoPor": {
+                                  "type": "string"
+                                },
+                                "emitidoPor": {
+                                  "type": "string"
+                                },
+                                "emitidoEn": {
+                                  "type": "string"
+                                },
+                                "plantillaVersion": {
+                                  "type": "string"
+                                },
+                                "sustituida": {
+                                  "type": "boolean"
+                                },
+                                "archivo": {
+                                  "type": "object",
+                                  "properties": {
+                                    "nombre": {
+                                      "type": "string"
+                                    },
+                                    "bytes": {
+                                      "type": "integer",
+                                      "exclusiveMinimum": 0,
+                                      "maximum": 9007199254740991
+                                    },
+                                    "sha256": {
+                                      "type": "string"
+                                    }
+                                  },
+                                  "required": [
+                                    "nombre",
+                                    "bytes",
+                                    "sha256"
+                                  ],
+                                  "additionalProperties": false
+                                }
+                              },
+                              "required": [
+                                "id",
+                                "folio",
+                                "versionNumero",
+                                "idVersion",
+                                "origen",
+                                "fechaEmision",
+                                "vigenciaDias",
+                                "vigenteHasta",
+                                "total",
+                                "preparadoPor",
+                                "aprobadoPor",
+                                "emitidoPor",
+                                "emitidoEn",
+                                "plantillaVersion",
+                                "sustituida",
+                                "archivo"
                               ],
                               "additionalProperties": false
                             },
@@ -5227,6 +6507,7 @@
                         "estado",
                         "esUltima",
                         "revisionVigente",
+                        "emision",
                         "revisionBorrador",
                         "fechaCalculo",
                         "creadoEn",
@@ -5247,6 +6528,7 @@
                 "folio",
                 "origen",
                 "estadoFolio",
+                "descarte",
                 "cliente",
                 "proyecto",
                 "creadoEn",
@@ -5291,7 +6573,35 @@
               "estadoFolio": {
                 "type": "string",
                 "enum": [
-                  "ACTIVO"
+                  "ACTIVO",
+                  "DESCARTADO"
+                ]
+              },
+              "descarte": {
+                "anyOf": [
+                  {
+                    "type": "object",
+                    "properties": {
+                      "por": {
+                        "type": "string"
+                      },
+                      "en": {
+                        "type": "string"
+                      },
+                      "motivo": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "por",
+                      "en",
+                      "motivo"
+                    ],
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "null"
+                  }
                 ]
               },
               "cliente": {
@@ -5377,7 +6687,9 @@
                         "enum": [
                           "BORRADOR",
                           "EN_REVISION",
-                          "APROBADA"
+                          "APROBADA",
+                          "EMITIDA",
+                          "SUSTITUIDA"
                         ]
                       },
                       "esUltima": {
@@ -5428,6 +6740,33 @@
                                   "string",
                                   "null"
                                 ]
+                              },
+                              "anulacion": {
+                                "anyOf": [
+                                  {
+                                    "type": "object",
+                                    "properties": {
+                                      "por": {
+                                        "type": "string"
+                                      },
+                                      "en": {
+                                        "type": "string"
+                                      },
+                                      "motivo": {
+                                        "type": "string"
+                                      }
+                                    },
+                                    "required": [
+                                      "por",
+                                      "en",
+                                      "motivo"
+                                    ],
+                                    "additionalProperties": false
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
                               }
                             },
                             "required": [
@@ -5438,7 +6777,116 @@
                               "enviadoEn",
                               "resueltaPor",
                               "resueltaEn",
-                              "observaciones"
+                              "observaciones",
+                              "anulacion"
+                            ],
+                            "additionalProperties": false
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
+                      "emision": {
+                        "anyOf": [
+                          {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string"
+                              },
+                              "folio": {
+                                "type": "string"
+                              },
+                              "versionNumero": {
+                                "type": "integer",
+                                "exclusiveMinimum": 0,
+                                "maximum": 9007199254740991
+                              },
+                              "idVersion": {
+                                "type": "string"
+                              },
+                              "origen": {
+                                "type": "string",
+                                "enum": [
+                                  "WEB_DEMO"
+                                ]
+                              },
+                              "fechaEmision": {
+                                "type": "string",
+                                "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                              },
+                              "vigenciaDias": {
+                                "type": "integer",
+                                "exclusiveMinimum": 0,
+                                "maximum": 9007199254740991
+                              },
+                              "vigenteHasta": {
+                                "type": "string",
+                                "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                              },
+                              "total": {
+                                "type": "string",
+                                "pattern": "^-?(0|[1-9]\\d{0,14})(\\.\\d{1,10})?$"
+                              },
+                              "preparadoPor": {
+                                "type": "string"
+                              },
+                              "aprobadoPor": {
+                                "type": "string"
+                              },
+                              "emitidoPor": {
+                                "type": "string"
+                              },
+                              "emitidoEn": {
+                                "type": "string"
+                              },
+                              "plantillaVersion": {
+                                "type": "string"
+                              },
+                              "sustituida": {
+                                "type": "boolean"
+                              },
+                              "archivo": {
+                                "type": "object",
+                                "properties": {
+                                  "nombre": {
+                                    "type": "string"
+                                  },
+                                  "bytes": {
+                                    "type": "integer",
+                                    "exclusiveMinimum": 0,
+                                    "maximum": 9007199254740991
+                                  },
+                                  "sha256": {
+                                    "type": "string"
+                                  }
+                                },
+                                "required": [
+                                  "nombre",
+                                  "bytes",
+                                  "sha256"
+                                ],
+                                "additionalProperties": false
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "folio",
+                              "versionNumero",
+                              "idVersion",
+                              "origen",
+                              "fechaEmision",
+                              "vigenciaDias",
+                              "vigenteHasta",
+                              "total",
+                              "preparadoPor",
+                              "aprobadoPor",
+                              "emitidoPor",
+                              "emitidoEn",
+                              "plantillaVersion",
+                              "sustituida",
+                              "archivo"
                             ],
                             "additionalProperties": false
                           },
@@ -5480,6 +6928,7 @@
                       "estado",
                       "esUltima",
                       "revisionVigente",
+                      "emision",
                       "revisionBorrador",
                       "fechaCalculo",
                       "creadoEn",
@@ -5500,6 +6949,7 @@
               "folio",
               "origen",
               "estadoFolio",
+              "descarte",
               "cliente",
               "proyecto",
               "creadoEn",
@@ -5715,6 +7165,29 @@
                       ],
                       "additionalProperties": false
                     }
+                  },
+                  "textos": {
+                    "type": "object",
+                    "properties": {
+                      "alcance": {
+                        "type": "string",
+                        "maxLength": 2000
+                      },
+                      "condiciones": {
+                        "type": "string",
+                        "maxLength": 2000
+                      },
+                      "exclusiones": {
+                        "type": "string",
+                        "maxLength": 2000
+                      }
+                    },
+                    "required": [
+                      "alcance",
+                      "condiciones",
+                      "exclusiones"
+                    ],
+                    "additionalProperties": false
                   }
                 },
                 "required": [
@@ -5723,6 +7196,36 @@
                   "seleccion"
                 ],
                 "additionalProperties": false
+              },
+              "textosPredeterminados": {
+                "anyOf": [
+                  {
+                    "type": "object",
+                    "properties": {
+                      "alcance": {
+                        "type": "string",
+                        "maxLength": 2000
+                      },
+                      "condiciones": {
+                        "type": "string",
+                        "maxLength": 2000
+                      },
+                      "exclusiones": {
+                        "type": "string",
+                        "maxLength": 2000
+                      }
+                    },
+                    "required": [
+                      "alcance",
+                      "condiciones",
+                      "exclusiones"
+                    ],
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
               },
               "actualizadoPor": {
                 "type": "string"
@@ -5866,6 +7369,7 @@
             "required": [
               "revision",
               "captura",
+              "textosPredeterminados",
               "actualizadoPor",
               "actualizadoEn",
               "completitud",
@@ -5894,7 +7398,9 @@
                   "enum": [
                     "BORRADOR",
                     "EN_REVISION",
-                    "APROBADA"
+                    "APROBADA",
+                    "EMITIDA",
+                    "SUSTITUIDA"
                   ]
                 },
                 "esUltima": {
@@ -5945,6 +7451,33 @@
                             "string",
                             "null"
                           ]
+                        },
+                        "anulacion": {
+                          "anyOf": [
+                            {
+                              "type": "object",
+                              "properties": {
+                                "por": {
+                                  "type": "string"
+                                },
+                                "en": {
+                                  "type": "string"
+                                },
+                                "motivo": {
+                                  "type": "string"
+                                }
+                              },
+                              "required": [
+                                "por",
+                                "en",
+                                "motivo"
+                              ],
+                              "additionalProperties": false
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
                         }
                       },
                       "required": [
@@ -5955,7 +7488,116 @@
                         "enviadoEn",
                         "resueltaPor",
                         "resueltaEn",
-                        "observaciones"
+                        "observaciones",
+                        "anulacion"
+                      ],
+                      "additionalProperties": false
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "emision": {
+                  "anyOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "folio": {
+                          "type": "string"
+                        },
+                        "versionNumero": {
+                          "type": "integer",
+                          "exclusiveMinimum": 0,
+                          "maximum": 9007199254740991
+                        },
+                        "idVersion": {
+                          "type": "string"
+                        },
+                        "origen": {
+                          "type": "string",
+                          "enum": [
+                            "WEB_DEMO"
+                          ]
+                        },
+                        "fechaEmision": {
+                          "type": "string",
+                          "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                        },
+                        "vigenciaDias": {
+                          "type": "integer",
+                          "exclusiveMinimum": 0,
+                          "maximum": 9007199254740991
+                        },
+                        "vigenteHasta": {
+                          "type": "string",
+                          "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                        },
+                        "total": {
+                          "type": "string",
+                          "pattern": "^-?(0|[1-9]\\d{0,14})(\\.\\d{1,10})?$"
+                        },
+                        "preparadoPor": {
+                          "type": "string"
+                        },
+                        "aprobadoPor": {
+                          "type": "string"
+                        },
+                        "emitidoPor": {
+                          "type": "string"
+                        },
+                        "emitidoEn": {
+                          "type": "string"
+                        },
+                        "plantillaVersion": {
+                          "type": "string"
+                        },
+                        "sustituida": {
+                          "type": "boolean"
+                        },
+                        "archivo": {
+                          "type": "object",
+                          "properties": {
+                            "nombre": {
+                              "type": "string"
+                            },
+                            "bytes": {
+                              "type": "integer",
+                              "exclusiveMinimum": 0,
+                              "maximum": 9007199254740991
+                            },
+                            "sha256": {
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "nombre",
+                            "bytes",
+                            "sha256"
+                          ],
+                          "additionalProperties": false
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "folio",
+                        "versionNumero",
+                        "idVersion",
+                        "origen",
+                        "fechaEmision",
+                        "vigenciaDias",
+                        "vigenteHasta",
+                        "total",
+                        "preparadoPor",
+                        "aprobadoPor",
+                        "emitidoPor",
+                        "emitidoEn",
+                        "plantillaVersion",
+                        "sustituida",
+                        "archivo"
                       ],
                       "additionalProperties": false
                     },
@@ -5997,6 +7639,7 @@
                 "estado",
                 "esUltima",
                 "revisionVigente",
+                "emision",
                 "revisionBorrador",
                 "fechaCalculo",
                 "creadoEn",
@@ -6006,6 +7649,25 @@
               ],
               "additionalProperties": false
             }
+          },
+          "descartar": {
+            "type": "object",
+            "properties": {
+              "permitido": {
+                "type": "boolean"
+              },
+              "motivoNoPermitido": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "required": [
+              "permitido",
+              "motivoNoPermitido"
+            ],
+            "additionalProperties": false
           },
           "revisiones": {
             "type": "array",
@@ -6045,7 +7707,8 @@
                           "ENVIADA",
                           "APROBADA",
                           "CAMBIOS_SOLICITADOS",
-                          "RETIRADA"
+                          "RETIRADA",
+                          "APROBACION_ANULADA"
                         ]
                       },
                       "estadoAnterior": {
@@ -6070,7 +7733,8 @@
                           "PENDIENTE",
                           "APROBADA",
                           "CAMBIOS_SOLICITADOS",
-                          "RETIRADA"
+                          "RETIRADA",
+                          "ANULADA"
                         ]
                       },
                       "usuario": {
@@ -6151,6 +7815,7 @@
           "cotizacion",
           "borrador",
           "versiones",
+          "descartar",
           "revisiones",
           "eventos"
         ],
@@ -6361,6 +8026,29 @@
                   ],
                   "additionalProperties": false
                 }
+              },
+              "textos": {
+                "type": "object",
+                "properties": {
+                  "alcance": {
+                    "type": "string",
+                    "maxLength": 2000
+                  },
+                  "condiciones": {
+                    "type": "string",
+                    "maxLength": 2000
+                  },
+                  "exclusiones": {
+                    "type": "string",
+                    "maxLength": 2000
+                  }
+                },
+                "required": [
+                  "alcance",
+                  "condiciones",
+                  "exclusiones"
+                ],
+                "additionalProperties": false
               }
             },
             "required": [
@@ -6369,6 +8057,36 @@
               "seleccion"
             ],
             "additionalProperties": false
+          },
+          "textosPredeterminados": {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "alcance": {
+                    "type": "string",
+                    "maxLength": 2000
+                  },
+                  "condiciones": {
+                    "type": "string",
+                    "maxLength": 2000
+                  },
+                  "exclusiones": {
+                    "type": "string",
+                    "maxLength": 2000
+                  }
+                },
+                "required": [
+                  "alcance",
+                  "condiciones",
+                  "exclusiones"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "actualizadoPor": {
             "type": "string"
@@ -6512,6 +8230,7 @@
         "required": [
           "revision",
           "captura",
+          "textosPredeterminados",
           "actualizadoPor",
           "actualizadoEn",
           "completitud",
@@ -6724,6 +8443,29 @@
                   ],
                   "additionalProperties": false
                 }
+              },
+              "textos": {
+                "type": "object",
+                "properties": {
+                  "alcance": {
+                    "type": "string",
+                    "maxLength": 2000
+                  },
+                  "condiciones": {
+                    "type": "string",
+                    "maxLength": 2000
+                  },
+                  "exclusiones": {
+                    "type": "string",
+                    "maxLength": 2000
+                  }
+                },
+                "required": [
+                  "alcance",
+                  "condiciones",
+                  "exclusiones"
+                ],
+                "additionalProperties": false
               }
             },
             "required": [
@@ -6952,7 +8694,9 @@
                 "enum": [
                   "BORRADOR",
                   "EN_REVISION",
-                  "APROBADA"
+                  "APROBADA",
+                  "EMITIDA",
+                  "SUSTITUIDA"
                 ]
               },
               "esUltima": {
@@ -7003,6 +8747,33 @@
                           "string",
                           "null"
                         ]
+                      },
+                      "anulacion": {
+                        "anyOf": [
+                          {
+                            "type": "object",
+                            "properties": {
+                              "por": {
+                                "type": "string"
+                              },
+                              "en": {
+                                "type": "string"
+                              },
+                              "motivo": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "por",
+                              "en",
+                              "motivo"
+                            ],
+                            "additionalProperties": false
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
                       }
                     },
                     "required": [
@@ -7013,7 +8784,116 @@
                       "enviadoEn",
                       "resueltaPor",
                       "resueltaEn",
-                      "observaciones"
+                      "observaciones",
+                      "anulacion"
+                    ],
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "emision": {
+                "anyOf": [
+                  {
+                    "type": "object",
+                    "properties": {
+                      "id": {
+                        "type": "string"
+                      },
+                      "folio": {
+                        "type": "string"
+                      },
+                      "versionNumero": {
+                        "type": "integer",
+                        "exclusiveMinimum": 0,
+                        "maximum": 9007199254740991
+                      },
+                      "idVersion": {
+                        "type": "string"
+                      },
+                      "origen": {
+                        "type": "string",
+                        "enum": [
+                          "WEB_DEMO"
+                        ]
+                      },
+                      "fechaEmision": {
+                        "type": "string",
+                        "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                      },
+                      "vigenciaDias": {
+                        "type": "integer",
+                        "exclusiveMinimum": 0,
+                        "maximum": 9007199254740991
+                      },
+                      "vigenteHasta": {
+                        "type": "string",
+                        "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                      },
+                      "total": {
+                        "type": "string",
+                        "pattern": "^-?(0|[1-9]\\d{0,14})(\\.\\d{1,10})?$"
+                      },
+                      "preparadoPor": {
+                        "type": "string"
+                      },
+                      "aprobadoPor": {
+                        "type": "string"
+                      },
+                      "emitidoPor": {
+                        "type": "string"
+                      },
+                      "emitidoEn": {
+                        "type": "string"
+                      },
+                      "plantillaVersion": {
+                        "type": "string"
+                      },
+                      "sustituida": {
+                        "type": "boolean"
+                      },
+                      "archivo": {
+                        "type": "object",
+                        "properties": {
+                          "nombre": {
+                            "type": "string"
+                          },
+                          "bytes": {
+                            "type": "integer",
+                            "exclusiveMinimum": 0,
+                            "maximum": 9007199254740991
+                          },
+                          "sha256": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "nombre",
+                          "bytes",
+                          "sha256"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "required": [
+                      "id",
+                      "folio",
+                      "versionNumero",
+                      "idVersion",
+                      "origen",
+                      "fechaEmision",
+                      "vigenciaDias",
+                      "vigenteHasta",
+                      "total",
+                      "preparadoPor",
+                      "aprobadoPor",
+                      "emitidoPor",
+                      "emitidoEn",
+                      "plantillaVersion",
+                      "sustituida",
+                      "archivo"
                     ],
                     "additionalProperties": false
                   },
@@ -7055,6 +8935,7 @@
               "estado",
               "esUltima",
               "revisionVigente",
+              "emision",
               "revisionBorrador",
               "fechaCalculo",
               "creadoEn",
@@ -7313,6 +9194,29 @@
                   ],
                   "additionalProperties": false
                 }
+              },
+              "textos": {
+                "type": "object",
+                "properties": {
+                  "alcance": {
+                    "type": "string",
+                    "maxLength": 2000
+                  },
+                  "condiciones": {
+                    "type": "string",
+                    "maxLength": 2000
+                  },
+                  "exclusiones": {
+                    "type": "string",
+                    "maxLength": 2000
+                  }
+                },
+                "required": [
+                  "alcance",
+                  "condiciones",
+                  "exclusiones"
+                ],
+                "additionalProperties": false
               }
             },
             "required": [
@@ -7493,6 +9397,17 @@
                 "type": "array",
                 "items": {
                   "type": "string"
+                }
+              },
+              "textosCambiados": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "enum": [
+                    "alcance",
+                    "condiciones",
+                    "exclusiones"
+                  ]
                 }
               },
               "condicionesCambiadas": {
@@ -7750,6 +9665,36 @@
                     "null"
                   ]
                 },
+                "anulacion": {
+                  "anyOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "por": {
+                          "type": "string"
+                        },
+                        "en": {
+                          "type": "string"
+                        },
+                        "motivo": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "por",
+                        "en",
+                        "motivo"
+                      ],
+                      "additionalProperties": false
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "emitida": {
+                  "type": "boolean"
+                },
                 "acciones": {
                   "type": "object",
                   "properties": {
@@ -7760,6 +9705,9 @@
                       "type": "boolean"
                     },
                     "retirar": {
+                      "type": "boolean"
+                    },
+                    "anularAprobacion": {
                       "type": "boolean"
                     },
                     "motivoNoAprobar": {
@@ -7773,6 +9721,7 @@
                     "aprobar",
                     "solicitarCambios",
                     "retirar",
+                    "anularAprobacion",
                     "motivoNoAprobar"
                   ],
                   "additionalProperties": false
@@ -7794,6 +9743,8 @@
                 "resueltaPor",
                 "resueltaEn",
                 "observaciones",
+                "anulacion",
+                "emitida",
                 "acciones"
               ],
               "additionalProperties": false
@@ -7937,6 +9888,36 @@
                   "null"
                 ]
               },
+              "anulacion": {
+                "anyOf": [
+                  {
+                    "type": "object",
+                    "properties": {
+                      "por": {
+                        "type": "string"
+                      },
+                      "en": {
+                        "type": "string"
+                      },
+                      "motivo": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "por",
+                      "en",
+                      "motivo"
+                    ],
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "emitida": {
+                "type": "boolean"
+              },
               "acciones": {
                 "type": "object",
                 "properties": {
@@ -7947,6 +9928,9 @@
                     "type": "boolean"
                   },
                   "retirar": {
+                    "type": "boolean"
+                  },
+                  "anularAprobacion": {
                     "type": "boolean"
                   },
                   "motivoNoAprobar": {
@@ -7960,6 +9944,7 @@
                   "aprobar",
                   "solicitarCambios",
                   "retirar",
+                  "anularAprobacion",
                   "motivoNoAprobar"
                 ],
                 "additionalProperties": false
@@ -7981,6 +9966,8 @@
               "resueltaPor",
               "resueltaEn",
               "observaciones",
+              "anulacion",
+              "emitida",
               "acciones"
             ],
             "additionalProperties": false
@@ -8016,7 +10003,9 @@
                     "enum": [
                       "BORRADOR",
                       "EN_REVISION",
-                      "APROBADA"
+                      "APROBADA",
+                      "EMITIDA",
+                      "SUSTITUIDA"
                     ]
                   },
                   "esUltima": {
@@ -8067,6 +10056,33 @@
                               "string",
                               "null"
                             ]
+                          },
+                          "anulacion": {
+                            "anyOf": [
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "por": {
+                                    "type": "string"
+                                  },
+                                  "en": {
+                                    "type": "string"
+                                  },
+                                  "motivo": {
+                                    "type": "string"
+                                  }
+                                },
+                                "required": [
+                                  "por",
+                                  "en",
+                                  "motivo"
+                                ],
+                                "additionalProperties": false
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
                           }
                         },
                         "required": [
@@ -8077,7 +10093,116 @@
                           "enviadoEn",
                           "resueltaPor",
                           "resueltaEn",
-                          "observaciones"
+                          "observaciones",
+                          "anulacion"
+                        ],
+                        "additionalProperties": false
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "emision": {
+                    "anyOf": [
+                      {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string"
+                          },
+                          "folio": {
+                            "type": "string"
+                          },
+                          "versionNumero": {
+                            "type": "integer",
+                            "exclusiveMinimum": 0,
+                            "maximum": 9007199254740991
+                          },
+                          "idVersion": {
+                            "type": "string"
+                          },
+                          "origen": {
+                            "type": "string",
+                            "enum": [
+                              "WEB_DEMO"
+                            ]
+                          },
+                          "fechaEmision": {
+                            "type": "string",
+                            "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                          },
+                          "vigenciaDias": {
+                            "type": "integer",
+                            "exclusiveMinimum": 0,
+                            "maximum": 9007199254740991
+                          },
+                          "vigenteHasta": {
+                            "type": "string",
+                            "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                          },
+                          "total": {
+                            "type": "string",
+                            "pattern": "^-?(0|[1-9]\\d{0,14})(\\.\\d{1,10})?$"
+                          },
+                          "preparadoPor": {
+                            "type": "string"
+                          },
+                          "aprobadoPor": {
+                            "type": "string"
+                          },
+                          "emitidoPor": {
+                            "type": "string"
+                          },
+                          "emitidoEn": {
+                            "type": "string"
+                          },
+                          "plantillaVersion": {
+                            "type": "string"
+                          },
+                          "sustituida": {
+                            "type": "boolean"
+                          },
+                          "archivo": {
+                            "type": "object",
+                            "properties": {
+                              "nombre": {
+                                "type": "string"
+                              },
+                              "bytes": {
+                                "type": "integer",
+                                "exclusiveMinimum": 0,
+                                "maximum": 9007199254740991
+                              },
+                              "sha256": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "nombre",
+                              "bytes",
+                              "sha256"
+                            ],
+                            "additionalProperties": false
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "folio",
+                          "versionNumero",
+                          "idVersion",
+                          "origen",
+                          "fechaEmision",
+                          "vigenciaDias",
+                          "vigenteHasta",
+                          "total",
+                          "preparadoPor",
+                          "aprobadoPor",
+                          "emitidoPor",
+                          "emitidoEn",
+                          "plantillaVersion",
+                          "sustituida",
+                          "archivo"
                         ],
                         "additionalProperties": false
                       },
@@ -8119,6 +10244,7 @@
                   "estado",
                   "esUltima",
                   "revisionVigente",
+                  "emision",
                   "revisionBorrador",
                   "fechaCalculo",
                   "creadoEn",
@@ -8377,6 +10503,29 @@
                       ],
                       "additionalProperties": false
                     }
+                  },
+                  "textos": {
+                    "type": "object",
+                    "properties": {
+                      "alcance": {
+                        "type": "string",
+                        "maxLength": 2000
+                      },
+                      "condiciones": {
+                        "type": "string",
+                        "maxLength": 2000
+                      },
+                      "exclusiones": {
+                        "type": "string",
+                        "maxLength": 2000
+                      }
+                    },
+                    "required": [
+                      "alcance",
+                      "condiciones",
+                      "exclusiones"
+                    ],
+                    "additionalProperties": false
                   }
                 },
                 "required": [
@@ -8559,6 +10708,17 @@
                       "type": "string"
                     }
                   },
+                  "textosCambiados": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "enum": [
+                        "alcance",
+                        "condiciones",
+                        "exclusiones"
+                      ]
+                    }
+                  },
                   "condicionesCambiadas": {
                     "type": "boolean"
                   },
@@ -8695,7 +10855,8 @@
                     "ENVIADA",
                     "APROBADA",
                     "CAMBIOS_SOLICITADOS",
-                    "RETIRADA"
+                    "RETIRADA",
+                    "APROBACION_ANULADA"
                   ]
                 },
                 "estadoAnterior": {
@@ -8720,7 +10881,8 @@
                     "PENDIENTE",
                     "APROBADA",
                     "CAMBIOS_SOLICITADOS",
-                    "RETIRADA"
+                    "RETIRADA",
+                    "ANULADA"
                   ]
                 },
                 "usuario": {
@@ -8761,6 +10923,1069 @@
           "version",
           "verificacion",
           "eventos"
+        ],
+        "additionalProperties": false
+      },
+      "AnulacionAprobacion": {
+        "type": "object",
+        "properties": {
+          "revision": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "motivo": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 2000
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "revision"
+        ],
+        "additionalProperties": false
+      },
+      "DescarteCotizacion": {
+        "type": "object",
+        "properties": {
+          "motivo": {
+            "type": "string",
+            "maxLength": 500
+          }
+        },
+        "required": [
+          "motivo"
+        ],
+        "additionalProperties": false
+      },
+      "SolicitudEmision": {
+        "type": "object",
+        "properties": {
+          "versionId": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          },
+          "revisionId": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          }
+        },
+        "required": [
+          "versionId",
+          "revisionId"
+        ],
+        "additionalProperties": false
+      },
+      "ValidacionEmision": {
+        "type": "object",
+        "properties": {
+          "fechaEmision": {
+            "type": "string",
+            "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+          },
+          "vigenciaDias": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "exclusiveMinimum": 0,
+                "maximum": 9007199254740991
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "vigenteHasta": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "version": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "numero": {
+                "type": "integer",
+                "exclusiveMinimum": 0,
+                "maximum": 9007199254740991
+              },
+              "idVersion": {
+                "type": "string"
+              },
+              "total": {
+                "type": "string",
+                "pattern": "^-?(0|[1-9]\\d{0,14})(\\.\\d{1,10})?$"
+              },
+              "esUltima": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "id",
+              "numero",
+              "idVersion",
+              "total",
+              "esUltima"
+            ],
+            "additionalProperties": false
+          },
+          "aprobacion": {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "revisionId": {
+                    "type": "string"
+                  },
+                  "aprobadaPor": {
+                    "type": "string"
+                  },
+                  "aprobadaEn": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "revisionId",
+                  "aprobadaPor",
+                  "aprobadaEn"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "preparador": {
+            "type": "string"
+          },
+          "destinatario": {
+            "type": "object",
+            "properties": {
+              "cliente": {
+                "type": "object",
+                "properties": {
+                  "codigo": {
+                    "type": "string"
+                  },
+                  "nombre": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "codigo",
+                  "nombre"
+                ],
+                "additionalProperties": false
+              },
+              "proyecto": {
+                "type": "object",
+                "properties": {
+                  "codigo": {
+                    "type": "string"
+                  },
+                  "nombre": {
+                    "type": "string"
+                  },
+                  "ubicacion": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "descripcion": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  }
+                },
+                "required": [
+                  "codigo",
+                  "nombre",
+                  "ubicacion",
+                  "descripcion"
+                ],
+                "additionalProperties": false
+              },
+              "contacto": {
+                "type": "object",
+                "properties": {
+                  "nombre": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "telefono": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "correo": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  }
+                },
+                "required": [
+                  "nombre",
+                  "telefono",
+                  "correo"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "cliente",
+              "proyecto",
+              "contacto"
+            ],
+            "additionalProperties": false
+          },
+          "emisor": {
+            "type": "object",
+            "properties": {
+              "nombre": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "domicilio": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "telefono": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "correo": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "logo": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "enum": [
+                      "DEMO"
+                    ]
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            },
+            "required": [
+              "nombre",
+              "domicilio",
+              "telefono",
+              "correo",
+              "logo"
+            ],
+            "additionalProperties": false
+          },
+          "textos": {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "alcance": {
+                    "type": "string",
+                    "maxLength": 2000
+                  },
+                  "condiciones": {
+                    "type": "string",
+                    "maxLength": 2000
+                  },
+                  "exclusiones": {
+                    "type": "string",
+                    "maxLength": 2000
+                  }
+                },
+                "required": [
+                  "alcance",
+                  "condiciones",
+                  "exclusiones"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "bloqueos": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "codigo": {
+                  "type": "string"
+                },
+                "referencia": {
+                  "type": "string"
+                },
+                "mensaje": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "codigo",
+                "referencia",
+                "mensaje"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "avisos": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "codigo": {
+                  "type": "string",
+                  "enum": [
+                    "AV-01",
+                    "AV-02",
+                    "AV-03",
+                    "AV-04",
+                    "AV-05"
+                  ]
+                },
+                "mensaje": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "codigo",
+                "mensaje"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "puedeEmitir": {
+            "type": "boolean"
+          },
+          "motivoNoEmitir": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "emision": {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string"
+                  },
+                  "folio": {
+                    "type": "string"
+                  },
+                  "versionNumero": {
+                    "type": "integer",
+                    "exclusiveMinimum": 0,
+                    "maximum": 9007199254740991
+                  },
+                  "idVersion": {
+                    "type": "string"
+                  },
+                  "origen": {
+                    "type": "string",
+                    "enum": [
+                      "WEB_DEMO"
+                    ]
+                  },
+                  "fechaEmision": {
+                    "type": "string",
+                    "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                  },
+                  "vigenciaDias": {
+                    "type": "integer",
+                    "exclusiveMinimum": 0,
+                    "maximum": 9007199254740991
+                  },
+                  "vigenteHasta": {
+                    "type": "string",
+                    "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                  },
+                  "total": {
+                    "type": "string",
+                    "pattern": "^-?(0|[1-9]\\d{0,14})(\\.\\d{1,10})?$"
+                  },
+                  "preparadoPor": {
+                    "type": "string"
+                  },
+                  "aprobadoPor": {
+                    "type": "string"
+                  },
+                  "emitidoPor": {
+                    "type": "string"
+                  },
+                  "emitidoEn": {
+                    "type": "string"
+                  },
+                  "plantillaVersion": {
+                    "type": "string"
+                  },
+                  "sustituida": {
+                    "type": "boolean"
+                  },
+                  "archivo": {
+                    "type": "object",
+                    "properties": {
+                      "nombre": {
+                        "type": "string"
+                      },
+                      "bytes": {
+                        "type": "integer",
+                        "exclusiveMinimum": 0,
+                        "maximum": 9007199254740991
+                      },
+                      "sha256": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "nombre",
+                      "bytes",
+                      "sha256"
+                    ],
+                    "additionalProperties": false
+                  }
+                },
+                "required": [
+                  "id",
+                  "folio",
+                  "versionNumero",
+                  "idVersion",
+                  "origen",
+                  "fechaEmision",
+                  "vigenciaDias",
+                  "vigenteHasta",
+                  "total",
+                  "preparadoPor",
+                  "aprobadoPor",
+                  "emitidoPor",
+                  "emitidoEn",
+                  "plantillaVersion",
+                  "sustituida",
+                  "archivo"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "fechaEmision",
+          "vigenciaDias",
+          "vigenteHasta",
+          "version",
+          "aprobacion",
+          "preparador",
+          "destinatario",
+          "emisor",
+          "textos",
+          "bloqueos",
+          "avisos",
+          "puedeEmitir",
+          "motivoNoEmitir",
+          "emision"
+        ],
+        "additionalProperties": false
+      },
+      "DetalleEmision": {
+        "type": "object",
+        "properties": {
+          "emision": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "folio": {
+                "type": "string"
+              },
+              "versionNumero": {
+                "type": "integer",
+                "exclusiveMinimum": 0,
+                "maximum": 9007199254740991
+              },
+              "idVersion": {
+                "type": "string"
+              },
+              "origen": {
+                "type": "string",
+                "enum": [
+                  "WEB_DEMO"
+                ]
+              },
+              "fechaEmision": {
+                "type": "string",
+                "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+              },
+              "vigenciaDias": {
+                "type": "integer",
+                "exclusiveMinimum": 0,
+                "maximum": 9007199254740991
+              },
+              "vigenteHasta": {
+                "type": "string",
+                "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+              },
+              "total": {
+                "type": "string",
+                "pattern": "^-?(0|[1-9]\\d{0,14})(\\.\\d{1,10})?$"
+              },
+              "preparadoPor": {
+                "type": "string"
+              },
+              "aprobadoPor": {
+                "type": "string"
+              },
+              "emitidoPor": {
+                "type": "string"
+              },
+              "emitidoEn": {
+                "type": "string"
+              },
+              "plantillaVersion": {
+                "type": "string"
+              },
+              "sustituida": {
+                "type": "boolean"
+              },
+              "archivo": {
+                "type": "object",
+                "properties": {
+                  "nombre": {
+                    "type": "string"
+                  },
+                  "bytes": {
+                    "type": "integer",
+                    "exclusiveMinimum": 0,
+                    "maximum": 9007199254740991
+                  },
+                  "sha256": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "nombre",
+                  "bytes",
+                  "sha256"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "id",
+              "folio",
+              "versionNumero",
+              "idVersion",
+              "origen",
+              "fechaEmision",
+              "vigenciaDias",
+              "vigenteHasta",
+              "total",
+              "preparadoPor",
+              "aprobadoPor",
+              "emitidoPor",
+              "emitidoEn",
+              "plantillaVersion",
+              "sustituida",
+              "archivo"
+            ],
+            "additionalProperties": false
+          },
+          "documento": {
+            "type": "object",
+            "properties": {
+              "plantilla": {
+                "type": "string"
+              },
+              "ambiente": {
+                "type": "string",
+                "enum": [
+                  "DEMO",
+                  "PRODUCCION"
+                ]
+              },
+              "origen": {
+                "type": "string",
+                "enum": [
+                  "WEB_DEMO"
+                ]
+              },
+              "folio": {
+                "type": "string"
+              },
+              "versionNumero": {
+                "type": "integer",
+                "exclusiveMinimum": 0,
+                "maximum": 9007199254740991
+              },
+              "idVersion": {
+                "type": "string"
+              },
+              "fechaEmision": {
+                "type": "string",
+                "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+              },
+              "vigenciaDias": {
+                "type": "integer",
+                "exclusiveMinimum": 0,
+                "maximum": 9007199254740991
+              },
+              "vigenteHasta": {
+                "type": "string",
+                "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+              },
+              "emisor": {
+                "type": "object",
+                "properties": {
+                  "nombre": {
+                    "type": "string"
+                  },
+                  "domicilio": {
+                    "type": "string"
+                  },
+                  "telefono": {
+                    "type": "string"
+                  },
+                  "correo": {
+                    "type": "string"
+                  },
+                  "logo": {
+                    "type": "string",
+                    "enum": [
+                      "DEMO"
+                    ]
+                  }
+                },
+                "required": [
+                  "nombre",
+                  "domicilio",
+                  "telefono",
+                  "correo",
+                  "logo"
+                ],
+                "additionalProperties": false
+              },
+              "cliente": {
+                "type": "object",
+                "properties": {
+                  "codigo": {
+                    "type": "string"
+                  },
+                  "nombre": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "codigo",
+                  "nombre"
+                ],
+                "additionalProperties": false
+              },
+              "contacto": {
+                "type": "object",
+                "properties": {
+                  "nombre": {
+                    "type": "string"
+                  },
+                  "telefono": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "correo": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  }
+                },
+                "required": [
+                  "nombre",
+                  "telefono",
+                  "correo"
+                ],
+                "additionalProperties": false
+              },
+              "proyecto": {
+                "type": "object",
+                "properties": {
+                  "codigo": {
+                    "type": "string"
+                  },
+                  "nombre": {
+                    "type": "string"
+                  },
+                  "ubicacion": {
+                    "type": "string"
+                  },
+                  "descripcion": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "codigo",
+                  "nombre",
+                  "ubicacion",
+                  "descripcion"
+                ],
+                "additionalProperties": false
+              },
+              "moneda": {
+                "type": "string",
+                "const": "MXN"
+              },
+              "partidas": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "numero": {
+                      "type": "integer",
+                      "exclusiveMinimum": 0,
+                      "maximum": 9007199254740991
+                    },
+                    "descripcion": {
+                      "type": "string"
+                    },
+                    "unidad": {
+                      "type": "string"
+                    },
+                    "cantidad": {
+                      "type": "string",
+                      "pattern": "^-?(0|[1-9]\\d{0,14})(\\.\\d{1,10})?$"
+                    },
+                    "precioUnitario": {
+                      "type": "string",
+                      "pattern": "^-?(0|[1-9]\\d{0,14})(\\.\\d{1,10})?$"
+                    },
+                    "importe": {
+                      "type": "string",
+                      "pattern": "^-?(0|[1-9]\\d{0,14})(\\.\\d{1,10})?$"
+                    }
+                  },
+                  "required": [
+                    "numero",
+                    "descripcion",
+                    "unidad",
+                    "cantidad",
+                    "precioUnitario",
+                    "importe"
+                  ],
+                  "additionalProperties": false
+                }
+              },
+              "subtotal": {
+                "type": "string",
+                "pattern": "^-?(0|[1-9]\\d{0,14})(\\.\\d{1,10})?$"
+              },
+              "impuesto": {
+                "type": "object",
+                "properties": {
+                  "nombre": {
+                    "type": "string"
+                  },
+                  "tasa": {
+                    "type": "string",
+                    "pattern": "^-?(0|[1-9]\\d{0,14})(\\.\\d{1,10})?$"
+                  },
+                  "importe": {
+                    "type": "string",
+                    "pattern": "^-?(0|[1-9]\\d{0,14})(\\.\\d{1,10})?$"
+                  }
+                },
+                "required": [
+                  "nombre",
+                  "tasa",
+                  "importe"
+                ],
+                "additionalProperties": false
+              },
+              "total": {
+                "type": "string",
+                "pattern": "^-?(0|[1-9]\\d{0,14})(\\.\\d{1,10})?$"
+              },
+              "textos": {
+                "type": "object",
+                "properties": {
+                  "alcance": {
+                    "type": "string",
+                    "maxLength": 2000
+                  },
+                  "condiciones": {
+                    "type": "string",
+                    "maxLength": 2000
+                  },
+                  "exclusiones": {
+                    "type": "string",
+                    "maxLength": 2000
+                  }
+                },
+                "required": [
+                  "alcance",
+                  "condiciones",
+                  "exclusiones"
+                ],
+                "additionalProperties": false
+              },
+              "leyendaTecnica": {
+                "type": "string"
+              },
+              "personas": {
+                "type": "object",
+                "properties": {
+                  "preparo": {
+                    "type": "string"
+                  },
+                  "aprobo": {
+                    "type": "string"
+                  },
+                  "emitio": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "preparo",
+                  "aprobo",
+                  "emitio"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "plantilla",
+              "ambiente",
+              "origen",
+              "folio",
+              "versionNumero",
+              "idVersion",
+              "fechaEmision",
+              "vigenciaDias",
+              "vigenteHasta",
+              "emisor",
+              "cliente",
+              "contacto",
+              "proyecto",
+              "moneda",
+              "partidas",
+              "subtotal",
+              "impuesto",
+              "total",
+              "textos",
+              "leyendaTecnica",
+              "personas"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "emision",
+          "documento"
+        ],
+        "additionalProperties": false
+      },
+      "Emisor": {
+        "type": "object",
+        "properties": {
+          "nombre": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "domicilio": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "telefono": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "correo": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "logo": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "DEMO"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "esDemo": {
+            "type": "boolean"
+          },
+          "revision": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "modificadoPor": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "modificadoEn": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "faltantes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "editable": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "nombre",
+          "domicilio",
+          "telefono",
+          "correo",
+          "logo",
+          "esDemo",
+          "revision",
+          "modificadoPor",
+          "modificadoEn",
+          "faltantes",
+          "editable"
+        ],
+        "additionalProperties": false
+      },
+      "EdicionEmisor": {
+        "type": "object",
+        "properties": {
+          "revision": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "nombre": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 200
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "domicilio": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 300
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "telefono": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 40
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "correo": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 254
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "logo": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "DEMO"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "motivo": {
+            "type": "string",
+            "maxLength": 500
+          }
+        },
+        "required": [
+          "revision",
+          "nombre",
+          "domicilio",
+          "telefono",
+          "correo",
+          "logo",
+          "motivo"
         ],
         "additionalProperties": false
       }

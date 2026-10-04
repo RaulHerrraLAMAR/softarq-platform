@@ -63,6 +63,7 @@ model Organizacion {
   clientes       Cliente[]
   contadores     Contador[]
   bitacora       Bitacora[]
+  emisor         Emisor?
 
   @@map("organizacion")
 }
@@ -325,6 +326,12 @@ model Membresia {
   revisionesEnviadas   Revision[]           @relation("RevisionEnviadaPor")
   revisionesResueltas  Revision[]           @relation("RevisionResueltaPor")
   eventosRevision      RevisionEvento[]
+  // Emisión, anulación y descarte (módulo 8, ADR-0010).
+  emisionesPreparadas  Emision[]            @relation("EmisionPreparadaPor")
+  emisionesAprobadas   Emision[]            @relation("EmisionAprobadaPor")
+  emisionesEmitidas    Emision[]            @relation("EmisionEmitidaPor")
+  emisoresModificados  Emisor[]
+  cotizacionesDescartadas Cotizacion[]      @relation("CotizacionDescartadaPor")
   eventos              Bitacora[]
   idempotencia         Idempotencia[]
 
@@ -372,6 +379,10 @@ model Cliente {
   codigo         String   @db.VarChar(20)
   /// nombre_razon_social del libro.
   nombre         String   @db.VarChar(200)
+  /// Contacto del cliente (BL-01: nombre y teléfono o correo para emitir; módulo 8).
+  contactoNombre   String?  @map("contacto_nombre") @db.VarChar(200)
+  contactoTelefono String?  @map("contacto_telefono") @db.VarChar(40)
+  contactoCorreo   String?  @map("contacto_correo") @db.VarChar(254)
   activo         Boolean  @default(true)
   /// Control de concurrencia optimista de la edición.
   revision       Int      @default(0)
@@ -429,8 +440,12 @@ model Cotizacion {
   anioFolio      Int      @map("anio_folio")
   /// WEB_DEMO: historial independiente de la fase Excel (CHECK).
   origen         String   @db.VarChar(20)
-  /// ACTIVO | DESCARTADO (CHECK). En este módulo solo se alcanza ACTIVO.
+  /// ACTIVO | DESCARTADO (CHECK). El descarte (módulo 8) es definitivo y no reutiliza el folio.
   estadoFolio    String   @default("ACTIVO") @map("estado_folio") @db.VarChar(20)
+  /// Descarte (B-37): quién, cuándo y por qué. Solo los fija `softarq_descartar_cotizacion`.
+  descartadaPor  String?   @map("descartada_por") @db.Uuid
+  descartadaEn   DateTime? @map("descartada_en") @db.Timestamptz(3)
+  motivoDescarte String?   @map("motivo_descarte") @db.VarChar(500)
   clienteId      String   @map("cliente_id") @db.Uuid
   proyectoId     String   @map("proyecto_id") @db.Uuid
   /// Último número de versión asignado (0 = sin versiones). Se incrementa atómicamente.
@@ -440,9 +455,11 @@ model Cotizacion {
 
   proyecto   Proyecto            @relation(fields: [organizacionId, clienteId, proyectoId], references: [organizacionId, clienteId, id], onDelete: Restrict, onUpdate: Restrict)
   autor      Membresia           @relation(fields: [organizacionId, creadoPor], references: [organizacionId, usuarioId], onDelete: Restrict, onUpdate: Restrict)
+  descartador Membresia?         @relation("CotizacionDescartadaPor", fields: [organizacionId, descartadaPor], references: [organizacionId, usuarioId], onDelete: Restrict, onUpdate: Restrict)
   borrador   CotizacionBorrador?
   versiones  CotizacionVersion[]
   revisiones Revision[]
+  emisiones  Emision[]
 
   @@unique([organizacionId, id])
   @@unique([organizacionId, folio])
@@ -505,6 +522,7 @@ model CotizacionVersion {
   cotizacion Cotizacion @relation(fields: [organizacionId, cotizacionId], references: [organizacionId, id], onDelete: Restrict, onUpdate: Restrict)
   autor      Membresia  @relation(fields: [organizacionId, autorId], references: [organizacionId, usuarioId], onDelete: Restrict, onUpdate: Restrict)
   revisiones Revision[]
+  emisiones  Emision[]
 
   @@unique([cotizacionId, numero])
   @@unique([organizacionId, id])
@@ -544,8 +562,11 @@ model Revision {
   emisor     Membresia         @relation("RevisionEnviadaPor", fields: [organizacionId, enviadoPor], references: [organizacionId, usuarioId], onDelete: Restrict, onUpdate: Restrict)
   resolutor  Membresia?        @relation("RevisionResueltaPor", fields: [organizacionId, resueltaPor], references: [organizacionId, usuarioId], onDelete: Restrict, onUpdate: Restrict)
   eventos    RevisionEvento[]
+  emisiones  Emision[]
 
   @@unique([organizacionId, id])
+  /// Destino de la FK de `emision`: la aprobación usada es de ESA versión (ADR-0010).
+  @@unique([organizacionId, id, versionId])
   @@index([organizacionId, estado, enviadoEn])
   @@index([organizacionId, cotizacionId])
   @@map("revision")
@@ -557,7 +578,7 @@ model RevisionEvento {
   organizacionId String   @map("organizacion_id") @db.Uuid
   revisionId     String   @map("revision_id") @db.Uuid
   secuencia      Int
-  /// ENVIADA | APROBADA | CAMBIOS_SOLICITADOS | RETIRADA
+  /// ENVIADA | APROBADA | CAMBIOS_SOLICITADOS | RETIRADA | APROBACION_ANULADA (módulo 8)
   tipo           String   @db.VarChar(30)
   estadoAnterior String?  @map("estado_anterior") @db.VarChar(20)
   estadoNuevo    String   @map("estado_nuevo") @db.VarChar(20)
@@ -576,6 +597,80 @@ model RevisionEvento {
   @@map("revision_evento")
 }
 
+/// Datos del emisor por organización (17 CONFIG: EMISOR_*; BL-15). Se copian a cada emisión: un
+/// cambio posterior no altera documentos emitidos. `logo_clave` nombra un recurso local de la API.
+model Emisor {
+  organizacionId String   @id @map("organizacion_id") @db.Uuid
+  nombre         String?  @db.VarChar(200)
+  domicilio      String?  @db.VarChar(300)
+  telefono       String?  @db.VarChar(40)
+  correo         String?  @db.VarChar(254)
+  /// DEMO = recursos/pdf/logo-demo.png (CHECK); `null` = sin logotipo (BL-15).
+  logoClave      String?  @map("logo_clave") @db.VarChar(20)
+  /// Datos ficticios de demostración (DEMO_EMISOR_* del libro).
+  esDemo         Boolean  @map("es_demo")
+  revision       Int      @default(0)
+  /// `null` = cargado por `db:cargar-demo` (sin persona); después, quien lo editó.
+  modificadoPor  String?  @map("modificado_por") @db.Uuid
+  modificadoEn   DateTime @default(now()) @map("modificado_en") @db.Timestamptz(3)
+
+  organizacion Organizacion @relation(fields: [organizacionId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  modificador  Membresia?   @relation(fields: [organizacionId, modificadoPor], references: [organizacionId, usuarioId], onDelete: Restrict, onUpdate: Restrict)
+
+  @@map("emisor")
+}
+
+/// Emisión de una versión aprobada (módulo 8, ADR-0010): registro inmutable, independiente del
+/// snapshot calculado. Guarda la estructura comercial exacta que recibió el generador del PDF y la
+/// identidad del archivo (clave del servidor, tamaño y SHA-256). Sin UPDATE ni DELETE.
+model Emision {
+  id               String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organizacionId   String   @map("organizacion_id") @db.Uuid
+  cotizacionId     String   @map("cotizacion_id") @db.Uuid
+  folio            String   @db.VarChar(20)
+  versionId        String   @map("version_id") @db.Uuid
+  versionNumero    Int      @map("version_numero")
+  /// Aprobación usada (revisión APROBADA y sin anular de ESTA versión).
+  revisionId       String   @map("revision_id") @db.Uuid
+  /// WEB_DEMO (CHECK).
+  origen           String   @db.VarChar(20)
+  /// DEMO | PRODUCCION
+  ambiente         String   @db.VarChar(12)
+  preparadoPor     String   @map("preparado_por") @db.Uuid
+  preparadoNombre  String   @map("preparado_nombre") @db.VarChar(200)
+  aprobadoPor      String   @map("aprobado_por") @db.Uuid
+  aprobadoNombre   String   @map("aprobado_nombre") @db.VarChar(200)
+  emitidoPor       String   @map("emitido_por") @db.Uuid
+  emitidoNombre    String   @map("emitido_nombre") @db.VarChar(200)
+  emitidoEn        DateTime @default(now()) @map("emitido_en") @db.Timestamptz(3)
+  /// Fecha de negocio del servidor (zona SOFTARQ_ZONA_HORARIA) y vigencia (CR-16).
+  fechaEmision     DateTime @map("fecha_emision") @db.Date
+  vigenciaDias     Int      @map("vigencia_dias")
+  vigenteHasta     DateTime @map("vigente_hasta") @db.Date
+  total            Decimal  @db.Decimal(18, 2)
+  /// Estructura comercial entregada al generador (sin costos, proveedores ni consumos).
+  contenido        Json
+  plantillaVersion String   @map("plantilla_version") @db.VarChar(40)
+  /// Ruta relativa a SOFTARQ_DIR_DOCUMENTOS, construida solo con uuids del servidor.
+  archivoClave     String   @map("archivo_clave") @db.VarChar(200)
+  archivoBytes     Int      @map("archivo_bytes")
+  archivoSha256    Bytes    @map("archivo_sha256")
+
+  cotizacion Cotizacion        @relation(fields: [organizacionId, cotizacionId, folio], references: [organizacionId, id, folio], onDelete: Restrict, onUpdate: Restrict)
+  version    CotizacionVersion @relation(fields: [organizacionId, cotizacionId, versionNumero, versionId], references: [organizacionId, cotizacionId, numero, id], onDelete: Restrict, onUpdate: Restrict)
+  revision   Revision          @relation(fields: [organizacionId, revisionId, versionId], references: [organizacionId, id, versionId], onDelete: Restrict, onUpdate: Restrict)
+  preparador Membresia         @relation("EmisionPreparadaPor", fields: [organizacionId, preparadoPor], references: [organizacionId, usuarioId], onDelete: Restrict, onUpdate: Restrict)
+  aprobador  Membresia         @relation("EmisionAprobadaPor", fields: [organizacionId, aprobadoPor], references: [organizacionId, usuarioId], onDelete: Restrict, onUpdate: Restrict)
+  emisor     Membresia         @relation("EmisionEmitidaPor", fields: [organizacionId, emitidoPor], references: [organizacionId, usuarioId], onDelete: Restrict, onUpdate: Restrict)
+
+  /// Una emisión por versión.
+  @@unique([versionId])
+  @@unique([organizacionId, id])
+  @@unique([archivoClave])
+  @@index([organizacionId, cotizacionId])
+  @@map("emision")
+}
+
 /// Contadores de identificadores (tblContadores): CLI, PRY y COT-AAAA, por organización.
 model Contador {
   organizacionId String @map("organizacion_id") @db.Uuid
@@ -592,7 +687,7 @@ model Contador {
 model Bitacora {
   id             String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   organizacionId String   @map("organizacion_id") @db.Uuid
-  /// cliente | proyecto | cotizacion (referencia polimórfica: sin FK).
+  /// cliente | proyecto | cotizacion | emisor (referencia polimórfica: sin FK).
   entidad        String   @db.VarChar(20)
   entidadId      String   @map("entidad_id") @db.Uuid
   tipo           String   @db.VarChar(40)

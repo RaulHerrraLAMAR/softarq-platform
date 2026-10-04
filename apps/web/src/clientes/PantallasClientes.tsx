@@ -74,10 +74,10 @@ export function ListaClientes({ servicios, puedeGestionar }: { servicios: Servic
           titulo="Nuevo cliente"
           textoBoton="Crear cliente"
           alCancelar={() => setCreando(false)}
-          alGuardar={async (nombre) => {
-            const r = await servicios.crearCliente(nombre, intenciones.clave("crear-cliente", { nombre }));
+          alGuardar={async (datos) => {
+            const r = await servicios.crearCliente(datos, intenciones.clave("crear-cliente", datos));
             if (r.ok) {
-              intenciones.olvidar("crear-cliente", { nombre });
+              intenciones.olvidar("crear-cliente", datos);
               navegar({ pantalla: "cliente", id: r.datos.id });
             }
             return r;
@@ -190,19 +190,36 @@ export function DetalleClientePantalla({
           {fallo.tipo === "conflicto" ? <Boton onClick={() => (setFallo(null), recargar())}>Recargar el cliente</Boton> : null}
         </Aviso>
       ) : null}
+      <section className="seccion" aria-labelledby="titulo-datos-cliente">
+        <h2 id="titulo-datos-cliente" className="seccion-titulo">
+          Datos del cliente
+        </h2>
+        {!editando ? (
+          <dl className="datos-cotizacion">
+            <div>
+              <dt>Contacto</dt>
+              <dd>{cliente.contactoNombre ?? <span className="ayuda">Sin capturar (necesario para emitir)</span>}</dd>
+            </div>
+            <div>
+              <dt>Teléfono</dt>
+              <dd>{cliente.contactoTelefono ?? "—"}</dd>
+            </div>
+            <div>
+              <dt>Correo</dt>
+              <dd>{cliente.contactoCorreo ?? "—"}</dd>
+            </div>
+          </dl>
+        ) : null}
       {puedeGestionar ? (
-        <section className="seccion" aria-labelledby="titulo-datos-cliente">
-          <h2 id="titulo-datos-cliente" className="seccion-titulo">
-            Datos del cliente
-          </h2>
+        <>
           {editando ? (
             <FormularioCliente
               titulo="Editar cliente"
-              inicial={cliente.nombre}
+              inicial={cliente}
               textoBoton="Guardar cambios"
               alCancelar={() => setEditando(false)}
-              alGuardar={async (nombre) => {
-                const r = await servicios.editarCliente(cliente.id, { revision: cliente.revision, nombre });
+              alGuardar={async (datos) => {
+                const r = await servicios.editarCliente(cliente.id, { revision: cliente.revision, ...datos });
                 if (r.ok) {
                   setEditando(false);
                   setMensaje("Cliente actualizado.");
@@ -213,7 +230,7 @@ export function DetalleClientePantalla({
             />
           ) : (
             <div className="formulario-acciones">
-              <Boton onClick={() => (setMensaje(null), setEditando(true))}>Editar nombre</Boton>
+              <Boton onClick={() => (setMensaje(null), setEditando(true))}>Editar datos y contacto</Boton>
               {confirmar ? (
                 <div className="confirmacion" role="group" aria-label="Confirmar cambio de estado">
                   <span>
@@ -235,8 +252,9 @@ export function DetalleClientePantalla({
               )}
             </div>
           )}
-        </section>
+        </>
       ) : null}
+      </section>
 
       <section className="seccion" aria-labelledby="titulo-proyectos-cliente">
         <h2 id="titulo-proyectos-cliente" className="seccion-titulo">

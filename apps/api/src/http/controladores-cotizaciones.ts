@@ -17,8 +17,12 @@ import {
   EsquemaConsultaClientes,
   EsquemaConsultaCotizaciones,
   EsquemaConsultaProyectos,
+  EsquemaAnulacionAprobacion,
   EsquemaConsultaRevisiones,
   EsquemaDecisionRevision,
+  EsquemaDescarteCotizacion,
+  EsquemaEdicionEmisor,
+  EsquemaSolicitudEmision,
   EsquemaParametroNumeroVersion,
   EsquemaRetiroRevision,
   EsquemaSolicitudEnvioRevision,
@@ -35,8 +39,15 @@ import {
   type ConsultaClientes,
   type ConsultaCotizaciones,
   type ConsultaProyectos,
+  type AnulacionAprobacion,
   type ConsultaRevisiones,
   type DecisionRevisionSolicitud,
+  type DescarteCotizacion,
+  type DetalleEmision,
+  type EdicionEmisor,
+  type Emisor,
+  type SolicitudEmision,
+  type ValidacionEmision,
   type DetalleRevision,
   type RespuestaRevisiones,
   type RetiroRevision,
@@ -61,11 +72,12 @@ import type { Request, Response } from "express";
 import { z } from "zod";
 import type { ServicioClientes } from "../modules/cotizaciones/aplicacion/servicio-clientes.js";
 import type { ServicioCotizaciones } from "../modules/cotizaciones/aplicacion/servicio-cotizaciones.js";
+import type { ServicioEmisiones } from "../modules/cotizaciones/aplicacion/servicio-emisiones.js";
 import type { ServicioRevisiones } from "../modules/cotizaciones/aplicacion/servicio-revisiones.js";
 import { organizacionDe, sesionDe } from "./contexto.js";
 import { ErrorApi } from "./errores.js";
 import { Requiere } from "./guardia-sesion.js";
-import { SERVICIO_CLIENTES, SERVICIO_COTIZACIONES, SERVICIO_REVISIONES } from "./tokens.js";
+import { SERVICIO_CLIENTES, SERVICIO_COTIZACIONES, SERVICIO_EMISIONES, SERVICIO_REVISIONES } from "./tokens.js";
 
 const EsquemaClaveIdempotencia = z.uuid();
 
@@ -255,6 +267,26 @@ export class CotizacionesController {
     if (!r.success) throw new ErrorApi(404, "NO_ENCONTRADO", "La versión no existe en su organización.");
     return this.servicio.consultarVersion(organizacionDe(req), r.data.id, r.data.numero);
   }
+
+  /**
+   * Descartar la cotización con motivo (B-37; ADR-0010). No elude revisiones pendientes ni
+   * aprobaciones vigentes; conserva folio, versiones y eventos.
+   */
+  @Post(":id/descarte")
+  @HttpCode(200)
+  @Requiere("cotizaciones.preparar")
+  async descartar(
+    @Req() req: Request,
+    @Res({ passthrough: true }) res: Response,
+    @Param() params: unknown,
+    @Body({ schema: EsquemaDescarteCotizacion }) s: DescarteCotizacion,
+  ): Promise<DetalleCotizacion> {
+    const id = idDeRuta(params);
+    const clave = claveIdempotencia(req);
+    const r = await this.servicio.descartar(organizacionDe(req), autorDe(req), id, s, clave);
+    marcarReproducida(res, r.reproducida);
+    return r.detalle;
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -263,7 +295,7 @@ export class CotizacionesController {
 
 function actorDe(req: Request) {
   const s = sesionDe(req);
-  return { usuarioId: s.usuario.id, capacidades: s.capacidades };
+  return { usuarioId: s.usuario.id, nombre: s.usuario.nombre, capacidades: s.capacidades, funciones: s.funciones };
 }
 
 /** Enviar a revisión una versión concreta: `POST /cotizaciones/{id}/versiones/{numero}/revisiones`. */
@@ -326,6 +358,23 @@ export class RevisionesController {
     return r.detalle;
   }
 
+  /** Anular una aprobación antes de emitir, con motivo (Revisor; módulo 8, ADR-0010). */
+  @Post(":id/anulacion")
+  @HttpCode(200)
+  @Requiere("revisiones.decidir")
+  async anular(
+    @Req() req: Request,
+    @Res({ passthrough: true }) res: Response,
+    @Param() params: unknown,
+    @Body({ schema: EsquemaAnulacionAprobacion }) s: AnulacionAprobacion,
+  ): Promise<DetalleRevision> {
+    const id = idDeRuta(params);
+    const clave = claveIdempotencia(req);
+    const r = await this.servicio.anular(organizacionDe(req), actorDe(req), id, s, clave);
+    marcarReproducida(res, r.reproducida);
+    return r.detalle;
+  }
+
   /** Retirar una revisión pendiente para corregir (Preparador). */
   @Post(":id/retiro")
   @HttpCode(200)
@@ -341,5 +390,100 @@ export class RevisionesController {
     const r = await this.servicio.retirar(organizacionDe(req), actorDe(req), id, s, clave);
     marcarReproducida(res, r.reproducida);
     return r.detalle;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Emisión, documento y emisor (módulo 8, ADR-0010)
+// ---------------------------------------------------------------------------
+
+function versionDeRuta(params: unknown): { id: string; numero: number } {
+  const r = EsquemaParametroNumeroVersion.safeParse(params);
+  if (!r.success) throw new ErrorApi(404, "NO_ENCONTRADO", "La versión no existe en su organización.");
+  return r.data;
+}
+
+/** Validar y emitir una versión concreta: `/cotizaciones/{id}/versiones/{numero}/emision`. */
+@Controller("cotizaciones")
+@SkipThrottle({ calculo: true })
+export class EmisionVersionController {
+  constructor(@Inject(SERVICIO_EMISIONES) private readonly servicio: ServicioEmisiones) {}
+
+  /** Lo que se emitiría hoy (destinatario, emisor, textos, fechas y total) y lo que lo impide. */
+  @Get(":id/versiones/:numero/emision/validacion")
+  @Requiere("cotizaciones.consultar")
+  validar(@Req() req: Request, @Param() params: unknown): Promise<ValidacionEmision> {
+    const v = versionDeRuta(params);
+    return this.servicio.validar(organizacionDe(req), actorDe(req), v.id, v.numero);
+  }
+
+  /**
+   * Emite la versión con la aprobación indicada: genera el PDF, lo guarda y registra la emisión.
+   * 201 solo cuando el documento y el registro existen.
+   */
+  @Post(":id/versiones/:numero/emision")
+  @HttpCode(201)
+  @Requiere("emisiones.emitir")
+  async emitir(
+    @Req() req: Request,
+    @Res({ passthrough: true }) res: Response,
+    @Param() params: unknown,
+    @Body({ schema: EsquemaSolicitudEmision }) s: SolicitudEmision,
+  ): Promise<DetalleEmision> {
+    const v = versionDeRuta(params);
+    const clave = claveIdempotencia(req);
+    const r = await this.servicio.emitir(organizacionDe(req), actorDe(req), v.id, v.numero, s, clave);
+    marcarReproducida(res, r.reproducida);
+    return r.detalle;
+  }
+}
+
+@Controller("emisiones")
+@SkipThrottle({ calculo: true })
+export class EmisionesController {
+  constructor(@Inject(SERVICIO_EMISIONES) private readonly servicio: ServicioEmisiones) {}
+
+  /** Registro de la emisión y contenido exacto del documento emitido. */
+  @Get(":id")
+  @Requiere("cotizaciones.consultar")
+  detalle(@Req() req: Request, @Param() params: unknown): Promise<DetalleEmision> {
+    return this.servicio.detalle(organizacionDe(req), idDeRuta(params));
+  }
+
+  /**
+   * Descarga autenticada del PDF emitido: los mismos bytes registrados (tamaño y SHA-256
+   * comprobados), nunca regenerados. Nombre de archivo armado solo con el folio validado.
+   */
+  @Get(":id/documento")
+  @Requiere("cotizaciones.consultar")
+  async documento(@Req() req: Request, @Res() res: Response, @Param() params: unknown): Promise<void> {
+    const a = await this.servicio.archivo(organizacionDe(req), idDeRuta(params));
+    res.status(200);
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader("Content-Disposition", `attachment; filename="${a.nombre}"`);
+    res.setHeader("Content-Length", String(a.contenido.length));
+    res.setHeader("Cache-Control", "private, no-store");
+    res.setHeader("X-Content-Type-Options", "nosniff");
+    res.setHeader("Repr-Digest", `sha-256=:${Buffer.from(a.sha256, "hex").toString("base64")}:`);
+    res.end(a.contenido);
+  }
+}
+
+/** Datos del emisor de la organización (BL-15). Los configura el Administrador del sistema. */
+@Controller("emisor")
+@SkipThrottle({ calculo: true })
+export class EmisorController {
+  constructor(@Inject(SERVICIO_EMISIONES) private readonly servicio: ServicioEmisiones) {}
+
+  @Get()
+  @Requiere("cotizaciones.consultar")
+  consultar(@Req() req: Request): Promise<Emisor> {
+    return this.servicio.emisor(organizacionDe(req), actorDe(req));
+  }
+
+  @Put()
+  @Requiere("emisor.configurar")
+  guardar(@Req() req: Request, @Body({ schema: EsquemaEdicionEmisor }) s: EdicionEmisor): Promise<Emisor> {
+    return this.servicio.guardarEmisor(organizacionDe(req), actorDe(req), s);
   }
 }

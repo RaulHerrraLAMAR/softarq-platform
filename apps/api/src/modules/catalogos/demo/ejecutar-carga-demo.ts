@@ -5,6 +5,7 @@
  */
 import { existsSync } from "node:fs";
 import { crearPrisma, hostDeBase, nombreDeBase } from "../../../infraestructura/prisma/cliente.js";
+import { cargarEmisorDemo } from "../../cotizaciones/demo/cargar-emisor-demo.js";
 import { cargarDemo } from "./cargar-demo.js";
 
 const BASES_PERMITIDAS = new Set(["softarq_dev", "softarq_test"]);
@@ -23,6 +24,9 @@ async function principal(): Promise<void> {
     const r = await cargarDemo(prisma);
     console.log("Creados:", JSON.stringify(r.creados));
     console.log("Ya existentes (conservados):", JSON.stringify(r.existentes));
+    // Emisor DEMO (módulo 8): ficticio; se conserva si ya existe.
+    const emisor = await cargarEmisorDemo(prisma, r.organizacionId);
+    console.log(emisor.creado ? "Emisor DEMO creado." : "Emisor ya existente (conservado).");
     if (r.diferencias.length > 0) {
       console.warn("Registros DEMO con valores distintos a los esperados (no se modificaron):");
       for (const d of r.diferencias) console.warn(`  - ${d}`);

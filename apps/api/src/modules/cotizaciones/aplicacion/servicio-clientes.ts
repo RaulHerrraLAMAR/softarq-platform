@@ -70,7 +70,13 @@ export class ServicioClientes {
   ): Promise<{ cliente: Cliente; reproducida: boolean }> {
     const ahora = this.reloj.ahora();
     const idem = prepararIdempotencia(clave, "crear_cliente", {}, s, ahora);
-    const r = await ejecutarIdempotente(this.repo, ctx, autor, idem, ahora, () => this.repo.crearCliente(ctx, autor, s.nombre, idem));
+    const datos = {
+      nombre: s.nombre,
+      contactoNombre: s.contactoNombre ?? null,
+      contactoTelefono: s.contactoTelefono ?? null,
+      contactoCorreo: s.contactoCorreo ?? null,
+    };
+    const r = await ejecutarIdempotente(this.repo, ctx, autor, idem, ahora, () => this.repo.crearCliente(ctx, autor, datos, idem));
     const cliente = await this.repo.obtenerCliente(ctx, r.id);
     if (!cliente) throw NO_ENCONTRADO();
     return { cliente, reproducida: r.reproducida };

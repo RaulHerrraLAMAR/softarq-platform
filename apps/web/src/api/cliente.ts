@@ -48,6 +48,16 @@ export type FalloApi =
    * `revisionVigente` trae el estado actual, sin validar (la pantalla lo valida con el contrato).
    */
   | { tipo: "revision"; codigo: "REVISION_PENDIENTE" | "VERSION_NO_VIGENTE" | "CONFLICTO_REVISION"; mensaje: string; revisionVigente: unknown }
+  /**
+   * 409 de la emisión (módulo 8): VERSION_EMITIDA, APROBACION_NO_VIGENTE, CONFLICTO_EMISION (la
+   * versión o la aprobación vistas ya no son las vigentes) o FOLIO_NO_ACTIVO (descartada).
+   */
+  | { tipo: "estado"; codigo: "VERSION_EMITIDA" | "APROBACION_NO_VIGENTE" | "CONFLICTO_EMISION" | "FOLIO_NO_ACTIVO"; mensaje: string }
+  /**
+   * 500 del documento (módulo 8): DOCUMENTO_NO_GENERADO (no se emitió; se puede reintentar) o
+   * DOCUMENTO_NO_DISPONIBLE (el archivo emitido falta o no coincide; nunca se regenera).
+   */
+  | { tipo: "documento"; codigo: "DOCUMENTO_NO_GENERADO" | "DOCUMENTO_NO_DISPONIBLE"; mensaje: string }
   /** 422 IDEMPOTENCIA_CONFLICTO o IDEMPOTENCIA_CADUCADA. */
   | { tipo: "idempotencia"; mensaje: string }
   | { tipo: "no_disponible" }
@@ -88,6 +98,8 @@ export interface ClienteApi {
   ): Promise<ResultadoApi<z.infer<E>>>;
   /** DELETE sin cuerpo de respuesta (204). */
   eliminar(ruta: string, opciones?: OpcionesSolicitud): Promise<ResultadoApi<null>>;
+  /** GET de un archivo (p. ej. el PDF emitido): el contenido como Blob, con la sesión. */
+  descargar(ruta: string, tipo: string, opciones?: OpcionesSolicitud): Promise<ResultadoApi<Blob>>;
   /** Cancela todo lo pendiente y descarta las respuestas que lleguen después. */
   cancelarTodo(): void;
 }
@@ -134,7 +146,7 @@ export function crearClienteApi(
 
     try {
       const conCuerpo = metodo === "POST" || metodo === "PUT" || metodo === "PATCH";
-      const cabeceras: Record<string, string> = { ...(opciones.cabeceras ?? {}), Accept: "application/json" };
+      const cabeceras: Record<string, string> = { Accept: "application/json", ...(opciones.cabeceras ?? {}) };
       if (conCuerpo) cabeceras["Content-Type"] = "application/json";
       if (metodo !== "GET") {
         const csrf = opcionesCliente.csrf?.();
@@ -158,6 +170,19 @@ export function crearClienteApi(
 
       if (respuesta.status === 204) {
         return respuesta.ok ? validar(null) : { ok: false, fallo: falloPorEstado(respuesta, null) };
+      }
+      // Archivo binario: solo si el tipo coincide con el pedido (si no, se trata como error JSON).
+      const tipoPedido = opciones.cabeceras?.["Accept"];
+      if (respuesta.ok && tipoPedido && tipoPedido !== "application/json") {
+        if (!(respuesta.headers.get("Content-Type") ?? "").startsWith(tipoPedido)) return { ok: false, fallo: { tipo: "incompatible" } };
+        let blob: Blob;
+        try {
+          blob = await respuesta.blob();
+        } catch {
+          return descartado() ? cancelado : { ok: false, fallo: { tipo: "red" } };
+        }
+        if (descartado()) return cancelado;
+        return validar(blob);
       }
       let cuerpo: unknown;
       try {
@@ -196,6 +221,13 @@ export function crearClienteApi(
     enviar: (ruta, esquema, { metodo = "POST", ...opciones }) => solicitar(metodo, ruta, conEsquema(esquema), opciones),
     eliminar: (ruta, opciones) =>
       solicitar("DELETE", ruta, (c) => (c === null ? { ok: true, datos: null } : { ok: false, fallo: { tipo: "incompatible" } }), opciones),
+    descargar: (ruta, tipo, opciones = {}) =>
+      solicitar(
+        "GET",
+        ruta,
+        (c) => (c instanceof Blob ? { ok: true, datos: c } : { ok: false, fallo: { tipo: "incompatible" } }),
+        { ...opciones, cabeceras: { ...(opciones.cabeceras ?? {}), Accept: tipo } },
+      ),
     cancelarTodo() {
       generacion++;
       for (const c of pendientes) c.abort();
@@ -224,6 +256,14 @@ function falloPorEstado(respuesta: Response, error: RespuestaError | null): Fall
       if (e?.codigo === "REVISION_PENDIENTE" || e?.codigo === "VERSION_NO_VIGENTE" || e?.codigo === "CONFLICTO_REVISION") {
         return { tipo: "revision", codigo: e.codigo, mensaje: e.mensaje, revisionVigente: e.revisionVigente ?? null };
       }
+      if (
+        e?.codigo === "VERSION_EMITIDA" ||
+        e?.codigo === "APROBACION_NO_VIGENTE" ||
+        e?.codigo === "CONFLICTO_EMISION" ||
+        e?.codigo === "FOLIO_NO_ACTIVO"
+      ) {
+        return { tipo: "estado", codigo: e.codigo, mensaje: e.mensaje };
+      }
       return { tipo: "incompatible" };
     case 422:
       switch (e?.codigo) {
@@ -232,6 +272,8 @@ function falloPorEstado(respuesta: Response, error: RespuestaError | null): Fall
         case "ENVIO_BLOQUEADO":
         case "APROBACION_BLOQUEADA":
         case "DECISION_BLOQUEADA":
+        case "EMISION_BLOQUEADA":
+        case "DESCARTE_BLOQUEADO":
           return { tipo: "bloqueado", problemas: e.problemas ?? [], codigo: e.codigo, mensaje: e.mensaje };
         case "REFERENCIA_NO_DISPONIBLE":
           return { tipo: "referencia", campos: e.campos ?? [] };
@@ -247,6 +289,11 @@ function falloPorEstado(respuesta: Response, error: RespuestaError | null): Fall
       }
     case 429:
       return { tipo: "limite", reintentarEnSegundos: segundos(respuesta.headers.get("Retry-After")) };
+    case 500:
+      if (e?.codigo === "DOCUMENTO_NO_GENERADO" || e?.codigo === "DOCUMENTO_NO_DISPONIBLE") {
+        return { tipo: "documento", codigo: e.codigo, mensaje: e.mensaje };
+      }
+      return { tipo: "error_servidor" };
     case 502:
     case 503:
     case 504:
@@ -273,6 +320,8 @@ export function mensajeDeFallo(fallo: FalloApi): string {
     case "referencia":
       return "Hay referencias nuevas que no existen o no están disponibles hoy. Revise los campos marcados.";
     case "revision":
+    case "estado":
+    case "documento":
       return fallo.mensaje;
     case "no_encontrado":
       return "Algún elemento de la captura ya no existe en el catálogo.";

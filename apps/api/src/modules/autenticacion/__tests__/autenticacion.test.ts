@@ -28,8 +28,22 @@ describe("matriz de permisos (contrastada con el libro)", () => {
   });
 
   it("varias funciones suman capacidades sin duplicarlas y en orden estable", () => {
-    expect(capacidadesDe(["REVISOR", "PREPARADOR"])).toEqual([...CAPACIDADES]);
+    // Módulo 8: `emisor.configurar` es del Administrador del sistema (17 CONFIG); las cuatro
+    // funciones juntas suman todas las capacidades.
+    expect(capacidadesDe(["REVISOR", "PREPARADOR"])).toEqual(CAPACIDADES.filter((c) => c !== "emisor.configurar"));
+    expect(capacidadesDe([...FUNCIONES_USUARIO])).toEqual([...CAPACIDADES]);
     expect(capacidadesDe([])).toEqual([]);
+  });
+
+  it("emitir: Preparador y Revisor (adaptación autorizada, ADR-0010); configurar el emisor: Administrador del sistema", () => {
+    expect(capacidadesDe(["PREPARADOR"])).toContain("emisiones.emitir");
+    expect(capacidadesDe(["REVISOR"])).toContain("emisiones.emitir");
+    expect(capacidadesDe(["ADMIN_CATALOGO"])).not.toContain("emisiones.emitir");
+    expect(capacidadesDe(["ADMIN_SISTEMA"])).not.toContain("emisiones.emitir");
+    expect(capacidadesDe(["ADMIN_SISTEMA"])).toContain("emisor.configurar");
+    for (const f of ["PREPARADOR", "REVISOR", "ADMIN_CATALOGO"] as const) expect(capacidadesDe([f])).not.toContain("emisor.configurar");
+    // Poder emitir no concede aprobar.
+    expect(capacidadesDe(["PREPARADOR"])).not.toContain("revisiones.decidir");
   });
 
   it("la matriz solo usa capacidades del contrato", () => {

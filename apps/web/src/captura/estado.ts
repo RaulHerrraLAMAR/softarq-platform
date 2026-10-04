@@ -7,8 +7,10 @@
  *   no está disponible, el insumo queda sin selección y con aviso (nunca se sustituye).
  * - Una selección ya hecha que deja de estar disponible SE CONSERVA marcada (nunca se borra ni se
  *   sustituye en silencio): el usuario decide elegir otra opción o quitarla («Quitar selección»).
+ * - Los textos de la versión (alcance, condiciones y exclusiones; módulo 8) son parte del borrador de
+ *   una cotización: no intervienen en el cálculo ni en la huella de la vista previa.
  */
-import type { CapturaBorrador, DimensionMedicion, ReferenciasBorrador, TipoFormula } from "@softarq/contracts";
+import type { CapturaBorrador, DimensionMedicion, ReferenciasBorrador, TextosCotizacion, TipoFormula } from "@softarq/contracts";
 import type { ConceptoCatalogo, InsumoConOpciones } from "../api/servicios.ts";
 import type { Ejemplo } from "../ejemplos/ejemplos.ts";
 
@@ -75,6 +77,11 @@ export interface Captura {
   seleccionConservada: string[];
   /** Avisos de la carga de un ejemplo (p. ej. un concepto que ya no existe). */
   avisosCarga: string[];
+  /**
+   * Textos de la versión (BL-20). `null` = la captura no los tiene (calculadora, o borradores
+   * anteriores al módulo 8): no se envían hasta que el usuario los escriba o los restablezca.
+   */
+  textos: TextosCotizacion | null;
   siguienteClave: number;
 }
 
@@ -102,6 +109,8 @@ export type Accion =
   | { tipo: "ELEGIR_OPCION"; insumo: string; precio: string }
   /** Decisión explícita del usuario: deja de guardar la selección de ese insumo. */
   | { tipo: "QUITAR_SELECCION"; insumo: string }
+  | { tipo: "EDITAR_TEXTO"; campo: keyof TextosCotizacion; valor: string }
+  | { tipo: "FIJAR_TEXTOS"; textos: TextosCotizacion }
   | { tipo: "CONCILIAR_OPCIONES"; conceptos: readonly string[]; insumos: readonly InsumoConOpciones[] };
 
 export type EstadoApp = { captura: Captura | null };
@@ -118,6 +127,7 @@ function capturaVacia(origen: OrigenCaptura): Captura {
     avisosSeleccion: {},
     seleccionConservada: [],
     avisosCarga: [],
+    textos: null,
     siguienteClave: 1,
   };
 }
@@ -228,6 +238,10 @@ function reducirCaptura(c: Captura, a: Accion): Captura {
     }
     case "CONCILIAR_OPCIONES":
       return conciliar(c, a.conceptos, a.insumos);
+    case "EDITAR_TEXTO":
+      return { ...c, textos: { ...(c.textos ?? { alcance: "", condiciones: "", exclusiones: "" }), [a.campo]: a.valor } };
+    case "FIJAR_TEXTOS":
+      return { ...c, textos: { ...a.textos } };
     default:
       return c;
   }
@@ -429,6 +443,7 @@ function desdeBorrador(
     partidas,
     seleccion: Object.fromEntries(b.seleccion.map((s) => [s.insumoCodigo, s.precioCodigo])),
     avisosCarga,
+    textos: b.textos ? { ...b.textos } : null,
     siguienteClave: n,
   };
   const conocidos = new Set(insumosEnUso(base));

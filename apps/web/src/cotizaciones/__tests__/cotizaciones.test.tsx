@@ -44,6 +44,7 @@ function detalle(revision = 3, versiones: DetalleCotizacion["versiones"] = []): 
       folio: "COT-2026-00001",
       origen: "WEB_DEMO",
       estadoFolio: "ACTIVO",
+      descarte: null,
       cliente: { id: "c1", codigo: "CLI-00001", nombre: "[DEMO] Cliente", activo: true },
       proyecto: { id: "p1", codigo: "PRY-00001", nombre: "[DEMO] Obra", activo: true },
       creadoEn: "2026-10-03T15:00:00.000Z",
@@ -59,8 +60,10 @@ function detalle(revision = 3, versiones: DetalleCotizacion["versiones"] = []): 
       actualizadoEn: "2026-10-03T15:05:00.000Z",
       completitud: { lista: true, pendientes: [] },
       referencias: SIN_REFERENCIAS_NO_DISPONIBLES,
+      textosPredeterminados: null,
     },
     versiones,
+    descartar: { permitido: true, motivoNoPermitido: null },
     revisiones: [],
     eventos: [],
   };
@@ -76,6 +79,7 @@ const VERSION: Version = {
     estado: "BORRADOR",
     esUltima: true,
     revisionVigente: null,
+    emision: null,
     revisionBorrador: 4,
     fechaCalculo: "2026-09-25",
     creadoEn: "2026-10-03T15:10:00.000Z",
@@ -127,6 +131,14 @@ function cotizacionesFalsas(s: Partial<ServiciosCotizaciones> = {}): ServiciosCo
     detalleRevision: noUsar,
     decidirRevision: vi.fn(),
     retirarRevision: vi.fn(),
+    anularAprobacion: vi.fn(),
+    descartarCotizacion: vi.fn(),
+    validarEmision: noUsar,
+    emitir: vi.fn(),
+    detalleEmision: noUsar,
+    descargarDocumento: vi.fn(),
+    emisor: noUsar,
+    guardarEmisor: vi.fn(),
     ...s,
   };
 }
@@ -137,6 +149,7 @@ function abrir(cotizaciones: ServiciosCotizaciones, puedePreparar = true) {
     <ProveedorRuta>
       <PantallaCotizacion id={ID} servicios={serviciosFalsos()} cotizaciones={cotizaciones} puedePreparar={puedePreparar}
         puedeEnviarRevision={puedePreparar}
+        puedeEmitir={false}
         motivoSinCalculo={null}
       />
     </ProveedorRuta>,

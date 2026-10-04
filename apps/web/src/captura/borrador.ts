@@ -8,6 +8,7 @@
  *   insumos de todas las partidas (también de conceptos no disponibles) y las conservadas sin
  *   partida conocida: guardar nunca borra una selección que el usuario no quitó.
  * - El borrador no lleva resultados ni importes calculados.
+ * - Los textos de la versión viajan solo si la captura los tiene (módulo 8).
  */
 import { PATRON_DECIMAL_TEXTO, type CapturaBorrador } from "@softarq/contracts";
 import { insumosConSeleccionGuardable, type Captura } from "./estado.ts";
@@ -60,7 +61,10 @@ export function serializarBorrador(c: Captura): ResultadoSerializacion {
   const seleccion = insumosConSeleccionGuardable(c)
     .filter((ins) => c.seleccion[ins] !== undefined)
     .map((ins) => ({ insumoCodigo: ins, precioCodigo: c.seleccion[ins]! }));
-  return { ok: true, borrador: { consolidarCompras: c.consolidarCompras, partidas, seleccion } };
+  return {
+    ok: true,
+    borrador: { consolidarCompras: c.consolidarCompras, partidas, seleccion, ...(c.textos ? { textos: { ...c.textos } } : {}) },
+  };
 }
 
 /** JSON con claves ordenadas: el servidor (jsonb) no conserva el orden de las claves. */
@@ -104,6 +108,9 @@ export function diferenciasBorrador(local: CapturaBorrador, servidor: CapturaBor
   const sb = sel(servidor);
   for (const ins of [...new Set([...sa.keys(), ...sb.keys()])].sort()) {
     if (sa.get(ins) !== sb.get(ins)) d.push(`Opción elegida para ${ins}: distinta.`);
+  }
+  for (const [k, nombre] of [["alcance", "Alcance"], ["condiciones", "Condiciones"], ["exclusiones", "Exclusiones"]] as const) {
+    if ((local.textos?.[k] ?? "").trim() !== (servidor.textos?.[k] ?? "").trim()) d.push(`${nombre}: texto distinto.`);
   }
   return d;
 }

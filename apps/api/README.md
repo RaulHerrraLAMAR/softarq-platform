@@ -6,9 +6,10 @@
 - API HTTP local con NestJS 12 (módulo 3, ADR-0005; endpoints en [`docs/api/README.md`](../../docs/api/README.md));
 - usuarios DEMO, sesiones opacas en PostgreSQL, CSRF y permisos por función y organización (módulo 5, ADR-0007);
 - clientes, proyectos y cotizaciones con folio WEB DEMO, borrador con revisión, versiones inmutables calculadas en el servidor e idempotencia (módulo 6, ADR-0008);
-- todavía no hay revisión, aprobación, emisión ni PDF.
+- revisión y aprobación por otra persona (módulo 7, ADR-0009);
+- emisión de versiones aprobadas con PDF DEMO (PDFKit 0.20.2), anulación de aprobaciones, descarte, contacto del cliente y emisor (módulo 8, ADR-0010).
 
-**Tecnología:** TypeScript 7 (ESM; decoradores con `tsc`), NestJS 12.1.2 sobre Express 5, Zod 4.6.5 (contratos), decimal.js 10.6.0, Prisma 7.10.0 con `@prisma/adapter-pg`, `@node-rs/argon2` 2.2.1 (Argon2id), `cookie` 0.7.2, PostgreSQL 18 local y Vitest 5.
+**Tecnología:** TypeScript 7 (ESM; decoradores con `tsc`), NestJS 12.1.2 sobre Express 5, Zod 4.6.5 (contratos), decimal.js 10.6.0, Prisma 7.10.0 con `@prisma/adapter-pg`, `@node-rs/argon2` 2.2.1 (Argon2id), `cookie` 0.7.2, PDFKit 0.20.2 (PDF, MIT), PostgreSQL 18 local y Vitest 5. Solo en pruebas: `pdfjs-dist` 6.3.289 (extraer y renderizar texto de los PDF).
 
 ## Responsabilidades
 
@@ -31,6 +32,9 @@ Los clientes (web y móvil) solo muestran y capturan datos.
 | `src/modules/catalogos/persistencia/` | Repositorio de catálogos (siempre con `ContextoOrganizacion`) |
 | `src/modules/cotizaciones/` | Módulo 6: borrador → solicitud y completitud, huellas y resumen de cambios (`dominio/`); clientes, proyectos, cotizaciones, versiones en dos fases e idempotencia (`aplicacion/`); repositorio Prisma y llamadas a las funciones de la base (`infraestructura/`) |
 | `src/modules/catalogos/demo/` | Datos DEMO con su procedencia y carga idempotente |
+| `src/modules/cotizaciones/` (módulo 8) | Reglas de emisión y textos (`dominio/emision.ts`, `dominio/textos.ts`), generador y formato del PDF (`dominio/pdf/`), almacén de documentos y repositorio de emisiones (`infraestructura/`), servicio de emisión (`aplicacion/servicio-emisiones.ts`), revisión de documentos (`mantenimiento/`), emisor DEMO (`demo/`) |
+| `recursos/pdf/` | Fuentes Fira Sans (OFL, con su licencia) y logotipo DEMO (copia de `entrega\recursos\logo_demo.png`) |
+| `scripts/pdf/renderizar-pdf.mjs` | Renderiza cada página de un PDF a PNG para revisarlo (solo desarrollo; salidas en `_work`) |
 | `src/modules/autenticacion/` | Matriz de permisos y política de sesiones (`dominio/`), casos de uso y limitador de accesos (`aplicacion/`), Argon2id, tokens, CSRF y repositorio de sesiones (`infraestructura/`), cuentas DEMO (`demo/`) |
 | `src/http/guardia-sesion.ts`, `cookies.ts`, `controlador-autenticacion.ts` | Guardia global (niega por omisión: sesión, origen, CSRF y capacidad), cookie de sesión y endpoints `/auth` |
 | `src/infraestructura/prisma/` | Cliente Prisma, conversión decimal por columna y fechas DATE |
@@ -118,6 +122,21 @@ pnpm install --frozen-lockfile
 **Mantenimiento de idempotencia:** `pnpm --filter @softarq/api db:purgar-idempotencia` (rol migrador) borra las claves caducadas hace más de 7 días. Los recursos creados no se tocan.
 
 **Cotizaciones (módulo 6):** la migración `20261003062244_cotizaciones` crea las tablas, los CHECK, el trigger de inmutabilidad de las versiones y las funciones `softarq_*` (una sentencia atómica por alta o edición). Se aplica con `db:migrar` como las demás; `permisos-app.sql` limita a `softarq_app` a las columnas editables y le impide modificar versiones, eventos y claves de idempotencia.
+
+**Documentos emitidos (módulo 8, ADR-0010 §7–§8):**
+- **Carpeta:** `SOFTARQ_DIR_DOCUMENTOS` (en `apps/api/.env`; desarrollo: `D:\Proyecto_SoftArq\datos\softarq_dev\documentos`). Es obligatoria para arrancar y debe estar fuera del repositorio y de `_work`.
+- **Son originales, no caché:**
+  - nunca se regeneran;
+  - se respaldan **con** la base: primero `pg_dump` de `softarq_dev` y después una copia de la carpeta;
+  - al restaurar, se restauran ambas.
+- **Revisar y recuperar:** `pnpm --filter @softarq/api documentos:revisar` informa:
+  - temporales;
+  - archivos sin registro (interrupción entre el archivo y el registro);
+  - registros con archivo ausente o dañado.
+
+  Con `-- --limpiar` borra solo temporales y archivos propios sin registro de más de 60 min (`--antiguedad-minutos=N`). Si informa archivos ausentes o dañados (código 2), restaure el archivo desde el respaldo.
+- **Pruebas:** usan `_work\pruebas\documentos-integracion` y `documentos-e2e` y nunca tocan la carpeta de desarrollo.
+- **Emisor DEMO:** `db:cargar-demo` lo crea si falta, sin sobrescribirlo. `db:cargar-usuarios-demo` añade la cuenta `administrador.demo@softarq.test` (`[DEMO] Administrador`, que configura el emisor) y conserva las existentes.
 
 **Migraciones nuevas:** `pnpm --filter @softarq/api db:nueva-migracion <nombre>` (usa la base sombra). Después, revisa y completa el SQL (CHECK y exclusiones) y aplícalo con `db:migrar`.
 

@@ -20,6 +20,7 @@ import { serializarBorrador } from "./captura/borrador.ts";
 import { useCaptura } from "./captura/usarCaptura.ts";
 import { DetalleClientePantalla, ListaClientes, ListaProyectos } from "./clientes/PantallasClientes.tsx";
 import { PantallaCotizacion } from "./cotizaciones/EditorCotizacion.tsx";
+import { PantallaEmisor } from "./cotizaciones/emision.tsx";
 import { ListaCotizaciones, NuevaCotizacion, VistaVersion } from "./cotizaciones/PantallasCotizaciones.tsx";
 import { BandejaRevisiones, PantallaRevision } from "./cotizaciones/revisiones.tsx";
 import { Enlace, ProveedorRuta, hashDe, seccionDe, useRuta, type Ruta } from "./navegacion/ruta.tsx";
@@ -46,6 +47,7 @@ const SECCIONES: { ruta: Ruta; texto: string; seccion: NonNullable<ReturnType<ty
   { ruta: { pantalla: "revisiones" }, texto: "Revisiones", seccion: "revisiones" },
   { ruta: { pantalla: "clientes" }, texto: "Clientes", seccion: "clientes" },
   { ruta: { pantalla: "proyectos" }, texto: "Proyectos", seccion: "proyectos" },
+  { ruta: { pantalla: "emisor" }, texto: "Emisor", seccion: "emisor" },
 ];
 
 function Navegacion({ ruta }: { ruta: Ruta }) {
@@ -71,6 +73,7 @@ function Contenido({ sesion, servicios, cotizaciones, barraSesion, motivoSinCalc
   const puedePreparar = puede("cotizaciones.preparar");
   const puedeGestionar = puede("clientes.gestionar");
   const puedeEnviarRevision = puede("revisiones.enviar");
+  const puedeEmitir = puede("emisiones.emitir");
   const [capturaPendiente, setCapturaPendiente] = useState<CapturaBorrador | null>(null);
   const editorCalculadora = useCaptura(servicios);
 
@@ -119,9 +122,12 @@ function Contenido({ sesion, servicios, cotizaciones, barraSesion, motivoSinCalc
             cotizaciones={cotizaciones}
             puedePreparar={puedePreparar}
             puedeEnviarRevision={puedeEnviarRevision}
+            puedeEmitir={puedeEmitir}
             motivoSinCalculo={motivoSinCalculo}
           />
         );
+      case "emisor":
+        return <PantallaEmisor cotizaciones={cotizaciones} />;
       case "revisiones":
         return <BandejaRevisiones servicios={cotizaciones} />;
       case "revision":

@@ -80,6 +80,16 @@ const EsquemaEntorno = z.object({
       },
       { error: "SOFTARQ_ZONA_HORARIA no es una zona horaria IANA válida." },
     ),
+  // Módulo 8 (ADR-0010): carpeta persistente de los PDF emitidos (no es caché ni temporal). Ruta
+  // absoluta; la API comprueba al arrancar que existe o puede crearse, que admite escritura y que
+  // no está dentro de un repositorio. Sin ella, `main.ts` no arranca (las pruebas sin emisiones
+  // pueden omitirla).
+  SOFTARQ_DIR_DOCUMENTOS: z
+    .string()
+    .optional()
+    .refine((v) => v === undefined || /^([A-Za-z]:[\\/]|\/)/.test(v), {
+      error: "SOFTARQ_DIR_DOCUMENTOS debe ser una ruta absoluta.",
+    }),
   API_REGISTRO: z
     .enum(["completo", "errores", "ninguno"], { error: "API_REGISTRO: completo | errores | ninguno." })
     .optional()
@@ -101,6 +111,8 @@ export interface ConfiguracionApi {
     intentosPorIp: number;
   };
   zonaHoraria: string;
+  /** Carpeta persistente de documentos emitidos; `null` = emisión no disponible (solo pruebas). */
+  dirDocumentos: string | null;
   registro: "completo" | "errores" | "ninguno";
 }
 
@@ -134,6 +146,7 @@ export function leerConfiguracion(entorno: Record<string, string | undefined>): 
       intentosPorIp: e.API_ACCESO_INTENTOS_IP,
     },
     zonaHoraria: e.SOFTARQ_ZONA_HORARIA,
+    dirDocumentos: e.SOFTARQ_DIR_DOCUMENTOS ?? null,
     registro: e.API_REGISTRO,
   };
 }

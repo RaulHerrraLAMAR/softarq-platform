@@ -31,6 +31,13 @@ import {
   EsquemaRespuestaRevisiones,
   EsquemaRetiroRevision,
   EsquemaSolicitudEnvioRevision,
+  EsquemaAnulacionAprobacion,
+  EsquemaDescarteCotizacion,
+  EsquemaDetalleEmision,
+  EsquemaEdicionEmisor,
+  EsquemaEmisor,
+  EsquemaSolicitudEmision,
+  EsquemaValidacionEmision,
   EsquemaConsultaConceptos,
   EsquemaConsultaOpcionesPrecio,
   EsquemaConsultaTiposAdicional,
@@ -68,16 +75,21 @@ const DESCRIPCION_ERROR: Record<number, string> = {
   409:
     "CONFLICTO_EDICION (revisión obsoleta; `actual` trae el estado vigente), BORRADOR_DESACTUALIZADO (el borrador cambió; no se guardó ni se envió nada), " +
     "REVISION_PENDIENTE (hay una versión en revisión: no se edita ni se calcula), VERSION_NO_VIGENTE (solo se envía la última versión) " +
-    "o CONFLICTO_REVISION (la revisión cambió o ya se decidió; `revisionVigente` trae su estado).",
+    "CONFLICTO_REVISION (la revisión cambió o ya se decidió; `revisionVigente` trae su estado), " +
+    "VERSION_EMITIDA (la versión ya se emitió), APROBACION_NO_VIGENTE (la aprobación se anuló o cambió), " +
+    "CONFLICTO_EMISION (la versión o la aprobación vistas ya no son las vigentes) o FOLIO_NO_ACTIVO (cotización descartada).",
   413: "CUERPO_DEMASIADO_GRANDE.",
   415: "TIPO_DE_CONTENIDO_NO_ADMITIDO: el cuerpo debe ser application/json.",
   422:
     "CALCULO_BLOQUEADO (códigos BL, sin importes), CAPTURA_INCOMPLETA (campos pendientes), REGISTRO_INACTIVO, REFERENCIA_NO_DISPONIBLE, " +
     "ENVIO_BLOQUEADO / APROBACION_BLOQUEADA (bloqueos vigentes; el estado no cambió), DECISION_BLOQUEADA (BL-17: quien aprueba no puede ser el autor), " +
+    "EMISION_BLOQUEADA (BL-01 a BL-20 a la fecha de emisión; nada cambió), DESCARTE_BLOQUEADO (estado que no permite descartar), " +
     "IDEMPOTENCIA_CONFLICTO o IDEMPOTENCIA_CADUCADA.",
   429: "DEMASIADAS_SOLICITUDES (cabecera Retry-After).",
   503: "SERVICIO_NO_DISPONIBLE: PostgreSQL no disponible.",
-  500: "ERROR_INTERNO.",
+  500:
+    "ERROR_INTERNO, DOCUMENTO_NO_GENERADO (no se generó o guardó el PDF; no hay emisión y se puede reintentar) o " +
+    "DOCUMENTO_NO_DISPONIBLE (el archivo emitido falta o no coincide con su registro; nunca se regenera).",
 };
 
 function parametrosQuery(schema: z.ZodType): unknown[] {
@@ -125,7 +137,8 @@ export function construirDocumentoOpenApi(): Record<string, unknown> {
         "la organización, la identidad y las funciones salen de la sesión (ADR-0007). Las solicitudes POST, PUT, PATCH y DELETE " +
         "exigen la cabecera X-CSRF-Token de la sesión y un Origin permitido. Clientes, proyectos y cotizaciones con folio " +
         "WEB DEMO, borrador con revisión y versiones inmutables calculadas en el servidor (ADR-0008); las altas exigen " +
-        "Idempotency-Key. " +
+        "Idempotency-Key. Revisión y aprobación por otra persona (ADR-0009); emisión de versiones aprobadas con PDF DEMO, " +
+        "anulación de aprobaciones y descarte de cotizaciones (ADR-0010). " +
         "Los importes y cantidades viajan como texto decimal. Todos los datos son DEMO y no tienen validez comercial.",
     },
     servers: [{ url: "http://localhost:3000", description: "API local (escucha en 127.0.0.1; el navegador usa localhost)." }],
@@ -374,6 +387,93 @@ export function construirDocumentoOpenApi(): Record<string, unknown> {
           },
         },
       },
+      "/api/v1/cotizaciones/{id}/descarte": {
+        post: {
+          summary: "Descarta la cotización con motivo (capacidad cotizaciones.preparar: Preparador; ADR-0010)",
+          description:
+            "Solo si el folio está activo, sin emisiones, sin revisión pendiente y sin aprobación vigente. Conserva folio, " +
+            "versiones y eventos; el folio no se reutiliza y la cotización queda de solo lectura.",
+          security: CON_EFECTOS,
+          parameters: [PARAMETRO_ID, CABECERA_IDEMPOTENCIA],
+          requestBody: cuerpo("DescarteCotizacion"),
+          responses: {
+            "200": ok("DetalleCotizacion", "Cotización descartada (o reproducida)."),
+            ...errores(400, 401, 403, 404, 409, 413, 415, 422, 429, 503, 500),
+          },
+        },
+      },
+      "/api/v1/cotizaciones/{id}/versiones/{numero}/emision/validacion": {
+        get: {
+          summary: "Validación previa a la emisión (solo lectura)",
+          description:
+            "Lo que se emitiría hoy (fecha del servidor): destinatario, emisor, textos, vigencia y total, con los bloqueos " +
+            "BL-01 a BL-20 y los avisos vigentes, y si la sesión puede emitir.",
+          parameters: [PARAMETRO_ID, PARAMETRO_NUMERO],
+          responses: { "200": ok("ValidacionEmision", "Validación."), ...errores(401, 404, 429, 503, 500) },
+        },
+      },
+      "/api/v1/cotizaciones/{id}/versiones/{numero}/emision": {
+        post: {
+          summary: "Emite la versión aprobada (capacidad emisiones.emitir: Preparador, o Revisor distinto del autor)",
+          description:
+            "Comprueba de nuevo permisos, aprobación vigente de ESA versión por otra persona, versión, borrador y bloqueos; " +
+            "genera el PDF DEMO, lo guarda y registra la emisión con tamaño y SHA-256. 201 solo cuando existen el archivo y el registro. " +
+            "No recalcula importes.",
+          security: CON_EFECTOS,
+          parameters: [PARAMETRO_ID, PARAMETRO_NUMERO, CABECERA_IDEMPOTENCIA],
+          requestBody: cuerpo("SolicitudEmision"),
+          responses: {
+            "201": ok("DetalleEmision", "Versión emitida (o reproducida con Idempotent-Replayed: true)."),
+            ...errores(400, 401, 403, 404, 409, 413, 415, 422, 429, 503, 500),
+          },
+        },
+      },
+      "/api/v1/emisiones/{id}": {
+        get: {
+          summary: "Registro de una emisión y contenido exacto del documento emitido",
+          parameters: [PARAMETRO_ID],
+          responses: { "200": ok("DetalleEmision", "Emisión."), ...errores(401, 404, 429, 503, 500) },
+        },
+      },
+      "/api/v1/emisiones/{id}/documento": {
+        get: {
+          summary: "Descarga autenticada del PDF emitido (los mismos bytes registrados)",
+          description:
+            "Content-Type application/pdf, Content-Disposition attachment con el nombre COT-AAAA-NNNNN-vN.pdf y Repr-Digest " +
+            "(SHA-256). Si el archivo falta o no coincide con su registro: 500 DOCUMENTO_NO_DISPONIBLE (nunca se regenera).",
+          parameters: [PARAMETRO_ID],
+          responses: {
+            "200": { description: "PDF emitido.", content: { "application/pdf": { schema: { type: "string", format: "binary" } } } },
+            ...errores(401, 404, 429, 503, 500),
+          },
+        },
+      },
+      "/api/v1/emisor": {
+        get: {
+          summary: "Datos del emisor de la organización (BL-15) y lo que falta para emitir",
+          responses: { "200": ok("Emisor", "Emisor."), ...errores(401, 429, 503, 500) },
+        },
+        put: {
+          summary: "Guarda los datos del emisor (capacidad emisor.configurar: Administrador del sistema)",
+          description: "Concurrencia optimista por `revision` (0 = aún no configurado) y motivo obligatorio. No altera documentos ya emitidos.",
+          security: CON_EFECTOS,
+          requestBody: cuerpo("EdicionEmisor"),
+          responses: { "200": ok("Emisor", "Emisor guardado."), ...errores(400, 401, 403, 409, 413, 415, 429, 503, 500) },
+        },
+      },
+      "/api/v1/revisiones/{id}/anulacion": {
+        post: {
+          summary: "Anula una aprobación antes de emitir, con motivo (capacidad revisiones.decidir: Revisor)",
+          description: "Crea un evento nuevo que cita la aprobación; la revisión y su evento de aprobación no cambian.",
+          security: CON_EFECTOS,
+          parameters: [PARAMETRO_ID, CABECERA_IDEMPOTENCIA],
+          requestBody: cuerpo("AnulacionAprobacion"),
+          responses: {
+            "200": ok("DetalleRevision", "Aprobación anulada (o reproducida)."),
+            ...errores(400, 401, 403, 404, 409, 413, 415, 422, 429, 503, 500),
+          },
+        },
+      },
       "/api/v1/openapi.json": {
         get: { summary: "Esta especificación", security: [], responses: { "200": { description: "Documento OpenAPI 3.1." } } },
       },
@@ -427,6 +527,13 @@ export function construirDocumentoOpenApi(): Record<string, unknown> {
         RetiroRevision: json(EsquemaRetiroRevision, "input"),
         RespuestaRevisiones: json(EsquemaRespuestaRevisiones, "output"),
         DetalleRevision: json(EsquemaDetalleRevision, "output"),
+        AnulacionAprobacion: json(EsquemaAnulacionAprobacion, "input"),
+        DescarteCotizacion: json(EsquemaDescarteCotizacion, "input"),
+        SolicitudEmision: json(EsquemaSolicitudEmision, "input"),
+        ValidacionEmision: json(EsquemaValidacionEmision, "output"),
+        DetalleEmision: json(EsquemaDetalleEmision, "output"),
+        Emisor: json(EsquemaEmisor, "output"),
+        EdicionEmisor: json(EsquemaEdicionEmisor, "input"),
       },
     },
   };

@@ -33,8 +33,8 @@ Variables (con sus valores por omisión) en [`.env.example`](../../.env.example)
 | POST | `/api/v1/calculos/demo` | `calculo.ejecutar` (Preparador) + `X-CSRF-Token` + `Origin` | Calcula con los datos de PostgreSQL y devuelve **solo** la proyección comercial |
 | GET | `/api/v1/clientes?buscar=&incluirInactivos=&limite=` | `clientes.consultar` | Clientes (activos por omisión) |
 | GET | `/api/v1/clientes/{id}` | `clientes.consultar` | Cliente, sus proyectos y número de cotizaciones abiertas |
-| POST | `/api/v1/clientes` | `clientes.gestionar` + `Idempotency-Key` | Crea un cliente `{ nombre }` con código `CLI-NNNNN` |
-| PATCH | `/api/v1/clientes/{id}` | `clientes.gestionar` | `{ revision, nombre?, activo? }`; desactivar no borra; revisión obsoleta: 409 |
+| POST | `/api/v1/clientes` | `clientes.gestionar` + `Idempotency-Key` | Crea un cliente `{ nombre, contactoNombre?, contactoTelefono?, contactoCorreo? }` con código `CLI-NNNNN` (el contacto lo exige la emisión, BL-01) |
+| PATCH | `/api/v1/clientes/{id}` | `clientes.gestionar` | `{ revision, nombre?, contacto…?, activo? }`; desactivar no borra; revisión obsoleta: 409 |
 | GET | `/api/v1/proyectos?clienteId=&buscar=&incluirInactivos=&limite=` | `clientes.consultar` | Proyectos (activos con cliente activo, por omisión) |
 | GET | `/api/v1/proyectos/{id}` | `clientes.consultar` | Proyecto |
 | POST | `/api/v1/proyectos` | `clientes.gestionar` + `Idempotency-Key` | `{ clienteId, nombre, municipio?, entidadFederativa?, descripcion? }`; el cliente debe estar activo |
@@ -50,9 +50,21 @@ Variables (con sus valores por omisión) en [`.env.example`](../../.env.example)
 | GET | `/api/v1/revisiones/{id}` | `cotizaciones.consultar` | Revisión, versión revisada (proyección comercial guardada), `verificacion` vigente (si está pendiente) y `eventos` |
 | POST | `/api/v1/revisiones/{id}/decision` | `revisiones.decidir` (Revisor) + `Idempotency-Key` | `{ decision: APROBAR\|SOLICITAR_CAMBIOS, versionId, revision, observaciones? }`. Observaciones obligatorias (≥ 10 caracteres) para solicitar cambios. 409 `CONFLICTO_REVISION` con `revisionVigente`; 422 `DECISION_BLOQUEADA` (BL-17: quien aprueba no puede ser el autor) o `APROBACION_BLOQUEADA` con `problemas`. **La aprobación no es una emisión** (200) |
 | POST | `/api/v1/revisiones/{id}/retiro` | `revisiones.enviar` (Preparador) + `Idempotency-Key` | `{ revision, motivo? }`: retira una revisión pendiente para corregir (200) |
+| POST | `/api/v1/revisiones/{id}/anulacion` | `revisiones.decidir` (Revisor) + `Idempotency-Key` | `{ revision, motivo }` (motivo ≥ 10 caracteres): anula una aprobación **antes de emitir** con un evento nuevo; la aprobación original se conserva. 409 `CONFLICTO_REVISION` o `VERSION_EMITIDA` (200) |
+| GET | `/api/v1/cotizaciones/{id}/versiones/{numero}/emision/validacion` | `cotizaciones.consultar` | Lo que se emitiría hoy: fecha de emisión y vigencia (CR-16), aprobación vigente, destinatario (cliente, proyecto y contacto), emisor, textos, `bloqueos` (BL-01 a BL-20), `avisos`, `puedeEmitir` y `motivoNoEmitir` para la sesión, y la emisión si ya existe |
+| POST | `/api/v1/cotizaciones/{id}/versiones/{numero}/emision` | `emisiones.emitir` (Preparador, o Revisor distinto del autor) + `Idempotency-Key` | `{ versionId, revisionId }`: vuelve a comprobarlo todo, genera el PDF DEMO, lo guarda y registra la emisión (201 solo con archivo y registro). 422 `EMISION_BLOQUEADA` con `problemas`; 409 `VERSION_EMITIDA`, `APROBACION_NO_VIGENTE`, `CONFLICTO_EMISION`, `FOLIO_NO_ACTIVO`, `BORRADOR_DESACTUALIZADO`; 500 `DOCUMENTO_NO_GENERADO` (no hay emisión; reintente con la misma clave). No recalcula importes |
+| GET | `/api/v1/emisiones/{id}` | `cotizaciones.consultar` | Registro de la emisión (quién preparó, aprobó y emitió; fechas; archivo con tamaño y SHA-256) y el contenido exacto del documento |
+| GET | `/api/v1/emisiones/{id}/documento` | `cotizaciones.consultar` | El PDF emitido (`application/pdf`, `Content-Disposition: attachment; filename="COT-AAAA-NNNNN-vN.pdf"`, `Repr-Digest`). Mismos bytes siempre; si falta o no coincide con su registro: 500 `DOCUMENTO_NO_DISPONIBLE` (nunca se regenera) |
+| GET | `/api/v1/emisor` | `cotizaciones.consultar` | Datos del emisor (BL-15), lo que falta y si la sesión puede editarlos |
+| PUT | `/api/v1/emisor` | `emisor.configurar` (Administrador del sistema) | `{ revision, nombre, domicilio, telefono, correo, logo, motivo }`; revisión obsoleta: 409. No altera documentos emitidos |
+| POST | `/api/v1/cotizaciones/{id}/descarte` | `cotizaciones.preparar` (Preparador) + `Idempotency-Key` | `{ motivo }`: descarta la cotización (folio DESCARTADO, sin reutilizarse) solo sin emisiones, revisión pendiente ni aprobación vigente; si no, 422 `DESCARTE_BLOQUEADO` con el motivo (200) |
 | GET | `/api/v1/openapi.json` | Público | Especificación |
 
-**Funciones y capacidades** (matriz completa en ADR-0007 §2 y ADR-0008 §3): Preparador consulta, calcula, gestiona clientes y proyectos y prepara cotizaciones; Revisor solo consulta (sus escrituras responden 403); Administrador del catálogo también gestiona clientes y proyectos.
+**Funciones y capacidades** (matriz completa en [`docs/modelo-conceptual.md`](../modelo-conceptual.md) §6):
+- **Preparador:** consulta, calcula, gestiona clientes y proyectos, prepara, envía, retira, descarta y emite.
+- **Revisor:** consulta, decide, anula aprobaciones y emite versiones que no preparó.
+- **Administrador del catálogo:** también gestiona clientes y proyectos.
+- **Administrador del sistema:** configura el emisor.
 
 **Escrituras:** toda solicitud `POST`, `PUT`, `PATCH` o `DELETE` exige `X-CSRF-Token` y un `Origin` permitido. Las altas exigen además `Idempotency-Key` (UUID por intención): repetirla con el mismo contenido devuelve el recurso creado con `Idempotent-Replayed: true`; con otra operación u otro contenido, 422. Las claves duran 24 h (ADR-0008 §6).
 
@@ -117,6 +129,10 @@ Según el error, el sobre lleva además `campos` (400, 422 `CAPTURA_INCOMPLETA` 
 | 409 | `REVISION_PENDIENTE` / `VERSION_NO_VIGENTE` / `CONFLICTO_REVISION` | Hay una versión en revisión (no se edita ni se calcula), no es la última versión, o la revisión cambió o ya se decidió (`revisionVigente`) |
 | 422 | `ENVIO_BLOQUEADO` / `APROBACION_BLOQUEADA` / `DECISION_BLOQUEADA` | Bloqueos de la verificación vigente o BL-17/BL-19 (`problemas`); el estado no cambió |
 | 422 | `REFERENCIA_NO_DISPONIBLE` | Concepto, tipo de adicional o precio nuevo en la captura que no existe en la organización o no está disponible hoy; `campos` lleva la ruta |
+| 409 | `VERSION_EMITIDA` / `APROBACION_NO_VIGENTE` / `CONFLICTO_EMISION` / `FOLIO_NO_ACTIVO` | La versión ya se emitió; la aprobación se anuló o cambió; la versión o la aprobación confirmadas ya no son las vigentes; o la cotización está descartada. Nada cambió |
+| 422 | `EMISION_BLOQUEADA` / `DESCARTE_BLOQUEADO` | Bloqueos de emisión a la fecha de emisión (`problemas`), o un estado que no permite descartar (revisión pendiente, aprobación vigente, emisión) |
+| 500 | `DOCUMENTO_NO_GENERADO` | No se generó o guardó el PDF: no hay emisión ni archivo; reintente con la misma clave |
+| 500 | `DOCUMENTO_NO_DISPONIBLE` | El archivo emitido falta o no coincide con su tamaño o SHA-256: se restaura desde el respaldo (nunca se regenera) |
 | 429 | `DEMASIADAS_SOLICITUDES` | Límite general, de cálculo o de intentos de acceso (`Retry-After`) |
 | 503 | `SERVICIO_NO_DISPONIBLE` | PostgreSQL no disponible |
 | 500 | `ERROR_INTERNO` | Error inesperado (sin detalles internos) |
@@ -125,57 +141,38 @@ Según el error, el sobre lleva además `campos` (400, 422 `CAPTURA_INCOMPLETA` 
 
 Los cuerpos de [`ejemplos/`](ejemplos) reproducen los cuatro escenarios verificados. Una prueba exige que coincidan con los fixtures del motor.
 
-Con `curl` hay que recorrer el mismo flujo que el navegador: archivo de cookies, token CSRF y `Origin`. Git Bash, desde la raíz del repositorio. La contraseña se lee del archivo local de accesos y **no se escribe en la línea de comandos ni aquí**:
+**Use `scripts/http/api-json.mjs`** (módulo 8). Recorre el mismo flujo que el navegador (cookie, CSRF y `Origin`) y lee cada cuerpo JSON de un **archivo UTF-8**: nada viaja como argumento.
+
+En los módulos 6 y 7, pasar el JSON como argumento de `curl` en Git Bash dañó los acentos de `COT-2026-00001` y de la copia de la v1 de `COT-2026-00003`. Esos registros históricos no se reparan.
+
+Desde la raíz del repositorio, con la API en marcha:
 
 ```
-API=http://localhost:3000
-ORIGEN="Origin: http://localhost:5173"
-JAR=../_work/tmp/cookies-curl.txt
-JSON='JSON.parse(require("fs").readFileSync(0,"utf8"))'
-SOFTARQ_CLAVE=$(node -p 'require("D:/Proyecto_SoftArq/_work/secrets/accesos-demo-softarq_dev.json").cuentas["preparador.demo@softarq.test"].contrasena')
-
-curl -s $API/health
-CSRF=$(curl -s -c $JAR $API/api/v1/auth/csrf | node -p "$JSON.csrfToken")
-CSRF=$(curl -s -b $JAR -c $JAR -X POST $API/api/v1/auth/sesion -H "$ORIGEN" -H "X-CSRF-Token: $CSRF" \
-       -H "Content-Type: application/json" \
-       --data "{\"correo\":\"preparador.demo@softarq.test\",\"contrasena\":\"$SOFTARQ_CLAVE\"}" | node -p "$JSON.csrfToken")
-curl -s -b $JAR "$API/api/v1/catalogos/conceptos?limite=10"
-curl -s -b $JAR "$API/api/v1/catalogos/opciones-precio?conceptos=CON-00007"
-curl -s -b $JAR -X POST $API/api/v1/calculos/demo -H "$ORIGEN" -H "X-CSRF-Token: $CSRF" \
-     -H "Content-Type: application/json" --data @docs/api/ejemplos/calculo-r1-faldones-10m.json
-
-# Cotización con folio, borrador y versión (ADR-0008). Cada alta lleva su propia Idempotency-Key.
-EF=(-b $JAR -H "$ORIGEN" -H "X-CSRF-Token: $CSRF" -H "Content-Type: application/json")
-CLI=$(curl -s "${EF[@]}" -X POST $API/api/v1/clientes -H "Idempotency-Key: $(node -p 'crypto.randomUUID()')" \
-      --data '{"nombre":"[DEMO] Cliente curl"}' | node -p "$JSON.id")
-PRY=$(curl -s "${EF[@]}" -X POST $API/api/v1/proyectos -H "Idempotency-Key: $(node -p 'crypto.randomUUID()')" \
-      --data "{\"clienteId\":\"$CLI\",\"nombre\":\"[DEMO] Obra curl\"}" | node -p "$JSON.id")
-# El cuerpo con acentos va desde un archivo UTF-8 (--data-binary @…): pasarlo como argumento en
-# Git Bash para Windows lo recodifica y daña los acentos.
-CUERPO=../_work/tmp/cotizacion-curl.json
-node -e 'const fs=require("fs");fs.writeFileSync(process.argv[2],JSON.stringify({proyectoId:process.argv[1],captura:JSON.parse(fs.readFileSync("docs/api/ejemplos/borrador-r1-faldones-10m.json","utf8"))}))' "$PRY" "$CUERPO"
-COT=$(curl -s "${EF[@]}" -X POST $API/api/v1/cotizaciones -H "Idempotency-Key: $(node -p 'crypto.randomUUID()')" \
-      --data-binary @$CUERPO | node -p "$JSON.cotizacion.id")
-curl -s -b $JAR $API/api/v1/cotizaciones/$COT | node -p "$JSON.cotizacion.folio"                # COT-AAAA-NNNNN
-curl -s "${EF[@]}" -X POST $API/api/v1/cotizaciones/$COT/versiones -H "Idempotency-Key: $(node -p 'crypto.randomUUID()')" \
-     --data '{"revisionBorrador":0}' | node -p "$JSON.cotizacion.total"                          # 54190.68
-curl -s -b $JAR $API/api/v1/cotizaciones/$COT/versiones/1 | node -p "$JSON.version.idVersion"     # COT-AAAA-NNNNN-v1
-
-
-# Revisión (ADR-0009): el Preparador envía la última versión; el Revisor la aprueba con OTRA sesión
-# (repita el acceso con revisor.demo@softarq.test en un segundo archivo de cookies, $JAR_REV, y su
-# token en $CSRF_REV). Los cuerpos sin acentos pueden ir como argumento.
-REV=$(curl -s "${EF[@]}" -X POST $API/api/v1/cotizaciones/$COT/versiones/1/revisiones -H "Idempotency-Key: $(node -p 'crypto.randomUUID()')" \
-      --data '{"revisionBorrador":0}' | node -p "$JSON.revision.id")
-# … con la sesión del Revisor:
-# VID=$(curl -s -b $JAR_REV $API/api/v1/revisiones/$REV | node -p "$JSON.revision.version.id")
-# curl -s -b $JAR_REV -H "$ORIGEN" -H "X-CSRF-Token: $CSRF_REV" -H "Content-Type: application/json" \
-#      -X POST $API/api/v1/revisiones/$REV/decision -H "Idempotency-Key: $(node -p 'crypto.randomUUID()')" \
-#      --data "{\"decision\":\"APROBAR\",\"versionId\":\"$VID\",\"revision\":0}" | node -p "$JSON.revision.estado"   # APROBADA
-
-curl -s -b $JAR -c $JAR -X DELETE $API/api/v1/auth/sesion -H "$ORIGEN" -H "X-CSRF-Token: $CSRF" -o /dev/null -w "%{http_code}\n"   # 204
-rm -f $JAR $CUERPO; unset SOFTARQ_CLAVE
+H="node scripts/http/api-json.mjs --api http://localhost:3000 --origen http://localhost:5173"
+P="$H --estado ../_work/tmp/sesion-prep.json"; R="$H --estado ../_work/tmp/sesion-rev.json"
+# Credenciales en archivos (nunca en la línea de comandos), desde el archivo local de accesos:
+node -e 'const a=require("D:/Proyecto_SoftArq/_work/secrets/accesos-demo-softarq_dev.json").cuentas,fs=require("fs");
+  for (const [f,c] of [["prep","preparador.demo@softarq.test"],["rev","revisor.demo@softarq.test"]])
+    fs.writeFileSync(`../_work/tmp/cred-${f}.json`, JSON.stringify({correo:c,contrasena:a[c].contrasena}))'
+$P entrar ../_work/tmp/cred-prep.json
+$R entrar ../_work/tmp/cred-rev.json
+$P comprobar-acentos          # OBLIGATORIO antes de crear datos de prueba: ida y vuelta de «Construcción Peñasco — Ñandú…»
+$P post /api/v1/calculos/demo docs/api/ejemplos/calculo-r1-faldones-10m.json                         # total 54190.68
+# Cuerpos con acentos: escríbalos en archivos UTF-8 (p. ej. ../_work/tmp/cliente.json) y páselos por ruta.
+$P post /api/v1/clientes ../_work/tmp/cliente.json      # {"nombre":"[DEMO] …","contactoNombre":"…","contactoTelefono":"…"}
+$P post /api/v1/proyectos ../_work/tmp/proyecto.json    # {"clienteId":"…","nombre":"…","municipio":"…","entidadFederativa":"…","descripcion":"…"}
+$P post /api/v1/cotizaciones ../_work/tmp/cotizacion.json   # {"proyectoId":"…","captura":<docs/api/ejemplos/borrador-r1-faldones-10m.json>}
+$P post /api/v1/cotizaciones/<id>/versiones ../_work/tmp/version.json            # {"revisionBorrador":0}
+$P post /api/v1/cotizaciones/<id>/versiones/1/revisiones ../_work/tmp/envio.json # {"revisionBorrador":0}
+$R post /api/v1/revisiones/<revisionId>/decision ../_work/tmp/decision.json      # {"decision":"APROBAR","versionId":"…","revision":0}
+$P get  /api/v1/cotizaciones/<id>/versiones/1/emision/validacion
+$P post /api/v1/cotizaciones/<id>/versiones/1/emision ../_work/tmp/emision.json --idem <uuid>   # {"versionId":"…","revisionId":"…"}
+$P descargar /api/v1/emisiones/<emisionId>/documento ../_work/tmp/COT-AAAA-NNNNN-v1.pdf          # imprime tamaño y SHA-256
+$P salir; $R salir; rm -f ../_work/tmp/cred-*.json ../_work/tmp/sesion-*.json
 ```
+
+- Repetir un `post` con la misma `--idem` reproduce el resultado (`Idempotent-Replayed: true`).
+- La prueba de humo del módulo 8 (`_work/tmp/m8/humo-emision.mjs`) automatiza este recorrido.
 
 `docs/api/ejemplos/borrador-r1-faldones-10m.json` es la captura en borrador (`EsquemaCapturaBorrador`) del escenario R1: `null` = sin capturar, la selección es por insumo y no lleva resultados.
 

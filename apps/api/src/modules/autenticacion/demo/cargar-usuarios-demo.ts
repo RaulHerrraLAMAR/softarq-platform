@@ -21,10 +21,15 @@ export interface CuentaDemo {
   readonly funciones: readonly FuncionUsuario[];
 }
 
-/** Cuentas del libro: `[DEMO] Preparador 1` y `[DEMO] Revisor 1` (modBuild.bas). `.test`: RFC 2606. */
+/**
+ * Cuentas del libro (modBuild.bas): `[DEMO] Preparador 1`, `[DEMO] Revisor 1` y, desde el módulo 8,
+ * `[DEMO] Administrador` (FN_ADMCAT y FN_ADMSIS en el libro): configura los datos del emisor.
+ * `.test`: RFC 2606. El orden se conserva (las pruebas E2E citan las dos primeras por posición).
+ */
 export const CUENTAS_DEMO: readonly CuentaDemo[] = [
   { correo: "preparador.demo@softarq.test", nombre: "[DEMO] Preparador 1", funciones: ["PREPARADOR"] },
   { correo: "revisor.demo@softarq.test", nombre: "[DEMO] Revisor 1", funciones: ["REVISOR"] },
+  { correo: "administrador.demo@softarq.test", nombre: "[DEMO] Administrador", funciones: ["ADMIN_CATALOGO", "ADMIN_SISTEMA"] },
 ];
 
 export interface CredencialGenerada {

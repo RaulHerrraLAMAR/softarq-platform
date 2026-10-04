@@ -33,6 +33,12 @@ const seleccionRevision = {
   preparador: nombre,
   emisor: nombre,
   resolutor: nombre,
+  // Anulación de la aprobación (módulo 8): a lo sumo un evento; y si la versión ya se emitió.
+  eventos: {
+    where: { tipo: "APROBACION_ANULADA" },
+    select: { usuarioNombre: true, ocurridoEn: true, observaciones: true },
+  },
+  emisiones: { select: { id: true } },
   version: {
     select: {
       fechaCalculo: true,

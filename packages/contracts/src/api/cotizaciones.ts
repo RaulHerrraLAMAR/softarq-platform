@@ -21,6 +21,11 @@ export const LIMITES_COTIZACIONES = {
   longitudMotivo: 500,
   longitudBusqueda: 60,
   eventosRecientes: 50,
+  // Módulo 8 (ADR-0010): contacto del cliente (BL-01) y textos de la versión (BL-20).
+  longitudContactoNombre: 200,
+  longitudTelefono: 40,
+  longitudCorreo: 254,
+  longitudTextoCotizacion: 2000,
 } as const;
 
 /** Cabecera de idempotencia de las altas (UUID generado por el cliente para cada intención). */
@@ -30,14 +35,16 @@ export const CABECERA_IDEMPOTENCIA_REPRODUCIDA = "Idempotent-Replayed";
 
 /** Origen del historial: independiente de la fase Excel (no se importan folios del libro). */
 export const ORIGENES_COTIZACION = ["WEB_DEMO"] as const;
-/** Estados alcanzables en este módulo (el libro define más; ver ADR-0008 §3). */
-export const ESTADOS_FOLIO = ["ACTIVO"] as const;
+/** Estado del folio: DESCARTADO es definitivo y el folio no se reutiliza (módulo 8, ADR-0010). */
+export const ESTADOS_FOLIO = ["ACTIVO", "DESCARTADO"] as const;
 /**
- * Estado de una versión, DERIVADO de su última revisión (módulo 7, ADR-0009); nunca se escribe en
- * la versión. Sin revisión, o con cambios solicitados o retirada: Borrador (como en el libro).
- * EMITIDA y las demás del libro no son alcanzables todavía.
+ * Estado de una versión, DERIVADO (nunca se escribe en la versión): EMITIDA si tiene emisión
+ * (SUSTITUIDA si después se emitió una posterior); si no, el de su última revisión (ADR-0009):
+ * EN_REVISION, APROBADA (aprobación vigente) o BORRADOR (sin enviar, con cambios solicitados,
+ * retirada o con la aprobación anulada). Aceptada, Rechazada y Vencida del libro no existen aún.
  */
-export const ESTADOS_VERSION = ["BORRADOR", "EN_REVISION", "APROBADA"] as const;
+export const ESTADOS_VERSION = ["BORRADOR", "EN_REVISION", "APROBADA", "EMITIDA", "SUSTITUIDA"] as const;
+export type EstadoVersion = (typeof ESTADOS_VERSION)[number];
 
 /**
  * Estados de una revisión (máquina explícita): PENDIENTE → APROBADA | CAMBIOS_SOLICITADOS |
@@ -46,7 +53,9 @@ export const ESTADOS_VERSION = ["BORRADOR", "EN_REVISION", "APROBADA"] as const;
 export const ESTADOS_REVISION = ["PENDIENTE", "APROBADA", "CAMBIOS_SOLICITADOS", "RETIRADA"] as const;
 export type EstadoRevision = (typeof ESTADOS_REVISION)[number];
 
-export const TIPOS_EVENTO_REVISION = ["ENVIADA", "APROBADA", "CAMBIOS_SOLICITADOS", "RETIRADA"] as const;
+export const TIPOS_EVENTO_REVISION = ["ENVIADA", "APROBADA", "CAMBIOS_SOLICITADOS", "RETIRADA", "APROBACION_ANULADA"] as const;
+/** Estado que deja cada evento: ANULADA solo lo deja `APROBACION_ANULADA` (la revisión sigue APROBADA). */
+export const ESTADOS_EVENTO_REVISION = [...ESTADOS_REVISION, "ANULADA"] as const;
 
 const EsquemaUuid = z.uuid({ error: "Identificador inválido (UUID)." });
 
@@ -76,6 +85,27 @@ const EsquemaDecimalCapturado = EsquemaDecimalTexto.nullable();
 // ---------------------------------------------------------------------------
 // Captura en borrador
 // ---------------------------------------------------------------------------
+
+const textoCotizacion = (campo: string) =>
+  z
+    .string({ error: `${campo}: debe ser un texto.` })
+    .trim()
+    .max(LIMITES_COTIZACIONES.longitudTextoCotizacion, {
+      error: `${campo}: máximo ${LIMITES_COTIZACIONES.longitudTextoCotizacion} caracteres.`,
+    });
+
+/**
+ * Textos comerciales de la versión (10 COTIZAR: alcance, condiciones y exclusiones; BL-20). Se
+ * capturan en el borrador, se copian a la versión al calcular y el revisor los ve antes de
+ * aprobar. No intervienen en el cálculo. Pueden guardarse vacíos; vacíos bloquean enviar,
+ * aprobar y emitir (BL-20).
+ */
+export const EsquemaTextosCotizacion = z.strictObject({
+  alcance: textoCotizacion("Alcance"),
+  condiciones: textoCotizacion("Condiciones"),
+  exclusiones: textoCotizacion("Exclusiones"),
+});
+export type TextosCotizacion = z.infer<typeof EsquemaTextosCotizacion>;
 
 export const EsquemaRenglonBorrador = z.strictObject({
   descripcion: descripcionCaptura,
@@ -121,6 +151,11 @@ export const EsquemaCapturaBorrador = z
     seleccion: z
       .array(z.strictObject({ insumoCodigo: EsquemaCodigo, precioCodigo: EsquemaCodigo }))
       .max(LIMITES_API.preciosElegidos, { error: `Máximo ${LIMITES_API.preciosElegidos} precios elegidos.` }),
+    /**
+     * Textos de la versión (módulo 8). Opcional para que las capturas anteriores sigan siendo
+     * válidas tal como se guardaron; sin textos, BL-20 impide enviar, aprobar y emitir.
+     */
+    textos: EsquemaTextosCotizacion.optional(),
   })
   .superRefine((c, ctx) => {
     const total = c.partidas.reduce((n, p) => n + (p.tipo === "CONCEPTO" ? p.mediciones.length : 0), 0);
@@ -206,8 +241,37 @@ export const EsquemaParametroVersion = z.strictObject({
 // Peticiones
 // ---------------------------------------------------------------------------
 
+/** Teléfono capturado: dígitos y separadores habituales, con al menos 7 dígitos. */
+const telefono = z
+  .string({ error: "El teléfono debe ser un texto." })
+  .trim()
+  .max(LIMITES_COTIZACIONES.longitudTelefono, { error: `Teléfono: máximo ${LIMITES_COTIZACIONES.longitudTelefono} caracteres.` })
+  .refine((t) => t === "" || (/^[0-9+()./ -]+$/.test(t) && (t.match(/\d/g) ?? []).length >= 7), {
+    error: "Teléfono: use dígitos y separadores (al menos 7 dígitos).",
+  })
+  .transform((t) => (t === "" ? null : t))
+  .nullable();
+
+const correo = z
+  .string({ error: "El correo debe ser un texto." })
+  .trim()
+  .max(LIMITES_COTIZACIONES.longitudCorreo, { error: `Correo: máximo ${LIMITES_COTIZACIONES.longitudCorreo} caracteres.` })
+  .refine((t) => t === "" || z.email().safeParse(t).success, { error: "Correo: formato inválido." })
+  .transform((t) => (t === "" ? null : t))
+  .nullable();
+
+/** Contacto del cliente (BL-01: para emitir hacen falta nombre y teléfono o correo). */
+const camposContacto = {
+  contactoNombre: textoOpcional(LIMITES_COTIZACIONES.longitudContactoNombre, "el nombre del contacto"),
+  contactoTelefono: telefono,
+  contactoCorreo: correo,
+};
+
 export const EsquemaSolicitudCliente = z.strictObject({
   nombre: textoObligatorio(LIMITES_COTIZACIONES.longitudNombre, "el nombre o razón social"),
+  contactoNombre: camposContacto.contactoNombre.optional(),
+  contactoTelefono: camposContacto.contactoTelefono.optional(),
+  contactoCorreo: camposContacto.contactoCorreo.optional(),
 });
 export type SolicitudCliente = z.infer<typeof EsquemaSolicitudCliente>;
 
@@ -215,9 +279,12 @@ export const EsquemaEdicionCliente = z
   .strictObject({
     revision: z.number().int().nonnegative(),
     nombre: textoObligatorio(LIMITES_COTIZACIONES.longitudNombre, "el nombre o razón social").optional(),
+    contactoNombre: camposContacto.contactoNombre.optional(),
+    contactoTelefono: camposContacto.contactoTelefono.optional(),
+    contactoCorreo: camposContacto.contactoCorreo.optional(),
     activo: z.boolean().optional(),
   })
-  .refine((e) => e.nombre !== undefined || e.activo !== undefined, { error: "Indique al menos un cambio." });
+  .refine((e) => Object.keys(e).some((k) => k !== "revision"), { error: "Indique al menos un cambio." });
 export type EdicionCliente = z.infer<typeof EsquemaEdicionCliente>;
 
 const camposProyecto = {
@@ -289,6 +356,9 @@ export const EsquemaCliente = z.strictObject({
   id: z.string(),
   codigo: z.string(),
   nombre: z.string(),
+  contactoNombre: z.string().nullable(),
+  contactoTelefono: z.string().nullable(),
+  contactoCorreo: z.string().nullable(),
   activo: z.boolean(),
   revision: z.number().int(),
   creadoEn: EsquemaInstante,
@@ -337,8 +407,39 @@ export const EsquemaRevisionDeVersion = z.strictObject({
   resueltaPor: z.string().nullable(),
   resueltaEn: EsquemaInstante.nullable(),
   observaciones: z.string().nullable(),
+  /** Anulación de la aprobación antes de emitir (módulo 8); `null` si no se anuló. */
+  anulacion: z.strictObject({ por: z.string(), en: EsquemaInstante, motivo: z.string() }).nullable(),
 });
 export type RevisionDeVersion = z.infer<typeof EsquemaRevisionDeVersion>;
+
+/** Emisión registrada de una versión (módulo 8, ADR-0010). El archivo se descarga aparte. */
+export const EsquemaResumenEmision = z.strictObject({
+  id: z.string(),
+  folio: z.string(),
+  versionNumero: z.number().int().positive(),
+  /** COT-AAAA-NNNNN-vN */
+  idVersion: z.string(),
+  origen: z.enum(ORIGENES_COTIZACION),
+  fechaEmision: EsquemaFechaISO,
+  vigenciaDias: z.number().int().positive(),
+  vigenteHasta: EsquemaFechaISO,
+  total: EsquemaDecimalTexto,
+  preparadoPor: z.string(),
+  aprobadoPor: z.string(),
+  emitidoPor: z.string(),
+  emitidoEn: EsquemaInstante,
+  plantillaVersion: z.string(),
+  /** Una versión posterior de la misma cotización ya se emitió (este documento sigue intacto). */
+  sustituida: z.boolean(),
+  archivo: z.strictObject({
+    /** Nombre sugerido para la descarga (COT-AAAA-NNNNN-vN.pdf). */
+    nombre: z.string(),
+    bytes: z.number().int().positive(),
+    /** SHA-256 en hexadecimal del archivo emitido. */
+    sha256: z.string(),
+  }),
+});
+export type ResumenEmision = z.infer<typeof EsquemaResumenEmision>;
 
 export const EsquemaResumenVersion = z.strictObject({
   /** Identificador inmutable de la versión (lo cita la decisión de revisión). */
@@ -352,6 +453,8 @@ export const EsquemaResumenVersion = z.strictObject({
   esUltima: z.boolean(),
   /** Última revisión de ESTA versión (`null` si nunca se envió). Una aprobación no pasa a otra versión. */
   revisionVigente: EsquemaRevisionDeVersion.nullable(),
+  /** Emisión de esta versión (`null` si no se emitió). */
+  emision: EsquemaResumenEmision.nullable(),
   revisionBorrador: z.number().int().nonnegative(),
   fechaCalculo: EsquemaFechaISO,
   creadoEn: EsquemaInstante,
@@ -366,6 +469,8 @@ export const EsquemaResumenCotizacion = z.strictObject({
   folio: z.string(),
   origen: z.enum(ORIGENES_COTIZACION),
   estadoFolio: z.enum(ESTADOS_FOLIO),
+  /** Descarte del folio (módulo 8); `null` si está activo. */
+  descarte: z.strictObject({ por: z.string(), en: EsquemaInstante, motivo: z.string() }).nullable(),
   cliente: z.strictObject({ id: z.string(), codigo: z.string(), nombre: z.string(), activo: z.boolean() }),
   proyecto: z.strictObject({ id: z.string(), codigo: z.string(), nombre: z.string(), activo: z.boolean() }),
   creadoEn: EsquemaInstante,
@@ -410,6 +515,11 @@ export type ReferenciasBorrador = z.infer<typeof EsquemaReferenciasBorrador>;
 export const EsquemaBorrador = z.strictObject({
   revision: z.number().int().nonnegative(),
   captura: EsquemaCapturaBorrador,
+  /**
+   * Textos predeterminados del ambiente (DEMO: `DEMO_TEXTO_*` del libro), para restablecerlos de
+   * forma explícita; `null` si el ambiente no los tiene. Nunca se aplican solos a la captura.
+   */
+  textosPredeterminados: EsquemaTextosCotizacion.nullable(),
   actualizadoPor: z.string(),
   actualizadoEn: EsquemaInstante,
   completitud: EsquemaCompletitud,
@@ -430,7 +540,7 @@ export const EsquemaEventoRevision = z.strictObject({
   secuencia: z.number().int().positive(),
   tipo: z.enum(TIPOS_EVENTO_REVISION),
   estadoAnterior: z.enum(ESTADOS_REVISION).nullable(),
-  estadoNuevo: z.enum(ESTADOS_REVISION),
+  estadoNuevo: z.enum(ESTADOS_EVENTO_REVISION),
   usuario: z.string(),
   ocurridoEn: EsquemaInstante,
   observaciones: z.string().nullable(),
@@ -452,6 +562,11 @@ export const EsquemaDetalleCotizacion = z.strictObject({
   cotizacion: EsquemaResumenCotizacion,
   borrador: EsquemaBorrador,
   versiones: z.array(EsquemaResumenVersion),
+  /**
+   * Si el ESTADO de la cotización permite descartarla ahora y, si no, por qué (lo decide el
+   * servidor). Además hace falta la capacidad `cotizaciones.preparar`.
+   */
+  descartar: z.strictObject({ permitido: z.boolean(), motivoNoPermitido: z.string().nullable() }),
   /** Revisiones de sus versiones con sus decisiones y responsables (módulo 7). */
   revisiones: z.array(EsquemaHistorialRevision),
   eventos: z.array(EsquemaEvento),
@@ -476,6 +591,8 @@ export const EsquemaResumenCambios = z.strictObject({
   seleccionCambiada: z.array(z.string()),
   consolidacionCambiada: z.boolean(),
   datosDescriptivosCambiados: z.array(z.string()),
+  /** Textos de la versión que cambiaron (módulo 8; ausente en versiones anteriores). */
+  textosCambiados: z.array(z.enum(["alcance", "condiciones", "exclusiones"])).optional(),
   /** Misma referencia de cálculo (parámetros, precios, consumos y tarifas) que la versión anterior. */
   condicionesCambiadas: z.boolean(),
   totalAnterior: EsquemaDecimalTexto.nullable(),

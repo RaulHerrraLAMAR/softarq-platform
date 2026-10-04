@@ -36,6 +36,8 @@ export interface PropsVistaCaptura {
   avisos?: ReactNode;
   /** Contenido de la columna de resultado antes del cálculo previo (p. ej., guardar versión). */
   antesDelResultado?: ReactNode;
+  /** Contenido de la columna principal tras la captura (p. ej., textos, emisión y descarte). */
+  despuesDeLaCaptura?: ReactNode;
   /** Texto del botón de cálculo previo y ayuda bajo él. */
   textoCalcular?: string;
   ayudaCalcular?: ReactNode;
@@ -50,6 +52,7 @@ export function VistaCaptura({
   acciones,
   avisos,
   antesDelResultado,
+  despuesDeLaCaptura,
   textoCalcular,
   ayudaCalcular,
   motivoSinCalculo = null,
@@ -100,6 +103,7 @@ export function VistaCaptura({
             <SeccionPartidas captura={captura} servicios={servicios} />
             <SeccionOpciones captura={captura} opciones={editor.opciones.resultado} reintentar={editor.opciones.reintentar} />
             <SeccionAdicionales captura={captura} tipos={editor.tipos.resultado} reintentar={editor.tipos.reintentar} />
+            {despuesDeLaCaptura}
           </div>
           <aside className="columna-resultado" id="seccion-resultado" aria-label="Resultado de la cotización">
             {antesDelResultado}

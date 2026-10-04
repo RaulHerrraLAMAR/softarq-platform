@@ -15,7 +15,11 @@
  *   retirar, adaptación de la web). `BTN_Observaciones` y `BTN_Aprobar` exigen `FN_REV` →
  *   `revisiones.decidir`. BL-17 (quien aprueba ≠ autor de la versión) se comprueba por identidad,
  *   no por función: lo decide la API y la base, no esta matriz.
- * La emisión es de un módulo futuro.
+ * - Módulo 8 (ADR-0010): `BTN_Emitir` exige `FN_REV` y, en `Rev_Emitir`, quien emite ≠ preparador.
+ *   Adaptación autorizada por el propietario: `emisiones.emitir` para Preparador y Revisor; la API y
+ *   la base exigen además, por identidad, que un Revisor no emita su propia versión y que exista una
+ *   aprobación vigente de otra persona (poder emitir no concede aprobar). Los parámetros del emisor
+ *   (17 CONFIG) los cambia el Administrador del sistema → `emisor.configurar`.
  */
 import { CAPACIDADES, type Capacidad, type FuncionUsuario } from "@softarq/contracts";
 
@@ -29,10 +33,18 @@ export const CAPACIDADES_POR_FUNCION: Readonly<Record<FuncionUsuario, readonly C
     "cotizaciones.consultar",
     "cotizaciones.preparar",
     "revisiones.enviar",
+    "emisiones.emitir",
   ],
-  REVISOR: ["sesion.propia", "catalogos.consultar", "clientes.consultar", "cotizaciones.consultar", "revisiones.decidir"],
+  REVISOR: [
+    "sesion.propia",
+    "catalogos.consultar",
+    "clientes.consultar",
+    "cotizaciones.consultar",
+    "revisiones.decidir",
+    "emisiones.emitir",
+  ],
   ADMIN_CATALOGO: ["sesion.propia", "catalogos.consultar", "clientes.consultar", "clientes.gestionar", "cotizaciones.consultar"],
-  ADMIN_SISTEMA: ["sesion.propia", "catalogos.consultar", "clientes.consultar", "cotizaciones.consultar"],
+  ADMIN_SISTEMA: ["sesion.propia", "catalogos.consultar", "clientes.consultar", "cotizaciones.consultar", "emisor.configurar"],
 };
 
 /** Unión de las capacidades de las funciones, en el orden de `CAPACIDADES`. */

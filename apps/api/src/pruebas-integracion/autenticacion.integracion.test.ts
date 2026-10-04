@@ -113,6 +113,8 @@ describe("inicio de sesión", () => {
       "cotizaciones.consultar",
       "cotizaciones.preparar",
       "revisiones.enviar",
+      // Módulo 8 (ADR-0010): el Preparador emite tras una aprobación independiente.
+      "emisiones.emitir",
     ]);
     expect(s.inactividadMinutos).toBe(30);
     expect(new Date(s.expiraEn).getTime()).toBe(instante.getTime() + POLITICA_SESION.absolutaMs);

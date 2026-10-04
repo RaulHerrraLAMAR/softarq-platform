@@ -297,6 +297,10 @@ export const CAPACIDADES = [
   // Módulo 7 (ADR-0009): enviar y retirar revisiones (Preparador); decidir (Revisor).
   "revisiones.enviar",
   "revisiones.decidir",
+  // Módulo 8 (ADR-0010): emitir (Preparador, o Revisor distinto del autor: la API lo comprueba por
+  // identidad) y configurar los datos del emisor (Administrador del sistema).
+  "emisiones.emitir",
+  "emisor.configurar",
 ] as const;
 export type Capacidad = (typeof CAPACIDADES)[number];
 
@@ -369,6 +373,15 @@ export const CODIGOS_ERROR_API = [
   "ENVIO_BLOQUEADO",
   "APROBACION_BLOQUEADA",
   "DECISION_BLOQUEADA",
+  // Módulo 8 (ADR-0010): emisión, anulación y descarte.
+  "EMISION_BLOQUEADA",
+  "VERSION_EMITIDA",
+  "APROBACION_NO_VIGENTE",
+  "CONFLICTO_EMISION",
+  "FOLIO_NO_ACTIVO",
+  "DESCARTE_BLOQUEADO",
+  "DOCUMENTO_NO_GENERADO",
+  "DOCUMENTO_NO_DISPONIBLE",
 ] as const;
 export type CodigoErrorApi = (typeof CODIGOS_ERROR_API)[number];
 

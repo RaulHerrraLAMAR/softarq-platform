@@ -30,8 +30,17 @@ describe("configuración de la API", () => {
       limiteCuerpoKb: 128,
       accesos: { ventanaMs: 15 * 60_000, fallosPorCuentaEIp: 5, fallosPorCuenta: 20, intentosPorIp: 30 },
       zonaHoraria: "America/Mexico_City",
+      // Módulo 8: sin carpeta de documentos la configuración es válida (pruebas), pero main.ts no arranca.
+      dirDocumentos: null,
       registro: "completo",
     });
+  });
+
+  it("SOFTARQ_DIR_DOCUMENTOS: ruta absoluta (módulo 8)", () => {
+    expect(leerConfiguracion({ ...base, SOFTARQ_DIR_DOCUMENTOS: "D:\\Proyecto_SoftArq\\datos\\documentos" }).dirDocumentos).toBe(
+      "D:\\Proyecto_SoftArq\\datos\\documentos",
+    );
+    expect(() => leerConfiguracion({ ...base, SOFTARQ_DIR_DOCUMENTOS: "datos/documentos" })).toThrow(/SOFTARQ_DIR_DOCUMENTOS/);
   });
 
   it.each([

@@ -278,10 +278,10 @@ export function NuevaCotizacion({
               titulo="Nuevo cliente"
               textoBoton="Crear cliente"
               alCancelar={() => setCreandoCliente(false)}
-              alGuardar={async (nombre) => {
-                const r = await servicios.crearCliente(nombre, intenciones.clave("crear-cliente", { nombre }));
+              alGuardar={async (datos) => {
+                const r = await servicios.crearCliente(datos, intenciones.clave("crear-cliente", datos));
                 if (r.ok) {
-                  intenciones.olvidar("crear-cliente", { nombre });
+                  intenciones.olvidar("crear-cliente", datos);
                   setCreandoCliente(false);
                   setTexto("");
                   setBuscar("");

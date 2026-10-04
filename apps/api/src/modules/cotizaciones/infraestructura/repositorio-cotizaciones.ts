@@ -17,6 +17,7 @@ import type {
   Proyecto,
   ResumenCambios,
   ResumenCotizacion,
+  ResumenEmision,
   ResumenVersion,
   RevisionDeVersion,
 } from "@softarq/contracts";
@@ -24,6 +25,7 @@ import { EsquemaCapturaBorrador } from "@softarq/contracts";
 import type { Prisma } from "../../../generated/prisma/client.js";
 import type { ContextoOrganizacion, Db } from "../../catalogos/persistencia/repositorio-catalogos.js";
 import type { Idempotencia, RegistroIdempotencia } from "../aplicacion/idempotencia.js";
+import { RepositorioEmisiones } from "./repositorio-emisiones.js";
 
 export interface Autor {
   readonly usuarioId: string;
@@ -35,6 +37,9 @@ const seleccionCliente = {
   id: true,
   codigo: true,
   nombre: true,
+  contactoNombre: true,
+  contactoTelefono: true,
+  contactoCorreo: true,
   activo: true,
   revision: true,
   creadoEn: true,
@@ -73,6 +78,9 @@ const seleccionCotizacion = {
   folio: true,
   origen: true,
   estadoFolio: true,
+  descartadaEn: true,
+  motivoDescarte: true,
+  descartador: nombreDeAutor,
   ultimaVersion: true,
   creadoEn: true,
   autor: nombreDeAutor,
@@ -169,6 +177,9 @@ function aCliente(f: FilaCliente): Cliente {
     id: f.id,
     codigo: f.codigo,
     nombre: f.nombre,
+    contactoNombre: f.contactoNombre,
+    contactoTelefono: f.contactoTelefono,
+    contactoCorreo: f.contactoCorreo,
     activo: f.activo,
     revision: f.revision,
     creadoEn: iso(f.creadoEn),
@@ -195,17 +206,23 @@ function aProyecto(f: FilaProyecto): Proyecto {
 }
 
 /**
- * Estado de la versión DERIVADO de su última revisión (ADR-0009); la versión no cambia. Sin
- * revisión, con cambios solicitados o retirada: Borrador, como en el libro.
+ * Estado de la versión DERIVADO (ADR-0009, ADR-0010); la versión no cambia. Con emisión: Emitida
+ * (o Sustituida si después se emitió otra). Si no, el de su última revisión: En revisión, Aprobada
+ * (si la aprobación no se anuló) o Borrador (sin revisión, cambios solicitados, retirada o
+ * aprobación anulada), como en el libro.
  */
-export function estadoDeVersion(r: RevisionDeVersion | null): ResumenVersion["estado"] {
+export function estadoDeVersion(r: RevisionDeVersion | null, emision: ResumenEmision | null = null): ResumenVersion["estado"] {
+  if (emision) return emision.sustituida ? "SUSTITUIDA" : "EMITIDA";
   if (r?.estado === "PENDIENTE") return "EN_REVISION";
-  if (r?.estado === "APROBADA") return "APROBADA";
+  if (r?.estado === "APROBADA" && !r.anulacion) return "APROBADA";
   return "BORRADOR";
 }
 
 /** Revisiones por versión: la más reciente de cada una. */
 export type RevisionesPorVersion = ReadonlyMap<string, RevisionDeVersion>;
+/** Emisiones por versión. */
+export type EmisionesPorVersion = ReadonlyMap<string, ResumenEmision>;
+const SIN_EMISIONES: EmisionesPorVersion = new Map();
 
 const seleccionRevisionDeVersion = {
   id: true,
@@ -217,17 +234,29 @@ const seleccionRevisionDeVersion = {
   observaciones: true,
   emisor: nombreDeAutor,
   resolutor: nombreDeAutor,
+  eventos: {
+    where: { tipo: "APROBACION_ANULADA" },
+    select: { usuarioNombre: true, ocurridoEn: true, observaciones: true },
+  },
 } satisfies Prisma.RevisionSelect;
 
-function aResumenVersion(folio: string, v: FilaResumenVersion, ultima: number, revisiones: RevisionesPorVersion): ResumenVersion {
+function aResumenVersion(
+  folio: string,
+  v: FilaResumenVersion,
+  ultima: number,
+  revisiones: RevisionesPorVersion,
+  emisiones: EmisionesPorVersion = SIN_EMISIONES,
+): ResumenVersion {
   const r = revisiones.get(v.id) ?? null;
+  const emision = emisiones.get(v.id) ?? null;
   return {
     id: v.id,
     numero: v.numero,
     idVersion: `${folio}-v${v.numero}`,
-    estado: estadoDeVersion(r),
+    estado: estadoDeVersion(r, emision),
     esUltima: v.numero === ultima,
     revisionVigente: r,
+    emision,
     revisionBorrador: v.revisionBorrador,
     fechaCalculo: fechaIso(v.fechaCalculo),
     creadoEn: iso(v.creadoEn),
@@ -237,19 +266,28 @@ function aResumenVersion(folio: string, v: FilaResumenVersion, ultima: number, r
   };
 }
 
-function aResumenCotizacion(f: FilaCotizacion, ultima: FilaResumenVersion | undefined, revisiones: RevisionesPorVersion): ResumenCotizacion {
+function aResumenCotizacion(
+  f: FilaCotizacion,
+  ultima: FilaResumenVersion | undefined,
+  revisiones: RevisionesPorVersion,
+  emisiones: EmisionesPorVersion,
+): ResumenCotizacion {
   return {
     id: f.id,
     folio: f.folio,
     origen: "WEB_DEMO",
-    estadoFolio: "ACTIVO",
+    estadoFolio: f.estadoFolio === "DESCARTADO" ? "DESCARTADO" : "ACTIVO",
+    descarte:
+      f.estadoFolio === "DESCARTADO" && f.descartadaEn && f.descartador
+        ? { por: f.descartador.usuario.nombre, en: iso(f.descartadaEn), motivo: f.motivoDescarte ?? "" }
+        : null,
     cliente: { ...f.proyecto.cliente },
     proyecto: { id: f.proyecto.id, codigo: f.proyecto.codigo, nombre: f.proyecto.nombre, activo: f.proyecto.activo },
     creadoEn: iso(f.creadoEn),
     creadoPor: f.autor.usuario.nombre,
     revisionBorrador: f.borrador?.revision ?? 0,
     borradorActualizadoEn: iso(f.borrador?.actualizadoEn ?? f.creadoEn),
-    ultimaVersion: ultima ? aResumenVersion(f.folio, ultima, f.ultimaVersion, revisiones) : null,
+    ultimaVersion: ultima ? aResumenVersion(f.folio, ultima, f.ultimaVersion, revisiones, emisiones) : null,
   };
 }
 
@@ -294,10 +332,15 @@ export class RepositorioCotizaciones {
     });
   }
 
-  async crearCliente(ctx: ContextoOrganizacion, autor: Autor, nombre: string, idem: Idempotencia): Promise<string> {
+  async crearCliente(
+    ctx: ContextoOrganizacion,
+    autor: Autor,
+    datos: { nombre: string; contactoNombre: string | null; contactoTelefono: string | null; contactoCorreo: string | null },
+    idem: Idempotencia,
+  ): Promise<string> {
     const filas = await this.db.$queryRaw<{ id: string }[]>`
       SELECT softarq_crear_cliente(
-        ${ctx.organizacionId}::uuid, ${autor.usuarioId}::uuid, ${nombre},
+        ${ctx.organizacionId}::uuid, ${autor.usuarioId}::uuid, ${JSON.stringify(datos)}::jsonb,
         ${idem.clave}::uuid, ${idem.operacion}, ${idem.huella}, ${idem.expiraEn}::timestamptz
       )::text AS id`;
     return filas[0]!.id;
@@ -407,7 +450,8 @@ export class RepositorioCotizaciones {
     });
     const ultimas = await this.ultimasVersiones(ctx, filas);
     const revisiones = await this.revisionesDeVersiones(ctx, [...ultimas.values()].map((v) => v.id));
-    return filas.map((f) => aResumenCotizacion(f, ultimas.get(f.id), revisiones));
+    const emisiones = await new RepositorioEmisiones(this.db).emisionesDeCotizaciones(ctx, filas.map((f) => f.id));
+    return filas.map((f) => aResumenCotizacion(f, ultimas.get(f.id), revisiones, emisiones));
   }
 
   private async ultimasVersiones(ctx: ContextoOrganizacion, filas: readonly FilaCotizacion[]) {
@@ -442,9 +486,10 @@ export class RepositorioCotizaciones {
       take: eventos,
     });
     const revisiones = await this.revisionesDeVersiones(ctx, f.versiones.map((v) => v.id));
-    const versiones = f.versiones.map((v) => aResumenVersion(f.folio, v, f.ultimaVersion, revisiones));
+    const emisiones = await new RepositorioEmisiones(this.db).emisionesDeCotizaciones(ctx, [f.id]);
+    const versiones = f.versiones.map((v) => aResumenVersion(f.folio, v, f.ultimaVersion, revisiones, emisiones));
     return {
-      cotizacion: aResumenCotizacion(f, f.versiones[0], revisiones),
+      cotizacion: aResumenCotizacion(f, f.versiones[0], revisiones, emisiones),
       borrador: {
         revision: f.borrador.revision,
         captura: capturaDe(f.borrador.captura),
@@ -609,9 +654,10 @@ export class RepositorioCotizaciones {
     });
     if (!v) return null;
     const revisiones = await this.revisionesDeVersiones(ctx, [v.id]);
+    const emisiones = await new RepositorioEmisiones(this.db).emisionesDeCotizaciones(ctx, [cotizacionId]);
     return {
       folio: v.cotizacion.folio,
-      resumen: aResumenVersion(v.cotizacion.folio, v, v.cotizacion.ultimaVersion, revisiones),
+      resumen: aResumenVersion(v.cotizacion.folio, v, v.cotizacion.ultimaVersion, revisiones, emisiones),
       cliente: { codigo: v.clienteCodigo, nombre: v.clienteNombre },
       proyecto: {
         codigo: v.proyectoCodigo,
@@ -655,6 +701,9 @@ export class RepositorioCotizaciones {
         resueltaPor: r.resolutor?.usuario.nombre ?? null,
         resueltaEn: r.resueltaEn ? iso(r.resueltaEn) : null,
         observaciones: r.observaciones,
+        anulacion: r.eventos[0]
+          ? { por: r.eventos[0].usuarioNombre, en: iso(r.eventos[0].ocurridoEn), motivo: r.eventos[0].observaciones ?? "" }
+          : null,
       });
     }
     return mapa;
@@ -674,7 +723,7 @@ export class RepositorioCotizaciones {
   async registrarEvento(
     ctx: ContextoOrganizacion,
     autor: Autor,
-    entidad: "cliente" | "proyecto" | "cotizacion",
+    entidad: "cliente" | "proyecto" | "cotizacion" | "emisor",
     entidadId: string,
     tipo: string,
     detalle: Record<string, unknown>,

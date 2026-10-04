@@ -53,6 +53,7 @@ export function resumirCambios(anterior: EstadoComparable | null, nueva: Omit<Es
       seleccionCambiada: [],
       consolidacionCambiada: false,
       datosDescriptivosCambiados: [],
+      textosCambiados: [],
       condicionesCambiadas: false,
       totalAnterior: null,
       totalNuevo: nueva.comercial.total,
@@ -89,6 +90,11 @@ export function resumirCambios(anterior: EstadoComparable | null, nueva: Omit<Es
     a.proyectoDescripcion !== b.proyectoDescripcion ? "proyecto.descripcion" : null,
   ].filter((x): x is string => x !== null);
 
+  // Textos de la versión (módulo 8): no intervienen en el cálculo, pero sí en lo que se aprueba.
+  const textosCambiados = (["alcance", "condiciones", "exclusiones"] as const).filter(
+    (k) => (anterior.captura.textos?.[k] ?? null) !== (nueva.captura.textos?.[k] ?? null),
+  );
+
   return {
     versionAnterior: anterior.numero,
     partidasAgregadas: agregadas,
@@ -97,6 +103,7 @@ export function resumirCambios(anterior: EstadoComparable | null, nueva: Omit<Es
     seleccionCambiada,
     consolidacionCambiada: anterior.captura.consolidarCompras !== nueva.captura.consolidarCompras,
     datosDescriptivosCambiados,
+    textosCambiados,
     condicionesCambiadas: anterior.huellaReferenciaHex !== nueva.huellaReferenciaHex,
     totalAnterior: anterior.comercial.total,
     totalNuevo: nueva.comercial.total,

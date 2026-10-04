@@ -144,10 +144,21 @@ describe("permisos del rol de la aplicación (softarq_app)", () => {
            AND table_name IN ('cliente', 'proyecto', 'cotizacion', 'cotizacion_borrador', 'contador')
          ORDER BY 1, 2`;
       const porTabla = (t: string) => filas.filter((f) => f.tabla === t).map((f) => f.columna);
-      expect(porTabla("cotizacion")).toEqual(["ultima_version"]);
+      // Módulo 8: el descarte escribe estado_folio y sus tres datos (un trigger limita la transición).
+      expect(porTabla("cotizacion")).toEqual(["descartada_en", "descartada_por", "estado_folio", "motivo_descarte", "ultima_version"]);
       expect(porTabla("contador")).toEqual(["ultimo"]);
       expect(porTabla("cotizacion_borrador")).toEqual(["actualizado_en", "actualizado_por", "captura", "revision"]);
-      expect(porTabla("cliente")).toEqual(["activo", "modificado_en", "modificado_por", "nombre", "revision"]);
+      // Módulo 8: contacto del cliente (BL-01).
+      expect(porTabla("cliente")).toEqual([
+        "activo",
+        "contacto_correo",
+        "contacto_nombre",
+        "contacto_telefono",
+        "modificado_en",
+        "modificado_por",
+        "nombre",
+        "revision",
+      ]);
       expect(porTabla("proyecto")).not.toContain("cliente_id");
       for (const t of ["cliente", "proyecto", "cotizacion"]) {
         for (const prohibida of ["id", "organizacion_id", "codigo", "folio", "creado_por", "creado_en"]) {
@@ -164,16 +175,21 @@ describe("permisos del rol de la aplicación (softarq_app)", () => {
           FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
          WHERE n.nspname = 'public' AND p.proname LIKE 'softarq\\_%' ORDER BY 1`;
       expect(filas.map((f) => f.nombre)).toEqual([
+        "softarq_anular_aprobacion",
         "softarq_crear_cliente",
         "softarq_crear_cotizacion",
         "softarq_crear_proyecto",
         "softarq_crear_version",
         "softarq_decidir_revision",
+        "softarq_descartar_cotizacion",
         "softarq_editar_cliente",
         "softarq_editar_proyecto",
+        "softarq_emitir_version",
         "softarq_enviar_revision",
+        "softarq_exigir_emisor",
         "softarq_exigir_funcion",
         "softarq_guardar_borrador",
+        "softarq_guardar_emisor",
         "softarq_registrar_idempotencia",
         "softarq_retirar_revision",
         "softarq_siguiente",

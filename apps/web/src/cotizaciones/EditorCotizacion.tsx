@@ -17,6 +17,10 @@
  * captura guardada (sin cambios sin guardar ni pendientes de recalcular). Mientras la revisión está
  * pendiente, la cotización se muestra en solo lectura con «Retirar la revisión»; el servidor
  * también rechaza guardar o calcular (409 REVISION_PENDIENTE).
+ *
+ * Emisión (módulo 8, ADR-0010): textos de la versión en el borrador; la última versión aprobada se
+ * emite desde «Emisión» (Preparador, o Revisor distinto del autor); las emitidas se descargan. Una
+ * cotización descartada se muestra en solo lectura.
  */
 import { EsquemaCapturaBorrador, type CapturaBorrador, type DetalleCotizacion, type ResumenVersion, type Version } from "@softarq/contracts";
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
@@ -36,6 +40,7 @@ import { useCaptura } from "../captura/usarCaptura.ts";
 import { VistaCaptura } from "../captura/VistaCaptura.tsx";
 import { Enlace, useRuta } from "../navegacion/ruta.tsx";
 import { ListaEventos, ResumenCaptura, TablaVersiones } from "./componentes.tsx";
+import { AvisoDescartada, EditorTextos, PanelDescarte, SeccionEmision, TextosVersion } from "./emision.tsx";
 import { HistorialRevisiones, NOTA_NO_EMISION } from "./revisiones.tsx";
 
 interface Guardada {
@@ -112,9 +117,7 @@ export function EncabezadoCotizacion({ detalle }: { detalle: DetalleCotizacion }
       </div>
       <div>
         <dt>Estado del folio</dt>
-        <dd>
-          <Insignia tono="estado">Activo</Insignia>
-        </dd>
+        <dd>{c.estadoFolio === "ACTIVO" ? <Insignia tono="estado">Activo</Insignia> : <Insignia tono="neutra">Descartado</Insignia>}</dd>
       </div>
       <div>
         <dt>Creada</dt>
@@ -132,6 +135,7 @@ export function PantallaCotizacion({
   cotizaciones,
   puedePreparar,
   puedeEnviarRevision,
+  puedeEmitir,
   motivoSinCalculo,
 }: {
   id: string;
@@ -139,23 +143,33 @@ export function PantallaCotizacion({
   cotizaciones: ServiciosCotizaciones;
   puedePreparar: boolean;
   puedeEnviarRevision: boolean;
+  puedeEmitir: boolean;
   motivoSinCalculo: string | null;
 }) {
   const { estado, recargar } = useCarga((s) => cotizaciones.detalleCotizacion(id, s), [id]);
   if (estado.fase === "cargando") return <Cargando etiqueta="Cargando la cotización…" />;
   if (estado.fase === "error") return <CargaFallida fallo={estado.fallo} alReintentar={recargar} />;
   const enRevision = estado.datos.versiones.find((v) => v.estado === "EN_REVISION") ?? null;
-  if (!puedePreparar || enRevision) {
+  const descartada = estado.datos.cotizacion.estadoFolio !== "ACTIVO";
+  if (!puedePreparar || enRevision || descartada) {
     return (
       <ConsultaCotizacion
         detalle={estado.datos}
+        cotizaciones={cotizaciones}
+        puedeEmitir={puedeEmitir}
+        puedePreparar={puedePreparar}
+        alCambiar={recargar}
         subtitulo={
-          puedePreparar
-            ? "En revisión: la captura no se puede editar ni calcular mientras la revisión esté pendiente."
-            : "Consulta: su función permite ver la cotización y sus versiones, no editarla ni calcularla. Las decisiones de revisión se toman en «Revisiones»."
+          descartada
+            ? "Descartada: la cotización solo se consulta."
+            : puedePreparar
+              ? "En revisión: la captura no se puede editar ni calcular mientras la revisión esté pendiente."
+              : "Consulta: su función permite ver la cotización y sus versiones, no editarla ni calcularla. Las decisiones de revisión se toman en «Revisiones»."
         }
         aviso={
-          enRevision ? (
+          descartada ? (
+            <AvisoDescartada detalle={estado.datos} />
+          ) : enRevision ? (
             <AvisoEnRevision
               key={enRevision.revisionVigente?.id}
               version={enRevision}
@@ -176,6 +190,7 @@ export function PantallaCotizacion({
       cotizaciones={cotizaciones}
       motivoSinCalculo={motivoSinCalculo}
       puedeEnviarRevision={puedeEnviarRevision}
+      puedeEmitir={puedeEmitir}
       alCambiarRevision={recargar}
     />
   );
@@ -252,8 +267,24 @@ function AvisoEnRevision({
   );
 }
 
-/** Solo lectura (Revisor, otras funciones o cotización en revisión): sin controles de edición ni cálculo. */
-function ConsultaCotizacion({ detalle, subtitulo, aviso }: { detalle: DetalleCotizacion; subtitulo: string; aviso: ReactNode }) {
+/** Solo lectura (Revisor, otras funciones, en revisión o descartada): sin controles de edición ni cálculo. */
+function ConsultaCotizacion({
+  detalle,
+  subtitulo,
+  aviso,
+  cotizaciones,
+  puedeEmitir,
+  puedePreparar,
+  alCambiar,
+}: {
+  detalle: DetalleCotizacion;
+  subtitulo: string;
+  aviso: ReactNode;
+  cotizaciones: ServiciosCotizaciones;
+  puedeEmitir: boolean;
+  puedePreparar: boolean;
+  alCambiar: () => void;
+}) {
   const b = detalle.borrador;
   return (
     <Pagina
@@ -279,7 +310,10 @@ function ConsultaCotizacion({ detalle, subtitulo, aviso }: { detalle: DetalleCot
         </h2>
         <TablaVersiones cotizacionId={detalle.cotizacion.id} versiones={detalle.versiones} />
       </section>
+      <SeccionEmision detalle={detalle} cotizaciones={cotizaciones} puedeEmitir={puedeEmitir} alCambiar={alCambiar} />
+      {puedePreparar ? <PanelDescarte detalle={detalle} cotizaciones={cotizaciones} alDescartada={alCambiar} /> : null}
       <ResumenCaptura captura={b.captura} titulo="Captura del borrador" />
+      <TextosVersion textos={b.captura.textos ?? null} titulo="Textos del borrador" />
       <section className="seccion" aria-labelledby="titulo-revisiones-consulta">
         <h2 id="titulo-revisiones-consulta" className="seccion-titulo">
           Revisiones
@@ -302,6 +336,7 @@ function EditorBorrador({
   cotizaciones,
   motivoSinCalculo,
   puedeEnviarRevision,
+  puedeEmitir,
   alCambiarRevision,
 }: {
   inicial: DetalleCotizacion;
@@ -309,6 +344,7 @@ function EditorBorrador({
   cotizaciones: ServiciosCotizaciones;
   motivoSinCalculo: string | null;
   puedeEnviarRevision: boolean;
+  puedeEmitir: boolean;
   /** Tras enviar (o un 409 de revisión): se vuelve a cargar la cotización desde el servidor. */
   alCambiarRevision: () => void;
 }) {
@@ -687,9 +723,15 @@ function EditorBorrador({
           revisionGuardada={guardada.revision}
           ocupado={ocupado}
           puedeEnviar={puedeEnviarRevision}
+          faltanTextos={!captura.textos || Object.values(captura.textos).some((t) => t.trim() === "")}
           cotizaciones={cotizaciones}
           alEnviada={alCambiarRevision}
         />
+      ) : null}
+      {detalle.versiones.some((v) => v.estado === "APROBADA" || v.emision) ? (
+        <p className="ayuda">
+          <a href="#titulo-emision">Ir a la emisión</a>
+        </p>
       ) : null}
       <h3 className="subtitulo">Versiones</h3>
       <TablaVersiones cotizacionId={id} versiones={detalle.versiones} />
@@ -702,6 +744,20 @@ function EditorBorrador({
         <ListaEventos eventos={detalle.eventos} />
       </details>
     </section>
+  );
+
+  const despuesDeLaCaptura = (
+    <>
+      <EditorTextos
+        textos={captura.textos}
+        predeterminados={detalle.borrador.textosPredeterminados}
+        alCambiar={(campo, valor) => despachar({ tipo: "EDITAR_TEXTO", campo, valor })}
+        alRestablecer={(textos) => despachar({ tipo: "FIJAR_TEXTOS", textos })}
+        deshabilitado={ocupado}
+      />
+      <SeccionEmision detalle={detalle} cotizaciones={cotizaciones} puedeEmitir={puedeEmitir} alCambiar={() => void refrescar()} />
+      <PanelDescarte detalle={detalle} cotizaciones={cotizaciones} alDescartada={alCambiarRevision} />
+    </>
   );
 
   return (
@@ -724,6 +780,7 @@ function EditorBorrador({
       }
       avisos={avisos}
       antesDelResultado={panelGuardar}
+      despuesDeLaCaptura={despuesDeLaCaptura}
       textoCalcular="Vista previa"
       ayudaCalcular="Vista previa del servidor con la captura en pantalla. No se guarda ni crea versión."
       motivoSinCalculo={motivoSinCalculo}
@@ -776,6 +833,7 @@ function PanelEnvioRevision({
   revisionGuardada,
   ocupado,
   puedeEnviar,
+  faltanTextos,
   cotizaciones,
   alEnviada,
 }: {
@@ -785,6 +843,8 @@ function PanelEnvioRevision({
   revisionGuardada: number;
   ocupado: boolean;
   puedeEnviar: boolean;
+  /** Los textos de la versión (BL-20) faltan o están vacíos en la captura guardada. */
+  faltanTextos: boolean;
   cotizaciones: ServiciosCotizaciones;
   alEnviada: () => void;
 }) {
@@ -798,7 +858,9 @@ function PanelEnvioRevision({
     ? "Hay cambios sin guardar: guárdelos y calcule una versión nueva antes de enviar."
     : ultima.revisionBorrador !== revisionGuardada
       ? `El borrador guardado (revisión ${revisionGuardada}) cambió después de ${ultima.idVersion}: calcule una versión nueva antes de enviar.`
-      : null;
+      : faltanTextos
+        ? `${ultima.idVersion} no tiene alcance, condiciones y exclusiones completos (BL-20): complételos, guarde y calcule una versión nueva.`
+        : null;
 
   const enviar = async () => {
     if (envio.fase === "enviando" || motivoNoEnviar) return;
@@ -829,6 +891,20 @@ function PanelEnvioRevision({
           </p>
         </Aviso>
       ) : null}
+      {(ultima.estado === "EMITIDA" || ultima.estado === "SUSTITUIDA") && ultima.emision ? (
+        <Aviso tono="correcto" titulo={`${ultima.idVersion} emitida por ${ultima.emision.emitidoPor}`}>
+          <p>
+            {formatearInstante(ultima.emision.emitidoEn)}. Su documento está en «Emisión». Si cambia la captura, la versión nueva necesitará su propia revisión
+            y emisión.
+          </p>
+        </Aviso>
+      ) : null}
+      {r?.estado === "APROBADA" && r.anulacion ? (
+        <Aviso tono="aviso" titulo={`Aprobación anulada por ${r.anulacion.por}`}>
+          <p className="observaciones">{r.anulacion.motivo}</p>
+          <p className="ayuda">Para emitir, envíe la versión a revisión otra vez (o corrija y calcule una versión nueva).</p>
+        </Aviso>
+      ) : null}
       {r?.estado === "CAMBIOS_SOLICITADOS" ? (
         <Aviso tono="aviso" titulo={`Cambios solicitados por ${r.resueltaPor ?? "—"}`}>
           <p className="observaciones">{r.observaciones}</p>
@@ -841,7 +917,7 @@ function PanelEnvioRevision({
           {r.observaciones ? ` (${r.observaciones})` : ""}.
         </p>
       ) : null}
-      {ultima.estado !== "APROBADA" && puedeEnviar ? (
+      {ultima.estado === "BORRADOR" && puedeEnviar ? (
         <>
           {motivoNoEnviar ? (
             <p className="ayuda" id="motivo-no-enviar">

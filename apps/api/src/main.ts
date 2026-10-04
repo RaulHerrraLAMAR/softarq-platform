@@ -11,6 +11,10 @@ async function principal(): Promise<void> {
   const archivo = process.env["SOFTARQ_ENV_FILE"] ?? ".env";
   if (existsSync(archivo)) process.loadEnvFile(archivo);
   const config = leerConfiguracion(process.env);
+  if (!config.dirDocumentos) {
+    // Los PDF emitidos son originales persistentes (ADR-0010): sin carpeta no se arranca.
+    throw new Error("Falta SOFTARQ_DIR_DOCUMENTOS (carpeta persistente de los PDF emitidos; ver apps/api/.env.example).");
+  }
   const app = await crearAplicacion(config);
   await app.listen(config.puerto, config.host);
   console.log(`SoftArq API (DEMO) escuchando en http://${config.host}:${config.puerto} — Ctrl+C para detener.`);

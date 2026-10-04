@@ -20,7 +20,16 @@ export type CodigoNegocio =
   | "ENVIO_BLOQUEADO"
   | "APROBACION_BLOQUEADA"
   | "DECISION_BLOQUEADA"
-  | "SIN_PERMISO";
+  | "SIN_PERMISO"
+  // Módulo 8 (ADR-0010): emisión, anulación y descarte.
+  | "EMISION_BLOQUEADA"
+  | "VERSION_EMITIDA"
+  | "APROBACION_NO_VIGENTE"
+  | "CONFLICTO_EMISION"
+  | "FOLIO_NO_ACTIVO"
+  | "DESCARTE_BLOQUEADO"
+  | "DOCUMENTO_NO_GENERADO"
+  | "DOCUMENTO_NO_DISPONIBLE";
 
 export interface DetalleError {
   campos?: { ruta: string; mensaje: string }[];
@@ -82,6 +91,8 @@ const MENSAJES: Record<string, [CodigoNegocio, string]> = {
     "REVISION_PENDIENTE",
     "La cotización tiene una versión en revisión: no se puede editar ni calcular. Retire la revisión para corregir.",
   ],
+  // Módulo 8: un folio descartado no admite cambios (el trigger y las funciones lo impiden).
+  FOLIO_NO_ACTIVO: ["FOLIO_NO_ACTIVO", "La cotización está descartada: su folio, versiones e historial solo se consultan."],
   CLIENTE_INACTIVO: ["REGISTRO_INACTIVO", "El cliente está inactivo: no se ofrece para registros nuevos."],
   PROYECTO_INACTIVO: ["REGISTRO_INACTIVO", "El proyecto está inactivo: no se ofrece para cotizaciones nuevas."],
 };

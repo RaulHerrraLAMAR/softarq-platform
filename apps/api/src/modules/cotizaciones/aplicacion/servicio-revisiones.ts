@@ -15,6 +15,7 @@
  * Ninguna transacción queda abierta mientras la persona lee o confirma.
  */
 import type {
+  AnulacionAprobacion,
   Capacidad,
   ConsultaRevisiones,
   CotizacionComercial,
@@ -49,7 +50,9 @@ import {
   type Problema,
 } from "../dominio/verificacion.js";
 import { RepositorioCotizaciones, type Autor } from "../infraestructura/repositorio-cotizaciones.js";
+import { RepositorioEmisiones } from "../infraestructura/repositorio-emisiones.js";
 import { RepositorioRevisiones, type FilaRevision } from "../infraestructura/repositorio-revisiones.js";
+import { bl20 } from "../dominio/textos.js";
 import { ErrorNegocio, reconocerErrorBase } from "./errores.js";
 import { prepararIdempotencia, reproducible, type RegistroIdempotencia } from "./idempotencia.js";
 import type { RelojInstante } from "./servicio-clientes.js";
@@ -58,8 +61,9 @@ import type { RelojInstante } from "./servicio-clientes.js";
 const TIEMPO_MAXIMO_VERIFICACION_MS = 15_000;
 const ESPERA_MAXIMA_CONEXION_MS = 10_000;
 
-/** Quién consulta o actúa: identidad y capacidades de la sesión (nunca del cuerpo). */
+/** Quién consulta o actúa: identidad, nombre y capacidades de la sesión (nunca del cuerpo). */
 export interface Actor extends Autor {
+  readonly nombre: string;
   readonly capacidades: readonly Capacidad[];
 }
 
@@ -73,6 +77,7 @@ function iso(d: Date): string {
 export class ServicioRevisiones {
   private readonly repo: RepositorioRevisiones;
   private readonly cotizaciones: RepositorioCotizaciones;
+  private readonly emisiones: RepositorioEmisiones;
 
   constructor(
     private readonly prisma: PrismaClient,
@@ -81,6 +86,7 @@ export class ServicioRevisiones {
   ) {
     this.repo = new RepositorioRevisiones(prisma);
     this.cotizaciones = new RepositorioCotizaciones(prisma);
+    this.emisiones = new RepositorioEmisiones(prisma);
   }
 
   // ------------------------------- consultas --------------------------------
@@ -96,7 +102,7 @@ export class ServicioRevisiones {
     if (!f) throw NO_ENCONTRADA();
     const version = await this.cotizaciones.obtenerVersion(ctx, f.cotizacionId, f.versionNumero);
     if (!version) throw NO_ENCONTRADA();
-    const verificacion = f.estado === "PENDIENTE" ? await this.verificar(ctx, f.cotizacionId, f.versionNumero) : null;
+    const verificacion = f.estado === "PENDIENTE" ? sinVigencia(await this.verificar(ctx, f.cotizacionId, f.versionNumero)) : null;
     return {
       revision: aResumen(f, actor),
       version: {
@@ -119,11 +125,16 @@ export class ServicioRevisiones {
 
   /**
    * Verificación de condiciones vigentes (B-27) en UNA instantánea de solo lectura: estado de
-   * cliente y proyecto, catálogos y parámetros de hoy. Recalcula en memoria SOLO para comparar con
-   * la entrada guardada; la versión no se modifica.
+   * cliente y proyecto, catálogos y parámetros de `hoy` (al emitir, la fecha de emisión). Recalcula
+   * en memoria SOLO para comparar con la entrada guardada; la versión no se modifica. Incluye
+   * BL-20 (textos de la versión, módulo 8) y la vigencia comercial vigente (CR-16 al emitir).
    */
-  async verificar(ctx: ContextoOrganizacion, cotizacionId: string, numero: number): Promise<VerificacionRevision> {
-    const hoy: FechaISO = this.reloj.hoy();
+  async verificar(
+    ctx: ContextoOrganizacion,
+    cotizacionId: string,
+    numero: number,
+    hoy: FechaISO = this.reloj.hoy(),
+  ): Promise<VerificacionRevision & { vigenciaDias: number | null }> {
     const r = await this.prisma.$transaction(
       async (tx) => {
         await tx.$executeRaw`SET TRANSACTION READ ONLY`;
@@ -167,13 +178,14 @@ export class ServicioRevisiones {
         const vigenciaDias = parametros?.vigenciaDias ?? null;
         bloqueos.push(...bl07(insumosDeEntrada(e), conProducto), ...bl09(e, precios, hoy), ...bl14(vigenciaDias));
         bloqueos.push(...bl18(v.proyeccionComercial as CotizacionComercial));
+        bloqueos.push(...bl20(v.captura, `v${v.numero}`));
 
         const avisos: Aviso[] = [
           ...(v.avisos as Aviso[]),
           ...av02(e, precios, hoy, vigenciaDias),
           ...av05(e, conceptos),
         ];
-        return { bloqueos: unicos(bloqueos), avisos: ordenarAvisos(avisos) };
+        return { bloqueos: unicos(bloqueos), avisos: ordenarAvisos(avisos), vigenciaDias };
       },
       {
         isolationLevel: Prisma.TransactionIsolationLevel.RepeatableRead,
@@ -220,10 +232,14 @@ export class ServicioRevisiones {
         { actual: { revision: d.borrador.revision, actualizadoPor: d.borrador.actualizadoPor, actualizadoEn: d.borrador.actualizadoEn } },
       );
     }
-    if (v.estado === "APROBADA") {
-      throw new ErrorNegocio("ENVIO_BLOQUEADO", `La versión v${numero} ya está aprobada.`, {
-        problemas: [{ codigo: "BL-19", referencia: v.idVersion, mensaje: `La versión ${v.idVersion} ya está aprobada: el estado no permite enviarla.` }],
+    if (v.estado === "APROBADA" || v.estado === "EMITIDA" || v.estado === "SUSTITUIDA") {
+      const estado = v.estado === "APROBADA" ? "aprobada" : "emitida";
+      throw new ErrorNegocio("ENVIO_BLOQUEADO", `La versión v${numero} ya está ${estado}.`, {
+        problemas: [{ codigo: "BL-19", referencia: v.idVersion, mensaje: `La versión ${v.idVersion} ya está ${estado}: el estado no permite enviarla.` }],
       });
+    }
+    if (d.cotizacion.estadoFolio !== "ACTIVO") {
+      throw new ErrorNegocio("FOLIO_NO_ACTIVO", "La cotización está descartada; no se envía a revisión.");
     }
 
     const verificacion = await this.verificar(ctx, cotizacionId, numero);
@@ -312,6 +328,37 @@ export class ServicioRevisiones {
     }
   }
 
+  /**
+   * Anular una aprobación ANTES de emitir (módulo 8, ADR-0010; adaptación de `Rev_Observar` sobre
+   * una versión Aprobada): solo un Revisor, con motivo, sobre la revisión aprobada que vio. Crea un
+   * evento nuevo; la revisión y su evento de aprobación no cambian.
+   */
+  async anular(
+    ctx: ContextoOrganizacion,
+    actor: Actor,
+    id: string,
+    s: AnulacionAprobacion,
+    clave: string,
+  ): Promise<{ detalle: DetalleRevision; reproducida: boolean }> {
+    const ahora = this.relojInstante.ahora();
+    const idem = prepararIdempotencia(clave, "anular_aprobacion", { revisionId: id }, s, ahora);
+    const previo = await this.repo_buscar(ctx, actor, idem.clave);
+    if (previo) return this.reproducir(ctx, actor, previo, idem, ahora);
+
+    const f = await this.repo.obtener(ctx, id);
+    if (!f) throw NO_ENCONTRADA();
+    if (f.emisiones.length > 0) {
+      throw new ErrorNegocio("VERSION_EMITIDA", "La versión ya se emitió: su aprobación no se puede anular (el documento emitido no se altera).");
+    }
+    if (f.estado !== "APROBADA" || f.revision !== s.revision || f.eventos.length > 0) throw this.conflicto(f, actor);
+    try {
+      await this.emisiones.anular(ctx, actor, id, s.revision, s.motivo ?? "", idem);
+      return { detalle: await this.detalle(ctx, actor, id), reproducida: false };
+    } catch (e) {
+      return this.traducir(ctx, actor, e, idem, ahora, id);
+    }
+  }
+
   // -------------------------------- apoyo -----------------------------------
 
   private repo_buscar(ctx: ContextoOrganizacion, actor: Actor, clave: string) {
@@ -331,8 +378,9 @@ export class ServicioRevisiones {
 
   private conflicto(f: FilaRevision, actor: Actor): ErrorNegocio {
     const resumen = aResumen(f, actor);
-    const mensaje =
-      f.estado === "PENDIENTE"
+    const mensaje = resumen.anulacion
+      ? `La aprobación ya se anuló (por ${resumen.anulacion.por}). Actualice para ver el estado vigente.`
+      : f.estado === "PENDIENTE"
         ? "La revisión cambió desde que la abrió; actualice para ver su estado vigente."
         : `La revisión ya no está pendiente: ${textoEstado(f.estado)}${resumen.resueltaPor ? ` por ${resumen.resueltaPor}` : ""}. Actualice para ver el estado vigente.`;
     return new ErrorNegocio("CONFLICTO_REVISION", mensaje, { revisionVigente: resumen });
@@ -364,6 +412,10 @@ export class ServicioRevisiones {
           throw new ErrorNegocio("VERSION_NO_VIGENTE", "Se guardó una versión más reciente; solo se envía la última.");
         case "BORRADOR_DESACTUALIZADO":
           throw new ErrorNegocio("BORRADOR_DESACTUALIZADO", "El borrador cambió después de calcular esta versión; calcule una versión nueva.");
+        case "VERSION_EMITIDA":
+          throw new ErrorNegocio("VERSION_EMITIDA", "La versión ya se emitió; su estado no cambia.");
+        case "MOTIVO_REQUERIDO":
+          throw new ErrorNegocio("DECISION_BLOQUEADA", "Indique el motivo.");
         case "FOLIO_NO_ACTIVO":
         case "VERSION_YA_APROBADA":
           throw new ErrorNegocio("ENVIO_BLOQUEADO", "El estado no permite enviar esta versión.", {
@@ -399,6 +451,12 @@ function unicos(p: readonly Problema[]): Problema[] {
   });
 }
 
+/** La verificación para HTTP (el contrato no incluye la vigencia interna). */
+function sinVigencia(v: VerificacionRevision & { vigenciaDias: number | null }): VerificacionRevision {
+  const { vigenciaDias: _, ...resto } = v;
+  return resto;
+}
+
 function textoEstado(e: string): string {
   return e === "APROBADA" ? "aprobada" : e === "CAMBIOS_SOLICITADOS" ? "con cambios solicitados" : e === "RETIRADA" ? "retirada" : "pendiente";
 }
@@ -408,6 +466,8 @@ export function aResumen(f: FilaRevision, actor: Actor): ResumenRevision {
   const pendiente = f.estado === "PENDIENTE";
   const revisor = actor.capacidades.includes("revisiones.decidir");
   const esAutor = actor.usuarioId === f.version.autorId || actor.usuarioId === f.preparadorId;
+  const anulada = f.eventos[0] ?? null;
+  const emitida = f.emisiones.length > 0;
   return {
     id: f.id,
     estado: f.estado as EstadoRevision,
@@ -430,10 +490,13 @@ export function aResumen(f: FilaRevision, actor: Actor): ResumenRevision {
     resueltaPor: f.resolutor?.usuario.nombre ?? null,
     resueltaEn: f.resueltaEn ? iso(f.resueltaEn) : null,
     observaciones: f.observaciones,
+    anulacion: anulada ? { por: anulada.usuarioNombre, en: iso(anulada.ocurridoEn), motivo: anulada.observaciones ?? "" } : null,
+    emitida,
     acciones: {
       aprobar: pendiente && revisor && !esAutor,
       solicitarCambios: pendiente && revisor,
       retirar: pendiente && actor.capacidades.includes("revisiones.enviar"),
+      anularAprobacion: f.estado === "APROBADA" && !anulada && !emitida && revisor,
       motivoNoAprobar: pendiente && revisor && esAutor ? MENSAJE_BL17 : null,
     },
   };

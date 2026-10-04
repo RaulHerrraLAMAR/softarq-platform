@@ -26,6 +26,7 @@ import { RepositorioCatalogos, type ContextoOrganizacion } from "../modules/cata
 import { prismaApp, urlDePrueba } from "./entorno.js";
 import { ClienteHttp, crearCuentas, cuenta, prismaMigrador, type Credencial } from "./sesiones.js";
 import { borradorDesdeEntrada } from "./solicitudes.js";
+import { TEXTOS_DEMO } from "../modules/cotizaciones/dominio/textos.js";
 
 const FECHA = "2026-09-25";
 const escenario = (id: string) => ESCENARIOS.find((e) => e.id === id)!;
@@ -387,7 +388,8 @@ describe("conservar lo capturado cuando una referencia deja de estar disponible 
 
     // Recargar: el servidor informa la indisponibilidad sin cambiar la captura.
     const recargada = EsquemaDetalleCotizacion.parse((await c.get(`/api/v1/cotizaciones/${id}`)).cuerpo);
-    expect(recargada.borrador.captura).toEqual(captura());
+    // Módulo 8: al crear la cotización se copian los textos DEMO de la versión (la captura no los traía).
+    expect(recargada.borrador.captura).toEqual({ ...captura(), textos: TEXTOS_DEMO });
     expect(recargada.borrador.referencias.conceptos).toEqual([
       { codigo: "CON-00007", disponible: false, motivo: "el concepto no está aprobado (estado Borrador)", insumos: ["INS-00004", "INS-00005", "INS-00006"] },
       { codigo: "CON-00008", disponible: true, motivo: null, insumos: ["INS-00007", "INS-00008", "INS-00009"] },
@@ -448,7 +450,7 @@ describe("conservar lo capturado cuando una referencia deja de estar disponible 
     }
     const sin = EsquemaDetalleCotizacion.parse((await c.get(`/api/v1/cotizaciones/${id}`)).cuerpo);
     expect(sin.borrador.revision).toBe(0);
-    expect(sin.borrador.captura).toEqual(base);
+    expect(sin.borrador.captura).toEqual({ ...base, textos: TEXTOS_DEMO }); // textos DEMO copiados al crear (módulo 8)
 
     // Una referencia disponible sí se guarda.
     const ok = await c.put(`/api/v1/cotizaciones/${id}/borrador`, {
