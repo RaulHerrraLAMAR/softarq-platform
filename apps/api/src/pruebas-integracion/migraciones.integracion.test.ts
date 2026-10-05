@@ -191,6 +191,7 @@ describe("permisos del rol de la aplicación (softarq_app)", () => {
         "softarq_guardar_borrador",
         "softarq_guardar_emisor",
         "softarq_registrar_idempotencia",
+        "softarq_registrar_respuesta",
         "softarq_retirar_revision",
         "softarq_siguiente",
       ]);

@@ -27,7 +27,9 @@ export type OperacionIdempotente =
   // Módulo 8 (ADR-0010): emisiones, anulaciones de aprobación y descartes.
   | "emitir_version"
   | "anular_aprobacion"
-  | "descartar_cotizacion";
+  | "descartar_cotizacion"
+  | "registrar_respuesta"
+  | "corregir_respuesta";
 
 export interface Idempotencia {
   readonly clave: string;

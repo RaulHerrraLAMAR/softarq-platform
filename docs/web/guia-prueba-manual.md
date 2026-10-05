@@ -6,6 +6,7 @@ Esta guía es para la **prueba de la web hecha por una persona**. Distingue tres
 |---|---|
 | **Revisión personal del propietario** | **Declarada.** El propietario declaró que revisa manualmente los resultados de la web (registrado el 03/10/2026). Es una declaración: no detalla recorridos, casos, fechas ni evidencias, y no se le atribuye ninguno |
 | **Ejecución formal de esta guía** (A1–A9, 1–14, C1–C15, R1–R10, E1–E12) | **Sin registro.** No hay constancia de casos ejecutados uno por uno con su resultado. Al hacerlo, anota fecha, caso, resultado y observaciones en la §5 |
+| **Seguimiento del módulo 9** (S1–S10) | **Sin registro formal.** Las evidencias de navegador en HANDOFF son automatizadas |
 | **Pruebas automatizadas** (Vitest y Playwright) | En `HANDOFF.md` §5. **No sustituyen** esta prueba |
 
 Ninguna de las tres equivale a PR-41 ni a PR-44 de la fase 1, que son pruebas del libro de Excel y siguen pendientes.
@@ -150,6 +151,25 @@ Antes de empezar: API recompilada y reiniciada con `SOFTARQ_DIR_DOCUMENTOS` y `d
 - Solo punto decimal (por ejemplo, `0.12`).
 
 ## 5. Registro de la prueba en persona
+
+### Seguimiento interno de respuestas (S1–S10; pendiente de ejecución formal)
+
+Usar la misma emisión DEMO del recorrido E1–E12; las capturas se realizan por el equipo, sin sesión de cliente. [Fuentes y decisiones](../cotizaciones/seguimiento-respuestas.md).
+
+| Caso | Acción y resultado esperado |
+|---|---|
+| S1 | Preparador abre una cotización emitida: versión/documento exactos, fecha/zona del servidor, vigencia y «Sin respuesta registrada» |
+| S2 | «Registrar respuesta del cliente»: Aceptada, fecha recibida válida y nota con acentos; revisar y confirmar. Debe mostrar persona interna, fecha recibida y fecha/instante del registro |
+| S3 | Revisor y administradores consultan el seguimiento y su historial; sin acciones de registro/corrección, con motivos visibles |
+| S4 | Una cotización aprobada sin emitir carece de seguimiento comercial; aprobación interna no significa aceptación |
+| S5 | Corregir a Rechazada con motivo: conserva evento anterior y nota, y muestra un evento corrector nuevo |
+| S6 | Dos pestañas abren la misma cabeza: la segunda recibe conflicto, conserva su captura y compara antes de elegir «Corregir el registro vigente con mi captura» |
+| S7 | Error de conexión al confirmar: nota/fecha/motivo permanecen; al reintentar no hay eventos duplicados |
+| S8 | Consultar versión emitida desde el historial: el seguimiento coincide con esa emisión y no con otra posterior; el PDF original conserva sus bytes |
+| S9 | En entorno de prueba con reloj de servidor controlado: último día vigente; día posterior vencido; recepción en último día admitida aun con registro posterior; recepción después del plazo bloqueada. No cambiar fecha del navegador para simular servidor ni alterar relojes de desarrollo |
+| S10 | Teclado y 390 px: etiquetas, foco visible, explicación enfocada tras error, historial legible, sin desplazamiento horizontal |
+
+Registrar debajo solo casos realmente realizados por una persona. Las pruebas automatizadas no rellenan esta tabla ni PR-41…PR-44 del Excel.
 
 | Fecha | Persona | Casos ejecutados | Resultado | Observaciones |
 |---|---|---|---|---|

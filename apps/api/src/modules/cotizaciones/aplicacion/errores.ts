@@ -29,7 +29,11 @@ export type CodigoNegocio =
   | "FOLIO_NO_ACTIVO"
   | "DESCARTE_BLOQUEADO"
   | "DOCUMENTO_NO_GENERADO"
-  | "DOCUMENTO_NO_DISPONIBLE";
+  | "DOCUMENTO_NO_DISPONIBLE"
+  | "CONFLICTO_RESPUESTA"
+  | "EMISION_SUSTITUIDA"
+  | "FECHA_RESPUESTA_INVALIDA"
+  | "RESPUESTA_FUERA_VIGENCIA";
 
 export interface DetalleError {
   campos?: { ruta: string; mensaje: string }[];
@@ -37,6 +41,7 @@ export interface DetalleError {
   actual?: { revision: number; actualizadoPor: string; actualizadoEn: string; captura?: CapturaBorrador };
   /** Estado vigente de una revisión (409 CONFLICTO_REVISION). */
   revisionVigente?: unknown;
+  seguimientoVigente?: unknown;
 }
 
 export class ErrorNegocio extends Error {
@@ -80,6 +85,10 @@ function textoDeError(e: unknown, profundidad = 0): string {
 }
 
 const MENSAJES: Record<string, [CodigoNegocio, string]> = {
+  CONFLICTO_RESPUESTA: ["CONFLICTO_RESPUESTA", "Otra persona o pestaña registró una respuesta antes. Revise el registro vigente; su captura se conserva."],
+  EMISION_SUSTITUIDA: ["EMISION_SUSTITUIDA", "Este documento fue sustituido por otra emisión: no admite una respuesta inicial."],
+  FECHA_RESPUESTA_INVALIDA: ["FECHA_RESPUESTA_INVALIDA", "La fecha recibida debe estar entre la emisión y la fecha del servidor."],
+  RESPUESTA_FUERA_VIGENCIA: ["RESPUESTA_FUERA_VIGENCIA", "La respuesta se recibió después del último día de vigencia del documento."],
   NO_ENCONTRADO: ["NO_ENCONTRADO", "El registro no existe en su organización."],
   CONFLICTO_EDICION: ["CONFLICTO_EDICION", "Otra persona o pestaña guardó cambios antes; revise la versión vigente."],
   BORRADOR_DESACTUALIZADO: [

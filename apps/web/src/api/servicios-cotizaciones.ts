@@ -19,6 +19,12 @@ import {
   EsquemaDetalleEmision,
   EsquemaEmisor,
   EsquemaValidacionEmision,
+  EsquemaSeguimientoEmision,
+  EsquemaEventoRespuestaCliente,
+  type SeguimientoEmision,
+  type EventoRespuestaCliente,
+  type RegistroRespuesta,
+  type CorreccionRespuesta,
   type DetalleEmision,
   type EdicionEmisor,
   type Emisor,
@@ -55,6 +61,9 @@ export interface DatosContacto {
 }
 
 export interface ServiciosCotizaciones {
+  seguimientoEmision(id: string, antesDe?: number, signal?: AbortSignal): Promise<ResultadoApi<SeguimientoEmision>>;
+  registrarRespuesta(id: string, datos: RegistroRespuesta, clave: string): Promise<ResultadoApi<EventoRespuestaCliente>>;
+  corregirRespuesta(id: string, eventoId: string, datos: CorreccionRespuesta, clave: string): Promise<ResultadoApi<EventoRespuestaCliente>>;
   listarClientes(f: { buscar?: string; incluirInactivos?: boolean }, signal?: AbortSignal): Promise<ResultadoApi<RespuestaClientes>>;
   detalleCliente(id: string, signal?: AbortSignal): Promise<ResultadoApi<DetalleCliente>>;
   crearCliente(datos: { nombre: string } & Partial<DatosContacto>, clave: string): Promise<ResultadoApi<Cliente>>;
@@ -111,6 +120,9 @@ const recortar = (t?: string) => (t === undefined ? undefined : t.trim().slice(0
 
 export function crearServiciosCotizaciones(cliente: ClienteApi): ServiciosCotizaciones {
   return {
+    seguimientoEmision: (id, antesDe, signal) => cliente.obtener(`/api/v1/emisiones/${encodeURIComponent(id)}/seguimiento${antesDe ? `?antesDe=${antesDe}` : ""}`, EsquemaSeguimientoEmision, { signal }),
+    registrarRespuesta: (id, datos, clave) => cliente.enviar(`/api/v1/emisiones/${encodeURIComponent(id)}/respuestas`, EsquemaEventoRespuestaCliente, { cuerpo: datos, cabeceras: conClave(clave) }),
+    corregirRespuesta: (id, eventoId, datos, clave) => cliente.enviar(`/api/v1/emisiones/${encodeURIComponent(id)}/respuestas/${encodeURIComponent(eventoId)}/correcciones`, EsquemaEventoRespuestaCliente, { cuerpo: datos, cabeceras: conClave(clave) }),
     listarClientes: (f, signal) =>
       cliente.obtener(
         `/api/v1/clientes${consulta({ buscar: recortar(f.buscar), incluirInactivos: f.incluirInactivos })}`,

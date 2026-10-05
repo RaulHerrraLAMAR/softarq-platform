@@ -2,7 +2,7 @@
 
 Plataforma de **cotización de estructuras de construcción** (fase 2 del proyecto SoftArq). Sucede al libro de Excel de la fase 1 (`Cotizador_Estructuras_F1.xlsm`, versión 1.0.0-F1), que sigue siendo la referencia funcional.
 
-> **Estado (04/10/2026):** módulos 1 a 8 terminados (los módulos 7 y 8 añadieron revisión, aprobación, emisión y PDF DEMO; ver [`HANDOFF.md`](HANDOFF.md) §1). Antes, módulos 1 a 6: **motor de cálculo** (CR-01 a CR-16), **persistencia de catálogos** en PostgreSQL con Prisma, **API HTTP local** con NestJS 12, **cliente web DEMO** con React y Vite, **usuarios DEMO con sesiones** (Argon2id, cookie HttpOnly, CSRF y permisos por función y organización) y **clientes, proyectos y cotizaciones** con folio WEB DEMO, borrador y versiones inmutables calculadas en el servidor. Resultados de pruebas en [`HANDOFF.md`](HANDOFF.md). Todo dato de ejemplo es **DEMO** y no tiene validez comercial.
+> **Estado (05/10/2026):** módulos 1 a 9: cálculo, catálogos, API local, web, sesiones, cotizaciones/versiones, revisión, emisión/PDF y [seguimiento interno de respuestas y vigencia](docs/cotizaciones/seguimiento-respuestas.md). Las respuestas viven en eventos separados del documento original, con correcciones e historial. Resultados reales y continuidad en [`HANDOFF.md`](HANDOFF.md) §18. Todo dato de ejemplo es **DEMO** y no tiene validez comercial.
 
 ## Estructura
 

@@ -10,6 +10,7 @@ export default defineConfig({
     setupFiles: ["src/pruebas-integracion/setup-entorno.ts"],
     // Una sola base compartida: los archivos se ejecutan en serie.
     fileParallelism: false,
+    maxWorkers: 1,
     testTimeout: 60_000,
     hookTimeout: 120_000,
   },

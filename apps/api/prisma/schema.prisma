@@ -334,6 +334,7 @@ model Membresia {
   cotizacionesDescartadas Cotizacion[]      @relation("CotizacionDescartadaPor")
   eventos              Bitacora[]
   idempotencia         Idempotencia[]
+  respuestasCliente    RespuestaClienteEvento[]
 
   @@unique([organizacionId, usuarioId])
   @@index([usuarioId])
@@ -662,6 +663,7 @@ model Emision {
   preparador Membresia         @relation("EmisionPreparadaPor", fields: [organizacionId, preparadoPor], references: [organizacionId, usuarioId], onDelete: Restrict, onUpdate: Restrict)
   aprobador  Membresia         @relation("EmisionAprobadaPor", fields: [organizacionId, aprobadoPor], references: [organizacionId, usuarioId], onDelete: Restrict, onUpdate: Restrict)
   emisor     Membresia         @relation("EmisionEmitidaPor", fields: [organizacionId, emitidoPor], references: [organizacionId, usuarioId], onDelete: Restrict, onUpdate: Restrict)
+  respuestas RespuestaClienteEvento[]
 
   /// Una emisión por versión.
   @@unique([versionId])
@@ -669,6 +671,34 @@ model Emision {
   @@unique([archivoClave])
   @@index([organizacionId, cotizacionId])
   @@map("emision")
+}
+
+/// Registro comercial interno inmutable por emisión (ADR-0013); la cabeza se deriva de numero.
+model RespuestaClienteEvento {
+  id               String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organizacionId   String   @map("organizacion_id") @db.Uuid
+  emisionId        String   @map("emision_id") @db.Uuid
+  numero           Int
+  anteriorId       String?  @map("anterior_id") @db.Uuid
+  tipo             String   @db.VarChar(12)
+  resultado        String   @db.VarChar(10)
+  fechaRespuesta   DateTime @map("fecha_respuesta") @db.Date
+  nota             String?  @db.VarChar(2000)
+  registradoPor    String   @map("registrado_por") @db.Uuid
+  registradoNombre String   @map("registrado_nombre") @db.VarChar(200)
+  registradoEn     DateTime @default(now()) @map("registrado_en") @db.Timestamptz(3)
+  fechaRegistro    DateTime @map("fecha_registro") @db.Date
+  motivo           String?  @db.VarChar(500)
+
+  emision   Emision   @relation(fields: [organizacionId, emisionId], references: [organizacionId, id], onDelete: Restrict, onUpdate: Restrict)
+  autor     Membresia @relation(fields: [organizacionId, registradoPor], references: [organizacionId, usuarioId], onDelete: Restrict, onUpdate: Restrict)
+  anterior  RespuestaClienteEvento?  @relation("CorreccionRespuesta", fields: [organizacionId, emisionId, anteriorId], references: [organizacionId, emisionId, id], onDelete: Restrict, onUpdate: Restrict)
+  siguientes RespuestaClienteEvento[] @relation("CorreccionRespuesta")
+
+  @@unique([organizacionId, emisionId, id], map: "respuesta_evento_org_emision_id_key")
+  @@unique([organizacionId, emisionId, numero], map: "respuesta_evento_numero_key")
+  @@unique([organizacionId, emisionId, anteriorId], map: "respuesta_evento_anterior_key")
+  @@map("respuesta_cliente_evento")
 }
 
 /// Contadores de identificadores (tblContadores): CLI, PRY y COT-AAAA, por organización.

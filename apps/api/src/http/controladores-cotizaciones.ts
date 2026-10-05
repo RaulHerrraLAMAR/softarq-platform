@@ -11,6 +11,10 @@
  */
 import { Body, Controller, Get, HttpCode, Inject, Param, Patch, Post, Put, Query, Req, Res } from "@nestjs/common";
 import { SkipThrottle } from "@nestjs/throttler";
+import { EsquemaConsultaSeguimiento, EsquemaRegistroRespuesta, EsquemaCorreccionRespuesta,
+  type SeguimientoEmision, type RegistroRespuesta, type CorreccionRespuesta, type EventoRespuestaCliente } from "@softarq/contracts";
+import { ServicioRespuestas } from "../modules/cotizaciones/aplicacion/servicio-respuestas.js";
+import { SERVICIO_RESPUESTAS } from "./tokens.js";
 import {
   CABECERA_IDEMPOTENCIA,
   CABECERA_IDEMPOTENCIA_REPRODUCIDA,
@@ -80,6 +84,37 @@ import { Requiere } from "./guardia-sesion.js";
 import { SERVICIO_CLIENTES, SERVICIO_COTIZACIONES, SERVICIO_EMISIONES, SERVICIO_REVISIONES } from "./tokens.js";
 
 const EsquemaClaveIdempotencia = z.uuid();
+
+@Controller("emisiones")
+@SkipThrottle({ calculo: true })
+export class RespuestasController {
+  constructor(@Inject(SERVICIO_RESPUESTAS) private readonly servicio: ServicioRespuestas) {}
+  @Get(":id/seguimiento")
+  @Requiere("cotizaciones.consultar")
+  seguimiento(@Req() req: Request, @Param() params: unknown, @Query({ schema: EsquemaConsultaSeguimiento }) q: { antesDe?: number }): Promise<SeguimientoEmision> {
+    return this.servicio.seguimiento(organizacionDe(req), actorDe(req), idDeRuta(params), q.antesDe);
+  }
+  @Post(":id/respuestas")
+  @HttpCode(201)
+  @Requiere("respuestas.registrar")
+  async registrar(@Req() req: Request, @Res({ passthrough: true }) res: Response, @Param() params: unknown,
+    @Body({ schema: EsquemaRegistroRespuesta }) s: RegistroRespuesta): Promise<EventoRespuestaCliente> {
+    const r = await this.servicio.registrar(organizacionDe(req), actorDe(req), idDeRuta(params), null, s, claveIdempotencia(req));
+    marcarReproducida(res, r.reproducida);
+    return r.evento;
+  }
+  @Post(":id/respuestas/:eventoId/correcciones")
+  @HttpCode(201)
+  @Requiere("respuestas.corregir")
+  async corregir(@Req() req: Request, @Res({ passthrough: true }) res: Response, @Param() params: unknown,
+    @Body({ schema: EsquemaCorreccionRespuesta }) s: CorreccionRespuesta): Promise<EventoRespuestaCliente> {
+    const p = z.strictObject({ id: z.uuid(), eventoId: z.uuid() }).safeParse(params);
+    if (!p.success) throw new ErrorApi(404, "NO_ENCONTRADO", "La emisión o respuesta no existe en su organización.");
+    const r = await this.servicio.registrar(organizacionDe(req), actorDe(req), p.data.id, p.data.eventoId, s, claveIdempotencia(req));
+    marcarReproducida(res, r.reproducida);
+    return r.evento;
+  }
+}
 
 /** Clave de idempotencia obligatoria (UUID). Nunca se registra en los logs. */
 function claveIdempotencia(req: Request): string {

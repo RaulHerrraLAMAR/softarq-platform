@@ -709,7 +709,7 @@
             }
           },
           "422": {
-            "description": "CALCULO_BLOQUEADO (códigos BL, sin importes), CAPTURA_INCOMPLETA (campos pendientes), REGISTRO_INACTIVO, REFERENCIA_NO_DISPONIBLE, ENVIO_BLOQUEADO / APROBACION_BLOQUEADA (bloqueos vigentes; el estado no cambió), DECISION_BLOQUEADA (BL-17: quien aprueba no puede ser el autor), EMISION_BLOQUEADA (BL-01 a BL-20 a la fecha de emisión; nada cambió), DESCARTE_BLOQUEADO (estado que no permite descartar), IDEMPOTENCIA_CONFLICTO o IDEMPOTENCIA_CADUCADA.",
+            "description": "CALCULO_BLOQUEADO (códigos BL, sin importes), CAPTURA_INCOMPLETA (campos pendientes), REGISTRO_INACTIVO, REFERENCIA_NO_DISPONIBLE, ENVIO_BLOQUEADO / APROBACION_BLOQUEADA (bloqueos vigentes; el estado no cambió), DECISION_BLOQUEADA (BL-17: quien aprueba no puede ser el autor), EMISION_BLOQUEADA (BL-01 a BL-20 a la fecha de emisión; nada cambió), DESCARTE_BLOQUEADO (estado que no permite descartar), FECHA_RESPUESTA_INVALIDA (anterior a emisión o futura), RESPUESTA_FUERA_VIGENCIA (recepción después del último día), IDEMPOTENCIA_CONFLICTO o IDEMPOTENCIA_CADUCADA.",
             "content": {
               "application/json": {
                 "schema": {
@@ -952,7 +952,7 @@
             }
           },
           "422": {
-            "description": "CALCULO_BLOQUEADO (códigos BL, sin importes), CAPTURA_INCOMPLETA (campos pendientes), REGISTRO_INACTIVO, REFERENCIA_NO_DISPONIBLE, ENVIO_BLOQUEADO / APROBACION_BLOQUEADA (bloqueos vigentes; el estado no cambió), DECISION_BLOQUEADA (BL-17: quien aprueba no puede ser el autor), EMISION_BLOQUEADA (BL-01 a BL-20 a la fecha de emisión; nada cambió), DESCARTE_BLOQUEADO (estado que no permite descartar), IDEMPOTENCIA_CONFLICTO o IDEMPOTENCIA_CADUCADA.",
+            "description": "CALCULO_BLOQUEADO (códigos BL, sin importes), CAPTURA_INCOMPLETA (campos pendientes), REGISTRO_INACTIVO, REFERENCIA_NO_DISPONIBLE, ENVIO_BLOQUEADO / APROBACION_BLOQUEADA (bloqueos vigentes; el estado no cambió), DECISION_BLOQUEADA (BL-17: quien aprueba no puede ser el autor), EMISION_BLOQUEADA (BL-01 a BL-20 a la fecha de emisión; nada cambió), DESCARTE_BLOQUEADO (estado que no permite descartar), FECHA_RESPUESTA_INVALIDA (anterior a emisión o futura), RESPUESTA_FUERA_VIGENCIA (recepción después del último día), IDEMPOTENCIA_CONFLICTO o IDEMPOTENCIA_CADUCADA.",
             "content": {
               "application/json": {
                 "schema": {
@@ -1162,7 +1162,7 @@
             }
           },
           "409": {
-            "description": "CONFLICTO_EDICION (revisión obsoleta; `actual` trae el estado vigente), BORRADOR_DESACTUALIZADO (el borrador cambió; no se guardó ni se envió nada), REVISION_PENDIENTE (hay una versión en revisión: no se edita ni se calcula), VERSION_NO_VIGENTE (solo se envía la última versión) CONFLICTO_REVISION (la revisión cambió o ya se decidió; `revisionVigente` trae su estado), VERSION_EMITIDA (la versión ya se emitió), APROBACION_NO_VIGENTE (la aprobación se anuló o cambió), CONFLICTO_EMISION (la versión o la aprobación vistas ya no son las vigentes) o FOLIO_NO_ACTIVO (cotización descartada).",
+            "description": "CONFLICTO_EDICION (revisión obsoleta; `actual` trae el estado vigente), BORRADOR_DESACTUALIZADO (el borrador cambió; no se guardó ni se envió nada), REVISION_PENDIENTE (hay una versión en revisión: no se edita ni se calcula), VERSION_NO_VIGENTE (solo se envía la última versión) CONFLICTO_REVISION (la revisión cambió o ya se decidió; `revisionVigente` trae su estado), VERSION_EMITIDA (la versión ya se emitió), APROBACION_NO_VIGENTE (la aprobación se anuló o cambió), CONFLICTO_EMISION (la versión o la aprobación vistas ya no son las vigentes), FOLIO_NO_ACTIVO (cotización descartada), CONFLICTO_RESPUESTA (cabeza comercial cambió; seguimientoVigente trae el estado actual) o EMISION_SUSTITUIDA (sin primera respuesta sobre documento sustituido).",
             "content": {
               "application/json": {
                 "schema": {
@@ -1445,7 +1445,7 @@
             }
           },
           "422": {
-            "description": "CALCULO_BLOQUEADO (códigos BL, sin importes), CAPTURA_INCOMPLETA (campos pendientes), REGISTRO_INACTIVO, REFERENCIA_NO_DISPONIBLE, ENVIO_BLOQUEADO / APROBACION_BLOQUEADA (bloqueos vigentes; el estado no cambió), DECISION_BLOQUEADA (BL-17: quien aprueba no puede ser el autor), EMISION_BLOQUEADA (BL-01 a BL-20 a la fecha de emisión; nada cambió), DESCARTE_BLOQUEADO (estado que no permite descartar), IDEMPOTENCIA_CONFLICTO o IDEMPOTENCIA_CADUCADA.",
+            "description": "CALCULO_BLOQUEADO (códigos BL, sin importes), CAPTURA_INCOMPLETA (campos pendientes), REGISTRO_INACTIVO, REFERENCIA_NO_DISPONIBLE, ENVIO_BLOQUEADO / APROBACION_BLOQUEADA (bloqueos vigentes; el estado no cambió), DECISION_BLOQUEADA (BL-17: quien aprueba no puede ser el autor), EMISION_BLOQUEADA (BL-01 a BL-20 a la fecha de emisión; nada cambió), DESCARTE_BLOQUEADO (estado que no permite descartar), FECHA_RESPUESTA_INVALIDA (anterior a emisión o futura), RESPUESTA_FUERA_VIGENCIA (recepción después del último día), IDEMPOTENCIA_CONFLICTO o IDEMPOTENCIA_CADUCADA.",
             "content": {
               "application/json": {
                 "schema": {
@@ -1655,7 +1655,7 @@
             }
           },
           "409": {
-            "description": "CONFLICTO_EDICION (revisión obsoleta; `actual` trae el estado vigente), BORRADOR_DESACTUALIZADO (el borrador cambió; no se guardó ni se envió nada), REVISION_PENDIENTE (hay una versión en revisión: no se edita ni se calcula), VERSION_NO_VIGENTE (solo se envía la última versión) CONFLICTO_REVISION (la revisión cambió o ya se decidió; `revisionVigente` trae su estado), VERSION_EMITIDA (la versión ya se emitió), APROBACION_NO_VIGENTE (la aprobación se anuló o cambió), CONFLICTO_EMISION (la versión o la aprobación vistas ya no son las vigentes) o FOLIO_NO_ACTIVO (cotización descartada).",
+            "description": "CONFLICTO_EDICION (revisión obsoleta; `actual` trae el estado vigente), BORRADOR_DESACTUALIZADO (el borrador cambió; no se guardó ni se envió nada), REVISION_PENDIENTE (hay una versión en revisión: no se edita ni se calcula), VERSION_NO_VIGENTE (solo se envía la última versión) CONFLICTO_REVISION (la revisión cambió o ya se decidió; `revisionVigente` trae su estado), VERSION_EMITIDA (la versión ya se emitió), APROBACION_NO_VIGENTE (la aprobación se anuló o cambió), CONFLICTO_EMISION (la versión o la aprobación vistas ya no son las vigentes), FOLIO_NO_ACTIVO (cotización descartada), CONFLICTO_RESPUESTA (cabeza comercial cambió; seguimientoVigente trae el estado actual) o EMISION_SUSTITUIDA (sin primera respuesta sobre documento sustituido).",
             "content": {
               "application/json": {
                 "schema": {
@@ -1936,7 +1936,7 @@
             }
           },
           "422": {
-            "description": "CALCULO_BLOQUEADO (códigos BL, sin importes), CAPTURA_INCOMPLETA (campos pendientes), REGISTRO_INACTIVO, REFERENCIA_NO_DISPONIBLE, ENVIO_BLOQUEADO / APROBACION_BLOQUEADA (bloqueos vigentes; el estado no cambió), DECISION_BLOQUEADA (BL-17: quien aprueba no puede ser el autor), EMISION_BLOQUEADA (BL-01 a BL-20 a la fecha de emisión; nada cambió), DESCARTE_BLOQUEADO (estado que no permite descartar), IDEMPOTENCIA_CONFLICTO o IDEMPOTENCIA_CADUCADA.",
+            "description": "CALCULO_BLOQUEADO (códigos BL, sin importes), CAPTURA_INCOMPLETA (campos pendientes), REGISTRO_INACTIVO, REFERENCIA_NO_DISPONIBLE, ENVIO_BLOQUEADO / APROBACION_BLOQUEADA (bloqueos vigentes; el estado no cambió), DECISION_BLOQUEADA (BL-17: quien aprueba no puede ser el autor), EMISION_BLOQUEADA (BL-01 a BL-20 a la fecha de emisión; nada cambió), DESCARTE_BLOQUEADO (estado que no permite descartar), FECHA_RESPUESTA_INVALIDA (anterior a emisión o futura), RESPUESTA_FUERA_VIGENCIA (recepción después del último día), IDEMPOTENCIA_CONFLICTO o IDEMPOTENCIA_CADUCADA.",
             "content": {
               "application/json": {
                 "schema": {
@@ -2148,7 +2148,7 @@
             }
           },
           "409": {
-            "description": "CONFLICTO_EDICION (revisión obsoleta; `actual` trae el estado vigente), BORRADOR_DESACTUALIZADO (el borrador cambió; no se guardó ni se envió nada), REVISION_PENDIENTE (hay una versión en revisión: no se edita ni se calcula), VERSION_NO_VIGENTE (solo se envía la última versión) CONFLICTO_REVISION (la revisión cambió o ya se decidió; `revisionVigente` trae su estado), VERSION_EMITIDA (la versión ya se emitió), APROBACION_NO_VIGENTE (la aprobación se anuló o cambió), CONFLICTO_EMISION (la versión o la aprobación vistas ya no son las vigentes) o FOLIO_NO_ACTIVO (cotización descartada).",
+            "description": "CONFLICTO_EDICION (revisión obsoleta; `actual` trae el estado vigente), BORRADOR_DESACTUALIZADO (el borrador cambió; no se guardó ni se envió nada), REVISION_PENDIENTE (hay una versión en revisión: no se edita ni se calcula), VERSION_NO_VIGENTE (solo se envía la última versión) CONFLICTO_REVISION (la revisión cambió o ya se decidió; `revisionVigente` trae su estado), VERSION_EMITIDA (la versión ya se emitió), APROBACION_NO_VIGENTE (la aprobación se anuló o cambió), CONFLICTO_EMISION (la versión o la aprobación vistas ya no son las vigentes), FOLIO_NO_ACTIVO (cotización descartada), CONFLICTO_RESPUESTA (cabeza comercial cambió; seguimientoVigente trae el estado actual) o EMISION_SUSTITUIDA (sin primera respuesta sobre documento sustituido).",
             "content": {
               "application/json": {
                 "schema": {
@@ -2302,7 +2302,7 @@
             }
           },
           "409": {
-            "description": "CONFLICTO_EDICION (revisión obsoleta; `actual` trae el estado vigente), BORRADOR_DESACTUALIZADO (el borrador cambió; no se guardó ni se envió nada), REVISION_PENDIENTE (hay una versión en revisión: no se edita ni se calcula), VERSION_NO_VIGENTE (solo se envía la última versión) CONFLICTO_REVISION (la revisión cambió o ya se decidió; `revisionVigente` trae su estado), VERSION_EMITIDA (la versión ya se emitió), APROBACION_NO_VIGENTE (la aprobación se anuló o cambió), CONFLICTO_EMISION (la versión o la aprobación vistas ya no son las vigentes) o FOLIO_NO_ACTIVO (cotización descartada).",
+            "description": "CONFLICTO_EDICION (revisión obsoleta; `actual` trae el estado vigente), BORRADOR_DESACTUALIZADO (el borrador cambió; no se guardó ni se envió nada), REVISION_PENDIENTE (hay una versión en revisión: no se edita ni se calcula), VERSION_NO_VIGENTE (solo se envía la última versión) CONFLICTO_REVISION (la revisión cambió o ya se decidió; `revisionVigente` trae su estado), VERSION_EMITIDA (la versión ya se emitió), APROBACION_NO_VIGENTE (la aprobación se anuló o cambió), CONFLICTO_EMISION (la versión o la aprobación vistas ya no son las vigentes), FOLIO_NO_ACTIVO (cotización descartada), CONFLICTO_RESPUESTA (cabeza comercial cambió; seguimientoVigente trae el estado actual) o EMISION_SUSTITUIDA (sin primera respuesta sobre documento sustituido).",
             "content": {
               "application/json": {
                 "schema": {
@@ -2332,7 +2332,7 @@
             }
           },
           "422": {
-            "description": "CALCULO_BLOQUEADO (códigos BL, sin importes), CAPTURA_INCOMPLETA (campos pendientes), REGISTRO_INACTIVO, REFERENCIA_NO_DISPONIBLE, ENVIO_BLOQUEADO / APROBACION_BLOQUEADA (bloqueos vigentes; el estado no cambió), DECISION_BLOQUEADA (BL-17: quien aprueba no puede ser el autor), EMISION_BLOQUEADA (BL-01 a BL-20 a la fecha de emisión; nada cambió), DESCARTE_BLOQUEADO (estado que no permite descartar), IDEMPOTENCIA_CONFLICTO o IDEMPOTENCIA_CADUCADA.",
+            "description": "CALCULO_BLOQUEADO (códigos BL, sin importes), CAPTURA_INCOMPLETA (campos pendientes), REGISTRO_INACTIVO, REFERENCIA_NO_DISPONIBLE, ENVIO_BLOQUEADO / APROBACION_BLOQUEADA (bloqueos vigentes; el estado no cambió), DECISION_BLOQUEADA (BL-17: quien aprueba no puede ser el autor), EMISION_BLOQUEADA (BL-01 a BL-20 a la fecha de emisión; nada cambió), DESCARTE_BLOQUEADO (estado que no permite descartar), FECHA_RESPUESTA_INVALIDA (anterior a emisión o futura), RESPUESTA_FUERA_VIGENCIA (recepción después del último día), IDEMPOTENCIA_CONFLICTO o IDEMPOTENCIA_CADUCADA.",
             "content": {
               "application/json": {
                 "schema": {
@@ -2572,7 +2572,7 @@
             }
           },
           "409": {
-            "description": "CONFLICTO_EDICION (revisión obsoleta; `actual` trae el estado vigente), BORRADOR_DESACTUALIZADO (el borrador cambió; no se guardó ni se envió nada), REVISION_PENDIENTE (hay una versión en revisión: no se edita ni se calcula), VERSION_NO_VIGENTE (solo se envía la última versión) CONFLICTO_REVISION (la revisión cambió o ya se decidió; `revisionVigente` trae su estado), VERSION_EMITIDA (la versión ya se emitió), APROBACION_NO_VIGENTE (la aprobación se anuló o cambió), CONFLICTO_EMISION (la versión o la aprobación vistas ya no son las vigentes) o FOLIO_NO_ACTIVO (cotización descartada).",
+            "description": "CONFLICTO_EDICION (revisión obsoleta; `actual` trae el estado vigente), BORRADOR_DESACTUALIZADO (el borrador cambió; no se guardó ni se envió nada), REVISION_PENDIENTE (hay una versión en revisión: no se edita ni se calcula), VERSION_NO_VIGENTE (solo se envía la última versión) CONFLICTO_REVISION (la revisión cambió o ya se decidió; `revisionVigente` trae su estado), VERSION_EMITIDA (la versión ya se emitió), APROBACION_NO_VIGENTE (la aprobación se anuló o cambió), CONFLICTO_EMISION (la versión o la aprobación vistas ya no son las vigentes), FOLIO_NO_ACTIVO (cotización descartada), CONFLICTO_RESPUESTA (cabeza comercial cambió; seguimientoVigente trae el estado actual) o EMISION_SUSTITUIDA (sin primera respuesta sobre documento sustituido).",
             "content": {
               "application/json": {
                 "schema": {
@@ -2602,7 +2602,7 @@
             }
           },
           "422": {
-            "description": "CALCULO_BLOQUEADO (códigos BL, sin importes), CAPTURA_INCOMPLETA (campos pendientes), REGISTRO_INACTIVO, REFERENCIA_NO_DISPONIBLE, ENVIO_BLOQUEADO / APROBACION_BLOQUEADA (bloqueos vigentes; el estado no cambió), DECISION_BLOQUEADA (BL-17: quien aprueba no puede ser el autor), EMISION_BLOQUEADA (BL-01 a BL-20 a la fecha de emisión; nada cambió), DESCARTE_BLOQUEADO (estado que no permite descartar), IDEMPOTENCIA_CONFLICTO o IDEMPOTENCIA_CADUCADA.",
+            "description": "CALCULO_BLOQUEADO (códigos BL, sin importes), CAPTURA_INCOMPLETA (campos pendientes), REGISTRO_INACTIVO, REFERENCIA_NO_DISPONIBLE, ENVIO_BLOQUEADO / APROBACION_BLOQUEADA (bloqueos vigentes; el estado no cambió), DECISION_BLOQUEADA (BL-17: quien aprueba no puede ser el autor), EMISION_BLOQUEADA (BL-01 a BL-20 a la fecha de emisión; nada cambió), DESCARTE_BLOQUEADO (estado que no permite descartar), FECHA_RESPUESTA_INVALIDA (anterior a emisión o futura), RESPUESTA_FUERA_VIGENCIA (recepción después del último día), IDEMPOTENCIA_CONFLICTO o IDEMPOTENCIA_CADUCADA.",
             "content": {
               "application/json": {
                 "schema": {
@@ -2926,7 +2926,7 @@
             }
           },
           "409": {
-            "description": "CONFLICTO_EDICION (revisión obsoleta; `actual` trae el estado vigente), BORRADOR_DESACTUALIZADO (el borrador cambió; no se guardó ni se envió nada), REVISION_PENDIENTE (hay una versión en revisión: no se edita ni se calcula), VERSION_NO_VIGENTE (solo se envía la última versión) CONFLICTO_REVISION (la revisión cambió o ya se decidió; `revisionVigente` trae su estado), VERSION_EMITIDA (la versión ya se emitió), APROBACION_NO_VIGENTE (la aprobación se anuló o cambió), CONFLICTO_EMISION (la versión o la aprobación vistas ya no son las vigentes) o FOLIO_NO_ACTIVO (cotización descartada).",
+            "description": "CONFLICTO_EDICION (revisión obsoleta; `actual` trae el estado vigente), BORRADOR_DESACTUALIZADO (el borrador cambió; no se guardó ni se envió nada), REVISION_PENDIENTE (hay una versión en revisión: no se edita ni se calcula), VERSION_NO_VIGENTE (solo se envía la última versión) CONFLICTO_REVISION (la revisión cambió o ya se decidió; `revisionVigente` trae su estado), VERSION_EMITIDA (la versión ya se emitió), APROBACION_NO_VIGENTE (la aprobación se anuló o cambió), CONFLICTO_EMISION (la versión o la aprobación vistas ya no son las vigentes), FOLIO_NO_ACTIVO (cotización descartada), CONFLICTO_RESPUESTA (cabeza comercial cambió; seguimientoVigente trae el estado actual) o EMISION_SUSTITUIDA (sin primera respuesta sobre documento sustituido).",
             "content": {
               "application/json": {
                 "schema": {
@@ -2956,7 +2956,7 @@
             }
           },
           "422": {
-            "description": "CALCULO_BLOQUEADO (códigos BL, sin importes), CAPTURA_INCOMPLETA (campos pendientes), REGISTRO_INACTIVO, REFERENCIA_NO_DISPONIBLE, ENVIO_BLOQUEADO / APROBACION_BLOQUEADA (bloqueos vigentes; el estado no cambió), DECISION_BLOQUEADA (BL-17: quien aprueba no puede ser el autor), EMISION_BLOQUEADA (BL-01 a BL-20 a la fecha de emisión; nada cambió), DESCARTE_BLOQUEADO (estado que no permite descartar), IDEMPOTENCIA_CONFLICTO o IDEMPOTENCIA_CADUCADA.",
+            "description": "CALCULO_BLOQUEADO (códigos BL, sin importes), CAPTURA_INCOMPLETA (campos pendientes), REGISTRO_INACTIVO, REFERENCIA_NO_DISPONIBLE, ENVIO_BLOQUEADO / APROBACION_BLOQUEADA (bloqueos vigentes; el estado no cambió), DECISION_BLOQUEADA (BL-17: quien aprueba no puede ser el autor), EMISION_BLOQUEADA (BL-01 a BL-20 a la fecha de emisión; nada cambió), DESCARTE_BLOQUEADO (estado que no permite descartar), FECHA_RESPUESTA_INVALIDA (anterior a emisión o futura), RESPUESTA_FUERA_VIGENCIA (recepción después del último día), IDEMPOTENCIA_CONFLICTO o IDEMPOTENCIA_CADUCADA.",
             "content": {
               "application/json": {
                 "schema": {
@@ -3090,7 +3090,7 @@
             }
           },
           "409": {
-            "description": "CONFLICTO_EDICION (revisión obsoleta; `actual` trae el estado vigente), BORRADOR_DESACTUALIZADO (el borrador cambió; no se guardó ni se envió nada), REVISION_PENDIENTE (hay una versión en revisión: no se edita ni se calcula), VERSION_NO_VIGENTE (solo se envía la última versión) CONFLICTO_REVISION (la revisión cambió o ya se decidió; `revisionVigente` trae su estado), VERSION_EMITIDA (la versión ya se emitió), APROBACION_NO_VIGENTE (la aprobación se anuló o cambió), CONFLICTO_EMISION (la versión o la aprobación vistas ya no son las vigentes) o FOLIO_NO_ACTIVO (cotización descartada).",
+            "description": "CONFLICTO_EDICION (revisión obsoleta; `actual` trae el estado vigente), BORRADOR_DESACTUALIZADO (el borrador cambió; no se guardó ni se envió nada), REVISION_PENDIENTE (hay una versión en revisión: no se edita ni se calcula), VERSION_NO_VIGENTE (solo se envía la última versión) CONFLICTO_REVISION (la revisión cambió o ya se decidió; `revisionVigente` trae su estado), VERSION_EMITIDA (la versión ya se emitió), APROBACION_NO_VIGENTE (la aprobación se anuló o cambió), CONFLICTO_EMISION (la versión o la aprobación vistas ya no son las vigentes), FOLIO_NO_ACTIVO (cotización descartada), CONFLICTO_RESPUESTA (cabeza comercial cambió; seguimientoVigente trae el estado actual) o EMISION_SUSTITUIDA (sin primera respuesta sobre documento sustituido).",
             "content": {
               "application/json": {
                 "schema": {
@@ -3120,7 +3120,7 @@
             }
           },
           "422": {
-            "description": "CALCULO_BLOQUEADO (códigos BL, sin importes), CAPTURA_INCOMPLETA (campos pendientes), REGISTRO_INACTIVO, REFERENCIA_NO_DISPONIBLE, ENVIO_BLOQUEADO / APROBACION_BLOQUEADA (bloqueos vigentes; el estado no cambió), DECISION_BLOQUEADA (BL-17: quien aprueba no puede ser el autor), EMISION_BLOQUEADA (BL-01 a BL-20 a la fecha de emisión; nada cambió), DESCARTE_BLOQUEADO (estado que no permite descartar), IDEMPOTENCIA_CONFLICTO o IDEMPOTENCIA_CADUCADA.",
+            "description": "CALCULO_BLOQUEADO (códigos BL, sin importes), CAPTURA_INCOMPLETA (campos pendientes), REGISTRO_INACTIVO, REFERENCIA_NO_DISPONIBLE, ENVIO_BLOQUEADO / APROBACION_BLOQUEADA (bloqueos vigentes; el estado no cambió), DECISION_BLOQUEADA (BL-17: quien aprueba no puede ser el autor), EMISION_BLOQUEADA (BL-01 a BL-20 a la fecha de emisión; nada cambió), DESCARTE_BLOQUEADO (estado que no permite descartar), FECHA_RESPUESTA_INVALIDA (anterior a emisión o futura), RESPUESTA_FUERA_VIGENCIA (recepción después del último día), IDEMPOTENCIA_CONFLICTO o IDEMPOTENCIA_CADUCADA.",
             "content": {
               "application/json": {
                 "schema": {
@@ -3255,7 +3255,7 @@
             }
           },
           "409": {
-            "description": "CONFLICTO_EDICION (revisión obsoleta; `actual` trae el estado vigente), BORRADOR_DESACTUALIZADO (el borrador cambió; no se guardó ni se envió nada), REVISION_PENDIENTE (hay una versión en revisión: no se edita ni se calcula), VERSION_NO_VIGENTE (solo se envía la última versión) CONFLICTO_REVISION (la revisión cambió o ya se decidió; `revisionVigente` trae su estado), VERSION_EMITIDA (la versión ya se emitió), APROBACION_NO_VIGENTE (la aprobación se anuló o cambió), CONFLICTO_EMISION (la versión o la aprobación vistas ya no son las vigentes) o FOLIO_NO_ACTIVO (cotización descartada).",
+            "description": "CONFLICTO_EDICION (revisión obsoleta; `actual` trae el estado vigente), BORRADOR_DESACTUALIZADO (el borrador cambió; no se guardó ni se envió nada), REVISION_PENDIENTE (hay una versión en revisión: no se edita ni se calcula), VERSION_NO_VIGENTE (solo se envía la última versión) CONFLICTO_REVISION (la revisión cambió o ya se decidió; `revisionVigente` trae su estado), VERSION_EMITIDA (la versión ya se emitió), APROBACION_NO_VIGENTE (la aprobación se anuló o cambió), CONFLICTO_EMISION (la versión o la aprobación vistas ya no son las vigentes), FOLIO_NO_ACTIVO (cotización descartada), CONFLICTO_RESPUESTA (cabeza comercial cambió; seguimientoVigente trae el estado actual) o EMISION_SUSTITUIDA (sin primera respuesta sobre documento sustituido).",
             "content": {
               "application/json": {
                 "schema": {
@@ -3285,7 +3285,7 @@
             }
           },
           "422": {
-            "description": "CALCULO_BLOQUEADO (códigos BL, sin importes), CAPTURA_INCOMPLETA (campos pendientes), REGISTRO_INACTIVO, REFERENCIA_NO_DISPONIBLE, ENVIO_BLOQUEADO / APROBACION_BLOQUEADA (bloqueos vigentes; el estado no cambió), DECISION_BLOQUEADA (BL-17: quien aprueba no puede ser el autor), EMISION_BLOQUEADA (BL-01 a BL-20 a la fecha de emisión; nada cambió), DESCARTE_BLOQUEADO (estado que no permite descartar), IDEMPOTENCIA_CONFLICTO o IDEMPOTENCIA_CADUCADA.",
+            "description": "CALCULO_BLOQUEADO (códigos BL, sin importes), CAPTURA_INCOMPLETA (campos pendientes), REGISTRO_INACTIVO, REFERENCIA_NO_DISPONIBLE, ENVIO_BLOQUEADO / APROBACION_BLOQUEADA (bloqueos vigentes; el estado no cambió), DECISION_BLOQUEADA (BL-17: quien aprueba no puede ser el autor), EMISION_BLOQUEADA (BL-01 a BL-20 a la fecha de emisión; nada cambió), DESCARTE_BLOQUEADO (estado que no permite descartar), FECHA_RESPUESTA_INVALIDA (anterior a emisión o futura), RESPUESTA_FUERA_VIGENCIA (recepción después del último día), IDEMPOTENCIA_CONFLICTO o IDEMPOTENCIA_CADUCADA.",
             "content": {
               "application/json": {
                 "schema": {
@@ -3517,7 +3517,7 @@
             }
           },
           "409": {
-            "description": "CONFLICTO_EDICION (revisión obsoleta; `actual` trae el estado vigente), BORRADOR_DESACTUALIZADO (el borrador cambió; no se guardó ni se envió nada), REVISION_PENDIENTE (hay una versión en revisión: no se edita ni se calcula), VERSION_NO_VIGENTE (solo se envía la última versión) CONFLICTO_REVISION (la revisión cambió o ya se decidió; `revisionVigente` trae su estado), VERSION_EMITIDA (la versión ya se emitió), APROBACION_NO_VIGENTE (la aprobación se anuló o cambió), CONFLICTO_EMISION (la versión o la aprobación vistas ya no son las vigentes) o FOLIO_NO_ACTIVO (cotización descartada).",
+            "description": "CONFLICTO_EDICION (revisión obsoleta; `actual` trae el estado vigente), BORRADOR_DESACTUALIZADO (el borrador cambió; no se guardó ni se envió nada), REVISION_PENDIENTE (hay una versión en revisión: no se edita ni se calcula), VERSION_NO_VIGENTE (solo se envía la última versión) CONFLICTO_REVISION (la revisión cambió o ya se decidió; `revisionVigente` trae su estado), VERSION_EMITIDA (la versión ya se emitió), APROBACION_NO_VIGENTE (la aprobación se anuló o cambió), CONFLICTO_EMISION (la versión o la aprobación vistas ya no son las vigentes), FOLIO_NO_ACTIVO (cotización descartada), CONFLICTO_RESPUESTA (cabeza comercial cambió; seguimientoVigente trae el estado actual) o EMISION_SUSTITUIDA (sin primera respuesta sobre documento sustituido).",
             "content": {
               "application/json": {
                 "schema": {
@@ -3547,7 +3547,7 @@
             }
           },
           "422": {
-            "description": "CALCULO_BLOQUEADO (códigos BL, sin importes), CAPTURA_INCOMPLETA (campos pendientes), REGISTRO_INACTIVO, REFERENCIA_NO_DISPONIBLE, ENVIO_BLOQUEADO / APROBACION_BLOQUEADA (bloqueos vigentes; el estado no cambió), DECISION_BLOQUEADA (BL-17: quien aprueba no puede ser el autor), EMISION_BLOQUEADA (BL-01 a BL-20 a la fecha de emisión; nada cambió), DESCARTE_BLOQUEADO (estado que no permite descartar), IDEMPOTENCIA_CONFLICTO o IDEMPOTENCIA_CADUCADA.",
+            "description": "CALCULO_BLOQUEADO (códigos BL, sin importes), CAPTURA_INCOMPLETA (campos pendientes), REGISTRO_INACTIVO, REFERENCIA_NO_DISPONIBLE, ENVIO_BLOQUEADO / APROBACION_BLOQUEADA (bloqueos vigentes; el estado no cambió), DECISION_BLOQUEADA (BL-17: quien aprueba no puede ser el autor), EMISION_BLOQUEADA (BL-01 a BL-20 a la fecha de emisión; nada cambió), DESCARTE_BLOQUEADO (estado que no permite descartar), FECHA_RESPUESTA_INVALIDA (anterior a emisión o futura), RESPUESTA_FUERA_VIGENCIA (recepción después del último día), IDEMPOTENCIA_CONFLICTO o IDEMPOTENCIA_CADUCADA.",
             "content": {
               "application/json": {
                 "schema": {
@@ -3747,6 +3747,453 @@
         }
       }
     },
+    "/api/v1/emisiones/{id}/seguimiento": {
+      "get": {
+        "summary": "Vigencia y respuestas registradas internamente sobre esta emisión exacta",
+        "description": "Fecha del servidor y zona de negocio. Historial descendente de 50 eventos; antesDe pagina eventos anteriores, sin cambiar la respuesta vigente.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "in": "query",
+            "name": "antesDe",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 2147483647
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Seguimiento y acciones autorizadas.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SeguimientoEmision"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "SOLICITUD_INVALIDA: no cumple el contrato (campos con su ruta) o JSON mal formado.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "NO_AUTENTICADO (sin cookie de sesión) o SESION_NO_VALIDA (vencida, revocada o desconocida; se borra la cookie).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "SIN_PERMISO (la función no concede la capacidad), CSRF_NO_VALIDO u ORIGEN_NO_PERMITIDO.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "NO_ENCONTRADO: ruta, id o códigos inexistentes en la organización (un id de otra organización responde igual).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "DEMASIADAS_SOLICITUDES (cabecera Retry-After).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "ERROR_INTERNO, DOCUMENTO_NO_GENERADO (no se generó o guardó el PDF; no hay emisión y se puede reintentar) o DOCUMENTO_NO_DISPONIBLE (el archivo emitido falta o no coincide con su registro; nunca se regenera).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "SERVICIO_NO_DISPONIBLE: PostgreSQL no disponible.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/emisiones/{id}/respuestas": {
+      "post": {
+        "summary": "Preparador registra una respuesta recibida dentro de vigencia (inclusive)",
+        "description": "Registro interno, no acción autenticada del cliente. Puede capturarse después de vencer si la fecha recibida fue válida. No se admite una primera respuesta sobre una emisión sustituida. Emisión, versión e importes permanecen intactos.",
+        "security": [
+          {
+            "cookieSesion": [],
+            "tokenCsrf": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "description": "UUID de la intención (obligatorio en las altas). Repetirlo con el mismo contenido reproduce el resultado (cabecera de respuesta Idempotent-Replayed: true); con otra operación u otro contenido responde 422. Vigencia: 24 h.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RegistroRespuesta"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Evento inmutable (o reproducido con Idempotent-Replayed).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EventoRespuestaCliente"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "SOLICITUD_INVALIDA: no cumple el contrato (campos con su ruta) o JSON mal formado.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "NO_AUTENTICADO (sin cookie de sesión) o SESION_NO_VALIDA (vencida, revocada o desconocida; se borra la cookie).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "SIN_PERMISO (la función no concede la capacidad), CSRF_NO_VALIDO u ORIGEN_NO_PERMITIDO.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "NO_ENCONTRADO: ruta, id o códigos inexistentes en la organización (un id de otra organización responde igual).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "CONFLICTO_EDICION (revisión obsoleta; `actual` trae el estado vigente), BORRADOR_DESACTUALIZADO (el borrador cambió; no se guardó ni se envió nada), REVISION_PENDIENTE (hay una versión en revisión: no se edita ni se calcula), VERSION_NO_VIGENTE (solo se envía la última versión) CONFLICTO_REVISION (la revisión cambió o ya se decidió; `revisionVigente` trae su estado), VERSION_EMITIDA (la versión ya se emitió), APROBACION_NO_VIGENTE (la aprobación se anuló o cambió), CONFLICTO_EMISION (la versión o la aprobación vistas ya no son las vigentes), FOLIO_NO_ACTIVO (cotización descartada), CONFLICTO_RESPUESTA (cabeza comercial cambió; seguimientoVigente trae el estado actual) o EMISION_SUSTITUIDA (sin primera respuesta sobre documento sustituido).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "CUERPO_DEMASIADO_GRANDE.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "TIPO_DE_CONTENIDO_NO_ADMITIDO: el cuerpo debe ser application/json.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "CALCULO_BLOQUEADO (códigos BL, sin importes), CAPTURA_INCOMPLETA (campos pendientes), REGISTRO_INACTIVO, REFERENCIA_NO_DISPONIBLE, ENVIO_BLOQUEADO / APROBACION_BLOQUEADA (bloqueos vigentes; el estado no cambió), DECISION_BLOQUEADA (BL-17: quien aprueba no puede ser el autor), EMISION_BLOQUEADA (BL-01 a BL-20 a la fecha de emisión; nada cambió), DESCARTE_BLOQUEADO (estado que no permite descartar), FECHA_RESPUESTA_INVALIDA (anterior a emisión o futura), RESPUESTA_FUERA_VIGENCIA (recepción después del último día), IDEMPOTENCIA_CONFLICTO o IDEMPOTENCIA_CADUCADA.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "DEMASIADAS_SOLICITUDES (cabecera Retry-After).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "ERROR_INTERNO, DOCUMENTO_NO_GENERADO (no se generó o guardó el PDF; no hay emisión y se puede reintentar) o DOCUMENTO_NO_DISPONIBLE (el archivo emitido falta o no coincide con su registro; nunca se regenera).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "SERVICIO_NO_DISPONIBLE: PostgreSQL no disponible.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/emisiones/{id}/respuestas/{eventoId}/correcciones": {
+      "post": {
+        "summary": "Preparador corrige el registro vigente mediante un nuevo evento y motivo",
+        "description": "eventoId debe ser la cabeza vigente; 409 CONFLICTO_RESPUESTA devuelve seguimientoVigente. Nunca se borra ni edita el evento anterior. Una corrección histórica también puede corresponder a un documento sustituido.",
+        "security": [
+          {
+            "cookieSesion": [],
+            "tokenCsrf": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "in": "path",
+            "name": "eventoId",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "description": "UUID de la intención (obligatorio en las altas). Repetirlo con el mismo contenido reproduce el resultado (cabecera de respuesta Idempotent-Replayed: true); con otra operación u otro contenido responde 422. Vigencia: 24 h.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CorreccionRespuesta"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Corrección inmutable (o reproducida).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EventoRespuestaCliente"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "SOLICITUD_INVALIDA: no cumple el contrato (campos con su ruta) o JSON mal formado.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "NO_AUTENTICADO (sin cookie de sesión) o SESION_NO_VALIDA (vencida, revocada o desconocida; se borra la cookie).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "SIN_PERMISO (la función no concede la capacidad), CSRF_NO_VALIDO u ORIGEN_NO_PERMITIDO.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "NO_ENCONTRADO: ruta, id o códigos inexistentes en la organización (un id de otra organización responde igual).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "CONFLICTO_EDICION (revisión obsoleta; `actual` trae el estado vigente), BORRADOR_DESACTUALIZADO (el borrador cambió; no se guardó ni se envió nada), REVISION_PENDIENTE (hay una versión en revisión: no se edita ni se calcula), VERSION_NO_VIGENTE (solo se envía la última versión) CONFLICTO_REVISION (la revisión cambió o ya se decidió; `revisionVigente` trae su estado), VERSION_EMITIDA (la versión ya se emitió), APROBACION_NO_VIGENTE (la aprobación se anuló o cambió), CONFLICTO_EMISION (la versión o la aprobación vistas ya no son las vigentes), FOLIO_NO_ACTIVO (cotización descartada), CONFLICTO_RESPUESTA (cabeza comercial cambió; seguimientoVigente trae el estado actual) o EMISION_SUSTITUIDA (sin primera respuesta sobre documento sustituido).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "CUERPO_DEMASIADO_GRANDE.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "TIPO_DE_CONTENIDO_NO_ADMITIDO: el cuerpo debe ser application/json.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "CALCULO_BLOQUEADO (códigos BL, sin importes), CAPTURA_INCOMPLETA (campos pendientes), REGISTRO_INACTIVO, REFERENCIA_NO_DISPONIBLE, ENVIO_BLOQUEADO / APROBACION_BLOQUEADA (bloqueos vigentes; el estado no cambió), DECISION_BLOQUEADA (BL-17: quien aprueba no puede ser el autor), EMISION_BLOQUEADA (BL-01 a BL-20 a la fecha de emisión; nada cambió), DESCARTE_BLOQUEADO (estado que no permite descartar), FECHA_RESPUESTA_INVALIDA (anterior a emisión o futura), RESPUESTA_FUERA_VIGENCIA (recepción después del último día), IDEMPOTENCIA_CONFLICTO o IDEMPOTENCIA_CADUCADA.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "DEMASIADAS_SOLICITUDES (cabecera Retry-After).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "ERROR_INTERNO, DOCUMENTO_NO_GENERADO (no se generó o guardó el PDF; no hay emisión y se puede reintentar) o DOCUMENTO_NO_DISPONIBLE (el archivo emitido falta o no coincide con su registro; nunca se regenera).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "SERVICIO_NO_DISPONIBLE: PostgreSQL no disponible.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/emisor": {
       "get": {
         "summary": "Datos del emisor de la organización (BL-15) y lo que falta para emitir",
@@ -3864,7 +4311,7 @@
             }
           },
           "409": {
-            "description": "CONFLICTO_EDICION (revisión obsoleta; `actual` trae el estado vigente), BORRADOR_DESACTUALIZADO (el borrador cambió; no se guardó ni se envió nada), REVISION_PENDIENTE (hay una versión en revisión: no se edita ni se calcula), VERSION_NO_VIGENTE (solo se envía la última versión) CONFLICTO_REVISION (la revisión cambió o ya se decidió; `revisionVigente` trae su estado), VERSION_EMITIDA (la versión ya se emitió), APROBACION_NO_VIGENTE (la aprobación se anuló o cambió), CONFLICTO_EMISION (la versión o la aprobación vistas ya no son las vigentes) o FOLIO_NO_ACTIVO (cotización descartada).",
+            "description": "CONFLICTO_EDICION (revisión obsoleta; `actual` trae el estado vigente), BORRADOR_DESACTUALIZADO (el borrador cambió; no se guardó ni se envió nada), REVISION_PENDIENTE (hay una versión en revisión: no se edita ni se calcula), VERSION_NO_VIGENTE (solo se envía la última versión) CONFLICTO_REVISION (la revisión cambió o ya se decidió; `revisionVigente` trae su estado), VERSION_EMITIDA (la versión ya se emitió), APROBACION_NO_VIGENTE (la aprobación se anuló o cambió), CONFLICTO_EMISION (la versión o la aprobación vistas ya no son las vigentes), FOLIO_NO_ACTIVO (cotización descartada), CONFLICTO_RESPUESTA (cabeza comercial cambió; seguimientoVigente trae el estado actual) o EMISION_SUSTITUIDA (sin primera respuesta sobre documento sustituido).",
             "content": {
               "application/json": {
                 "schema": {
@@ -4019,7 +4466,7 @@
             }
           },
           "409": {
-            "description": "CONFLICTO_EDICION (revisión obsoleta; `actual` trae el estado vigente), BORRADOR_DESACTUALIZADO (el borrador cambió; no se guardó ni se envió nada), REVISION_PENDIENTE (hay una versión en revisión: no se edita ni se calcula), VERSION_NO_VIGENTE (solo se envía la última versión) CONFLICTO_REVISION (la revisión cambió o ya se decidió; `revisionVigente` trae su estado), VERSION_EMITIDA (la versión ya se emitió), APROBACION_NO_VIGENTE (la aprobación se anuló o cambió), CONFLICTO_EMISION (la versión o la aprobación vistas ya no son las vigentes) o FOLIO_NO_ACTIVO (cotización descartada).",
+            "description": "CONFLICTO_EDICION (revisión obsoleta; `actual` trae el estado vigente), BORRADOR_DESACTUALIZADO (el borrador cambió; no se guardó ni se envió nada), REVISION_PENDIENTE (hay una versión en revisión: no se edita ni se calcula), VERSION_NO_VIGENTE (solo se envía la última versión) CONFLICTO_REVISION (la revisión cambió o ya se decidió; `revisionVigente` trae su estado), VERSION_EMITIDA (la versión ya se emitió), APROBACION_NO_VIGENTE (la aprobación se anuló o cambió), CONFLICTO_EMISION (la versión o la aprobación vistas ya no son las vigentes), FOLIO_NO_ACTIVO (cotización descartada), CONFLICTO_RESPUESTA (cabeza comercial cambió; seguimientoVigente trae el estado actual) o EMISION_SUSTITUIDA (sin primera respuesta sobre documento sustituido).",
             "content": {
               "application/json": {
                 "schema": {
@@ -4049,7 +4496,7 @@
             }
           },
           "422": {
-            "description": "CALCULO_BLOQUEADO (códigos BL, sin importes), CAPTURA_INCOMPLETA (campos pendientes), REGISTRO_INACTIVO, REFERENCIA_NO_DISPONIBLE, ENVIO_BLOQUEADO / APROBACION_BLOQUEADA (bloqueos vigentes; el estado no cambió), DECISION_BLOQUEADA (BL-17: quien aprueba no puede ser el autor), EMISION_BLOQUEADA (BL-01 a BL-20 a la fecha de emisión; nada cambió), DESCARTE_BLOQUEADO (estado que no permite descartar), IDEMPOTENCIA_CONFLICTO o IDEMPOTENCIA_CADUCADA.",
+            "description": "CALCULO_BLOQUEADO (códigos BL, sin importes), CAPTURA_INCOMPLETA (campos pendientes), REGISTRO_INACTIVO, REFERENCIA_NO_DISPONIBLE, ENVIO_BLOQUEADO / APROBACION_BLOQUEADA (bloqueos vigentes; el estado no cambió), DECISION_BLOQUEADA (BL-17: quien aprueba no puede ser el autor), EMISION_BLOQUEADA (BL-01 a BL-20 a la fecha de emisión; nada cambió), DESCARTE_BLOQUEADO (estado que no permite descartar), FECHA_RESPUESTA_INVALIDA (anterior a emisión o futura), RESPUESTA_FUERA_VIGENCIA (recepción después del último día), IDEMPOTENCIA_CONFLICTO o IDEMPOTENCIA_CADUCADA.",
             "content": {
               "application/json": {
                 "schema": {
@@ -4119,6 +4566,498 @@
       }
     },
     "schemas": {
+      "SeguimientoEmision": {
+        "type": "object",
+        "properties": {
+          "emisionId": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          },
+          "cotizacionId": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          },
+          "versionId": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          },
+          "idVersion": {
+            "type": "string"
+          },
+          "fechaEmision": {
+            "type": "string",
+            "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+          },
+          "vigenteHasta": {
+            "type": "string",
+            "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+          },
+          "sustituida": {
+            "type": "boolean"
+          },
+          "vigencia": {
+            "type": "object",
+            "properties": {
+              "estado": {
+                "type": "string",
+                "enum": [
+                  "VIGENTE",
+                  "VENCIDA"
+                ]
+              },
+              "fechaServidor": {
+                "type": "string",
+                "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+              },
+              "zonaHoraria": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "estado",
+              "fechaServidor",
+              "zonaHoraria"
+            ],
+            "additionalProperties": false
+          },
+          "respuestaVigente": {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string",
+                    "format": "uuid",
+                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                  },
+                  "emisionId": {
+                    "type": "string",
+                    "format": "uuid",
+                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                  },
+                  "numero": {
+                    "type": "integer",
+                    "exclusiveMinimum": 0,
+                    "maximum": 9007199254740991
+                  },
+                  "anteriorId": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "format": "uuid",
+                        "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "tipo": {
+                    "type": "string",
+                    "enum": [
+                      "REGISTRADA",
+                      "CORREGIDA"
+                    ]
+                  },
+                  "resultado": {
+                    "type": "string",
+                    "enum": [
+                      "ACEPTADA",
+                      "RECHAZADA"
+                    ]
+                  },
+                  "fechaRespuesta": {
+                    "type": "string",
+                    "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                  },
+                  "nota": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "registradoPor": {
+                    "type": "string",
+                    "format": "uuid",
+                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                  },
+                  "registradoNombre": {
+                    "type": "string"
+                  },
+                  "registradoEn": {
+                    "type": "string"
+                  },
+                  "fechaRegistro": {
+                    "type": "string",
+                    "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                  },
+                  "motivo": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  }
+                },
+                "required": [
+                  "id",
+                  "emisionId",
+                  "numero",
+                  "anteriorId",
+                  "tipo",
+                  "resultado",
+                  "fechaRespuesta",
+                  "nota",
+                  "registradoPor",
+                  "registradoNombre",
+                  "registradoEn",
+                  "fechaRegistro",
+                  "motivo"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "historial": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "format": "uuid",
+                  "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                },
+                "emisionId": {
+                  "type": "string",
+                  "format": "uuid",
+                  "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                },
+                "numero": {
+                  "type": "integer",
+                  "exclusiveMinimum": 0,
+                  "maximum": 9007199254740991
+                },
+                "anteriorId": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "format": "uuid",
+                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "tipo": {
+                  "type": "string",
+                  "enum": [
+                    "REGISTRADA",
+                    "CORREGIDA"
+                  ]
+                },
+                "resultado": {
+                  "type": "string",
+                  "enum": [
+                    "ACEPTADA",
+                    "RECHAZADA"
+                  ]
+                },
+                "fechaRespuesta": {
+                  "type": "string",
+                  "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                },
+                "nota": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "registradoPor": {
+                  "type": "string",
+                  "format": "uuid",
+                  "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                },
+                "registradoNombre": {
+                  "type": "string"
+                },
+                "registradoEn": {
+                  "type": "string"
+                },
+                "fechaRegistro": {
+                  "type": "string",
+                  "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                },
+                "motivo": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                }
+              },
+              "required": [
+                "id",
+                "emisionId",
+                "numero",
+                "anteriorId",
+                "tipo",
+                "resultado",
+                "fechaRespuesta",
+                "nota",
+                "registradoPor",
+                "registradoNombre",
+                "registradoEn",
+                "fechaRegistro",
+                "motivo"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "siguienteAntesDe": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "exclusiveMinimum": 0,
+                "maximum": 9007199254740991
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "acciones": {
+            "type": "object",
+            "properties": {
+              "registrar": {
+                "type": "object",
+                "properties": {
+                  "permitida": {
+                    "type": "boolean"
+                  },
+                  "motivo": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  }
+                },
+                "required": [
+                  "permitida",
+                  "motivo"
+                ],
+                "additionalProperties": false
+              },
+              "corregir": {
+                "type": "object",
+                "properties": {
+                  "permitida": {
+                    "type": "boolean"
+                  },
+                  "motivo": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  }
+                },
+                "required": [
+                  "permitida",
+                  "motivo"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "registrar",
+              "corregir"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "emisionId",
+          "cotizacionId",
+          "versionId",
+          "idVersion",
+          "fechaEmision",
+          "vigenteHasta",
+          "sustituida",
+          "vigencia",
+          "respuestaVigente",
+          "historial",
+          "siguienteAntesDe",
+          "acciones"
+        ],
+        "additionalProperties": false
+      },
+      "EventoRespuestaCliente": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          },
+          "emisionId": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          },
+          "numero": {
+            "type": "integer",
+            "exclusiveMinimum": 0,
+            "maximum": 9007199254740991
+          },
+          "anteriorId": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid",
+                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "tipo": {
+            "type": "string",
+            "enum": [
+              "REGISTRADA",
+              "CORREGIDA"
+            ]
+          },
+          "resultado": {
+            "type": "string",
+            "enum": [
+              "ACEPTADA",
+              "RECHAZADA"
+            ]
+          },
+          "fechaRespuesta": {
+            "type": "string",
+            "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+          },
+          "nota": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "registradoPor": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          },
+          "registradoNombre": {
+            "type": "string"
+          },
+          "registradoEn": {
+            "type": "string"
+          },
+          "fechaRegistro": {
+            "type": "string",
+            "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+          },
+          "motivo": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "emisionId",
+          "numero",
+          "anteriorId",
+          "tipo",
+          "resultado",
+          "fechaRespuesta",
+          "nota",
+          "registradoPor",
+          "registradoNombre",
+          "registradoEn",
+          "fechaRegistro",
+          "motivo"
+        ],
+        "additionalProperties": false
+      },
+      "RegistroRespuesta": {
+        "type": "object",
+        "properties": {
+          "resultado": {
+            "type": "string",
+            "enum": [
+              "ACEPTADA",
+              "RECHAZADA"
+            ]
+          },
+          "fechaRespuesta": {
+            "type": "string",
+            "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+          },
+          "nota": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 2000
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "resultado",
+          "fechaRespuesta"
+        ],
+        "additionalProperties": false
+      },
+      "CorreccionRespuesta": {
+        "type": "object",
+        "properties": {
+          "resultado": {
+            "type": "string",
+            "enum": [
+              "ACEPTADA",
+              "RECHAZADA"
+            ]
+          },
+          "fechaRespuesta": {
+            "type": "string",
+            "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+          },
+          "nota": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 2000
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "motivo": {
+            "type": "string",
+            "maxLength": 500
+          }
+        },
+        "required": [
+          "resultado",
+          "fechaRespuesta",
+          "motivo"
+        ],
+        "additionalProperties": false
+      },
       "SolicitudAcceso": {
         "type": "object",
         "properties": {
@@ -4218,7 +5157,9 @@
                 "revisiones.enviar",
                 "revisiones.decidir",
                 "emisiones.emitir",
-                "emisor.configurar"
+                "emisor.configurar",
+                "respuestas.registrar",
+                "respuestas.corregir"
               ]
             }
           },
@@ -4831,7 +5772,11 @@
                   "FOLIO_NO_ACTIVO",
                   "DESCARTE_BLOQUEADO",
                   "DOCUMENTO_NO_GENERADO",
-                  "DOCUMENTO_NO_DISPONIBLE"
+                  "DOCUMENTO_NO_DISPONIBLE",
+                  "CONFLICTO_RESPUESTA",
+                  "EMISION_SUSTITUIDA",
+                  "FECHA_RESPUESTA_INVALIDA",
+                  "RESPUESTA_FUERA_VIGENCIA"
                 ]
               },
               "mensaje": {
@@ -4924,7 +5869,8 @@
                 ],
                 "additionalProperties": false
               },
-              "revisionVigente": {}
+              "revisionVigente": {},
+              "seguimientoVigente": {}
             },
             "required": [
               "codigo",

@@ -301,6 +301,9 @@ export const CAPACIDADES = [
   // identidad) y configurar los datos del emisor (Administrador del sistema).
   "emisiones.emitir",
   "emisor.configurar",
+  // Módulo 9 (ADR-0013): respuesta recibida, registrada internamente por Preparador.
+  "respuestas.registrar",
+  "respuestas.corregir",
 ] as const;
 export type Capacidad = (typeof CAPACIDADES)[number];
 
@@ -382,6 +385,10 @@ export const CODIGOS_ERROR_API = [
   "DESCARTE_BLOQUEADO",
   "DOCUMENTO_NO_GENERADO",
   "DOCUMENTO_NO_DISPONIBLE",
+  "CONFLICTO_RESPUESTA",
+  "EMISION_SUSTITUIDA",
+  "FECHA_RESPUESTA_INVALIDA",
+  "RESPUESTA_FUERA_VIGENCIA",
 ] as const;
 export type CodigoErrorApi = (typeof CODIGOS_ERROR_API)[number];
 
@@ -415,6 +422,8 @@ export const EsquemaRespuestaError = z.strictObject({
      * (`EsquemaResumenRevision`), para actualizar la pantalla sin perder lo escrito.
      */
     revisionVigente: z.unknown().optional(),
+    /** Seguimiento actual en un conflicto; la web lo valida antes de presentarlo. */
+    seguimientoVigente: z.unknown().optional(),
   }),
 });
 export type RespuestaError = z.infer<typeof EsquemaRespuestaError>;

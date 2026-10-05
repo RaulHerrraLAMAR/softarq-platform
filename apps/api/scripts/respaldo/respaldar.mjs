@@ -88,6 +88,9 @@ export async function crearRespaldo(opciones = {}) {
       if (inst.base !== BASE_ORIGEN || inst.rol !== "softarq_respaldo") throw new ErrorRespaldo("La conexión no es softarq_respaldo → softarq_dev.");
       manifiesto.origen.servidor = inst.version;
       manifiesto.base.instantanea = "pg_export_snapshot (REPEATABLE READ, solo lectura)";
+      // Punto de sincronización de la prueba operativa: una escritura posterior debe quedar fuera
+      // del volcado y de los conteos. No se expone por CLI ni por la API del producto.
+      if (opciones.despuesDeExportarInstantanea) await opciones.despuesDeExportarInstantanea();
 
       const { rows: migraciones } = await cliente.query(
         `SELECT migration_name AS nombre FROM public."_prisma_migrations" WHERE finished_at IS NOT NULL AND rolled_back_at IS NULL ORDER BY migration_name`,

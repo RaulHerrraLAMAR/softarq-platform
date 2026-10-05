@@ -1,12 +1,14 @@
 # Modelo conceptual de SoftArq (DEMO)
 
-- **Fecha:** 03/10/2026
+- **Fecha:** 05/10/2026
 - **Estado:**
   - **Implementado (módulo 2, ADR-0004):** `organizacion` y los catálogos que alimentan el cálculo, persistidos en PostgreSQL y aislados por organización (ver §4).
   - **Implementado (módulo 5, ADR-0007):** `usuario`, `membresia` (pertenencia con funciones) y `sesion`; matriz de permisos en §6.
   - **Implementado (módulo 6, ADR-0008):** `cliente`, `proyecto`, `cotizacion` (folio WEB DEMO), `cotizacion_borrador` (captura editable con revisión), `cotizacion_version` (inmutable), `contador`, `bitacora` e `idempotencia` (§7).
   - **Implementado (módulo 7, ADR-0009):** `revision` (una por envío de una versión concreta, con estado y ficha) y `revision_evento` (historial de solo alta) (§8).
-  - **Sin implementar:** CRUD de usuarios, partidas y excepciones como tablas propias (hoy viven en la captura y en la instantánea de la versión), emisión, PDF ni suscripciones.
+  - **Implementado (módulo 8, ADR-0010):** emisión y PDF original (§9).
+  - **Implementado (módulo 9, ADR-0013):** eventos internos de respuesta por emisión; vigencia calculada al consultar (§10).
+  - **Sin implementar:** CRUD de usuarios, partidas y excepciones como tablas propias (hoy viven en la captura y en la instantánea de la versión), suscripciones.
 
 ## 1. Entidades y relaciones
 
@@ -22,6 +24,9 @@ Cotización   1 ── 1 Borrador       (captura editable con revisión; módulo
 Cotización   1 ── N Versión        (v1, v2…; inmutables desde su creación en la web)
 Versión      1 ── N Revisión       (módulo 7; una sola PENDIENTE por cotización)
 Revisión     1 ── N Evento de revisión (solo alta)
+Versión      1 ── 0..1 Emisión     (documento/PDF originales)
+Emisión      1 ── N Respuesta registrada (cadena de eventos inmutables)
+Membresía    1 ── N Respuesta registrada (actor interno)
 Versión      1 ── N Partida        (CONCEPTO con renglones de medición, o ADICIONAL)
 Versión      1 ── N Selección de precio (una por insumo)
 Versión      1 ── N Excepción      (rendimiento, precio vencido, concepto personalizado)
@@ -85,7 +90,7 @@ Toda relación entre datos propios es una FK compuesta con `organizacion_id`, de
 - Si los catálogos se comparten entre organizaciones o son siempre propios.
 - Planes o suscripciones (fuera del DEMO).
 - Esquema de PostgreSQL y migración desde los CSV del libro (Prisma, según ADR-0003).
-- Duplicar cotizaciones, «precios anteriores» en una versión nueva, respuesta del cliente (Aceptada o Rechazada), vencimiento automático y excepciones. Descarte, contacto y emisor: módulo 8 (§9).
+- Duplicar cotizaciones, «precios anteriores» en una versión nueva y excepciones. Descarte, contacto y emisor: módulo 8 (§9); respuestas y vigencia: módulo 9 (§10).
 
 ## 6. Matriz de permisos vigente (módulo 5, ADR-0007 §2)
 
@@ -107,6 +112,9 @@ Toda relación entre datos propios es una FK compuesta con `organizacion_id`, de
 | `cotizaciones.preparar` | `POST /cotizaciones/{id}/descarte` | ✓ | ✗ | ✗ | ✗ | `BTN_Descartar` (B-37): `FN_PREP` |
 | `cotizaciones.consultar` | `GET /cotizaciones/{id}/versiones/{n}/emision/validacion`, `GET /emisiones/{id}`, `GET /emisiones/{id}/documento`, `GET /emisor` | ✓ | ✓ | ✓ | ✓ | «Abrir PDF» no exige función |
 | `emisor.configurar` | `PUT /emisor` | ✗ | ✗ | ✗ | ✓ | 17 CONFIG (`EMISOR_*`): el Administrador del sistema cambia los parámetros |
+| `cotizaciones.consultar` | `GET /emisiones/{id}/seguimiento` | ✓ | ✓ | ✓ | ✓ | Historial de la cotización; solo organización de la sesión |
+| `respuestas.registrar` | `POST /emisiones/{id}/respuestas` | ✓ | ✗ | ✗ | ✗ | Word §1.6 Preparador; `BTN_Respuesta`, `Req_Funcion FN_PREP` |
+| `respuestas.corregir` | `POST /emisiones/{id}/respuestas/{eventoId}/correcciones` | ✓ | ✗ | ✗ | ✗ | Adaptación autorizada: nuevo evento con motivo (ADR-0013) |
 
 ¹ Por identidad, además de la capacidad: un Revisor no emite una versión que él preparó. Y siempre hace falta una aprobación vigente de esa versión, hecha por una persona distinta de su autor. Poder emitir no concede aprobar.
 
@@ -160,3 +168,11 @@ Estados alcanzables: folio **ACTIVO** o **DESCARTADO** (módulo 8); versión **B
 | `Rev_Observar` sobre una Aprobada | Anulación con motivo (evento nuevo) |
 | `EMISOR_*`, `DEMO_EMISOR_*` en 17 CONFIG | Tabla `emisor` (datos DEMO de la carga, editables por el Administrador del sistema) |
 | `TEXTO_*`, `DEMO_TEXTO_*` copiados a cada versión | `captura.textos`, copiados al crear la cotización |
+
+## 10. Seguimiento interno de emisiones (módulo 9, ADR-0013)
+
+`respuesta_cliente_evento`: FK compuesta (organización, emisión) → `emision`, FK (organización, registrador) → `membresia`, y FK del evento anterior dentro de la misma emisión. Conserva número, tipo REGISTRADA/CORREGIDA, resultado ACEPTADA/RECHAZADA, fecha recibida, nota, identidad/nombre interno, instante y fecha del registro y motivo de corrección.
+
+Una raíz por emisión; correcciones consecutivas sin bifurcaciones. La cabeza representa el registro vigente. SELECT/INSERT para softarq_app, sin UPDATE/DELETE ni DDL; disparadores de validación e inmutabilidad. Bitácora mínima e idempotencia en la misma sentencia de alta. softarq_respaldo dispone de SELECT mediante los permisos por defecto del migrador.
+
+La emisión fija su cotización y versión; la respuesta nunca se copia a otra emisión. Sustitución y vigencia se consultan por separado del estado interno de revisión y del resultado comercial. El último día es inclusivo, según la fecha del servidor en la zona configurada. Una aceptación histórica sigue visible después de vencer. Se permite capturar después del plazo una respuesta recibida dentro de él, y corregir con motivo una respuesta existente, decisiones expresamente autorizadas para el DEMO. Fuentes y diferencias: [módulo 9](cotizaciones/seguimiento-respuestas.md).

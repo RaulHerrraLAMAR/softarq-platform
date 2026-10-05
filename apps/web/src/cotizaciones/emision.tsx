@@ -30,6 +30,7 @@ import { useIntenciones } from "../comunes/intencion.ts";
 import { CargaFallida, Cargando, Pagina } from "../comunes/pagina.tsx";
 import { useCarga } from "../comunes/usarCarga.ts";
 import { Enlace } from "../navegacion/ruta.tsx";
+import { PanelRespuesta } from "./respuestas.tsx";
 
 const REINTENTABLES = new Set<FalloApi["tipo"]>(["red", "error_servidor", "no_disponible", "limite", "csrf", "documento"]);
 
@@ -485,7 +486,7 @@ export function SeccionEmision({
         )
       ) : null}
       {emitidas.map((v) => (
-        <TarjetaEmision key={v.emision!.id} emision={v.emision!} cotizaciones={cotizaciones} />
+        <div key={v.emision!.id} className="emision-con-seguimiento"><TarjetaEmision emision={v.emision!} cotizaciones={cotizaciones} /><PanelRespuesta emisionId={v.emision!.id} servicios={cotizaciones} /></div>
       ))}
     </section>
   );

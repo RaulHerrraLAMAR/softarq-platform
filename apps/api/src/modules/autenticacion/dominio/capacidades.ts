@@ -33,6 +33,9 @@ export const CAPACIDADES_POR_FUNCION: Readonly<Record<FuncionUsuario, readonly C
     "cotizaciones.consultar",
     "cotizaciones.preparar",
     "revisiones.enviar",
+    // Word maestro §1.6, B-36; corrección con historial autorizada en ADR-0013.
+    "respuestas.registrar",
+    "respuestas.corregir",
     "emisiones.emitir",
   ],
   REVISOR: [

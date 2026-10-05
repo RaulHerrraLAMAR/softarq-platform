@@ -2,7 +2,7 @@
  * Componentes visuales comunes. Todo texto recibido se representa como texto (React lo escapa);
  * no se interpreta HTML.
  */
-import type { ButtonHTMLAttributes, ReactNode } from "react";
+import type { ComponentPropsWithRef, ReactNode } from "react";
 
 type VarianteBoton = "primario" | "secundario" | "peligro" | "enlace";
 
@@ -11,7 +11,7 @@ export function Boton({
   className,
   type = "button",
   ...resto
-}: ButtonHTMLAttributes<HTMLButtonElement> & { variante?: VarianteBoton }) {
+}: ComponentPropsWithRef<"button"> & { variante?: VarianteBoton }) {
   return <button type={type} className={`boton boton-${variante}${className ? ` ${className}` : ""}`} {...resto} />;
 }
 

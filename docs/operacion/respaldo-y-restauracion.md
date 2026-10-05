@@ -148,4 +148,16 @@ Comprobado con consultas de catálogo, sin intentar escrituras:
 
 **Sin comprobar:**
 - la ejecución repetida del aprovisionamiento: la idempotencia se revisó en el SQL, pero repetirlo exigiría otra credencial administrativa;
-- una emisión concurrente durante un respaldo real: la coherencia se basa en la instantánea y en el orden de escritura de ADR-0010, y no se provocó una carrera.
+- una emisión concurrente no se comprobó el 04/10/2026; la prueba posterior del módulo 9 se documenta a continuación.
+
+## 8. Nuevos eventos y prueba concurrente (05/10/2026)
+
+La migración `20261005150000_respuestas_cliente` añade `respuesta_cliente_evento` (solo alta), incluida automáticamente en los conteos y volcado de la misma instantánea. `softarq_respaldo` tiene SELECT limitado en la tabla por los permisos por defecto del migrador; se comprobó realmente sin escritura ni DDL. La reaplicación de `permisos-app.sql` al restaurar revoca UPDATE/DELETE en ella y conserva SELECT/INSERT para softarq_app. Para un respaldo anterior, la cláusula condicional no exige que la tabla exista; usar código compatible con el esquema restaurado, sin aplicar migraciones silenciosamente.
+
+Antes de migrar desarrollo: respaldo `softarq_dev-20261005T143908Z-02ccd5`, COMPLETO y VÁLIDO, esquema anterior, PDF 1/1.
+
+`pnpm --filter @softarq/api respaldo:probar-concurrencia` (**15/15**) añadió los folios DEMO COT-2026-00005 y 00006. Emitió/registró el primero antes de exportar una instantánea; mientras seguía abierta confirmó su corrección y una segunda emisión con respuesta. Respaldo `softarq_dev-20261005T151809Z-e27a52`, COMPLETO y VÁLIDO, restaurado solo en softarq_restauracion: incluye la respuesta inicial del primero, excluye su corrección y la emisión/respuesta posteriores. Las emisiones/PDF previos permanecieron intactos. Punto de sincronización interno en `crearRespaldo`; sin endpoint ni opción pública nueva del producto. Evidencia: `_work\evidencias\concurrencia-respaldo-2026-10-05T15-18-05-612Z\informe.json`.
+
+Prueba completa posterior: **35/35**, respaldo `softarq_dev-20261005T151858Z-1e4ecc` (225.175 bytes; 3/3 PDF). Restaura los tres eventos, compara notas y demás campos con origen, verifica cadenas/fechas/permisos/disparadores, descarga los tres PDF por API temporal y comprueba desarrollo intacto. Informe: `_work\evidencias\respaldo-softarq_dev-20261005T151858Z-1e4ecc\informe.txt`.
+
+Sigue pendiente **repetir realmente el aprovisionamiento administrativo**. No se repitió ni se solicitó una contraseña por chat. La prueba de concurrencia pendiente del módulo anterior queda cubierta por la ejecución descrita, sin atribuirla a la sesión anterior.

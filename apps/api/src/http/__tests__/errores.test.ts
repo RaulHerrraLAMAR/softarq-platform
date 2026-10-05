@@ -84,6 +84,9 @@ describe("OpenAPI", () => {
       "/api/v1/cotizaciones/{id}/versiones/{numero}/revisiones",
       "/api/v1/emisiones/{id}",
       "/api/v1/emisiones/{id}/documento",
+      "/api/v1/emisiones/{id}/respuestas",
+      "/api/v1/emisiones/{id}/respuestas/{eventoId}/correcciones",
+      "/api/v1/emisiones/{id}/seguimiento",
       "/api/v1/emisor",
       "/api/v1/openapi.json",
       "/api/v1/proyectos",
@@ -96,6 +99,8 @@ describe("OpenAPI", () => {
       "/health",
     ]);
     // Módulo 8 (ADR-0010).
+    // Módulo 9 añade tres rutas documentadas sin retirar endpoints anteriores.
+    expect(Object.keys(doc.components.schemas)).toEqual(expect.arrayContaining(["SeguimientoEmision", "EventoRespuestaCliente", "RegistroRespuesta", "CorreccionRespuesta"]));
     expect(Object.keys(doc.components.schemas)).toEqual(
       expect.arrayContaining(["SolicitudEmision", "ValidacionEmision", "DetalleEmision", "Emisor", "AnulacionAprobacion", "DescarteCotizacion"]),
     );

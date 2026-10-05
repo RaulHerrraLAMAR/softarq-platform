@@ -115,6 +115,9 @@ describe("inicio de sesión", () => {
       "revisiones.enviar",
       // Módulo 8 (ADR-0010): el Preparador emite tras una aprobación independiente.
       "emisiones.emitir",
+      // ADR-0013: el Preparador registra y corrige respuestas internas.
+      "respuestas.registrar",
+      "respuestas.corregir",
     ]);
     expect(s.inactividadMinutos).toBe(30);
     expect(new Date(s.expiraEn).getTime()).toBe(instante.getTime() + POLITICA_SESION.absolutaMs);

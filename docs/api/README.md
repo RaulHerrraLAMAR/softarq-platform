@@ -22,6 +22,9 @@ Variables (con sus valores por omisión) en [`.env.example`](../../.env.example)
 
 | Método | Ruta | Acceso | Descripción |
 |---|---|---|---|
+| GET | `/api/v1/emisiones/{id}/seguimiento?antesDe=N` | `cotizaciones.consultar` | Fecha/zona del servidor, vigencia, respuesta vigente, historial paginado de 50 y acciones permitidas/motivos |
+| POST | `/api/v1/emisiones/{id}/respuestas` | `respuestas.registrar` (Preparador) | Registro interno sobre emisión exacta; resultado, fecha recibida y nota opcional; CSRF e Idempotency-Key |
+| POST | `/api/v1/emisiones/{id}/respuestas/{eventoId}/correcciones` | `respuestas.corregir` (Preparador) | Nuevo evento que corrige la cabeza, con motivo obligatorio; conserva historia; CSRF e Idempotency-Key |
 | GET | `/health` | Público | `200 {"estado":"ok","baseDeDatos":"disponible"}` o `503 {"estado":"degradado","baseDeDatos":"no disponible"}` |
 | GET | `/api/v1/auth/csrf` | Público | Crea la sesión previa (cookie) y devuelve `{ csrfToken }` para el acceso |
 | POST | `/api/v1/auth/sesion` | Sesión previa + `X-CSRF-Token` + `Origin` | Inicio de sesión `{ correo, contrasena }`. Devuelve identidad, organización, funciones, capacidades, `expiraEn`, `inactividadMinutos` y un `csrfToken` nuevo; cookie nueva |

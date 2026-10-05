@@ -43,6 +43,7 @@ import { ServicioClientes } from "../modules/cotizaciones/aplicacion/servicio-cl
 import { ServicioCotizaciones, type MedidorTiempos } from "../modules/cotizaciones/aplicacion/servicio-cotizaciones.js";
 import { ServicioEmisiones, type GanchosEmision } from "../modules/cotizaciones/aplicacion/servicio-emisiones.js";
 import { ServicioRevisiones } from "../modules/cotizaciones/aplicacion/servicio-revisiones.js";
+import { ServicioRespuestas } from "../modules/cotizaciones/aplicacion/servicio-respuestas.js";
 import { generarPdf, type GeneradorPdf } from "../modules/cotizaciones/dominio/pdf/generador-pdf.js";
 import {
   AlmacenArchivos,
@@ -63,6 +64,7 @@ import {
   EnvioRevisionController,
   ProyectosController,
   RevisionesController,
+  RespuestasController,
 } from "./controladores-cotizaciones.js";
 import { FiltroErrores, errorDeValidacion } from "./errores.js";
 import { GuardiaSesion } from "./guardia-sesion.js";
@@ -78,6 +80,7 @@ import {
   SERVICIO_COTIZACIONES,
   SERVICIO_EMISIONES,
   SERVICIO_REVISIONES,
+  SERVICIO_RESPUESTAS,
 } from "./tokens.js";
 
 const VENTANA_LIMITADOR_MS = 60_000;
@@ -137,6 +140,7 @@ function moduloRaiz(config: ConfiguracionApi, opciones: OpcionesAplicacion): Dyn
       RevisionesController,
       EmisionVersionController,
       EmisionesController,
+      RespuestasController,
       EmisorController,
       OpenApiController,
     ],
@@ -213,6 +217,12 @@ function moduloRaiz(config: ConfiguracionApi, opciones: OpcionesAplicacion): Dyn
           );
         },
         inject: [BASE_DE_DATOS, RELOJ, RELOJ_SESIONES, SERVICIO_REVISIONES],
+      },
+      {
+        provide: SERVICIO_RESPUESTAS,
+        useFactory: (bd: ServicioBaseDeDatos, reloj: Reloj, instante: RelojSesiones) =>
+          new ServicioRespuestas(bd.cliente, reloj, instante, config.zonaHoraria),
+        inject: [BASE_DE_DATOS, RELOJ, RELOJ_SESIONES],
       },
       { provide: APP_GUARD, useClass: ThrottlerGuard },
       {

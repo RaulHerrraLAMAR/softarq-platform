@@ -125,6 +125,28 @@ async function comprobarDestino(manifiesto) {
       const n = (await c.query(sql)).rows[0].n;
       registrar(`relaciones: ${nombre}`, n === 0, `${n} incoherencias`);
     }
+    if (Object.hasOwn(manifiesto.conteos, "respuesta_cliente_evento")) {
+      const inconsistencias = (await c.query(`SELECT count(*)::int n FROM respuesta_cliente_evento x
+        LEFT JOIN emision e ON e.id=x.emision_id AND e.organizacion_id=x.organizacion_id
+        LEFT JOIN membresia m ON m.usuario_id=x.registrado_por AND m.organizacion_id=x.organizacion_id
+        LEFT JOIN respuesta_cliente_evento a ON a.id=x.anterior_id AND a.emision_id=x.emision_id AND a.organizacion_id=x.organizacion_id
+        WHERE e.id IS NULL OR m.usuario_id IS NULL OR x.fecha_respuesta < e.fecha_emision OR x.fecha_respuesta > e.vigente_hasta
+          OR x.fecha_respuesta > x.fecha_registro OR (x.anterior_id IS NOT NULL AND (a.id IS NULL OR a.numero+1<>x.numero OR x.motivo IS NULL))`)).rows[0].n;
+      registrar("respuestas: organización, emisión, autor, fechas y cadena de correcciones", inconsistencias === 0, `${inconsistencias} incoherencias`);
+      const permisos = (await c.query(`SELECT has_table_privilege('softarq_app','public.respuesta_cliente_evento','SELECT') lectura,
+        has_table_privilege('softarq_app','public.respuesta_cliente_evento','INSERT') insercion,
+        has_table_privilege('softarq_app','public.respuesta_cliente_evento','UPDATE') edicion,
+        has_table_privilege('softarq_app','public.respuesta_cliente_evento','DELETE') borrado,
+        has_schema_privilege('softarq_app','public','CREATE') ddl,
+        (SELECT count(*)::int FROM pg_trigger t JOIN pg_class k ON k.oid=t.tgrelid WHERE k.relname='respuesta_cliente_evento' AND NOT t.tgisinternal) disparadores`)).rows[0];
+      registrar("respuestas: permisos mínimos y disparadores restaurados", permisos.lectura && permisos.insercion && !permisos.edicion && !permisos.borrado && !permisos.ddl && permisos.disparadores === 2, JSON.stringify(permisos));
+      const origen = new pg.Client({ connectionString: urlRespaldo().cadena }); await origen.connect();
+      try {
+        const sql = "SELECT to_jsonb(x) fila FROM respuesta_cliente_evento x ORDER BY organizacion_id,emision_id,numero";
+        const filasOrigen = (await origen.query(sql)).rows, filasDestino = (await c.query(sql)).rows;
+        registrar("respuestas: eventos y notas íntegros tras restaurar", JSON.stringify(filasOrigen) === JSON.stringify(filasDestino), `${filasDestino.length} eventos comparados con origen (solo lectura)`);
+      } finally { await origen.end(); }
+    }
     const resumen = (await c.query(`SELECT
         (SELECT count(*) FROM organizacion)::int organizaciones, (SELECT count(*) FROM usuario)::int usuarios,
         (SELECT count(*) FROM cotizacion)::int cotizaciones, (SELECT count(*) FROM cotizacion_version)::int versiones,

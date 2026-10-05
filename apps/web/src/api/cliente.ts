@@ -22,6 +22,7 @@ import { CABECERA_CSRF, EsquemaRespuestaError, type RespuestaError } from "@soft
 import type { z } from "zod";
 
 export type FalloApi =
+  | { tipo: "respuesta"; codigo: "CONFLICTO_RESPUESTA" | "EMISION_SUSTITUIDA" | "FECHA_RESPUESTA_INVALIDA" | "RESPUESTA_FUERA_VIGENCIA"; mensaje: string; seguimientoVigente?: unknown; campos?: { ruta: string; mensaje: string }[] }
   | { tipo: "invalida"; campos: { ruta: string; mensaje: string }[] }
   /**
    * 422 con bloqueos (códigos BL, sin importes): CALCULO_BLOQUEADO y, en la revisión (módulo 7),
@@ -250,6 +251,9 @@ function falloPorEstado(respuesta: Response, error: RespuestaError | null): Fall
     case 404:
       return e ? { tipo: "no_encontrado", faltantes: e.faltantes ?? [] } : { tipo: "incompatible" };
     case 409:
+      if (e?.codigo === "CONFLICTO_RESPUESTA" || e?.codigo === "EMISION_SUSTITUIDA") {
+        return { tipo: "respuesta", codigo: e.codigo, mensaje: e.mensaje, seguimientoVigente: e.seguimientoVigente };
+      }
       if (e?.codigo === "CONFLICTO_EDICION" || e?.codigo === "BORRADOR_DESACTUALIZADO") {
         return { tipo: "conflicto", codigo: e.codigo, mensaje: e.mensaje, actual: e.actual ?? null };
       }
@@ -267,6 +271,9 @@ function falloPorEstado(respuesta: Response, error: RespuestaError | null): Fall
       return { tipo: "incompatible" };
     case 422:
       switch (e?.codigo) {
+        case "FECHA_RESPUESTA_INVALIDA":
+        case "RESPUESTA_FUERA_VIGENCIA":
+          return { tipo: "respuesta", codigo: e.codigo, mensaje: e.mensaje, campos: e.campos ?? [] };
         case "CALCULO_BLOQUEADO":
           return { tipo: "bloqueado", problemas: e.problemas ?? [] };
         case "ENVIO_BLOQUEADO":
@@ -320,6 +327,7 @@ export function mensajeDeFallo(fallo: FalloApi): string {
     case "referencia":
       return "Hay referencias nuevas que no existen o no están disponibles hoy. Revise los campos marcados.";
     case "revision":
+    case "respuesta":
     case "estado":
     case "documento":
       return fallo.mensaje;

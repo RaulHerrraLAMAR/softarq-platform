@@ -1,6 +1,6 @@
 # apps/api — API de SoftArq
 
-**Estado (03/10/2026):**
+**Estado (05/10/2026):**
 - dominio de cálculo (módulo 1, ADR-0003);
 - persistencia de catálogos en PostgreSQL con Prisma 7.10 (módulo 2, ADR-0004);
 - API HTTP local con NestJS 12 (módulo 3, ADR-0005; endpoints en [`docs/api/README.md`](../../docs/api/README.md));
@@ -8,6 +8,7 @@
 - clientes, proyectos y cotizaciones con folio WEB DEMO, borrador con revisión, versiones inmutables calculadas en el servidor e idempotencia (módulo 6, ADR-0008);
 - revisión y aprobación por otra persona (módulo 7, ADR-0009);
 - emisión de versiones aprobadas con PDF DEMO (PDFKit 0.20.2), anulación de aprobaciones, descarte, contacto del cliente y emisor (módulo 8, ADR-0010).
+- seguimiento interno por emisión, respuestas Aceptada/Rechazada, correcciones con motivo e historial, vigencia con fecha del servidor (módulo 9, [ADR-0013](../../docs/adr/0013-seguimiento-respuestas-vigencia.md)). Migración `20261005150000_respuestas_cliente`; permisos mínimos y respaldo del nuevo registro incluidos.
 
 **Tecnología:** TypeScript 7 (ESM; decoradores con `tsc`), NestJS 12.1.2 sobre Express 5, Zod 4.6.5 (contratos), decimal.js 10.6.0, Prisma 7.10.0 con `@prisma/adapter-pg`, `@node-rs/argon2` 2.2.1 (Argon2id), `cookie` 0.7.2, PDFKit 0.20.2 (PDF, MIT), PostgreSQL 18 local y Vitest 5. Solo en pruebas: `pdfjs-dist` 6.3.289 (extraer y renderizar texto de los PDF).
 

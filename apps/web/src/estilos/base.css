@@ -1794,3 +1794,11 @@ textarea[aria-invalid="true"] {
   width: max-content;
   max-width: 100%;
 }
+.seguimiento-emision { padding: var(--esp-4); border: 1px solid var(--color-borde); border-radius: var(--radio); margin-bottom: var(--esp-6); }
+.seguimiento-emision h3, .seguimiento-emision h4 { overflow-wrap: anywhere; }
+.formulario-respuesta { margin-block: 1rem; display: grid; gap: 1rem; }
+.campos-respuesta { border: 0; padding: 0; margin: 0; display: grid; gap: 1rem; min-width: 0; }
+.respuesta-evento { border-top: 1px solid var(--color-borde, #d4d4d4); padding-block: .75rem; overflow-wrap: anywhere; }
+.seguimiento-emision .acciones-formulario { display: flex; flex-wrap: wrap; gap: .75rem; }
+.seguimiento-emision :is(input, select, textarea) { max-width: 100%; width: 100%; box-sizing: border-box; }
+@media (max-width: 480px) { .seguimiento-emision { padding: 1rem; } .seguimiento-emision .acciones-formulario .boton { width: 100%; } }

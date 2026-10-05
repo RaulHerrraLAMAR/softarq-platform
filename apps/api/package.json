@@ -20,6 +20,7 @@
     "db:purgar-idempotencia": "node scripts/db/purgar-idempotencia.mjs",
     "documentos:revisar": "pnpm run build && node dist/modules/cotizaciones/mantenimiento/revisar-documentos.js",
     "respaldo:crear": "node scripts/respaldo/respaldar.mjs",
+    "respaldo:probar-concurrencia": "pnpm run build && node scripts/respaldo/probar-concurrencia.mjs",
     "respaldo:verificar": "node scripts/respaldo/verificar.mjs",
     "respaldo:restaurar": "node scripts/respaldo/restaurar.mjs",
     "respaldo:probar-restauracion": "pnpm run build && node scripts/respaldo/probar-restauracion.mjs",

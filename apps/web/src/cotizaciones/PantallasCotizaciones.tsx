@@ -15,6 +15,8 @@ import { useCarga } from "../comunes/usarCarga.ts";
 import { FormularioCliente, FormularioProyecto } from "../clientes/formularios.tsx";
 import { Enlace, useRuta } from "../navegacion/ruta.tsx";
 import { CambiosVersion, EstadoVersion, ResumenCaptura } from "./componentes.tsx";
+import { TarjetaEmision } from "./emision.tsx";
+import { PanelRespuesta } from "./respuestas.tsx";
 
 export function ListaCotizaciones({ servicios, puedePreparar }: { servicios: ServiciosCotizaciones; puedePreparar: boolean }) {
   const [texto, setTexto] = useState("");
@@ -442,6 +444,7 @@ export function VistaVersion({ servicios, id, numero }: { servicios: ServiciosCo
         <Detalle respuesta={{ estado: "CALCULADO", fechaCalculo: v.version.fechaCalculo, cotizacion: v.cotizacion, avisos: v.avisos }} />
       </section>
       <ResumenCaptura captura={v.captura} titulo="Captura de esta versión" />
+      {v.version.emision ? <><TarjetaEmision emision={v.version.emision} cotizaciones={servicios} /><PanelRespuesta emisionId={v.version.emision.id} servicios={servicios} /></> : null}
     </Pagina>
   );
 }

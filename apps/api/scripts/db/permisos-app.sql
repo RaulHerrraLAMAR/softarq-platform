@@ -77,3 +77,14 @@ GRANT EXECUTE ON FUNCTION public."softarq_emitir_version"(UUID, UUID, UUID, INTE
 GRANT EXECUTE ON FUNCTION public."softarq_anular_aprobacion"(UUID, UUID, UUID, INTEGER, TEXT, UUID, TEXT, BYTEA, TIMESTAMPTZ) TO softarq_app;
 GRANT EXECUTE ON FUNCTION public."softarq_descartar_cotizacion"(UUID, UUID, UUID, TEXT, UUID, TEXT, BYTEA, TIMESTAMPTZ) TO softarq_app;
 GRANT EXECUTE ON FUNCTION public."softarq_guardar_emisor"(UUID, UUID, INTEGER, JSONB, TEXT) TO softarq_app;
+
+-- ADR-0013. Condicional para poder restaurar también respaldos del módulo 8.
+DO $$ BEGIN
+  IF to_regclass('public.respuesta_cliente_evento') IS NOT NULL THEN
+    REVOKE UPDATE, DELETE ON TABLE public.respuesta_cliente_evento FROM softarq_app;
+    GRANT SELECT, INSERT ON TABLE public.respuesta_cliente_evento TO softarq_app;
+    REVOKE ALL ON FUNCTION public.respuesta_cliente_inmutable(), public.respuesta_cliente_validar() FROM PUBLIC;
+    REVOKE ALL ON FUNCTION public.softarq_registrar_respuesta(UUID,UUID,UUID,UUID,JSONB,DATE,TIMESTAMPTZ,UUID,TEXT,BYTEA,TIMESTAMPTZ) FROM PUBLIC;
+    GRANT EXECUTE ON FUNCTION public.softarq_registrar_respuesta(UUID,UUID,UUID,UUID,JSONB,DATE,TIMESTAMPTZ,UUID,TEXT,BYTEA,TIMESTAMPTZ) TO softarq_app;
+  END IF;
+END $$;

@@ -38,6 +38,10 @@ import {
   EsquemaEmisor,
   EsquemaSolicitudEmision,
   EsquemaValidacionEmision,
+  EsquemaSeguimientoEmision,
+  EsquemaEventoRespuestaCliente,
+  EsquemaRegistroRespuesta,
+  EsquemaCorreccionRespuesta,
   EsquemaConsultaConceptos,
   EsquemaConsultaOpcionesPrecio,
   EsquemaConsultaTiposAdicional,
@@ -77,13 +81,15 @@ const DESCRIPCION_ERROR: Record<number, string> = {
     "REVISION_PENDIENTE (hay una versión en revisión: no se edita ni se calcula), VERSION_NO_VIGENTE (solo se envía la última versión) " +
     "CONFLICTO_REVISION (la revisión cambió o ya se decidió; `revisionVigente` trae su estado), " +
     "VERSION_EMITIDA (la versión ya se emitió), APROBACION_NO_VIGENTE (la aprobación se anuló o cambió), " +
-    "CONFLICTO_EMISION (la versión o la aprobación vistas ya no son las vigentes) o FOLIO_NO_ACTIVO (cotización descartada).",
+    "CONFLICTO_EMISION (la versión o la aprobación vistas ya no son las vigentes), FOLIO_NO_ACTIVO (cotización descartada), " +
+    "CONFLICTO_RESPUESTA (cabeza comercial cambió; seguimientoVigente trae el estado actual) o EMISION_SUSTITUIDA (sin primera respuesta sobre documento sustituido).",
   413: "CUERPO_DEMASIADO_GRANDE.",
   415: "TIPO_DE_CONTENIDO_NO_ADMITIDO: el cuerpo debe ser application/json.",
   422:
     "CALCULO_BLOQUEADO (códigos BL, sin importes), CAPTURA_INCOMPLETA (campos pendientes), REGISTRO_INACTIVO, REFERENCIA_NO_DISPONIBLE, " +
     "ENVIO_BLOQUEADO / APROBACION_BLOQUEADA (bloqueos vigentes; el estado no cambió), DECISION_BLOQUEADA (BL-17: quien aprueba no puede ser el autor), " +
     "EMISION_BLOQUEADA (BL-01 a BL-20 a la fecha de emisión; nada cambió), DESCARTE_BLOQUEADO (estado que no permite descartar), " +
+    "FECHA_RESPUESTA_INVALIDA (anterior a emisión o futura), RESPUESTA_FUERA_VIGENCIA (recepción después del último día), " +
     "IDEMPOTENCIA_CONFLICTO o IDEMPOTENCIA_CADUCADA.",
   429: "DEMASIADAS_SOLICITUDES (cabecera Retry-After).",
   503: "SERVICIO_NO_DISPONIBLE: PostgreSQL no disponible.",
@@ -448,6 +454,32 @@ export function construirDocumentoOpenApi(): Record<string, unknown> {
           },
         },
       },
+      "/api/v1/emisiones/{id}/seguimiento": {
+        get: {
+          summary: "Vigencia y respuestas registradas internamente sobre esta emisión exacta",
+          description: "Fecha del servidor y zona de negocio. Historial descendente de 50 eventos; antesDe pagina eventos anteriores, sin cambiar la respuesta vigente.",
+          parameters: [PARAMETRO_ID, { in: "query", name: "antesDe", schema: { type: "integer", minimum: 1, maximum: 2147483647 } }],
+          responses: { "200": ok("SeguimientoEmision", "Seguimiento y acciones autorizadas."), ...errores(400, 401, 403, 404, 429, 503, 500) },
+        },
+      },
+      "/api/v1/emisiones/{id}/respuestas": {
+        post: {
+          summary: "Preparador registra una respuesta recibida dentro de vigencia (inclusive)",
+          description: "Registro interno, no acción autenticada del cliente. Puede capturarse después de vencer si la fecha recibida fue válida. No se admite una primera respuesta sobre una emisión sustituida. Emisión, versión e importes permanecen intactos.",
+          security: CON_EFECTOS,
+          parameters: [PARAMETRO_ID, CABECERA_IDEMPOTENCIA], requestBody: cuerpo("RegistroRespuesta"),
+          responses: { "201": ok("EventoRespuestaCliente", "Evento inmutable (o reproducido con Idempotent-Replayed)."), ...errores(400, 401, 403, 404, 409, 413, 415, 422, 429, 503, 500) },
+        },
+      },
+      "/api/v1/emisiones/{id}/respuestas/{eventoId}/correcciones": {
+        post: {
+          summary: "Preparador corrige el registro vigente mediante un nuevo evento y motivo",
+          description: "eventoId debe ser la cabeza vigente; 409 CONFLICTO_RESPUESTA devuelve seguimientoVigente. Nunca se borra ni edita el evento anterior. Una corrección histórica también puede corresponder a un documento sustituido.",
+          security: CON_EFECTOS,
+          parameters: [PARAMETRO_ID, { in: "path", name: "eventoId", required: true, schema: { type: "string", format: "uuid" } }, CABECERA_IDEMPOTENCIA], requestBody: cuerpo("CorreccionRespuesta"),
+          responses: { "201": ok("EventoRespuestaCliente", "Corrección inmutable (o reproducida)."), ...errores(400, 401, 403, 404, 409, 413, 415, 422, 429, 503, 500) },
+        },
+      },
       "/api/v1/emisor": {
         get: {
           summary: "Datos del emisor de la organización (BL-15) y lo que falta para emitir",
@@ -494,6 +526,10 @@ export function construirDocumentoOpenApi(): Record<string, unknown> {
         },
       },
       schemas: {
+        SeguimientoEmision: json(EsquemaSeguimientoEmision, "output"),
+        EventoRespuestaCliente: json(EsquemaEventoRespuestaCliente, "output"),
+        RegistroRespuesta: json(EsquemaRegistroRespuesta, "input"),
+        CorreccionRespuesta: json(EsquemaCorreccionRespuesta, "input"),
         SolicitudAcceso: json(EsquemaSolicitudAcceso, "input"),
         RespuestaCsrf: json(EsquemaRespuestaCsrf, "output"),
         RespuestaSesion: json(EsquemaRespuestaSesion, "output"),

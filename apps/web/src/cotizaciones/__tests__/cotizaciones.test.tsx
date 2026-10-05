@@ -139,6 +139,9 @@ function cotizacionesFalsas(s: Partial<ServiciosCotizaciones> = {}): ServiciosCo
     descargarDocumento: vi.fn(),
     emisor: noUsar,
     guardarEmisor: vi.fn(),
+    seguimientoEmision: vi.fn(),
+    registrarRespuesta: vi.fn(),
+    corregirRespuesta: vi.fn(),
     ...s,
   };
 }

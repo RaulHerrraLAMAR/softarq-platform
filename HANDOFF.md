@@ -2,9 +2,11 @@
 
 > Léelo al empezar. Actualízalo al terminar cada tarea (sección por sección, sin borrar el historial de la tabla 4). Reglas de trabajo: [`AGENTS.md`](AGENTS.md).
 
-**Última actualización:** 04/10/2026 · Claude Code (Opus 5.5) · grafo de código local (Graphify, `3c352b6`) y respaldo y recuperación local verificables de `softarq_dev` y sus PDF; sobre el módulo 8 (`da4a1ff`)
+**Última actualización:** 05/10/2026 · Codex (GPT 6.1 Sol), relevo de Claude Code · módulo 9, seguimiento interno por emisión, vigencia y correcciones comerciales con historial (§18), sobre `0292c7f`. Graphify requiere actualización desde el entorno del propietario (§18).
 
 ## 1. Estado actual
+
+- **Módulo 9:** implementado (ADR-0013): Preparador registra Aceptada/Rechazada sobre emisión exacta y corrige mediante evento nuevo con motivo. Fecha recibida dentro de vigencia inclusive; captura posterior permitida si recepción en plazo. Fecha/identidad del registro en servidor; PDF, emisión y versión intactos. Fuentes y diferencias: `docs/cotizaciones/seguimiento-respuestas.md`; verificación de esta sesión en §18.
 
 - **Fase 1 (Excel):**
   - terminada para revisión técnica, con datos DEMO;
@@ -199,6 +201,7 @@ Credenciales: `apps/api/.env` y `.env.test` (locales, excluidos de Git). La cred
 | 03/10/2026 | Módulo 8: emisión de versiones aprobadas, PDF DEMO, anulación de aprobación, descarte, contacto del cliente, emisor y textos por versión; ayudante UTF-8 para pruebas por HTTP; ADR-0010 | Commit `da4a1ff` |
 | 04/10/2026 | Grafo de código local con Graphify (solo AST) para Claude Code y Codex: exclusiones, script de vigencia y actualización, hooks, rutina en `AGENTS.md` §12, ADR-0011 | Commit `3c352b6` |
 | 04/10/2026 | Respaldo y recuperación local: rol `softarq_respaldo`, base aislada `softarq_restauracion`, scripts `respaldo:*`, prueba completa 30/30, ADR-0012 | Ver §17 y §8 |
+| 05/10/2026 | Módulo 9: respuesta interna por emisión, vigencia y correcciones con historial; ADR-0013; respaldo/restauración de eventos y concurrencia real | 571 unitarias, 238 integración, 51 E2E, 35 restauración y 15 concurrencia; ver §18 y §8 |
 
 ## 5. Comandos y resultados reales (02/10/2026)
 
@@ -466,7 +469,7 @@ En los cuatro, el resultado completo es idéntico al calculado con los fixtures 
       - `COT-2026-00004`: humo del módulo 8; v1 emitida, PDF en la carpeta de desarrollo;
       - el cliente de comprobación de acentos `CLI-00004`.
 
-      Las tres primeras no se pueden emitir sin una vN+1 (BL-20). El siguiente folio web será `COT-2026-00005`.
+      Las tres primeras no se pueden emitir sin una vN+1 (BL-20). Módulo 9 añadió folios DEMO propios `COT-2026-00005` y `00006` para la prueba operativa (§18); siguiente folio observado: `00007`.
 20. **Revisión (ADR-0009):**
     - desde el módulo 8, un Revisor puede anular la aprobación antes de emitir. Editar el borrador no la anula (en el libro sí), pero impide emitir la versión;
     - sin excepciones (B-22): BL-09 siempre bloquea y AV-04 no aplica;
@@ -482,7 +485,7 @@ En los cuatro, el resultado completo es idéntico al calculado con los fixtures 
       - respaldo y restauración de prueba con `respaldo:*` (§17); no hay tareas programadas;
     - una interrupción entre el archivo y el registro deja un archivo propio sin registro: `documentos:revisar -- --limpiar` lo borra cuando tiene más de 60 min;
     - un archivo ausente o dañado no se regenera (500 `DOCUMENTO_NO_DISPONIBLE`): se restaura desde el respaldo;
-    - sin respuesta del cliente, vencimiento automático ni anulación de documentos emitidos; sin excepciones (BL-09 siempre bloquea y AV-04 no aplica);
+    - seguimiento y vigencia incorporados por módulo 9 (§18); sin anulación de documentos emitidos ni excepciones (BL-09 siempre bloquea y AV-04 no aplica);
     - el almacén es local, de una sola instancia;
     - las fuentes del PDF cubren el alfabeto latino: un carácter sin glifo impide generar (`DOCUMENTO_NO_GENERADO`) en lugar de imprimirlo mal;
     - **el documento es DEMO** («DEMOSTRACIÓN» en cada página) y los datos del emisor son ficticios. No es apto para cotizaciones reales mientras falten los datos y validaciones del Word maestro (capítulo 8).
@@ -500,7 +503,8 @@ En los cuatro, el resultado completo es idéntico al calculado con los fixtures 
 
 1. **Recompilar y reiniciar** la API y la web del propietario (§6, punto 17).
 2. **Ejecución formal de la guía manual** [`docs/web/guia-prueba-manual.md`](docs/web/guia-prueba-manual.md) (A1–A9, 1–14, C1–C15, R1–R10 y E1–E12), con el registro de la §5. Complementa la revisión personal ya declarada. No cuenta como PR-41 ni PR-44.
-3. **Módulo 9 propuesto:** respuesta del cliente (Aceptada o Rechazada, solo sobre emitidas) y vencimiento automático (A-01, CR-16), o excepciones (B-22: BL-04, BL-05 y BL-09 con autorización del revisor, AV-04). El respaldo y la recuperación local ya están hechos (§17). Falta, si se decide, la copia externa periódica.
+3. **Módulo 9 implementado:** seguimiento interno de respuesta/vigencia (§18), una de las dos propuestas anteriores. Próximo alcance a decidir: excepciones (B-22: BL-04, BL-05 y BL-09 con autorización del Revisor, AV-04). No están implementadas en este módulo.
+4. **Operación:** actualizar Graphify con su instalación existente desde el entorno del propietario; repetir aprovisionamiento administrativo de respaldo y completar guía S1–S10. La emisión concurrente durante respaldo sí se ejecutó en esta sesión (§18). Copia externa periódica sigue siendo una decisión pendiente.
 
 Alternativas más cortas:
 - **web DEMO:** coma decimal, conservar el borrador durante la sesión y más de 20 conceptos por consulta;
@@ -518,7 +522,8 @@ Alternativas más cortas:
 - `b58ed43`: Módulo 7, revisión y aprobación.
 - `da4a1ff`: Módulo 8, emisión, PDF DEMO, anulación y descarte.
 - `3c352b6`: grafo de código local con Graphify.
-- A continuación, el commit de respaldo y recuperación: ver `git log --oneline -3`.
+- `0292c7f`: respaldo y recuperación local verificables.
+- Módulo 9: commit que incorpora §18, con mensaje «Módulo 9: respuestas internas por emisión, vigencia e historial de correcciones»; consultar `git log -1 --oneline` para su hash.
 - MD5 del libro oficial al cerrar el módulo 8: `b60debc121957b8d8e3f2c2edd9a5b4f` (sin cambios).
 
 Rama `main`. Sin remoto ni push.
@@ -801,3 +806,59 @@ pnpm respaldo:probar-restauracion          # prueba completa con API temporal en
 
 - **Límite:** el respaldo está en el mismo disco D:. Protege frente a errores operativos, no frente a la pérdida del disco: copie la carpeta a un medio externo de vez en cuando.
 - **No se automatiza** ninguna restauración sobre `softarq_dev`: véase la guía, §5.
+
+## 18. Seguimiento interno por emisión, vigencia y respuesta (módulo 9)
+
+**Sesión:** 05/10/2026, Codex GPT 6.1 Sol. Inicio verificado: directorio correcto, rama `main`, árbol sin cambios previos, HEAD `0292c7f`; commits reales anteriores `3c352b6` y `da4a1ff`. No se restauraron archivos ni se tocaron cambios ajenos. HANDOFF proponía respuesta/vigencia o excepciones; se implementó la primera opción con el plan aprobado por el propietario. Excel y Word consultados en solo lectura; MD5 del libro antes/después `b60debc121957b8d8e3f2c2edd9a5b4f`.
+
+**Reglas y fuentes:** [ADR-0013](docs/adr/0013-seguimiento-respuestas-vigencia.md), [módulo y ubicaciones exactas](docs/cotizaciones/seguimiento-respuestas.md). El propietario decidió (1) permitir captura posterior al vencimiento si la respuesta fue recibida dentro de vigencia, (2) Preparador corrige con evento nuevo, motivo obligatorio e historial. No se atribuyen estas adaptaciones al Excel. Aceptada/Rechazada son resultados comerciales; aprobación del Revisor sigue siendo interna. Emisión/versión/PDF inmutables, sin transferencia de respuesta a otra emisión. Sustitución impide un primer registro sobre el documento antiguo, pero permite corregir su respuesta ya existente como historia.
+
+**Implementación:**
+
+| Parte | Ubicación |
+|---|---|
+| Contratos | `packages/contracts/src/api/respuestas.ts`: cuerpos estrictos, fecha real, respuesta/evento, seguimiento y paginación; dos capacidades nuevas del Preparador |
+| API | `servicio-respuestas.ts`, `repositorio-respuestas.ts`, `dominio/respuesta-cliente.ts`; controlador `/emisiones/:id/seguimiento`, `/respuestas`, `/respuestas/:eventoId/correcciones`; sesión/CSRF/Origin/límites existentes |
+| Base | Migración `20261005150000_respuestas_cliente`, aplicada en test y dev. Eventos de solo alta, FK compuestas, cadena/índices únicos y disparadores de validación e inmutabilidad. Idempotencia y bitácora atómicas; bloqueo del borrador serializa por cotización |
+| Web | `cotizaciones/respuestas.tsx`, integrado con emisión y vista histórica de versión. Acciones/motivos del servidor, confirmación exacta, conservación de captura e intención ante fallos/conflictos, corrección explícita de la cabeza consultada |
+| Respaldo | `permisos-app.sql` y `probar-restauracion.mjs` incluyen nueva tabla; `probar-concurrencia.mjs` y comando `respaldo:probar-concurrencia` verifican una instantánea abierta durante emisión/respuesta/corrección reales |
+
+**Pruebas de ESTA sesión** (los 556/226/47/30 previos son resultados reportados por Claude, conservados en las secciones anteriores):
+
+| Comando/comprobación | Resultado ejecutado |
+|---|---|
+| `respaldo:crear` + `respaldo:verificar` antes de migrar | COMPLETO y VÁLIDO, `softarq_dev-20261005T143908Z-02ccd5`, esquema anterior, 1/1 PDF |
+| `db:migrar:test`, `db:migrar` | Código 0. Primer intento en test detectó CASE sin paréntesis; se corrigió. Se comprobó que no quedó tabla parcial, se marcó solo esa migración fallida como rolled-back y se aplicó. Desarrollo se migró después de 12/12 casos nuevos de integración |
+| `openapi:generar` | Código 0; documento versionado coincide con contratos según prueba unitaria |
+| `pnpm verificar` (última ejecución, 09:35) | **571/571**: API 385, web 186; compilación y tipos correctos. La comprobación web de no exponer datos internos incluye dinámicamente el archivo nuevo |
+| `pnpm verificar:integracion` (09:23) | **238/238**, 13 archivos, un worker; softarq_test, documentos aislados. Fechas, autorización/aislamiento, solo emitidas, identidad de versión/emisión, doble envío, carreras, correcciones, paginación de 52 eventos, y versión/PDF/importes intactos. Medianoche de México comprobada en unitarias |
+| `pnpm verificar:e2e` (09:27) | **51/51**, código 0, un worker, después de integración; softarq_test, Edge, web compilada y documentos aislados. Incluye 4 casos nuevos, uno móvil a 390 px. Tras terminar todos los casos, teardown no cerró sus servidores automáticamente: se identificaron y detuvieron solo los PID propios 7760, 24688 y 696 por nombre/hora de inicio; entonces el comando cerró con 0 |
+| Cuatro referencias | **54,190.68; 43,312.16; 22,405.28; 4,911.79**, verificadas en integración y E2E; no se cambió el motor ni expectativas de importes |
+| `respaldo:probar-concurrencia` | **15/15**. Rol softarq_respaldo lee nueva tabla sin INSERT/DDL, readonly=on. Respaldo `softarq_dev-20261005T151809Z-e27a52`, COMPLETO/VÁLIDO, restaurado en base aislada: la instantánea excluye emisión/respuesta/corrección posteriores. Emisiones/PDF anteriores intactos |
+| `node scripts/respaldo/probar-restauracion.mjs` (API ya compilada) | **35/35**. Respaldo `softarq_dev-20261005T151858Z-1e4ecc`, COMPLETO/VÁLIDO, 225.175 bytes, 3/3 PDF. Tres eventos íntegros/notas comparadas, fechas/cadena/permisos/triggers correctos, PDF descargados idénticos; desarrollo intacto durante esta prueba |
+| Revisión visual de Codex | 6 capturas examinadas: escritorio 01–04, móvil 01–02 en `_work\evidencias\modulo9`. Resultados e historial legibles, acentos correctos, formulario/conflicto con nota conservada; E2E verifica teclado/foco y ausencia de desborde |
+| `git diff --check`, sintaxis scripts Node, MD5 Excel | Correctos. Sin actualización de dependencias ni lockfile |
+
+**Expectativas anteriores modificadas con intención:** inventario OpenAPI añade tres rutas/cuatro esquemas; sesión Preparador añade dos capacidades; inventario SQL añade una función SECURITY INVOKER y mantiene verificación de EXECUTE no público. Mocks web incorporan los nuevos métodos. No se cambiaron expectativas de reglas previas ni importes para eludir fallos.
+
+**Datos/evidencias:** la prueba operativa añadió exclusivamente folios DEMO propios COT-2026-00005 y 00006 en dev; ahora hay 3 emisiones/PDF y 3 eventos de respuesta, incluyendo una corrección. No se repararon ni borraron los registros previos. PDF originales siguen en `D:\Proyecto_SoftArq\datos\softarq_dev\documentos`; respaldos COMPLETOS en `D:\Proyecto_SoftArq\respaldos\softarq_dev`. Evidencias desechables: `_work\evidencias\modulo9`, `concurrencia-respaldo-2026-10-05T15-18-05-612Z` y `respaldo-softarq_dev-20261005T151858Z-1e4ecc`. No hay secretos en los archivos nuevos versionados.
+
+**Graphify — estado real al cierre:** el grafo anterior se consultó selectivamente para emisión, repositorios, idempotencia, controlador y respaldo antes de leer fuentes. No se exploró todo el repositorio ni se usó `graphify update .`. Reconstrucciones con `pnpm grafo:actualizar` fallaron: `python` ENOENT; Python del runtime Codex disponible pero `ModuleNotFoundError: graphify`; acceso al Python original documentado denegado por este entorno. No se actualizó/reinstaló Graphify ni se ejecutaron instaladores/global hooks. Grafo anterior intacto: 0.8.5, fecha 04/10 07:58:38 UTC, 2.295 nodos/4.888 aristas; sus metadatos antiguos dicen VIGENTE, **no describe módulo 9** (23 archivos indexados anteriores cambiaron; 0 nodos del flujo nuevo). `grafo:estado` tampoco puede certificarlo ahora. Pendiente desde el entorno del propietario: `pnpm grafo:actualizar`, luego consultas focalizadas `graphify explain ServicioRespuestas`, `graphify explain PanelRespuesta`, `graphify path RespuestasController ServicioRespuestas` y `pnpm grafo:estado`. No declarar verificadas esas consultas nuevas hasta ejecutarlas. SQL, schema.prisma y tokens.ts siguen requiriendo rg/lecturas dirigidas.
+
+**Entorno:** no se modificó el perfil global. pnpm/Python originales no eran ejecutables desde esta sesión restringida. Se reutilizó pnpm **11.19.0 ya incluido** en Codex solo para scripts (`--pm-on-fail=ignore` evita descarga/cambio de versión); packageManager del proyecto permanece 11.1.3 y dependencias intactas. Lanzadores temporales en `_work\softarq-codex` y caché Node en `_work\tmp`. Buscador local UI UX Pro Max del repositorio ejecutado con Python incluido; foco, errores y conservación de captura aplicados. Conflicto del comando personal sigue abierto. Caveman/grill-me no activados.
+
+**Abrir el módulo** (no reutilizar procesos antiguos sin comprobar qué código ejecutan):
+
+```powershell
+Set-Location D:\Proyecto_SoftArq\softarq-platform
+pnpm --filter @softarq/contracts build
+pnpm --filter @softarq/api build
+pnpm --filter @softarq/api start       # terminal API; http://localhost:3000
+pnpm --filter @softarq/web dev        # otra terminal; http://localhost:5173
+```
+
+En esta sesión restringida, ante pnpm no disponible, prefijar cada comando con `powershell -NoProfile -ExecutionPolicy Bypass -File D:\Proyecto_SoftArq\_work\softarq-codex\run.ps1`. Si 3000/5173 están ocupados, comprobar y reiniciar los procesos propios en sus terminales o elegir puertos mediante variables locales; no detener procesos ajenos. Preparador → Cotizaciones → emisión → Registrar respuesta/Corregir registro interno; Revisor solo consulta. Credenciales existentes en `_work\secrets`, sin copiarlas al chat.
+
+**Pendientes:** actualizar/certificar Graphify desde el entorno con la instalación existente; repetir realmente aprovisionamiento administrativo de respaldo (no se ejecutó); ejecución formal de guía S1–S10 y anteriores (sin atribuirla al propietario). Revisión personal del propietario sigue siendo únicamente la declaración existente del 03/10/2026; PR-41…PR-44 del Excel continúan pendientes. Sin excepciones, anulación de documentos emitidos, portal o despliegue. Vite advierte un chunk de unos 530 kB; compilación correcta, sin ampliar este módulo para reestructurar bundles.
+
+**Continuación recomendada:** recompilar y revisar personalmente S1–S10, completar esos pendientes operativos, y decidir el siguiente módulo de excepciones conforme al Word y ADR. Commit de este módulo: ver §8 y `git log -1 --oneline`; sin remoto/push/despliegue.

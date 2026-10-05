@@ -115,6 +115,9 @@ function servicios(s: Partial<ServiciosCotizaciones>): ServiciosCotizaciones {
     descargarDocumento: noUsar,
     emisor: noUsar,
     guardarEmisor: noUsar,
+    seguimientoEmision: noUsar,
+    registrarRespuesta: noUsar,
+    corregirRespuesta: noUsar,
     ...s,
   };
 }
