@@ -17,6 +17,9 @@
 | [`adr/0010-emision-pdf-anulacion-descarte.md`](adr/0010-emision-pdf-anulacion-descarte.md) | Emisión de versiones aprobadas (quién emite: adaptación autorizada), textos por versión, registro inmutable, PDF DEMO con PDFKit, carpeta persistente, consistencia base y disco, recuperación, anulación de la aprobación y descarte. |
 | [`adr/0011-grafo-de-codigo-graphify.md`](adr/0011-grafo-de-codigo-graphify.md) | Grafo de código local con Graphify para Claude Code y Codex: solo AST, sin instaladores, reconstrucción limpia, vigencia verificable y hooks. |
 | [`adr/0012-respaldo-y-restauracion-local.md`](adr/0012-respaldo-y-restauracion-local.md) | Respaldo coherente de softarq_dev y sus PDF (instantánea compartida), rol de solo lectura, restauración solo en un destino aislado y prueba de recuperación real. |
+| [`adr/0013-seguimiento-respuestas-vigencia.md`](adr/0013-seguimiento-respuestas-vigencia.md) | Seguimiento interno por emisión: respuesta recibida, vigencia derivada y correcciones con historial. |
+| [`adr/0014-excepciones.md`](adr/0014-excepciones.md) | Excepciones B-22: registro en el borrador, congeladas en la versión, autorización del Revisor, AV-04, BL-04/05/09 con excepción y contrato interno. |
+| [`cobertura-demo.md`](cobertura-demo.md) | Matriz de cobertura del DEMO frente al Excel y al alcance documentado, bloques restantes y estimación. |
 | [`operacion/respaldo-y-restauracion.md`](operacion/respaldo-y-restauracion.md) | Comandos de respaldo, verificación y restauración; manifiesto; tratamiento de roles, permisos y sesiones; conservación; resultados verificados. |
 | [`api/README.md`](api/README.md) | Endpoints, errores, límites y ejemplos `curl` de la API v1 ([`openapi.json`](api/openapi.json)). |
 | [`web/sistema-visual.md`](web/sistema-visual.md) | Sistema visual de la web: tokens, contraste medido, componentes y estados. |

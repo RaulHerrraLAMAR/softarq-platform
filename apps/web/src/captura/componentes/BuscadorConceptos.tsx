@@ -2,7 +2,7 @@ import { LIMITES_API } from "@softarq/contracts";
 import { useId, useState } from "react";
 import type { ServiciosApi } from "../../api/servicios.ts";
 import { mensajeDeConsulta, useBusquedaConceptos } from "../../catalogos/hooks.ts";
-import { Aviso, Boton, Codigo, Esqueleto } from "../../comunes/componentes.tsx";
+import { Aviso, Boton, Codigo, Esqueleto, Insignia } from "../../comunes/componentes.tsx";
 import { useCaptura } from "../contexto.tsx";
 import { NOMBRE_FORMULA } from "./textos.ts";
 
@@ -71,6 +71,12 @@ export function BuscadorConceptos({ servicios, abiertoInicial }: { servicios: Se
                   Unidad: {c.unidad} · Medidas: {NOMBRE_FORMULA[c.tipoFormula]} · {c.insumos.length}{" "}
                   {c.insumos.length === 1 ? "insumo" : "insumos"} con opciones
                 </p>
+                {c.clase === "PERSONALIZADO" ? (
+                  <p className="ayuda">
+                    <Insignia tono="menor">Personalizado</Insignia> No está aprobado en el catálogo: solo se calcula en una cotización con una excepción
+                    registrada, y para aprobar y emitir un Revisor debe autorizarla (BL-04).
+                  </p>
+                ) : null}
               </div>
               <Boton
                 variante="primario"

@@ -74,6 +74,7 @@ function Contenido({ sesion, servicios, cotizaciones, barraSesion, motivoSinCalc
   const puedeGestionar = puede("clientes.gestionar");
   const puedeEnviarRevision = puede("revisiones.enviar");
   const puedeEmitir = puede("emisiones.emitir");
+  const puedeVerExcepciones = puede("excepciones.consultar");
   const [capturaPendiente, setCapturaPendiente] = useState<CapturaBorrador | null>(null);
   const editorCalculadora = useCaptura(servicios);
 
@@ -131,9 +132,9 @@ function Contenido({ sesion, servicios, cotizaciones, barraSesion, motivoSinCalc
       case "revisiones":
         return <BandejaRevisiones servicios={cotizaciones} />;
       case "revision":
-        return <PantallaRevision servicios={cotizaciones} id={ruta.id} />;
+        return <PantallaRevision servicios={cotizaciones} id={ruta.id} puedeVerExcepciones={puedeVerExcepciones} />;
       case "version":
-        return <VistaVersion servicios={cotizaciones} id={ruta.id} numero={ruta.numero} />;
+        return <VistaVersion servicios={cotizaciones} id={ruta.id} numero={ruta.numero} puedeVerExcepciones={puedeVerExcepciones} />;
       case "clientes":
         return <ListaClientes servicios={cotizaciones} puedeGestionar={puedeGestionar} />;
       case "cliente":

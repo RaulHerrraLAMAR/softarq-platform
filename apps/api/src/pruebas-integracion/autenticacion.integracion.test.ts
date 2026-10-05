@@ -118,6 +118,8 @@ describe("inicio de sesión", () => {
       // ADR-0013: el Preparador registra y corrige respuestas internas.
       "respuestas.registrar",
       "respuestas.corregir",
+      // ADR-0014 (módulo 10): datos técnicos de las excepciones que registra.
+      "excepciones.consultar",
     ]);
     expect(s.inactividadMinutos).toBe(30);
     expect(new Date(s.expiraEn).getTime()).toBe(instante.getTime() + POLITICA_SESION.absolutaMs);

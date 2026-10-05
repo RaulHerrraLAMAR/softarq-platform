@@ -33,6 +33,7 @@ export async function consultarConceptos(
   return {
     conceptos: conceptos.map((c) => ({
       codigo: c.codigo,
+      clase: c.clase,
       descripcion: c.descripcion,
       unidad: c.unidad,
       tipoFormula: c.tipoFormula,

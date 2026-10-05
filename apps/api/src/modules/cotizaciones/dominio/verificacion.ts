@@ -85,19 +85,25 @@ export function bl07(insumos: readonly string[], conProductoActivo: ReadonlySet<
 }
 
 /**
- * BL-09: el precio elegido no está vigente a la fecha de referencia. En el libro se admite con
- * una excepción autorizada; la web no tiene excepciones, así que siempre bloquea.
+ * BL-09: el precio elegido no está vigente a la fecha de referencia, salvo excepción PRECIO_VENCIDO
+ * (D-11; W §3.10: registrada al enviar, autorizada al aprobar y emitir). `eximidos` lo decide
+ * `preciosConExcepcion` (módulo 10).
  */
-export function bl09(e: EntradaCalculo, precios: readonly PrecioLeido[], hoy: FechaISO): Problema[] {
+export function bl09(
+  e: EntradaCalculo,
+  precios: readonly PrecioLeido[],
+  hoy: FechaISO,
+  eximidos: ReadonlySet<string> = new Set(),
+): Problema[] {
   const porCodigo = new Map(precios.map((p) => [p.codigo, p]));
   const r: Problema[] = [];
   for (const s of e.selecciones) {
     const p = porCodigo.get(s.precioId);
-    if (p && !cr07Vigente(p.vigenteDesde, p.vigenteHasta, hoy)) {
+    if (p && !cr07Vigente(p.vigenteDesde, p.vigenteHasta, hoy) && !eximidos.has(s.precioId)) {
       r.push({
         codigo: "BL-09",
         referencia: s.precioId,
-        mensaje: `Insumo ${s.insumoId}: el precio ${s.precioId} no está vigente al ${hoy} (vigencia ${p.vigenteDesde} a ${p.vigenteHasta}). Elija otro precio en una versión nueva.`,
+        mensaje: `Insumo ${s.insumoId}: el precio ${s.precioId} no está vigente al ${hoy} (vigencia ${p.vigenteDesde} a ${p.vigenteHasta}). Elija otro precio o registre una excepción de precio vencido en una versión nueva.`,
       });
     }
   }

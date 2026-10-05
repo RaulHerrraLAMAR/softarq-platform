@@ -38,6 +38,8 @@ export function codigosReferenciados(c: CapturaBorrador) {
 function motivoConcepto(c: ConceptoLeido | undefined): string | null {
   if (!c) return NO_EXISTE;
   if (!c.activo) return "el concepto está inactivo";
+  // Un personalizado puede usarse en Borrador; su excepción la exigen el cálculo y la revisión (BL-04).
+  if (c.clase === "PERSONALIZADO") return null;
   if (c.estado !== "Aprobado") return `el concepto no está aprobado (estado ${c.estado})`;
   return null;
 }

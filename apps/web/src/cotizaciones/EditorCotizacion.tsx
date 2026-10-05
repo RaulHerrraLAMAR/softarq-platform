@@ -41,6 +41,7 @@ import { VistaCaptura } from "../captura/VistaCaptura.tsx";
 import { Enlace, useRuta } from "../navegacion/ruta.tsx";
 import { ListaEventos, ResumenCaptura, TablaVersiones } from "./componentes.tsx";
 import { AvisoDescartada, EditorTextos, PanelDescarte, SeccionEmision, TextosVersion } from "./emision.tsx";
+import { SeccionExcepciones } from "../excepciones/SeccionExcepciones.tsx";
 import { HistorialRevisiones, NOTA_NO_EMISION } from "./revisiones.tsx";
 
 interface Guardada {
@@ -748,6 +749,13 @@ function EditorBorrador({
 
   const despuesDeLaCaptura = (
     <>
+      <SeccionExcepciones
+        captura={captura}
+        despachar={despachar}
+        servicios={cotizaciones}
+        deshabilitado={ocupado}
+        erroresServidor={guardado.fase === "error" && guardado.fallo.tipo === "excepcion" ? (guardado.fallo.campos ?? []) : []}
+      />
       <EditorTextos
         textos={captura.textos}
         predeterminados={detalle.borrador.textosPredeterminados}

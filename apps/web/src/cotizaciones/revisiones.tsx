@@ -33,6 +33,7 @@ import { useIntenciones } from "../comunes/intencion.ts";
 import { CargaFallida, Cargando, Folio, Pagina, SinResultados } from "../comunes/pagina.tsx";
 import { useCarga } from "../comunes/usarCarga.ts";
 import { Enlace } from "../navegacion/ruta.tsx";
+import { PanelExcepcionesVersion } from "../excepciones/PanelExcepcionesVersion.tsx";
 import { TextosVersion } from "./emision.tsx";
 
 export const NOTA_NO_EMISION = "La aprobación no es una emisión ni una entrega al cliente.";
@@ -200,7 +201,16 @@ type EstadoEnvio =
 
 const REINTENTABLES = new Set<FalloApi["tipo"]>(["red", "error_servidor", "no_disponible", "limite", "csrf"]);
 
-export function PantallaRevision({ servicios, id }: { servicios: ServiciosCotizaciones; id: string }) {
+export function PantallaRevision({
+  servicios,
+  id,
+  puedeVerExcepciones = false,
+}: {
+  servicios: ServiciosCotizaciones;
+  id: string;
+  /** Capacidad `excepciones.consultar` (módulo 10): la API la vuelve a comprobar. */
+  puedeVerExcepciones?: boolean;
+}) {
   const { estado, recargar, setEstado } = useCarga((s) => servicios.detalleRevision(id, s), [id]);
   if (estado.fase === "cargando") return <Cargando etiqueta="Cargando la revisión…" />;
   if (estado.fase === "error") return <CargaFallida fallo={estado.fallo} alReintentar={recargar} />;
@@ -211,6 +221,7 @@ export function PantallaRevision({ servicios, id }: { servicios: ServiciosCotiza
       detalle={estado.datos}
       alActualizar={recargar}
       alCambiar={(d) => setEstado({ fase: "listo", datos: d })}
+      puedeVerExcepciones={puedeVerExcepciones}
     />
   );
 }
@@ -220,11 +231,13 @@ function DetalleRevisionVista({
   detalle,
   alActualizar,
   alCambiar,
+  puedeVerExcepciones,
 }: {
   servicios: ServiciosCotizaciones;
   detalle: DetalleRevision;
   alActualizar: () => void;
   alCambiar: (d: DetalleRevision) => void;
+  puedeVerExcepciones: boolean;
 }) {
   const r = detalle.revision;
   const v = detalle.version;
@@ -536,6 +549,23 @@ function DetalleRevisionVista({
             </Boton>
           )}
         </section>
+      ) : null}
+
+      {puedeVerExcepciones ? (
+        <PanelExcepcionesVersion
+          servicios={servicios}
+          cotizacionId={r.cotizacionId}
+          numero={r.version.numero}
+          alDecidir={() => {
+            // La verificación (bloqueos y AV-04) cambia con cada decisión: se vuelve a leer sin recargar la
+            // pantalla, y un bloqueo mostrado antes de decidir deja de valer.
+            if (envio.fase === "bloqueado" || envio.fase === "error") setEnvio({ fase: "inactivo" });
+            const n = ++solicitud.current;
+            void servicios.detalleRevision(r.id).then((d) => {
+              if (d.ok && n === solicitud.current) alCambiar(d.datos);
+            });
+          }}
+        />
       ) : null}
 
       {pendiente && (r.acciones.aprobar || r.acciones.solicitarCambios || r.acciones.retirar || r.acciones.motivoNoAprobar) ? (

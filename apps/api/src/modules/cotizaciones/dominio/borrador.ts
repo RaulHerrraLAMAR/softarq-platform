@@ -19,6 +19,7 @@ import {
   type SolicitudCalculoDemo,
   type TipoFormula,
 } from "@softarq/contracts";
+import { excepcionesParaCalculo } from "./excepciones.js";
 
 /** Datos del catálogo que la completitud necesita de cada concepto disponible. */
 export interface ConceptoParaCaptura {
@@ -144,5 +145,7 @@ export function aSolicitudCalculo(
       };
     }),
     preciosElegidos: precios,
+    // Módulo 10: excepciones que afectan al cálculo (se guardan en `solicitud_calculo` de la versión).
+    ...(c.excepciones?.length ? { excepciones: excepcionesParaCalculo(c) } : {}),
   };
 }

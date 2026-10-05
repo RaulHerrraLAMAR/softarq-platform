@@ -29,7 +29,9 @@ export type OperacionIdempotente =
   | "anular_aprobacion"
   | "descartar_cotizacion"
   | "registrar_respuesta"
-  | "corregir_respuesta";
+  | "corregir_respuesta"
+  // Módulo 10 (ADR-0014): autorizar o rechazar una excepción.
+  | "decidir_excepcion";
 
 export interface Idempotencia {
   readonly clave: string;

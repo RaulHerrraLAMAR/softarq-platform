@@ -9,10 +9,16 @@
  *   sustituye en silencio): el usuario decide elegir otra opción o quitarla («Quitar selección»).
  * - Los textos de la versión (alcance, condiciones y exclusiones; módulo 8) son parte del borrador de
  *   una cotización: no intervienen en el cálculo ni en la huella de la vista previa.
+ * - Las excepciones B-22 (módulo 10) también son del borrador. Solo se agregan con una acción
+ *   explícita del usuario; las que dejan de citar algo de la captura se quitan (`depurar`).
  */
 import type { CapturaBorrador, DimensionMedicion, ReferenciasBorrador, TextosCotizacion, TipoFormula } from "@softarq/contracts";
 import type { ConceptoCatalogo, InsumoConOpciones } from "../api/servicios.ts";
 import type { Ejemplo } from "../ejemplos/ejemplos.ts";
+import { depurar, desdeBorrador as excepcionesDesdeBorrador, type ExcepcionCaptura, type PartidaReferida } from "../excepciones/modelo.ts";
+
+/** Excepción por agregar: la clave local la asigna el reducer. */
+export type NuevaExcepcion = ExcepcionCaptura extends infer X ? (X extends ExcepcionCaptura ? Omit<X, "clave"> : never) : never;
 
 export type SegundaMedida = "ancho" | "alto";
 
@@ -82,6 +88,8 @@ export interface Captura {
    * anteriores al módulo 8): no se envían hasta que el usuario los escriba o los restablezca.
    */
   textos: TextosCotizacion | null;
+  /** Excepciones registradas en el borrador (módulo 10). Vacía = no se envía el campo. */
+  excepciones: ExcepcionCaptura[];
   siguienteClave: number;
 }
 
@@ -111,6 +119,8 @@ export type Accion =
   | { tipo: "QUITAR_SELECCION"; insumo: string }
   | { tipo: "EDITAR_TEXTO"; campo: keyof TextosCotizacion; valor: string }
   | { tipo: "FIJAR_TEXTOS"; textos: TextosCotizacion }
+  | { tipo: "AGREGAR_EXCEPCION"; excepcion: NuevaExcepcion }
+  | { tipo: "QUITAR_EXCEPCION"; clave: string }
   | { tipo: "CONCILIAR_OPCIONES"; conceptos: readonly string[]; insumos: readonly InsumoConOpciones[] };
 
 export type EstadoApp = { captura: Captura | null };
@@ -128,6 +138,7 @@ function capturaVacia(origen: OrigenCaptura): Captura {
     seleccionConservada: [],
     avisosCarga: [],
     textos: null,
+    excepciones: [],
     siguienteClave: 1,
   };
 }
@@ -172,7 +183,14 @@ export function reducir(estado: EstadoApp, accion: Accion): EstadoApp {
   const c = estado.captura;
   if (!c) return estado;
   const nueva = reducirCaptura(c, accion);
-  return nueva === c ? estado : { captura: nueva };
+  if (nueva === c) return estado;
+  // Una excepción que dejó de citar algo de la captura (partida, precio o concepto) se quita.
+  return { captura: nueva.excepciones.length > 0 ? { ...nueva, excepciones: depurar(nueva.excepciones, referidas(nueva), nueva.seleccion) } : nueva };
+}
+
+/** Partidas en el formato mínimo que usan las excepciones. */
+export function referidas(c: Captura): PartidaReferida[] {
+  return c.partidas.map((p) => (p.tipo === "CONCEPTO" ? { clave: p.clave, tipo: "CONCEPTO", conceptoCodigo: p.concepto.codigo } : { clave: p.clave, tipo: "ADICIONAL" }));
 }
 
 function reducirCaptura(c: Captura, a: Accion): Captura {
@@ -242,6 +260,10 @@ function reducirCaptura(c: Captura, a: Accion): Captura {
       return { ...c, textos: { ...(c.textos ?? { alcance: "", condiciones: "", exclusiones: "" }), [a.campo]: a.valor } };
     case "FIJAR_TEXTOS":
       return { ...c, textos: { ...a.textos } };
+    case "AGREGAR_EXCEPCION":
+      return { ...c, excepciones: [...c.excepciones, { ...a.excepcion, clave: `k${c.siguienteClave}` } as ExcepcionCaptura], siguienteClave: c.siguienteClave + 1 };
+    case "QUITAR_EXCEPCION":
+      return { ...c, excepciones: c.excepciones.filter((x) => x.clave !== a.clave) };
     default:
       return c;
   }
@@ -412,6 +434,7 @@ function desdeBorrador(
       }
       concepto = {
         codigo: p.conceptoCodigo,
+        clase: "",
         descripcion: `${p.conceptoCodigo} (no disponible)`,
         unidad: "",
         tipoFormula: formulaSegunMedidas(p),
@@ -446,6 +469,8 @@ function desdeBorrador(
     textos: b.textos ? { ...b.textos } : null,
     siguienteClave: n,
   };
+  base.excepciones = excepcionesDesdeBorrador(b.excepciones ?? [], referidas(base), clave);
+  base.siguienteClave = n;
   const conocidos = new Set(insumosEnUso(base));
   const avisosSeleccion: Record<string, string> = {};
   for (const r of referencias?.selecciones ?? []) {

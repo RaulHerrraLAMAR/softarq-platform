@@ -335,6 +335,7 @@ model Membresia {
   eventos              Bitacora[]
   idempotencia         Idempotencia[]
   respuestasCliente    RespuestaClienteEvento[]
+  excepcionesDecididas ExcepcionDecision[]
 
   @@unique([organizacionId, usuarioId])
   @@index([usuarioId])
@@ -564,6 +565,7 @@ model Revision {
   resolutor  Membresia?        @relation("RevisionResueltaPor", fields: [organizacionId, resueltaPor], references: [organizacionId, usuarioId], onDelete: Restrict, onUpdate: Restrict)
   eventos    RevisionEvento[]
   emisiones  Emision[]
+  excepciones ExcepcionDecision[]
 
   @@unique([organizacionId, id])
   /// Destino de la FK de `emision`: la aprobación usada es de ESA versión (ADR-0010).
@@ -690,9 +692,9 @@ model RespuestaClienteEvento {
   fechaRegistro    DateTime @map("fecha_registro") @db.Date
   motivo           String?  @db.VarChar(500)
 
-  emision   Emision   @relation(fields: [organizacionId, emisionId], references: [organizacionId, id], onDelete: Restrict, onUpdate: Restrict)
-  autor     Membresia @relation(fields: [organizacionId, registradoPor], references: [organizacionId, usuarioId], onDelete: Restrict, onUpdate: Restrict)
-  anterior  RespuestaClienteEvento?  @relation("CorreccionRespuesta", fields: [organizacionId, emisionId, anteriorId], references: [organizacionId, emisionId, id], onDelete: Restrict, onUpdate: Restrict)
+  emision   Emision   @relation(fields: [organizacionId, emisionId], references: [organizacionId, id], onDelete: Restrict, onUpdate: Restrict, map: "respuesta_evento_emision_fk")
+  autor     Membresia @relation(fields: [organizacionId, registradoPor], references: [organizacionId, usuarioId], onDelete: Restrict, onUpdate: Restrict, map: "respuesta_evento_autor_fk")
+  anterior  RespuestaClienteEvento?  @relation("CorreccionRespuesta", fields: [organizacionId, emisionId, anteriorId], references: [organizacionId, emisionId, id], onDelete: Restrict, onUpdate: Restrict, map: "respuesta_evento_anterior_fk")
   siguientes RespuestaClienteEvento[] @relation("CorreccionRespuesta")
 
   @@unique([organizacionId, emisionId, id], map: "respuesta_evento_org_emision_id_key")
@@ -751,4 +753,31 @@ model Idempotencia {
   @@id([organizacionId, usuarioId, clave])
   @@index([expiraEn])
   @@map("idempotencia")
+}
+
+/// Decisión del Revisor sobre la excepción N de una versión (módulo 10, ADR-0014; B-29,
+/// `Exc_Resolver`). Solo alta: una decisión por excepción y versión, sin UPDATE ni DELETE
+/// (disparador también para el propietario). Se toma durante una revisión PENDIENTE de esa versión.
+model ExcepcionDecision {
+  id             String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organizacionId String   @map("organizacion_id") @db.Uuid
+  cotizacionId   String   @map("cotizacion_id") @db.Uuid
+  versionId      String   @map("version_id") @db.Uuid
+  revisionId     String   @map("revision_id") @db.Uuid
+  /// Posición de la excepción en `captura.excepciones` de la versión (1…n).
+  numero         Int
+  decision       String   @db.VarChar(10)
+  comentario     String?  @db.VarChar(2000)
+  /// Preparador de la revisión (copiado por la base): BL-17 con CHECK.
+  preparadorId   String   @map("preparador_id") @db.Uuid
+  decididoPor    String   @map("decidido_por") @db.Uuid
+  decididoNombre String   @map("decidido_nombre") @db.VarChar(200)
+  decididoEn     DateTime @default(now()) @map("decidido_en") @db.Timestamptz(3)
+
+  revision Revision  @relation(fields: [organizacionId, revisionId, versionId], references: [organizacionId, id, versionId], onDelete: Restrict, onUpdate: Restrict, map: "excepcion_decision_revision_fk")
+  autor    Membresia @relation(fields: [organizacionId, decididoPor], references: [organizacionId, usuarioId], onDelete: Restrict, onUpdate: Restrict, map: "excepcion_decision_autor_fk")
+
+  @@unique([organizacionId, versionId, numero], map: "excepcion_decision_unica_key")
+  @@index([organizacionId, revisionId])
+  @@map("excepcion_decision")
 }

@@ -11,6 +11,7 @@
  */
 import { z } from "zod";
 import { PATRON_DECIMAL_TEXTO, PATRON_FECHA_ISO } from "../decimal.js";
+import { CAMPOS_EXCEPCION } from "../calculo.js";
 
 // ---------------------------------------------------------------------------
 // Límites de la API
@@ -86,6 +87,25 @@ export const EsquemaSolicitudPartidaAdicional = z.strictObject({
   monto: EsquemaDecimalTexto,
 });
 
+/**
+ * Excepción que afecta al cálculo (módulo 10, ADR-0014): la API la arma desde el borrador de la
+ * cotización. RENDIMIENTO cambia el rendimiento o el desperdicio de un componente de esa partida;
+ * CONCEPTO_PERSONALIZADO permite calcular con ese concepto personalizado (BL-04). La calculadora
+ * sin cotización no las envía.
+ */
+export const EsquemaExcepcionCalculo = z.discriminatedUnion("tipo", [
+  z.strictObject({
+    tipo: z.literal("RENDIMIENTO"),
+    id: EsquemaCodigo,
+    partidaId: EsquemaCodigo,
+    componenteCodigo: EsquemaCodigo,
+    campo: z.enum(CAMPOS_EXCEPCION),
+    valorAplicado: EsquemaDecimalTexto,
+  }),
+  z.strictObject({ tipo: z.literal("CONCEPTO_PERSONALIZADO"), id: EsquemaCodigo, conceptoCodigo: EsquemaCodigo }),
+]);
+export type ExcepcionCalculo = z.infer<typeof EsquemaExcepcionCalculo>;
+
 export const EsquemaSolicitudCalculoDemo = z
   .strictObject({
     /** CR-05. Obligatorio: no hay valor por omisión. */
@@ -97,6 +117,8 @@ export const EsquemaSolicitudCalculoDemo = z
     preciosElegidos: z
       .array(EsquemaCodigo)
       .max(LIMITES_API.preciosElegidos, { error: `Máximo ${LIMITES_API.preciosElegidos} precios elegidos.` }),
+    /** Excepciones registradas en el borrador (opcional; módulo 10). */
+    excepciones: z.array(EsquemaExcepcionCalculo).max(100, { error: "Máximo 100 excepciones." }).optional(),
   })
   .superRefine((s, ctx) => {
     const total = s.partidas.reduce((n, p) => n + (p.tipo === "CONCEPTO" ? p.mediciones.length : 0), 0);
@@ -116,6 +138,14 @@ export const EsquemaSolicitudCalculoDemo = z
     s.preciosElegidos.forEach((c, i) => {
       if (precios.has(c)) ctx.addIssue({ code: "custom", path: ["preciosElegidos", i], message: `Precio repetido: ${c}.` });
       precios.add(c);
+    });
+    const excepciones = new Set<string>();
+    (s.excepciones ?? []).forEach((x, i) => {
+      if (excepciones.has(x.id)) ctx.addIssue({ code: "custom", path: ["excepciones", i, "id"], message: `Excepción duplicada: ${x.id}.` });
+      excepciones.add(x.id);
+      if (x.tipo === "RENDIMIENTO" && !ids.has(x.partidaId)) {
+        ctx.addIssue({ code: "custom", path: ["excepciones", i, "partidaId"], message: `No existe la partida ${x.partidaId}.` });
+      }
     });
   });
 
@@ -182,9 +212,13 @@ export const EsquemaInsumoCatalogo = z.strictObject({
   unidadBase: z.string(),
 });
 
-/** Concepto para preparar la captura: sin rendimientos, desperdicios, tarifas ni costos. */
+/**
+ * Concepto para preparar la captura: sin rendimientos, desperdicios, tarifas ni costos. `clase`
+ * (ESTANDAR, GENERICO o PERSONALIZADO) permite avisar que un personalizado exige excepción (BL-04).
+ */
 export const EsquemaConceptoCatalogo = z.strictObject({
   codigo: z.string(),
+  clase: z.string(),
   descripcion: z.string(),
   unidad: z.string(),
   tipoFormula: z.enum(["CONTEO", "LONGITUD", "AREA", "VOLUMEN"]),
@@ -304,6 +338,8 @@ export const CAPACIDADES = [
   // Módulo 9 (ADR-0013): respuesta recibida, registrada internamente por Preparador.
   "respuestas.registrar",
   "respuestas.corregir",
+  // Módulo 10 (ADR-0014): datos técnicos de las excepciones (Preparador y Revisor).
+  "excepciones.consultar",
 ] as const;
 export type Capacidad = (typeof CAPACIDADES)[number];
 
@@ -389,6 +425,9 @@ export const CODIGOS_ERROR_API = [
   "EMISION_SUSTITUIDA",
   "FECHA_RESPUESTA_INVALIDA",
   "RESPUESTA_FUERA_VIGENCIA",
+  // Módulo 10 (ADR-0014): excepciones B-22.
+  "EXCEPCION_INVALIDA",
+  "CONFLICTO_EXCEPCION",
 ] as const;
 export type CodigoErrorApi = (typeof CODIGOS_ERROR_API)[number];
 
@@ -424,6 +463,8 @@ export const EsquemaRespuestaError = z.strictObject({
     revisionVigente: z.unknown().optional(),
     /** Seguimiento actual en un conflicto; la web lo valida antes de presentarlo. */
     seguimientoVigente: z.unknown().optional(),
+    /** 409 CONFLICTO_EXCEPCION: excepciones de la versión con sus decisiones vigentes. */
+    excepcionesVigentes: z.unknown().optional(),
   }),
 });
 export type RespuestaError = z.infer<typeof EsquemaRespuestaError>;

@@ -8,7 +8,7 @@
   - **Implementado (módulo 7, ADR-0009):** `revision` (una por envío de una versión concreta, con estado y ficha) y `revision_evento` (historial de solo alta) (§8).
   - **Implementado (módulo 8, ADR-0010):** emisión y PDF original (§9).
   - **Implementado (módulo 9, ADR-0013):** eventos internos de respuesta por emisión; vigencia calculada al consultar (§10).
-  - **Sin implementar:** CRUD de usuarios, partidas y excepciones como tablas propias (hoy viven en la captura y en la instantánea de la versión), suscripciones.
+  - **Sin implementar:** CRUD de usuarios, partidas y excepciones como tablas propias (viven en la captura y en la instantánea de la versión; las decisiones del Revisor sí son tabla propia desde el módulo 10, §11), suscripciones.
 
 ## 1. Entidades y relaciones
 
@@ -57,7 +57,7 @@ Versión      1 ── N Excepción      (rendimiento, precio vencido, concepto 
 | `tblPartidas`: `tipo` (CONCEPTO/ADICIONAL), `id_concepto`, `id_tipo_adic`, `cantidad`, `monto_capturado`, `id_tarifa_mo` y copias | Partida | Entrada del motor: `PartidaConceptoEntrada` y `PartidaAdicionalEntrada`. |
 | `tblMediciones`: signo, piezas, largo, ancho, alto | Renglón de medición | `RenglonMedicion` (CR-01). |
 | `tblSelecciones`: uno por (`id_version`, `id_insumo`), precio copiado, quién y cuándo confirmó | Selección de precio | `SeleccionPrecioCalculo` (CR-07). |
-| `tblExcepciones`: tipo, partida, referencia, campo, valor aplicado, estado | Excepción | El motor usa las de RENDIMIENTO; las demás pertenecen a revisión. |
+| `tblExcepciones`: tipo, partida, referencia, campo, valor aplicado, estado | Excepción (módulo 10) | `captura.excepciones` del borrador y de la versión; el estado es la decisión en `excepcion_decision` (§11). El motor usa las de RENDIMIENTO. |
 | `tblConsumos`, `tblCompras` | Resultado interno del cálculo | Lo produce el motor; nunca se envía al cliente (D-16). |
 
 ## 3. Reglas que el modelo debe conservar
@@ -90,7 +90,7 @@ Toda relación entre datos propios es una FK compuesta con `organizacion_id`, de
 - Si los catálogos se comparten entre organizaciones o son siempre propios.
 - Planes o suscripciones (fuera del DEMO).
 - Esquema de PostgreSQL y migración desde los CSV del libro (Prisma, según ADR-0003).
-- Duplicar cotizaciones, «precios anteriores» en una versión nueva y excepciones. Descarte, contacto y emisor: módulo 8 (§9); respuestas y vigencia: módulo 9 (§10).
+- Duplicar cotizaciones y «precios anteriores» en una versión nueva. Descarte, contacto y emisor: módulo 8 (§9); respuestas y vigencia: módulo 9 (§10); excepciones: módulo 10 (§11).
 
 ## 6. Matriz de permisos vigente (módulo 5, ADR-0007 §2)
 
@@ -115,12 +115,18 @@ Toda relación entre datos propios es una FK compuesta con `organizacion_id`, de
 | `cotizaciones.consultar` | `GET /emisiones/{id}/seguimiento` | ✓ | ✓ | ✓ | ✓ | Historial de la cotización; solo organización de la sesión |
 | `respuestas.registrar` | `POST /emisiones/{id}/respuestas` | ✓ | ✗ | ✗ | ✗ | Word §1.6 Preparador; `BTN_Respuesta`, `Req_Funcion FN_PREP` |
 | `respuestas.corregir` | `POST /emisiones/{id}/respuestas/{eventoId}/correcciones` | ✓ | ✗ | ✗ | ✗ | Adaptación autorizada: nuevo evento con motivo (ADR-0013) |
+| `cotizaciones.preparar` | Registrar excepciones en `PUT /cotizaciones/{id}/borrador` (`captura.excepciones`) | ✓ | ✗ | ✗ | ✗ | `BTN_RegistrarExcepcion`: `FN_PREP` (B-22) |
+| `cotizaciones.preparar` **y** `excepciones.consultar` | `GET /excepciones/componentes` | ✓ | ✗ | ✗ | ✗ | Lista de componentes de `BTN_RegistrarExcepcion` |
+| `cotizaciones.consultar` **y** `excepciones.consultar` | `GET /cotizaciones/{id}/versiones/{n}/excepciones` | ✓ | ✓ | ✗ | ✗ | Tabla «EXCEPCIONES DE LA VERSION» de 14 REVISION. Capacidad nueva para el contrato interno (ADR-0014) |
+| `revisiones.decidir` **y** `excepciones.consultar` | `POST /revisiones/{id}/excepciones/{n}/decision` | ✗ | ✓ ² | ✗ | ✗ | `BTN_AutorizarExcepcion`: `FN_REV` ≠ preparador (B-29) |
 
 ¹ Por identidad, además de la capacidad: un Revisor no emite una versión que él preparó. Y siempre hace falta una aprobación vigente de esa versión, hecha por una persona distinta de su autor. Poder emitir no concede aprobar.
 
 **BL-17 no es una capacidad:** quien aprueba no puede ser el autor de la versión (identidad), aunque tenga o reciba después la función Revisor. Lo comprueban la API, la función de la base y un CHECK (ADR-0009 §5).
 
-**Previsto para módulos posteriores** (no implementado): registrar excepciones (Preparador); autorizar excepciones (Revisor, D-13); editar catálogos y aprobar conceptos (Administrador del catálogo); parámetros distintos del emisor y personas (Administrador del sistema).
+² Por identidad: quien preparó la versión no autoriza ni rechaza sus excepciones (API, función de la base y CHECK). La decisión solo se toma con una revisión PENDIENTE de esa versión.
+
+**Previsto para módulos posteriores** (no implementado): editar catálogos y aprobar conceptos (Administrador del catálogo); parámetros distintos del emisor y personas (Administrador del sistema).
 
 ## 7. Clientes, proyectos y cotizaciones (módulo 6, ADR-0008)
 
@@ -176,3 +182,10 @@ Estados alcanzables: folio **ACTIVO** o **DESCARTADO** (módulo 8); versión **B
 Una raíz por emisión; correcciones consecutivas sin bifurcaciones. La cabeza representa el registro vigente. SELECT/INSERT para softarq_app, sin UPDATE/DELETE ni DDL; disparadores de validación e inmutabilidad. Bitácora mínima e idempotencia en la misma sentencia de alta. softarq_respaldo dispone de SELECT mediante los permisos por defecto del migrador.
 
 La emisión fija su cotización y versión; la respuesta nunca se copia a otra emisión. Sustitución y vigencia se consultan por separado del estado interno de revisión y del resultado comercial. El último día es inclusivo, según la fecha del servidor en la zona configurada. Una aceptación histórica sigue visible después de vencer. Se permite capturar después del plazo una respuesta recibida dentro de él, y corregir con motivo una respuesta existente, decisiones expresamente autorizadas para el DEMO. Fuentes y diferencias: [módulo 9](cotizaciones/seguimiento-respuestas.md).
+
+## 11. Excepciones B-22 (módulo 10, ADR-0014)
+
+- **Excepción**: parte del borrador (`captura.excepciones`), congelada en la versión que se calcula. Tipos RENDIMIENTO (rendimiento o desperdicio de un componente de una partida), PRECIO_VENCIDO y CONCEPTO_PERSONALIZADO, siempre con motivo. Su número es su posición en la versión.
+- **Decisión** (`excepcion_decision`): una por excepción y versión, AUTORIZADA o RECHAZADA, inmutable, tomada por un Revisor distinto del preparador durante una revisión PENDIENTE de esa versión, con comentario opcional. Conserva la revisión, la persona y el instante.
+- **Relaciones**: `Versión 1 ── N Excepción (en la captura)`; `Revisión 1 ── N Decisión`; `Versión 1 ── N Decisión` (UNIQUE por número). Una versión nueva no hereda decisiones.
+- **Efecto**: las de rendimiento se aplican al calcular (pendientes o autorizadas); aprobar y emitir exigen todas autorizadas; una rechazada bloquea esa versión. El contenido comercial y el PDF no las incluyen.

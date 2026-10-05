@@ -59,7 +59,7 @@ export function Aviso({
   );
 }
 
-export function Insignia({ tono = "neutra", children }: { tono?: "neutra" | "demo" | "menor" | "estado" | "emitida"; children: ReactNode }) {
+export function Insignia({ tono = "neutra", children }: { tono?: "neutra" | "demo" | "menor" | "estado" | "emitida" | "alerta"; children: ReactNode }) {
   return <span className={`insignia insignia-${tono}`}>{children}</span>;
 }
 

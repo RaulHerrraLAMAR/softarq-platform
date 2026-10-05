@@ -14,7 +14,8 @@ import {
   type SolicitudCalculoDemo,
 } from "@softarq/contracts";
 import type { InsumoConOpciones } from "../api/servicios.ts";
-import { insumosParaElegir, type Captura, type PartidaConcepto, type RenglonCaptura } from "./estado.ts";
+import { paraCalculo } from "../excepciones/modelo.ts";
+import { insumosParaElegir, referidas, type Captura, type PartidaConcepto, type RenglonCaptura } from "./estado.ts";
 
 export type ErroresCampo = Record<string, string>;
 
@@ -79,7 +80,14 @@ export function armarSolicitud(c: Captura): SolicitudCalculoDemo {
       };
     }),
     preciosElegidos: preciosElegidos(c),
+    // Módulo 10: la vista previa aplica las excepciones del borrador, igual que el servidor al calcular.
+    ...excepcionesDeCalculo(c),
   };
+}
+
+function excepcionesDeCalculo(c: Captura): Pick<SolicitudCalculoDemo, "excepciones"> {
+  const lista = paraCalculo(c.excepciones, referidas(c));
+  return lista.length > 0 ? { excepciones: lista } : {};
 }
 
 /** Huella de lo que se enviaría: dos capturas con la misma huella producen el mismo cálculo. */

@@ -44,6 +44,7 @@ import { ServicioCotizaciones, type MedidorTiempos } from "../modules/cotizacion
 import { ServicioEmisiones, type GanchosEmision } from "../modules/cotizaciones/aplicacion/servicio-emisiones.js";
 import { ServicioRevisiones } from "../modules/cotizaciones/aplicacion/servicio-revisiones.js";
 import { ServicioRespuestas } from "../modules/cotizaciones/aplicacion/servicio-respuestas.js";
+import { ServicioExcepciones } from "../modules/cotizaciones/aplicacion/servicio-excepciones.js";
 import { generarPdf, type GeneradorPdf } from "../modules/cotizaciones/dominio/pdf/generador-pdf.js";
 import {
   AlmacenArchivos,
@@ -65,6 +66,9 @@ import {
   ProyectosController,
   RevisionesController,
   RespuestasController,
+  ExcepcionesCatalogoController,
+  ExcepcionesVersionController,
+  ExcepcionesRevisionController,
 } from "./controladores-cotizaciones.js";
 import { FiltroErrores, errorDeValidacion } from "./errores.js";
 import { GuardiaSesion } from "./guardia-sesion.js";
@@ -81,6 +85,7 @@ import {
   SERVICIO_EMISIONES,
   SERVICIO_REVISIONES,
   SERVICIO_RESPUESTAS,
+  SERVICIO_EXCEPCIONES,
 } from "./tokens.js";
 
 const VENTANA_LIMITADOR_MS = 60_000;
@@ -141,6 +146,9 @@ function moduloRaiz(config: ConfiguracionApi, opciones: OpcionesAplicacion): Dyn
       EmisionVersionController,
       EmisionesController,
       RespuestasController,
+      ExcepcionesCatalogoController,
+      ExcepcionesVersionController,
+      ExcepcionesRevisionController,
       EmisorController,
       OpenApiController,
     ],
@@ -223,6 +231,11 @@ function moduloRaiz(config: ConfiguracionApi, opciones: OpcionesAplicacion): Dyn
         useFactory: (bd: ServicioBaseDeDatos, reloj: Reloj, instante: RelojSesiones) =>
           new ServicioRespuestas(bd.cliente, reloj, instante, config.zonaHoraria),
         inject: [BASE_DE_DATOS, RELOJ, RELOJ_SESIONES],
+      },
+      {
+        provide: SERVICIO_EXCEPCIONES,
+        useFactory: (bd: ServicioBaseDeDatos, instante: RelojSesiones) => new ServicioExcepciones(bd.cliente, instante),
+        inject: [BASE_DE_DATOS, RELOJ_SESIONES],
       },
       { provide: APP_GUARD, useClass: ThrottlerGuard },
       {

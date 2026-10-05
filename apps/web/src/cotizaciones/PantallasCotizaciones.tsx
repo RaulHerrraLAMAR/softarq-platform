@@ -16,6 +16,7 @@ import { FormularioCliente, FormularioProyecto } from "../clientes/formularios.t
 import { Enlace, useRuta } from "../navegacion/ruta.tsx";
 import { CambiosVersion, EstadoVersion, ResumenCaptura } from "./componentes.tsx";
 import { TarjetaEmision } from "./emision.tsx";
+import { PanelExcepcionesVersion } from "../excepciones/PanelExcepcionesVersion.tsx";
 import { PanelRespuesta } from "./respuestas.tsx";
 
 export function ListaCotizaciones({ servicios, puedePreparar }: { servicios: ServiciosCotizaciones; puedePreparar: boolean }) {
@@ -368,7 +369,17 @@ export function NuevaCotizacion({
   );
 }
 
-export function VistaVersion({ servicios, id, numero }: { servicios: ServiciosCotizaciones; id: string; numero: number }) {
+export function VistaVersion({
+  servicios,
+  id,
+  numero,
+  puedeVerExcepciones = false,
+}: {
+  servicios: ServiciosCotizaciones;
+  id: string;
+  numero: number;
+  puedeVerExcepciones?: boolean;
+}) {
   const { estado, recargar } = useCarga((s) => servicios.consultarVersion(id, numero, s), [id, numero]);
   if (estado.fase === "cargando") return <Cargando etiqueta="Cargando la versión…" />;
   if (estado.fase === "error") return <CargaFallida fallo={estado.fallo} alReintentar={recargar} />;
@@ -444,6 +455,7 @@ export function VistaVersion({ servicios, id, numero }: { servicios: ServiciosCo
         <Detalle respuesta={{ estado: "CALCULADO", fechaCalculo: v.version.fechaCalculo, cotizacion: v.cotizacion, avisos: v.avisos }} />
       </section>
       <ResumenCaptura captura={v.captura} titulo="Captura de esta versión" />
+      {puedeVerExcepciones ? <PanelExcepcionesVersion servicios={servicios} cotizacionId={id} numero={numero} /> : null}
       {v.version.emision ? <><TarjetaEmision emision={v.version.emision} cotizaciones={servicios} /><PanelRespuesta emisionId={v.version.emision.id} servicios={servicios} /></> : null}
     </Pagina>
   );

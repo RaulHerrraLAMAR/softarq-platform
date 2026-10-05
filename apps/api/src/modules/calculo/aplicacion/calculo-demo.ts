@@ -105,7 +105,14 @@ function aSolicitudCalculo(s: SolicitudCalculoDemo, fechaCalculo: FechaISO): Sol
           },
     ),
     preciosElegidos: [...s.preciosElegidos],
-    excepciones: [],
+    // Módulo 10: excepciones registradas en el borrador. Se calculan como registradas («Pendiente»):
+    // el motor aplica pendientes y autorizadas (W §3.10); la autorización la exige la verificación.
+    excepciones: (s.excepciones ?? []).flatMap((x) =>
+      x.tipo === "RENDIMIENTO"
+        ? [{ id: x.id, partidaId: x.partidaId, componenteCodigo: x.componenteCodigo, campo: x.campo, valorAplicado: x.valorAplicado, estado: "Pendiente" as const }]
+        : [],
+    ),
+    conceptosPersonalizadosConExcepcion: (s.excepciones ?? []).flatMap((x) => (x.tipo === "CONCEPTO_PERSONALIZADO" ? [x.conceptoCodigo] : [])),
   };
 }
 

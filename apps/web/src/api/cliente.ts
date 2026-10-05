@@ -25,6 +25,11 @@ export type FalloApi =
   | { tipo: "respuesta"; codigo: "CONFLICTO_RESPUESTA" | "EMISION_SUSTITUIDA" | "FECHA_RESPUESTA_INVALIDA" | "RESPUESTA_FUERA_VIGENCIA"; mensaje: string; seguimientoVigente?: unknown; campos?: { ruta: string; mensaje: string }[] }
   | { tipo: "invalida"; campos: { ruta: string; mensaje: string }[] }
   /**
+   * Excepciones B-22 (módulo 10): 409 CONFLICTO_EXCEPCION (otra persona ya decidió;
+   * `excepcionesVigentes` sin validar) o 422 EXCEPCION_INVALIDA (campos del borrador).
+   */
+  | { tipo: "excepcion"; codigo: "CONFLICTO_EXCEPCION" | "EXCEPCION_INVALIDA"; mensaje: string; excepcionesVigentes?: unknown; campos?: { ruta: string; mensaje: string }[] }
+  /**
    * 422 con bloqueos (códigos BL, sin importes): CALCULO_BLOQUEADO y, en la revisión (módulo 7),
    * ENVIO_BLOQUEADO, APROBACION_BLOQUEADA y DECISION_BLOQUEADA (BL-17). El estado no cambió.
    */
@@ -254,6 +259,9 @@ function falloPorEstado(respuesta: Response, error: RespuestaError | null): Fall
       if (e?.codigo === "CONFLICTO_RESPUESTA" || e?.codigo === "EMISION_SUSTITUIDA") {
         return { tipo: "respuesta", codigo: e.codigo, mensaje: e.mensaje, seguimientoVigente: e.seguimientoVigente };
       }
+      if (e?.codigo === "CONFLICTO_EXCEPCION") {
+        return { tipo: "excepcion", codigo: e.codigo, mensaje: e.mensaje, excepcionesVigentes: e.excepcionesVigentes };
+      }
       if (e?.codigo === "CONFLICTO_EDICION" || e?.codigo === "BORRADOR_DESACTUALIZADO") {
         return { tipo: "conflicto", codigo: e.codigo, mensaje: e.mensaje, actual: e.actual ?? null };
       }
@@ -284,6 +292,8 @@ function falloPorEstado(respuesta: Response, error: RespuestaError | null): Fall
           return { tipo: "bloqueado", problemas: e.problemas ?? [], codigo: e.codigo, mensaje: e.mensaje };
         case "REFERENCIA_NO_DISPONIBLE":
           return { tipo: "referencia", campos: e.campos ?? [] };
+        case "EXCEPCION_INVALIDA":
+          return { tipo: "excepcion", codigo: e.codigo, mensaje: e.mensaje, campos: e.campos ?? [] };
         case "CAPTURA_INCOMPLETA":
           return { tipo: "incompleta", campos: e.campos ?? [] };
         case "REGISTRO_INACTIVO":
@@ -326,6 +336,8 @@ export function mensajeDeFallo(fallo: FalloApi): string {
       return fallo.mensaje ?? "El cálculo está bloqueado por las reglas de la cotización.";
     case "referencia":
       return "Hay referencias nuevas que no existen o no están disponibles hoy. Revise los campos marcados.";
+    case "excepcion":
+      return fallo.mensaje;
     case "revision":
     case "respuesta":
     case "estado":

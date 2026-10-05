@@ -6,3 +6,4 @@ export * from "./api/cotizaciones.js";
 export * from "./api/revisiones.js";
 export * from "./api/emisiones.js";
 export * from "./api/respuestas.js";
+export * from "./api/excepciones.js";

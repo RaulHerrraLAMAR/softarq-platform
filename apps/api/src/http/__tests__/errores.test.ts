@@ -81,6 +81,7 @@ describe("OpenAPI", () => {
       "/api/v1/cotizaciones/{id}/versiones/{numero}",
       "/api/v1/cotizaciones/{id}/versiones/{numero}/emision",
       "/api/v1/cotizaciones/{id}/versiones/{numero}/emision/validacion",
+      "/api/v1/cotizaciones/{id}/versiones/{numero}/excepciones",
       "/api/v1/cotizaciones/{id}/versiones/{numero}/revisiones",
       "/api/v1/emisiones/{id}",
       "/api/v1/emisiones/{id}/documento",
@@ -88,6 +89,7 @@ describe("OpenAPI", () => {
       "/api/v1/emisiones/{id}/respuestas/{eventoId}/correcciones",
       "/api/v1/emisiones/{id}/seguimiento",
       "/api/v1/emisor",
+      "/api/v1/excepciones/componentes",
       "/api/v1/openapi.json",
       "/api/v1/proyectos",
       "/api/v1/proyectos/{id}",
@@ -95,12 +97,15 @@ describe("OpenAPI", () => {
       "/api/v1/revisiones/{id}",
       "/api/v1/revisiones/{id}/anulacion",
       "/api/v1/revisiones/{id}/decision",
+      "/api/v1/revisiones/{id}/excepciones/{numero}/decision",
       "/api/v1/revisiones/{id}/retiro",
       "/health",
     ]);
     // Módulo 8 (ADR-0010).
     // Módulo 9 añade tres rutas documentadas sin retirar endpoints anteriores.
     expect(Object.keys(doc.components.schemas)).toEqual(expect.arrayContaining(["SeguimientoEmision", "EventoRespuestaCliente", "RegistroRespuesta", "CorreccionRespuesta"]));
+    // Módulo 10 (ADR-0014) añade tres rutas internas de excepciones, sin retirar ninguna.
+    expect(Object.keys(doc.components.schemas)).toEqual(expect.arrayContaining(["ExcepcionesVersion", "DecisionExcepcion", "RespuestaComponentesExcepcion"]));
     expect(Object.keys(doc.components.schemas)).toEqual(
       expect.arrayContaining(["SolicitudEmision", "ValidacionEmision", "DetalleEmision", "Emisor", "AnulacionAprobacion", "DescarteCotizacion"]),
     );
@@ -158,6 +163,7 @@ describe("OpenAPI", () => {
     for (const ruta of [
       "/api/v1/cotizaciones/{id}/versiones/{numero}/revisiones",
       "/api/v1/revisiones/{id}/decision",
+      "/api/v1/revisiones/{id}/excepciones/{numero}/decision",
       "/api/v1/revisiones/{id}/retiro",
     ]) {
       expect(d.paths[ruta]?.["post"]?.security, ruta).toEqual([{ cookieSesion: [], tokenCsrf: [] }]);

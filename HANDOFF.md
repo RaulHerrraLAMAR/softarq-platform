@@ -2,9 +2,11 @@
 
 > Léelo al empezar. Actualízalo al terminar cada tarea (sección por sección, sin borrar el historial de la tabla 4). Reglas de trabajo: [`AGENTS.md`](AGENTS.md).
 
-**Última actualización:** 05/10/2026 · Codex (GPT 6.1 Sol), relevo de Claude Code · módulo 9, seguimiento interno por emisión, vigencia y correcciones comerciales con historial (§18), sobre `0292c7f`. Graphify requiere actualización desde el entorno del propietario (§18).
+**Última actualización:** 05/10/2026 · Claude Code (Claude Opus 5.5), relevo de Codex · módulo 10, excepciones B-22 integradas a cálculo, revisión y emisión (§19), sobre `1c9722b`. Graphify recuperado y VIGENTE (§19). Corrección del módulo 9 (403 en lugar de 500; deriva de `schema.prisma`).
 
 ## 1. Estado actual
+
+- **Módulo 10:** implementado (ADR-0014): el Preparador registra excepciones B-22 (rendimiento o desperdicio de un componente, precio vencido, concepto personalizado) con motivo en el borrador; se congelan en la versión calculada y el cálculo del servidor aplica las de rendimiento. Un Revisor distinto del preparador autoriza o rechaza cada una durante la revisión; aprobar y emitir exigen todas autorizadas (BL-04/05/09), una rechazada bloquea esa versión y AV-04 informa las autorizadas. PDF y contenido comercial sin excepciones. Cobertura del DEMO y estimación: [`docs/cobertura-demo.md`](docs/cobertura-demo.md). Detalle en §19.
 
 - **Módulo 9:** implementado (ADR-0013): Preparador registra Aceptada/Rechazada sobre emisión exacta y corrige mediante evento nuevo con motivo. Fecha recibida dentro de vigencia inclusive; captura posterior permitida si recepción en plazo. Fecha/identidad del registro en servidor; PDF, emisión y versión intactos. Fuentes y diferencias: `docs/cotizaciones/seguimiento-respuestas.md`; verificación de esta sesión en §18.
 
@@ -97,7 +99,7 @@
   - restauración solo en `softarq_restauracion`;
   - prueba completa 30/30, con descarga del PDF por una API temporal;
   - detalle en §17.
-- **Todavía no existen:** registro o CRUD de usuarios, recuperación de contraseña, MFA, duplicar cotizaciones, respuesta del cliente (Aceptada o Rechazada), vencimiento automático, excepciones, correo, anulación de documentos emitidos ni móvil.
+- **Todavía no existen:** registro o CRUD de usuarios, recuperación de contraseña, MFA, administración de catálogos (salvo clientes y proyectos) y de parámetros, duplicar cotizaciones, modo de precios en versiones nuevas, vista previa PDF BORRADOR, salidas internas (compras calculadas y detalle), correo, anulación de documentos emitidos ni móvil (lista completa en [`docs/cobertura-demo.md`](docs/cobertura-demo.md)).
 
 ## 2. Decisiones vigentes
 
@@ -113,10 +115,14 @@
 | ADR-0008 | Clientes y proyectos por organización; cotización con folio `COT-AAAA-NNNNN` WEB DEMO por organización y año (contador atómico, sin MAX + 1); FK compuesta cotización → (organización, cliente, proyecto); borrador `jsonb` con revisión; versión inmutable (sin UPDATE/DELETE para `softarq_app` y trigger para el propietario) con instantánea interna, copias descriptivas, motor y huellas; estados alcanzables folio ACTIVO y versión BORRADOR; versión en dos fases (lectura RR solo lectura + función de una sentencia); idempotencia de 24 h por organización, usuario y clave; capacidades `clientes.*` y `cotizaciones.*` | [`docs/adr/0008-cotizaciones-versiones-folios.md`](docs/adr/0008-cotizaciones-versiones-folios.md) |
 | ADR-0009 | Revisión por versión inmutable en `revision` (PENDIENTE → APROBADA, CAMBIOS_SOLICITADOS o RETIRADA, terminales; trigger e índice parcial) y `revision_evento` (solo alta); estado de la versión derivado; solo se envía la última versión si coincide con el borrador; verificación vigente de solo lectura sin recalcular importes; BL-17 por identidad (API, función y CHECK); retirada por el Preparador; capacidades `revisiones.enviar` y `revisiones.decidir`; 409 por ficha obsoleta; idempotencia; BL-19 en guardar y calcular | [`docs/adr/0009-revision-aprobacion.md`](docs/adr/0009-revision-aprobacion.md) |
 | ADR-0010 | Emisión por Preparador o Revisor ≠ autor con aprobación vigente de otra persona (adaptación autorizada); textos por versión copiados al crear; datos descriptivos de la versión y contacto/emisor congelados al emitir (bloqueo si difieren); `emision` inmutable con trigger de coherencia; PDF DEMO con PDFKit y recursos locales; carpeta persistente fuera del repositorio; archivo → validación → hash → definitivo sin sobrescribir → registro; recuperación con `documentos:revisar`; anulación por evento; descarte del folio sin eludir revisión ni aprobación | [`docs/adr/0010-emision-pdf-anulacion-descarte.md`](docs/adr/0010-emision-pdf-anulacion-descarte.md) |
+| ADR-0011 | Grafo de código local con Graphify (solo AST), reconstrucción limpia, vigencia verificable y hooks | [`docs/adr/0011-grafo-de-codigo-graphify.md`](docs/adr/0011-grafo-de-codigo-graphify.md) |
+| ADR-0012 | Respaldo coherente de `softarq_dev` y PDF, rol de solo lectura, restauración solo en `softarq_restauracion` | [`docs/adr/0012-respaldo-y-restauracion-local.md`](docs/adr/0012-respaldo-y-restauracion-local.md) |
+| ADR-0013 | Respuesta interna por emisión exacta, vigencia inclusiva derivada, captura tardía si se recibió en plazo, correcciones como eventos nuevos con motivo | [`docs/adr/0013-seguimiento-respuestas-vigencia.md`](docs/adr/0013-seguimiento-respuestas-vigencia.md) |
+| ADR-0014 | Excepciones B-22 en el borrador, congeladas en la versión; decisión inmutable del Revisor ≠ preparador ligada a la versión; enviar con registradas, aprobar y emitir con autorizadas; rechazada bloquea esa versión (vN+1); AV-04; contrato interno con capacidad `excepciones.consultar`; sin flujo de autorización paralelo | [`docs/adr/0014-excepciones.md`](docs/adr/0014-excepciones.md) |
 | Propietario | Libro oficial `entrega\Cotizador_Estructuras_F1.xlsm`; COT-2026-00016/00017 y la persona en turno se conservan; evidencias citadas por archivo, escenario y caso | [`docs/fase1-estado-verificado.md`](docs/fase1-estado-verificado.md) §4 |
 | Entorno | Trabajo en `D:\Proyecto_SoftArq`; temporales y cachés en `_work`; sin remoto ni push | `AGENTS.md` §1 |
 
-Pendiente de decidir: selección de organización para usuarios con varias pertenencias, almacén compartido de los limitadores y de los documentos para varias instancias, respaldo automatizado de base y documentos, TLS y proxy antes de publicar, respuesta del cliente y vencimiento, y alcance de la app móvil.
+Pendiente de decidir: selección de organización para usuarios con varias pertenencias, almacén compartido de los limitadores y de los documentos para varias instancias, respaldo automatizado de base y documentos, TLS y proxy antes de publicar, exportación CSV para usuarios y alcance de la app móvil.
 
 ## 3. Esquema implementado (migración `20261002000000_catalogos`)
 
@@ -171,6 +177,16 @@ Aplicada en `softarq_test` (cada corrida de integración) y en `softarq_dev` el 
 
 Aplicada en `softarq_dev` el 03/10/2026 con `db:migrar`. `db:cargar-demo` creó el emisor DEMO y `db:cargar-usuarios-demo` creó `administrador.demo@softarq.test`.
 
+**Migración `20261005150000_respuestas_cliente` (módulo 9, ADR-0013):** tabla `respuesta_cliente_evento` (solo alta) y `softarq_registrar_respuesta`; detalle en §18.
+
+**Migración `20261005165028_excepciones` (módulo 10, ADR-0014):**
+- tabla `excepcion_decision` (FK compuestas a `revision(org, id, version)` y `membresia`; UNIQUE por organización, versión y número; CHECK de decisión, número, comentario, nombre y BL-17);
+- disparadores `excepcion_decision_inmutable_trg` y `excepcion_decision_validar_trg`;
+- función `softarq_decidir_excepcion`; `softarq_decidir_revision` reemplazada (misma firma: rechaza APROBAR con excepciones sin autorizar); `idempotencia_recurso_ck` con `excepcion`;
+- `softarq_app`: SELECT e INSERT y EXECUTE de la función; sin UPDATE, DELETE ni DDL. Bloque condicional en `permisos-app.sql`.
+
+Aplicada en `softarq_test` (cada corrida) y en `softarq_dev` el 05/10/2026 con `db:migrar`, después de un respaldo verificado.
+
 **Recursos de PostgreSQL creados (02/10/2026):**
 
 | Recurso | Características |
@@ -202,6 +218,9 @@ Credenciales: `apps/api/.env` y `.env.test` (locales, excluidos de Git). La cred
 | 04/10/2026 | Grafo de código local con Graphify (solo AST) para Claude Code y Codex: exclusiones, script de vigencia y actualización, hooks, rutina en `AGENTS.md` §12, ADR-0011 | Commit `3c352b6` |
 | 04/10/2026 | Respaldo y recuperación local: rol `softarq_respaldo`, base aislada `softarq_restauracion`, scripts `respaldo:*`, prueba completa 30/30, ADR-0012 | Ver §17 y §8 |
 | 05/10/2026 | Módulo 9: respuesta interna por emisión, vigencia y correcciones con historial; ADR-0013; respaldo/restauración de eventos y concurrencia real | 571 unitarias, 238 integración, 51 E2E, 35 restauración y 15 concurrencia; ver §18 y §8 |
+| 05/10/2026 | Graphify recuperado (diagnóstico de PATH del entorno restringido) | Commit `abe655d`; grafo VIGENTE |
+| 05/10/2026 | Corrección del módulo 9: 403 en lugar de 500 cuando la base rechaza la función | Commit `3412f0b` (regresión en integración) |
+| 05/10/2026 | Módulo 10: excepciones B-22, ADR-0014, deriva de `schema.prisma` corregida, matriz de cobertura | 604 unitarias, 252 integración, 53 E2E, 38 restauración, 17 concurrencia; ver §19 |
 
 ## 5. Comandos y resultados reales (02/10/2026)
 
@@ -419,7 +438,7 @@ En los cuatro, el resultado completo es idéntico al calculado con los fixtures 
 2. **Restricciones en SQL manual:** los CHECK y la exclusión viven en la migración. Revisa siempre el SQL de `db:nueva-migracion` antes de aplicarlo.
 3. **Sin DELETE para la aplicación:** las correcciones de catálogo se hacen desactivando o anulando. Hará falta un flujo administrativo explícito.
 4. **Partidas y selecciones** se guardan dentro del borrador y de cada versión (`jsonb`), no como tablas propias (ADR-0008).
-5. **Fuera del motor y del ensamblador:** BL-07 y BL-09 (vigencia a la emisión con excepciones).
+5. **Fuera del motor y del ensamblador:** BL-07 y BL-09 (vigencia a la emisión; con excepción PRECIO_VENCIDO desde el módulo 10), en la verificación vigente.
 6. **PostgreSQL:** escucha en `*:5432`, pero `pg_hba.conf` solo admite conexiones locales. No se modificó el servicio ni su configuración.
 7. **Fase 1:** siguen abiertas la incidencia de cierre de Excel y la observación de hoja activa.
 8. **API con sesiones, pero solo local:**
@@ -429,7 +448,7 @@ En los cuatro, el resultado completo es idéntico al calculado con los fixtures 
 10. **Avisos:**
     - AV-01 y AV-03 se publican reescritos sin importes;
     - AV-02 y AV-05 se evalúan en la revisión con la fecha del servidor (AV-02 se volverá a evaluar con la fecha de emisión);
-    - AV-04 no aplica hasta que existan excepciones.
+    - AV-04 se evalúa en la verificación (revisión y validación de emisión) desde el módulo 10.
 11. **Cierre por señal en Windows:** solo se comprobó dentro del mismo proceso; con Ctrl+C en la terminal funciona el mismo gancho (`enableShutdownHooks`).
 12. **Web DEMO:**
     - la calculadora no guarda su captura (para conservarla, «Guardar como cotización»);
@@ -472,7 +491,7 @@ En los cuatro, el resultado completo es idéntico al calculado con los fixtures 
       Las tres primeras no se pueden emitir sin una vN+1 (BL-20). Módulo 9 añadió folios DEMO propios `COT-2026-00005` y `00006` para la prueba operativa (§18); siguiente folio observado: `00007`.
 20. **Revisión (ADR-0009):**
     - desde el módulo 8, un Revisor puede anular la aprobación antes de emitir. Editar el borrador no la anula (en el libro sí), pero impide emitir la versión;
-    - sin excepciones (B-22): BL-09 siempre bloquea y AV-04 no aplica;
+    - excepciones B-22 desde el módulo 10 (ADR-0014): BL-09 se exime con PRECIO_VENCIDO autorizada; AV-04 informa las autorizadas;
     - la verificación vigente recalcula en memoria al abrir una revisión pendiente, al enviar y al aprobar (el mismo trabajo que la fase A de ADR-0008; no se midió aparte);
     - el catálogo puede cambiar entre la verificación y la sentencia de escritura; la verificación refleja el instante de su lectura;
     - las cuentas DEMO de `softarq_dev` tienen una función cada una; BL-17 en pantalla solo se ve con una cuenta con las dos (las pruebas E2E crean `ambas.e2e@softarq.test` en `softarq_test`).
@@ -485,7 +504,7 @@ En los cuatro, el resultado completo es idéntico al calculado con los fixtures 
       - respaldo y restauración de prueba con `respaldo:*` (§17); no hay tareas programadas;
     - una interrupción entre el archivo y el registro deja un archivo propio sin registro: `documentos:revisar -- --limpiar` lo borra cuando tiene más de 60 min;
     - un archivo ausente o dañado no se regenera (500 `DOCUMENTO_NO_DISPONIBLE`): se restaura desde el respaldo;
-    - seguimiento y vigencia incorporados por módulo 9 (§18); sin anulación de documentos emitidos ni excepciones (BL-09 siempre bloquea y AV-04 no aplica);
+    - seguimiento y vigencia incorporados por módulo 9 (§18); sin anulación de documentos emitidos; excepciones desde el módulo 10 (§19);
     - el almacén es local, de una sola instancia;
     - las fuentes del PDF cubren el alfabeto latino: un carácter sin glifo impide generar (`DOCUMENTO_NO_GENERADO`) en lugar de imprimirlo mal;
     - **el documento es DEMO** («DEMOSTRACIÓN» en cada página) y los datos del emisor son ficticios. No es apto para cotizaciones reales mientras falten los datos y validaciones del Word maestro (capítulo 8).
@@ -501,10 +520,10 @@ En los cuatro, el resultado completo es idéntico al calculado con los fixtures 
 
 ## 7. Siguiente tarea
 
-1. **Recompilar y reiniciar** la API y la web del propietario (§6, punto 17).
-2. **Ejecución formal de la guía manual** [`docs/web/guia-prueba-manual.md`](docs/web/guia-prueba-manual.md) (A1–A9, 1–14, C1–C15, R1–R10 y E1–E12), con el registro de la §5. Complementa la revisión personal ya declarada. No cuenta como PR-41 ni PR-44.
-3. **Módulo 9 implementado:** seguimiento interno de respuesta/vigencia (§18), una de las dos propuestas anteriores. Próximo alcance a decidir: excepciones (B-22: BL-04, BL-05 y BL-09 con autorización del Revisor, AV-04). No están implementadas en este módulo.
-4. **Operación:** actualizar Graphify con su instalación existente desde el entorno del propietario; repetir aprovisionamiento administrativo de respaldo y completar guía S1–S10. La emisión concurrente durante respaldo sí se ejecutó en esta sesión (§18). Copia externa periódica sigue siendo una decisión pendiente.
+1. **Recompilar y reiniciar** la API y la web del propietario si están en marcha con código anterior: `softarq_dev` ya tiene la migración del módulo 10, y el código anterior no conoce `excepcion_decision` ni la capacidad `excepciones.consultar` (§19, «Abrir»).
+2. **Siguiente módulo recomendado:** administración de catálogos (1): proveedores, productos, precios con vigencia (anular en lugar de borrar) y tarifas. Habilita la carga de datos reales (capítulo 8 del Word; PR-41 a PR-44). Matriz y estimación: [`docs/cobertura-demo.md`](docs/cobertura-demo.md). Después: catálogos (2) (conceptos, componentes con trazabilidad BL-05, personalizados), salidas internas de solo lectura, parámetros y personas, duplicar/modo de precios/vista previa BORRADOR, Expo (alcance por decidir) y cierre integral.
+3. **Ejecución formal de la guía manual** [`docs/web/guia-prueba-manual.md`](docs/web/guia-prueba-manual.md) (A1–A9, 1–14, C1–C15, R1–R10, E1–E12, S1–S10 y X1–X8), con el registro de la §5. Complementa la revisión personal ya declarada. No cuenta como PR-41 ni PR-44.
+4. **Operación:** repetir el aprovisionamiento administrativo de respaldo cuando haya una credencial local autorizada (no había archivo DPAPI en `_work\secrets`; no se ejecutó). Copia externa periódica de `D:\Proyecto_SoftArq\respaldos` sigue siendo una decisión pendiente.
 
 Alternativas más cortas:
 - **web DEMO:** coma decimal, conservar el borrador durante la sesión y más de 20 conceptos por consulta;
@@ -523,8 +542,11 @@ Alternativas más cortas:
 - `da4a1ff`: Módulo 8, emisión, PDF DEMO, anulación y descarte.
 - `3c352b6`: grafo de código local con Graphify.
 - `0292c7f`: respaldo y recuperación local verificables.
-- Módulo 9: commit que incorpora §18, con mensaje «Módulo 9: respuestas internas por emisión, vigencia e historial de correcciones»; consultar `git log -1 --oneline` para su hash.
-- MD5 del libro oficial al cerrar el módulo 8: `b60debc121957b8d8e3f2c2edd9a5b4f` (sin cambios).
+- `1c9722b`: Módulo 9, respuestas internas por emisión, vigencia e historial de correcciones.
+- `abe655d`: Graphify, diagnóstico del entorno restringido (solo documentación).
+- `3412f0b`: Módulo 9, 403 cuando la base rechaza la función al registrar respuestas.
+- Módulo 10: commit «Módulo 10: excepciones B-22 integradas a cálculo, revisión y emisión» (§19); consultar `git log -1 --oneline` para su hash.
+- MD5 del libro oficial al cerrar el módulo 10: `b60debc121957b8d8e3f2c2edd9a5b4f` (sin cambios).
 
 Rama `main`. Sin remoto ni push.
 
@@ -761,7 +783,7 @@ Guía completa: [`docs/herramientas/graphify.md`](docs/herramientas/graphify.md)
 | Dato | Valor |
 |---|---|
 | Versión | `graphifyy` 0.8.5 del propietario (`C:\Users\RAUL\AppData\Local\Python\pythoncore-3.14-64\Scripts\graphify.exe`). `safishamsi/graphify` redirige a `Graphify-Labs/graphify`: es el mismo proyecto. No se reinstaló. |
-| Alcance | `apps/api/src`, `apps/web/src`, `apps/web/e2e`, `packages/contracts/src`, `apps/api/scripts`, `scripts/grafo`, `scripts/http` y `*.config.ts`: **204 archivos, 2.222 nodos y unas 4.700 aristas** (04/10/2026). Exclusiones en `.graphifyignore`; lista exacta con `pnpm grafo:archivos`. |
+| Alcance | `apps/api/src`, `apps/web/src`, `apps/web/e2e`, `packages/contracts/src`, `apps/api/scripts`, `scripts/grafo`, `scripts/http` y `*.config.ts`: **232 archivos, 2.600 nodos y 5.587 aristas** al cerrar el módulo 10 (05/10/2026; 204 archivos el 04/10). Exclusiones en `.graphifyignore`; lista exacta con `pnpm grafo:archivos`. |
 | Salida | `softarq-platform\graphify-out\` (D:, ignorada por Git). Se regenera con `pnpm grafo:actualizar` si se borra. |
 | Vigencia | `pnpm grafo:estado` → VIGENTE, DESACTUALIZADO (lista los archivos), PENDIENTE (reconstrucción en curso o fallida) o AUSENTE. Solo VIGENTE significa que refleja los archivos actuales. |
 | Actualización | `pnpm grafo:actualizar` tras cambios relevantes y al cerrar cada módulo. Los hooks de Git (`pnpm grafo:instalar-hooks`, ya instalados en este clon) la lanzan en segundo plano tras `git switch` o `git merge`. |
@@ -862,3 +884,110 @@ En esta sesión restringida, ante pnpm no disponible, prefijar cada comando con 
 **Pendientes:** actualizar/certificar Graphify desde el entorno con la instalación existente; repetir realmente aprovisionamiento administrativo de respaldo (no se ejecutó); ejecución formal de guía S1–S10 y anteriores (sin atribuirla al propietario). Revisión personal del propietario sigue siendo únicamente la declaración existente del 03/10/2026; PR-41…PR-44 del Excel continúan pendientes. Sin excepciones, anulación de documentos emitidos, portal o despliegue. Vite advierte un chunk de unos 530 kB; compilación correcta, sin ampliar este módulo para reestructurar bundles.
 
 **Continuación recomendada:** recompilar y revisar personalmente S1–S10, completar esos pendientes operativos, y decidir el siguiente módulo de excepciones conforme al Word y ADR. Commit de este módulo: ver §8 y `git log -1 --oneline`; sin remoto/push/despliegue.
+
+## 19. Excepciones B-22 (módulo 10)
+
+**Sesión:** 05/10/2026, Claude Code (Claude Opus 5.5), relevo de Codex.
+- **Inicio verificado:** `D:\Proyecto_SoftArq\softarq-platform`, rama `main`, árbol limpio, HEAD `1c9722b`; no se revirtió nada ajeno.
+- **Resultados de Codex conservados como reportados (§18), sin repetirlos al iniciar:** 571, 238, 51, 35 y 15.
+- **Fuentes, en solo lectura:** Word v1.3 (copia de texto en `_work\tmp\m10`), VBA y `fase1.csv`.
+- **MD5 del libro:** `b60debc121957b8d8e3f2c2edd9a5b4f` antes y después.
+
+**1. Graphify recuperado** (commit `abe655d`, solo documentación; el script no cambia):
+- desde este entorno, `graphify.exe` y `python` resuelven al Python 3.14 del propietario con `graphifyy` 0.8.5;
+- el fallo de Codex era el PATH de su entorno restringido; la instalación no estaba dañada. Detalle en `docs/herramientas/graphify.md` §7.1, con las variables `GRAPHIFY_EXE` y `GRAPHIFY_PYTHON`;
+- reconstrucción limpia sin cambios de procedimiento;
+- consultas contrastadas con los `import`: `ServicioRespuestas`, `PanelRespuesta` y `RespuestasController`→`ServicioRespuestas` al inicio; `ServicioExcepciones`, `PanelExcepcionesVersion` y `controladores-cotizaciones`→`servicio-revisiones`→`repositorio-excepciones` al cierre;
+- al cierre: **VIGENTE**, con 232 archivos, 2.600 nodos y 5.587 aristas;
+- SQL, `schema.prisma` y `tokens.ts` se revisaron con `rg`.
+
+**2. Defectos del traspaso (módulo 9), con reproducción y regresión:**
+- **403 en lugar de 500** (commit `3412f0b`).
+  - **Defecto:** si `softarq_registrar_respuesta` lanzaba `SOFTARQ:SIN_PERMISO` (pertenencia cambiada después de iniciar la sesión), `traducirErrorBase` no lo reconocía y la API respondía 500.
+  - **Reproducción:** prueba que falla antes de la corrección (`_work\registros\modulo10\01-reproduccion-sin-permiso.log`).
+  - **Corrección:** `SIN_PERMISO` en `MENSAJES`.
+- **Deriva de `schema.prisma`** (en el commit del módulo 10).
+  - **Defecto:** las tres FK de `respuesta_cliente_evento` no tenían `map:`; `migrate dev` proponía renombrarlas en la migración siguiente.
+  - **Corrección:** `map:` en el esquema, sin cambiar la base.
+  - **Regresión:** prueba `migrate diff --exit-code` en `migraciones.integracion.test.ts`.
+- **Sin cambio:**
+  - reglas de ADR-0013 (vigencia inclusiva, captura tardía con recepción en plazo, correcciones como eventos);
+  - diferencias de estilo de la migración del módulo 9;
+  - exposición de `registradoPor` (solo anotada).
+
+**3. Reglas y decisiones:** [ADR-0014](docs/adr/0014-excepciones.md) (fuentes exactas, tabla de reglas y diferencias).
+- **Tres tipos, solo los del libro:** RENDIMIENTO (rendimiento o desperdicio de un componente), PRECIO_VENCIDO y CONCEPTO_PERSONALIZADO. No hay de precio, impuesto ni permisos.
+- **Registro:** el Preparador las registra en el borrador con motivo; se congelan en la versión calculada.
+- **Cálculo:** el servidor aplica las de rendimiento con el motor existente.
+  - TI-339: 337 piezas con la cifra de la fuente.
+  - En `softarq_dev`, el muro con ventana sin transporte y block a 13 pza/m² dio $19,965.28, coherente con el cálculo manual: +13 blocks a $13.90 sobre el R3 sin transporte.
+- **Enviar:** basta con registradas.
+- **Aprobar, verificar en revisión y emitir:** todas autorizadas.
+- **Rechazada:** bloquea esa versión; hace falta vN+1 (adaptación a versiones inmutables, no una regla nueva).
+- **AV-04:** por cada autorizada, sin valores técnicos ni motivo en el texto.
+- **Autorización:** un Revisor ≠ autor y preparador, durante la revisión PENDIENTE, con una decisión inmutable por excepción y versión. Se reutiliza `revisiones.decidir`, sin un flujo paralelo.
+- **Capacidad nueva `excepciones.consultar`** (Preparador y Revisor) para el contrato interno con datos técnicos. Versión, revisión, emisión, proyección comercial y PDF no llevan excepciones.
+
+**4. Implementación:**
+
+| Parte | Ubicación |
+|---|---|
+| Contratos | `packages/contracts/src/api/excepciones.ts`; `captura.excepciones` opcional; `excepciones` opcional en la solicitud de cálculo; `clase` en conceptos; códigos `EXCEPCION_INVALIDA` y `CONFLICTO_EXCEPCION` |
+| API | `dominio/excepciones.ts` (puro), `servicio-excepciones.ts`, `repositorio-excepciones.ts`; `verificar(…, estricto)` en `servicio-revisiones.ts`; `bl09` con exención; personalizado en `construir-entrada.ts`; rutas `GET /excepciones/componentes`, `GET /cotizaciones/{id}/versiones/{n}/excepciones` y `POST /revisiones/{id}/excepciones/{n}/decision` |
+| Base | Migración `20261005165028_excepciones` (§3); bloque condicional en `permisos-app.sql`; `probar-restauracion.mjs` comprueba la tabla nueva |
+| Web | `src/excepciones/` (`modelo.ts`, `SeccionExcepciones.tsx` en el editor y `PanelExcepcionesVersion.tsx` en la revisión y la consulta de versión); reducer, serialización, huella y diferencias del borrador; vista previa con excepciones; marca «Personalizado» en la búsqueda; insignia `alerta`. La prueba `sin-datos-internos` admite `rendimiento` y `desperdicio` solo en `src/excepciones/` (documentado) |
+
+**5. Pruebas de ESTA sesión** (registros en `D:\Proyecto_SoftArq\_work\registros\modulo10`):
+
+| Comando o comprobación | Resultado |
+|---|---|
+| `pnpm verificar` | **604/604** (API 404, web 200); compilación y tipos correctos, código 0 |
+| `pnpm verificar:integracion` | **252/252**, 14 archivos, un worker, en `softarq_test`: 238 anteriores, 1 de regresión del 403, 1 de deriva del esquema y 12 de excepciones. Incluyen TI-068 a TI-074, TI-088, TI-090, TI-093, TI-339, rangos, referencias, permisos, BL-17 (API y base), aislamiento, inmutabilidad, rechazo → vN+1, excepción tras aprobar (emisión bloqueada), dos revisores a la vez (200/409 con estado vigente), carrera rechazar/aprobar, `EXCEPCIONES_SIN_AUTORIZAR` en la función SQL, PDF y contenido comercial sin excepciones, PDF intacto tras decidir y privilegios mínimos |
+| `pnpm verificar:e2e` (después de la integración) | **53/53**, Edge, un worker, código 0: 51 anteriores y 2 nuevas (recorrido 3 con excepción → BL-05 → autorizada → AV-04 → aprobada; registro con teclado a 390 px sin desbordes) |
+| Cuatro referencias | 54,190.68, 43,312.16, 22,405.28 y 4,911.79 sin cambios (integración y E2E existentes; no se tocaron expectativas de importes) |
+| `respaldo:crear` + `respaldo:verificar` antes de migrar | `softarq_dev-20261005T174447Z-ef228e`, COMPLETO y VÁLIDO, 3/3 PDF |
+| `db:migrar` (desarrollo) | Código 0 |
+| Humo en `softarq_dev` (API temporal en 3200, detenida al terminar) | `COT-2026-00007`: BL-05 → autorizada (12.5 pza → 13) → AV-04 → APROBADA; acentos correctos |
+| `respaldo:probar-restauracion` | **38/38** (35 anteriores y 3 nuevas: relaciones y BL-17, permisos, función y disparadores, y decisiones íntegras) |
+| `respaldo:probar-concurrencia` | **17/17**, con emisión y respuesta durante una instantánea abierta; PDF anteriores intactos |
+| Revisión visual | Capturas en `_work\evidencias\modulo10`, revisadas una por una |
+| Aprovisionamiento administrativo | **No ejecutado:** no hay credencial DPAPI en `_work\secrets`. No bloquea el módulo |
+
+**Defectos propios hallados en la revisión visual y corregidos:**
+- tras autorizar, seguía visible el bloqueo anterior «No se puede aprobar»; ahora se limpia y la E2E lo comprueba;
+- la insignia «Pendiente» era verde; ahora es neutra, y «Rechazada» usa el tono de alerta.
+
+**Expectativas cambiadas a propósito:**
+- inventario OpenAPI: tres rutas y tres esquemas nuevos;
+- capacidades del Preparador: `excepciones.consultar`;
+- inventario de funciones SQL: `softarq_decidir_excepcion`;
+- prueba `sin-datos-internos`: excepción acotada a `src/excepciones/`, con una prueba que fija sus tres archivos;
+- simulaciones web con los tres métodos nuevos y `clase` en los conceptos de prueba.
+
+No se cambiaron expectativas de reglas ni de importes.
+
+**Datos de `softarq_dev`:**
+- la prueba de humo añadió `COT-2026-00007` (DEMO) y la de concurrencia `COT-2026-00008` y `00009` (DEMO);
+- nada se reparó ni se borró;
+- respaldos en `D:\Proyecto_SoftArq\respaldos\softarq_dev`; PDF originales en `D:\Proyecto_SoftArq\datos\softarq_dev\documentos`.
+
+**Abrir:**
+
+```powershell
+Set-Location D:\Proyecto_SoftArq\softarq-platform
+pnpm --filter @softarq/contracts build
+pnpm --filter @softarq/api build
+pnpm --filter @softarq/api start   # terminal 1: http://localhost:3000 (127.0.0.1)
+pnpm --filter @softarq/web dev     # terminal 2: http://localhost:5173
+```
+
+Recorrido: Preparador → Calculadora → Ejemplo 3 → «Guardar como cotización» → «Excepciones» → «Registrar excepción…» → calcular y enviar. Revisor → «Revisiones» → «Excepciones de la versión» → autorizar → aprobar. Guía X1–X8.
+
+**Pendientes:**
+- ejecución formal de la guía (todos los bloques; sin atribuirla al propietario: la revisión personal sigue siendo la declaración del 03/10/2026);
+- PR-41 a PR-44 del Excel;
+- aprovisionamiento administrativo de respaldo;
+- en `softarq_dev` no hay conceptos personalizados (no se inventan datos de catálogo): llegarán con la administración de catálogos;
+- el aviso de Vite por un chunk de unos 530 kB sigue.
+
+**Cobertura y estimación:** [`docs/cobertura-demo.md`](docs/cobertura-demo.md): de 8 a 9 módulos para el DEMO local completo y de 1 a 2 para preparar Railway. Siguiente recomendado: catálogos (1), precios y proveedores (§7).

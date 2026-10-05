@@ -53,6 +53,8 @@ import { RepositorioCotizaciones, type Autor } from "../infraestructura/reposito
 import { RepositorioEmisiones } from "../infraestructura/repositorio-emisiones.js";
 import { RepositorioRevisiones, type FilaRevision } from "../infraestructura/repositorio-revisiones.js";
 import { bl20 } from "../dominio/textos.js";
+import { av04, bloqueosExcepciones, preciosConExcepcion, sinExcepciones } from "../dominio/excepciones.js";
+import { RepositorioExcepciones } from "../infraestructura/repositorio-excepciones.js";
 import { ErrorNegocio, reconocerErrorBase } from "./errores.js";
 import { prepararIdempotencia, reproducible, type RegistroIdempotencia } from "./idempotencia.js";
 import type { RelojInstante } from "./servicio-clientes.js";
@@ -113,7 +115,8 @@ export class ServicioRevisiones {
         proyecto: version.proyecto,
         versionMotor: version.versionMotor,
         huellaCalculo: version.huellaCalculo,
-        captura: version.captura,
+        // Sin excepciones: el Revisor las consulta con su ruta y permiso propios (módulo 10).
+        captura: sinExcepciones(version.captura),
         cotizacion: version.cotizacion,
         avisos: version.avisos,
         cambios: version.cambios,
@@ -128,12 +131,17 @@ export class ServicioRevisiones {
    * cliente y proyecto, catálogos y parámetros de `hoy` (al emitir, la fecha de emisión). Recalcula
    * en memoria SOLO para comparar con la entrada guardada; la versión no se modifica. Incluye
    * BL-20 (textos de la versión, módulo 8) y la vigencia comercial vigente (CR-16 al emitir).
+   *
+   * Excepciones (módulo 10, W §3.10): `estricto` = false solo al ENVIAR (basta registrada con
+   * motivo); al verificar en revisión, aprobar y emitir deben estar AUTORIZADAS. Una rechazada
+   * bloquea siempre. AV-04 informa las autorizadas.
    */
   async verificar(
     ctx: ContextoOrganizacion,
     cotizacionId: string,
     numero: number,
     hoy: FechaISO = this.reloj.hoy(),
+    estricto = true,
   ): Promise<VerificacionRevision & { vigenciaDias: number | null }> {
     const r = await this.prisma.$transaction(
       async (tx) => {
@@ -176,13 +184,18 @@ export class ServicioRevisiones {
           catalogos.obtenerConceptos(ctx, codigosConcepto),
         ]);
         const vigenciaDias = parametros?.vigenciaDias ?? null;
-        bloqueos.push(...bl07(insumosDeEntrada(e), conProducto), ...bl09(e, precios, hoy), ...bl14(vigenciaDias));
+        const excepciones = v.captura.excepciones ?? [];
+        const decisiones = await new RepositorioExcepciones(tx).mapaDecisiones(ctx, v.id);
+        bloqueos.push(...bloqueosExcepciones(excepciones, decisiones, estricto, `v${v.numero}`));
+        const eximidos = preciosConExcepcion(excepciones, decisiones, estricto);
+        bloqueos.push(...bl07(insumosDeEntrada(e), conProducto), ...bl09(e, precios, hoy, eximidos), ...bl14(vigenciaDias));
         bloqueos.push(...bl18(v.proyeccionComercial as CotizacionComercial));
         bloqueos.push(...bl20(v.captura, `v${v.numero}`));
 
         const avisos: Aviso[] = [
           ...(v.avisos as Aviso[]),
           ...av02(e, precios, hoy, vigenciaDias),
+          ...av04(excepciones, decisiones),
           ...av05(e, conceptos),
         ];
         return { bloqueos: unicos(bloqueos), avisos: ordenarAvisos(avisos), vigenciaDias };
@@ -242,7 +255,8 @@ export class ServicioRevisiones {
       throw new ErrorNegocio("FOLIO_NO_ACTIVO", "La cotización está descartada; no se envía a revisión.");
     }
 
-    const verificacion = await this.verificar(ctx, cotizacionId, numero);
+    // W §3.10: al enviar basta con que las excepciones estén registradas con motivo.
+    const verificacion = await this.verificar(ctx, cotizacionId, numero, this.reloj.hoy(), false);
     if (verificacion.bloqueos.length > 0) {
       await this.cotizaciones.registrarEvento(ctx, actor, "cotizacion", cotizacionId, "ENVIO_BLOQUEADO", {
         numero,
@@ -424,6 +438,14 @@ export class ServicioRevisiones {
         case "AUTOAPROBACION":
           throw new ErrorNegocio("DECISION_BLOQUEADA", MENSAJE_BL17, {
             problemas: [{ codigo: "BL-17", referencia: revisionId ?? "", mensaje: MENSAJE_BL17 }],
+          });
+        case "EXCEPCIONES_SIN_AUTORIZAR":
+          throw new ErrorNegocio("APROBACION_BLOQUEADA", "No se puede aprobar: hay excepciones sin autorizar; el estado no cambió.", {
+            problemas: [{
+              codigo: "BL-05",
+              referencia: revisionId ?? "",
+              mensaje: "Todas las excepciones de la versión deben estar autorizadas por un revisor antes de aprobar (W §3.10).",
+            }],
           });
         case "OBSERVACIONES_REQUERIDAS":
         case "DECISION_INVALIDA":

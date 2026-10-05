@@ -11,7 +11,8 @@
  * - Los textos de la versión viajan solo si la captura los tiene (módulo 8).
  */
 import { PATRON_DECIMAL_TEXTO, type CapturaBorrador } from "@softarq/contracts";
-import { insumosConSeleccionGuardable, type Captura } from "./estado.ts";
+import { aBorrador as excepcionesABorrador } from "../excepciones/modelo.ts";
+import { insumosConSeleccionGuardable, referidas, type Captura } from "./estado.ts";
 import { AYUDA_DECIMAL, dimensionesDelRenglon, type ErroresCampo } from "./solicitud.ts";
 
 export type ResultadoSerializacion = { ok: true; borrador: CapturaBorrador } | { ok: false; errores: ErroresCampo };
@@ -61,9 +62,17 @@ export function serializarBorrador(c: Captura): ResultadoSerializacion {
   const seleccion = insumosConSeleccionGuardable(c)
     .filter((ins) => c.seleccion[ins] !== undefined)
     .map((ins) => ({ insumoCodigo: ins, precioCodigo: c.seleccion[ins]! }));
+  const excepciones = excepcionesABorrador(c.excepciones, referidas(c));
   return {
     ok: true,
-    borrador: { consolidarCompras: c.consolidarCompras, partidas, seleccion, ...(c.textos ? { textos: { ...c.textos } } : {}) },
+    borrador: {
+      consolidarCompras: c.consolidarCompras,
+      partidas,
+      seleccion,
+      ...(c.textos ? { textos: { ...c.textos } } : {}),
+      // Módulo 10: solo si hay excepciones (una lista vacía equivale a no tenerlas).
+      ...(excepciones.length > 0 ? { excepciones } : {}),
+    },
   };
 }
 
@@ -111,6 +120,9 @@ export function diferenciasBorrador(local: CapturaBorrador, servidor: CapturaBor
   }
   for (const [k, nombre] of [["alcance", "Alcance"], ["condiciones", "Condiciones"], ["exclusiones", "Exclusiones"]] as const) {
     if ((local.textos?.[k] ?? "").trim() !== (servidor.textos?.[k] ?? "").trim()) d.push(`${nombre}: texto distinto.`);
+  }
+  if (JSON.stringify(canonico(local.excepciones ?? [])) !== JSON.stringify(canonico(servidor.excepciones ?? []))) {
+    d.push(`Excepciones: ${(local.excepciones ?? []).length} en sus cambios y ${(servidor.excepciones ?? []).length} en la versión guardada, con diferencias.`);
   }
   return d;
 }

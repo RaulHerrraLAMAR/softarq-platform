@@ -25,6 +25,18 @@ describe("migraciones (globalSetup: esquema vaciado y migrate deploy)", () => {
     expect(r.stdout).toMatch(/up to date/i);
   });
 
+  it("schema.prisma coincide con la base migrada (sin deriva: una migración nueva no arrastra cambios ajenos)", () => {
+    // Regresión (módulo 10): las FK de respuesta_cliente_evento no tenían `map:` y `migrate dev`
+    // proponía renombrarlas en la migración siguiente.
+    const cli = join(RAIZ_API, "node_modules", "prisma", "build", "index.js");
+    const r = spawnSync(
+      process.execPath,
+      [cli, "migrate", "diff", "--from-config-datasource", "--to-schema", join("prisma", "schema.prisma"), "--exit-code"],
+      { cwd: RAIZ_API, encoding: "utf8", env: { ...process.env, SOFTARQ_ENV_FILE: ".env.test", CHECKPOINT_DISABLE: "1" } },
+    );
+    expect(r.status, r.stdout + r.stderr).toBe(0);
+  });
+
   it("la referencia común de unidades se cargó con la migración (15 de modBuild)", async () => {
     const unidades = await app.unidad.findMany({ orderBy: { clave: "asc" } });
     expect(unidades).toHaveLength(15);
@@ -180,6 +192,8 @@ describe("permisos del rol de la aplicación (softarq_app)", () => {
         "softarq_crear_cotizacion",
         "softarq_crear_proyecto",
         "softarq_crear_version",
+        // Módulo 10 (ADR-0014): decisión del Revisor sobre una excepción.
+        "softarq_decidir_excepcion",
         "softarq_decidir_revision",
         "softarq_descartar_cotizacion",
         "softarq_editar_cliente",

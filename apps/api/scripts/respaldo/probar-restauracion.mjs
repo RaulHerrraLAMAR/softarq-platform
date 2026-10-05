@@ -147,6 +147,29 @@ async function comprobarDestino(manifiesto) {
         registrar("respuestas: eventos y notas íntegros tras restaurar", JSON.stringify(filasOrigen) === JSON.stringify(filasDestino), `${filasDestino.length} eventos comparados con origen (solo lectura)`);
       } finally { await origen.end(); }
     }
+    // Módulo 10 (ADR-0014): decisiones sobre excepciones. Condicional: respaldos anteriores no la tienen.
+    if (Object.hasOwn(manifiesto.conteos, "excepcion_decision")) {
+      const inconsistencias = (await c.query(`SELECT count(*)::int n FROM excepcion_decision d
+        LEFT JOIN revision r ON r.id=d.revision_id AND r.organizacion_id=d.organizacion_id AND r.version_id=d.version_id
+        LEFT JOIN cotizacion_version v ON v.id=d.version_id AND v.organizacion_id=d.organizacion_id
+        LEFT JOIN membresia m ON m.usuario_id=d.decidido_por AND m.organizacion_id=d.organizacion_id
+        WHERE r.id IS NULL OR v.id IS NULL OR m.usuario_id IS NULL OR d.cotizacion_id<>r.cotizacion_id OR d.preparador_id<>r.preparador_id
+          OR d.decidido_por=d.preparador_id OR d.decidido_por=v.autor_id OR d.numero > coalesce(jsonb_array_length(v.captura->'excepciones'),0)`)).rows[0].n;
+      registrar("excepciones: revisión, versión, autor, BL-17 y número coherentes", inconsistencias === 0, `${inconsistencias} incoherencias`);
+      const permisos = (await c.query(`SELECT has_table_privilege('softarq_app','public.excepcion_decision','SELECT') lectura,
+        has_table_privilege('softarq_app','public.excepcion_decision','INSERT') insercion,
+        has_table_privilege('softarq_app','public.excepcion_decision','UPDATE') edicion,
+        has_table_privilege('softarq_app','public.excepcion_decision','DELETE') borrado,
+        has_function_privilege('softarq_app','public.softarq_decidir_excepcion(uuid,uuid,uuid,uuid,integer,text,text,uuid,text,bytea,timestamptz)','EXECUTE') funcion,
+        (SELECT count(*)::int FROM pg_trigger t JOIN pg_class k ON k.oid=t.tgrelid WHERE k.relname='excepcion_decision' AND NOT t.tgisinternal) disparadores`)).rows[0];
+      registrar("excepciones: permisos mínimos, función y disparadores restaurados", permisos.lectura && permisos.insercion && !permisos.edicion && !permisos.borrado && permisos.funcion && permisos.disparadores === 2, JSON.stringify(permisos));
+      const origen = new pg.Client({ connectionString: urlRespaldo().cadena }); await origen.connect();
+      try {
+        const sql = "SELECT to_jsonb(d) fila FROM excepcion_decision d ORDER BY organizacion_id,version_id,numero";
+        const filasOrigen = (await origen.query(sql)).rows, filasDestino = (await c.query(sql)).rows;
+        registrar("excepciones: decisiones íntegras tras restaurar", JSON.stringify(filasOrigen) === JSON.stringify(filasDestino), `${filasDestino.length} decisiones comparadas con origen (solo lectura)`);
+      } finally { await origen.end(); }
+    }
     const resumen = (await c.query(`SELECT
         (SELECT count(*) FROM organizacion)::int organizaciones, (SELECT count(*) FROM usuario)::int usuarios,
         (SELECT count(*) FROM cotizacion)::int cotizaciones, (SELECT count(*) FROM cotizacion_version)::int versiones,

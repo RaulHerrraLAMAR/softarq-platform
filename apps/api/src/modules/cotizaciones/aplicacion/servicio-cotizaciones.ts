@@ -41,6 +41,7 @@ import {
 import { aSolicitudCalculo, evaluarCompletitud, type ConceptoParaCaptura } from "../dominio/borrador.js";
 import { huellaReferencia, sha256 } from "../dominio/huella.js";
 import { codigosReferenciados, evaluarReferencias, referenciasNuevasInvalidas } from "../dominio/referencias.js";
+import { sinExcepciones, validarExcepciones } from "../dominio/excepciones.js";
 import { resumirCambios } from "../dominio/resumen-cambios.js";
 import { conTextosIniciales, textosPredeterminados } from "../dominio/textos.js";
 import { RepositorioEmisiones } from "../infraestructura/repositorio-emisiones.js";
@@ -121,7 +122,11 @@ export class ServicioCotizaciones {
     return { cotizaciones, limite };
   }
 
-  async detalle(ctx: ContextoOrganizacion, id: string): Promise<DetalleCotizacion> {
+  /**
+   * Detalle con el borrador. Las excepciones del borrador (datos técnicos, módulo 10) solo se
+   * incluyen para quien tiene `excepciones.consultar`; el Preparador las necesita para editarlas.
+   */
+  async detalle(ctx: ContextoOrganizacion, id: string, verExcepciones = false): Promise<DetalleCotizacion> {
     const d = await this.repo.obtenerCotizacion(ctx, id, LIMITES_COTIZACIONES.eventosRecientes);
     if (!d) throw NO_ENCONTRADO();
     const conceptos = await conceptosParaCaptura(this.catalogos, ctx, d.borrador.captura);
@@ -131,6 +136,7 @@ export class ServicioCotizaciones {
       revisiones: await this.revisiones.historialDeCotizacion(ctx, id),
       borrador: {
         ...d.borrador,
+        captura: verExcepciones ? d.borrador.captura : sinExcepciones(d.borrador.captura),
         textosPredeterminados: textosPredeterminados(await this.emisiones.ambiente(ctx)),
         completitud: evaluarCompletitud(d.borrador.captura, conceptos),
         referencias: await this.referencias(ctx, d.borrador.captura),
@@ -153,7 +159,7 @@ export class ServicioCotizaciones {
     const ahora = this.relojInstante.ahora();
     const idem = prepararIdempotencia(clave, "descartar_cotizacion", { cotizacionId: id }, s, ahora);
     const previo = await this.repo.buscarIdempotencia(ctx, autor, idem.clave);
-    if (previo) return { detalle: await this.detalle(ctx, reproducible(previo, idem, ahora)), reproducida: true };
+    if (previo) return { detalle: await this.detalle(ctx, reproducible(previo, idem, ahora), true), reproducida: true };
 
     const d = await this.repo.obtenerCotizacion(ctx, id, 0);
     if (!d) throw NO_ENCONTRADO();
@@ -167,7 +173,7 @@ export class ServicioCotizaciones {
       const r = reconocerErrorBase(e);
       if (r?.tipo === "idempotencia_repetida") {
         const otro = await this.repo.buscarIdempotencia(ctx, autor, idem.clave);
-        if (otro) return { detalle: await this.detalle(ctx, reproducible(otro, idem, ahora)), reproducida: true };
+        if (otro) return { detalle: await this.detalle(ctx, reproducible(otro, idem, ahora), true), reproducida: true };
       }
       if (r?.tipo === "negocio") {
         const motivos: Record<string, string> = {
@@ -182,7 +188,26 @@ export class ServicioCotizaciones {
       }
       throw traducirErrorBase(e);
     }
-    return { detalle: await this.detalle(ctx, id), reproducida: false };
+    return { detalle: await this.detalle(ctx, id, true), reproducida: false };
+  }
+
+  /** 422 EXCEPCION_INVALIDA si alguna excepción de la captura no es coherente (no guarda nada). */
+  private async exigirExcepcionesValidas(
+    ctx: ContextoOrganizacion,
+    captura: CapturaBorrador,
+    anterior: CapturaBorrador | null,
+    prefijo: string,
+  ): Promise<void> {
+    const lista = captura.excepciones ?? [];
+    if (lista.length === 0) return;
+    const codigos = [...new Set(lista.flatMap((x) => (x.tipo === "PRECIO_VENCIDO" ? [] : [x.conceptoCodigo])))];
+    const conceptos = codigos.length > 0 ? await this.catalogos.obtenerConceptos(ctx, codigos) : [];
+    const errores = validarExcepciones(captura, anterior, new Map(conceptos.map((c) => [c.codigo, c])));
+    if (errores.length > 0) {
+      throw new ErrorNegocio("EXCEPCION_INVALIDA", "No se guardó: hay excepciones que no corresponden a la captura o al catálogo.", {
+        campos: errores.map((x) => ({ ...x, ruta: `${prefijo}${x.ruta}` })),
+      });
+    }
   }
 
   /** Disponibilidad hoy de las referencias de una captura (solo lectura; la captura no cambia). */
@@ -210,6 +235,7 @@ export class ServicioCotizaciones {
     const r = await ejecutarIdempotente(this.repo, ctx, autor, idem, ahora, async () => {
       // Captura inicial (p. ej. desde la calculadora): todas sus referencias son nuevas.
       if (s.captura) {
+        await this.exigirExcepcionesValidas(ctx, s.captura, null, "captura.");
         const invalidas = referenciasNuevasInvalidas(s.captura, CAPTURA_BORRADOR_VACIA, await this.referencias(ctx, s.captura));
         if (invalidas.length > 0) {
           throw new ErrorNegocio(
@@ -224,7 +250,7 @@ export class ServicioCotizaciones {
       const inicial = conTextosIniciales(s.captura ?? CAPTURA_BORRADOR_VACIA, textosPredeterminados(await this.emisiones.ambiente(ctx)));
       return this.repo.crearCotizacion(ctx, autor, s.proyectoId, anio, inicial, idem);
     });
-    return { detalle: await this.detalle(ctx, r.id), reproducida: r.reproducida };
+    return { detalle: await this.detalle(ctx, r.id, true), reproducida: r.reproducida };
   }
 
   async guardarBorrador(
@@ -238,6 +264,8 @@ export class ServicioCotizaciones {
     // Si la revisión ya no es esa, se omite: la sentencia de guardado responderá el conflicto.
     const previo = await this.repo.obtenerBorrador(ctx, id);
     if (!previo) throw NO_ENCONTRADO();
+    // Excepciones (módulo 10): referencias, rangos y, para las nuevas, catálogo (`Exc_Registrar`).
+    await this.exigirExcepcionesValidas(ctx, s.captura, previo.revision === s.revision ? previo.captura : null, "");
     if (previo.revision === s.revision) {
       const invalidas = referenciasNuevasInvalidas(s.captura, previo.captura, await this.referencias(ctx, s.captura));
       if (invalidas.length > 0) {
@@ -494,7 +522,8 @@ function aVersion(v: VersionGuardada): Version {
     proyecto: v.proyecto,
     versionMotor: v.versionMotor,
     huellaCalculo: v.huellaCalculo,
-    captura: v.captura,
+    // Las excepciones de la versión se consultan con su ruta y permiso propios (módulo 10).
+    captura: sinExcepciones(v.captura),
     cotizacion: v.cotizacion,
     avisos: v.avisos,
     cambios: v.cambios,

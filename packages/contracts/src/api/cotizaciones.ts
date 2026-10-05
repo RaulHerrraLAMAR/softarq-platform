@@ -12,6 +12,7 @@ import {
   EsquemaFechaISO,
   LIMITES_API,
 } from "./esquemas.js";
+import { EsquemaListaExcepciones } from "./excepciones.js";
 
 export const LIMITES_COTIZACIONES = {
   longitudNombre: 200,
@@ -156,6 +157,11 @@ export const EsquemaCapturaBorrador = z
      * válidas tal como se guardaron; sin textos, BL-20 impide enviar, aprobar y emitir.
      */
     textos: EsquemaTextosCotizacion.optional(),
+    /**
+     * Excepciones B-22 registradas por el Preparador (módulo 10, ADR-0014). Opcional por la misma
+     * razón que `textos`. Se congelan en la versión que se calcula; la autorización es del Revisor.
+     */
+    excepciones: EsquemaListaExcepciones.optional(),
   })
   .superRefine((c, ctx) => {
     const total = c.partidas.reduce((n, p) => n + (p.tipo === "CONCEPTO" ? p.mediciones.length : 0), 0);

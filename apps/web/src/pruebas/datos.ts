@@ -8,6 +8,7 @@ import type { ConceptoCatalogo, InsumoConOpciones, ServiciosApi, TipoAdicionalCa
 
 export const CON_AREA: ConceptoCatalogo = {
   codigo: "CON-00007",
+  clase: "ESTANDAR",
   descripcion: "[DEMO] Cubierta ligera",
   unidad: "m2",
   tipoFormula: "AREA",
@@ -20,6 +21,7 @@ export const CON_AREA: ConceptoCatalogo = {
 
 export const CON_VOLUMEN: ConceptoCatalogo = {
   codigo: "CON-00008",
+  clase: "ESTANDAR",
   descripcion: "[DEMO] Losa",
   unidad: "m3",
   tipoFormula: "VOLUMEN",

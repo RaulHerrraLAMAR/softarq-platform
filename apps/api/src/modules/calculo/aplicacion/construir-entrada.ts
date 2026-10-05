@@ -9,6 +9,9 @@
  *   válido (anulado, producto o proveedor inactivo) se bloquea con BL-08; nunca se sustituye ni
  *   se elige el menor. El menor precio vigente solo se informa para el aviso AV-01.
  * - BL-04 (concepto no aprobado o inactivo) se evalúa aquí, al armar la entrada (matriz de reglas).
+ *   Un concepto PERSONALIZADO activo puede usarse aunque esté en Borrador solo si la solicitud trae
+ *   su excepción CONCEPTO_PERSONALIZADO registrada (W §3.10; `Validar` en modo ENVIAR). Que esté
+ *   AUTORIZADA lo exige la verificación al aprobar y emitir, no el cálculo.
  */
 import type {
   EntradaCalculo,
@@ -62,10 +65,12 @@ export interface SolicitudCalculo {
   /** Códigos de los precios elegidos y confirmados, uno por insumo (CR-07). */
   preciosElegidos: string[];
   excepciones?: SolicitudExcepcion[];
+  /** Conceptos PERSONALIZADO con excepción registrada en la solicitud (módulo 10). */
+  conceptosPersonalizadosConExcepcion?: string[];
 }
 
 export interface ProblemaEnsamblado {
-  codigo: "BL-04" | "BL-08";
+  codigo: "BL-04" | "BL-05" | "BL-08";
   referencia: string;
   mensaje: string;
 }
@@ -106,8 +111,19 @@ export async function construirEntradaCalculo(
   for (const c of unicos(s.preciosElegidos)) if (!precioPorCodigo.has(c)) faltantes.push({ tipo: "precio", codigo: c });
   if (faltantes.length > 0) return { estado: "NO_ENCONTRADO", faltantes };
 
-  // BL-04: solo conceptos activos y aprobados (los personalizados requerirán excepción en revisión).
+  // BL-04: solo conceptos activos y aprobados; un personalizado activo, con su excepción registrada.
+  const personalizadosConExcepcion = new Set(s.conceptosPersonalizadosConExcepcion ?? []);
   for (const c of conceptos) {
+    if (c.activo && c.clase === "PERSONALIZADO") {
+      if (!personalizadosConExcepcion.has(c.codigo)) {
+        problemas.push({
+          codigo: "BL-04",
+          referencia: c.codigo,
+          mensaje: `Concepto personalizado ${c.codigo} sin excepción registrada (registre una excepción de concepto personalizado).`,
+        });
+      }
+      continue;
+    }
     if (!c.activo || c.estado !== "Aprobado") {
       problemas.push({
         codigo: "BL-04",
@@ -132,6 +148,20 @@ export async function construirEntradaCalculo(
         codigo: "BL-08",
         referencia: p.producto.insumoCodigo,
         mensaje: `Insumo ${p.producto.insumoCodigo}: la selección ${codigo} no es válida (${motivo}). Elija de nuevo.`,
+      });
+    }
+  }
+  // Excepciones de rendimiento: el componente debe ser un componente ACTIVO del concepto de esa
+  // partida (`Exc_Registrar`). Si el catálogo cambió después de registrarla, bloquea con BL-05.
+  const partidaPorId = new Map(s.partidas.map((p) => [p.id, p]));
+  for (const x of s.excepciones ?? []) {
+    const p = partidaPorId.get(x.partidaId);
+    const c = p?.tipo === "CONCEPTO" ? conceptoPorCodigo.get(p.conceptoCodigo) : undefined;
+    if (!c || !c.componentes.some((k) => k.activo && k.codigo === x.componenteCodigo)) {
+      problemas.push({
+        codigo: "BL-05",
+        referencia: x.id,
+        mensaje: `La excepción ${x.id} cita el componente ${x.componenteCodigo}, que no es un componente activo del concepto de la partida ${x.partidaId}.`,
       });
     }
   }

@@ -21,6 +21,11 @@ import {
   EsquemaValidacionEmision,
   EsquemaSeguimientoEmision,
   EsquemaEventoRespuestaCliente,
+  EsquemaExcepcionesVersion,
+  EsquemaRespuestaComponentesExcepcion,
+  type DecisionExcepcion,
+  type ExcepcionesVersion,
+  type RespuestaComponentesExcepcion,
   type SeguimientoEmision,
   type EventoRespuestaCliente,
   type RegistroRespuesta,
@@ -102,6 +107,15 @@ export interface ServiciosCotizaciones {
   descargarDocumento(emisionId: string): Promise<ResultadoApi<Blob>>;
   emisor(signal?: AbortSignal): Promise<ResultadoApi<Emisor>>;
   guardarEmisor(datos: EdicionEmisor): Promise<ResultadoApi<Emisor>>;
+  // Excepciones B-22 (módulo 10, ADR-0014): contrato interno con capacidad propia.
+  componentesExcepcion(conceptos: readonly string[], signal?: AbortSignal): Promise<ResultadoApi<RespuestaComponentesExcepcion>>;
+  excepcionesVersion(id: string, numero: number, signal?: AbortSignal): Promise<ResultadoApi<ExcepcionesVersion>>;
+  decidirExcepcion(
+    revisionId: string,
+    numero: number,
+    d: { versionId: string; decision: DecisionExcepcion; comentario: string | null },
+    clave: string,
+  ): Promise<ResultadoApi<ExcepcionesVersion>>;
 }
 
 const conClave = (clave: string) => ({ [CABECERA_IDEMPOTENCIA]: clave });
@@ -120,6 +134,15 @@ const recortar = (t?: string) => (t === undefined ? undefined : t.trim().slice(0
 
 export function crearServiciosCotizaciones(cliente: ClienteApi): ServiciosCotizaciones {
   return {
+    componentesExcepcion: (conceptos, signal) =>
+      cliente.obtener(`/api/v1/excepciones/componentes?conceptos=${encodeURIComponent(conceptos.join(","))}`, EsquemaRespuestaComponentesExcepcion, { signal }),
+    excepcionesVersion: (id, numero, signal) =>
+      cliente.obtener(`/api/v1/cotizaciones/${encodeURIComponent(id)}/versiones/${numero}/excepciones`, EsquemaExcepcionesVersion, { signal }),
+    decidirExcepcion: (revisionId, numero, d, clave) =>
+      cliente.enviar(`/api/v1/revisiones/${encodeURIComponent(revisionId)}/excepciones/${numero}/decision`, EsquemaExcepcionesVersion, {
+        cuerpo: d,
+        cabeceras: conClave(clave),
+      }),
     seguimientoEmision: (id, antesDe, signal) => cliente.obtener(`/api/v1/emisiones/${encodeURIComponent(id)}/seguimiento${antesDe ? `?antesDe=${antesDe}` : ""}`, EsquemaSeguimientoEmision, { signal }),
     registrarRespuesta: (id, datos, clave) => cliente.enviar(`/api/v1/emisiones/${encodeURIComponent(id)}/respuestas`, EsquemaEventoRespuestaCliente, { cuerpo: datos, cabeceras: conClave(clave) }),
     corregirRespuesta: (id, eventoId, datos, clave) => cliente.enviar(`/api/v1/emisiones/${encodeURIComponent(id)}/respuestas/${encodeURIComponent(eventoId)}/correcciones`, EsquemaEventoRespuestaCliente, { cuerpo: datos, cabeceras: conClave(clave) }),

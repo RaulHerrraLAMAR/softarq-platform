@@ -14,7 +14,10 @@ import { SkipThrottle } from "@nestjs/throttler";
 import { EsquemaConsultaSeguimiento, EsquemaRegistroRespuesta, EsquemaCorreccionRespuesta,
   type SeguimientoEmision, type RegistroRespuesta, type CorreccionRespuesta, type EventoRespuestaCliente } from "@softarq/contracts";
 import { ServicioRespuestas } from "../modules/cotizaciones/aplicacion/servicio-respuestas.js";
-import { SERVICIO_RESPUESTAS } from "./tokens.js";
+import { SERVICIO_EXCEPCIONES, SERVICIO_RESPUESTAS } from "./tokens.js";
+import { EsquemaConsultaComponentesExcepcion, EsquemaDecisionExcepcion,
+  type DecisionExcepcionSolicitud, type ExcepcionesVersion, type RespuestaComponentesExcepcion } from "@softarq/contracts";
+import type { ServicioExcepciones } from "../modules/cotizaciones/aplicacion/servicio-excepciones.js";
 import {
   CABECERA_IDEMPOTENCIA,
   CABECERA_IDEMPOTENCIA_REPRODUCIDA,
@@ -241,7 +244,8 @@ export class CotizacionesController {
   @Get(":id")
   @Requiere("cotizaciones.consultar")
   detalle(@Req() req: Request, @Param() params: unknown): Promise<DetalleCotizacion> {
-    return this.servicio.detalle(organizacionDe(req), idDeRuta(params));
+    // Las excepciones del borrador solo para quien tiene su capacidad (módulo 10).
+    return this.servicio.detalle(organizacionDe(req), idDeRuta(params), sesionDe(req).capacidades.includes("excepciones.consultar"));
   }
 
   /** Reserva el folio al crear el borrador (como el libro). */
@@ -520,5 +524,63 @@ export class EmisorController {
   @Requiere("emisor.configurar")
   guardar(@Req() req: Request, @Body({ schema: EsquemaEdicionEmisor }) s: EdicionEmisor): Promise<Emisor> {
     return this.servicio.guardarEmisor(organizacionDe(req), actorDe(req), s);
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Excepciones B-22 (módulo 10, ADR-0014): contrato interno con permiso propio.
+// ---------------------------------------------------------------------------
+
+/** Componentes de catálogo para registrar una excepción de rendimiento (Preparador). */
+@Controller("excepciones")
+@SkipThrottle({ calculo: true })
+export class ExcepcionesCatalogoController {
+  constructor(@Inject(SERVICIO_EXCEPCIONES) private readonly servicio: ServicioExcepciones) {}
+
+  @Get("componentes")
+  @Requiere("cotizaciones.preparar", "excepciones.consultar")
+  componentes(
+    @Req() req: Request,
+    @Query({ schema: EsquemaConsultaComponentesExcepcion }) q: { conceptos: string[] },
+  ): Promise<RespuestaComponentesExcepcion> {
+    return this.servicio.componentes(organizacionDe(req), q.conceptos);
+  }
+}
+
+/** Excepciones congeladas en una versión, con sus decisiones: `GET /cotizaciones/{id}/versiones/{n}/excepciones`. */
+@Controller("cotizaciones")
+@SkipThrottle({ calculo: true })
+export class ExcepcionesVersionController {
+  constructor(@Inject(SERVICIO_EXCEPCIONES) private readonly servicio: ServicioExcepciones) {}
+
+  @Get(":id/versiones/:numero/excepciones")
+  @Requiere("cotizaciones.consultar", "excepciones.consultar")
+  consultar(@Req() req: Request, @Param() params: unknown): Promise<ExcepcionesVersion> {
+    const r = EsquemaParametroVersion.safeParse(params);
+    if (!r.success) throw new ErrorApi(404, "NO_ENCONTRADO", "La versión no existe en su organización.");
+    return this.servicio.consultar(organizacionDe(req), actorDe(req), r.data.id, r.data.numero);
+  }
+}
+
+/** Autorizar o rechazar la excepción N durante la revisión: `POST /revisiones/{id}/excepciones/{numero}/decision`. */
+@Controller("revisiones")
+@SkipThrottle({ calculo: true })
+export class ExcepcionesRevisionController {
+  constructor(@Inject(SERVICIO_EXCEPCIONES) private readonly servicio: ServicioExcepciones) {}
+
+  @Post(":id/excepciones/:numero/decision")
+  @HttpCode(200)
+  @Requiere("revisiones.decidir", "excepciones.consultar")
+  async decidir(
+    @Req() req: Request,
+    @Res({ passthrough: true }) res: Response,
+    @Param() params: unknown,
+    @Body({ schema: EsquemaDecisionExcepcion }) s: DecisionExcepcionSolicitud,
+  ): Promise<ExcepcionesVersion> {
+    const p = z.strictObject({ id: z.uuid(), numero: z.string().regex(/^[1-9][0-9]{0,2}$/).transform(Number) }).safeParse(params);
+    if (!p.success) throw new ErrorApi(404, "NO_ENCONTRADO", "La revisión o la excepción no existe en su organización.");
+    const r = await this.servicio.decidir(organizacionDe(req), actorDe(req), p.data.id, p.data.numero, s, claveIdempotencia(req));
+    marcarReproducida(res, r.reproducida);
+    return r.excepciones;
   }
 }

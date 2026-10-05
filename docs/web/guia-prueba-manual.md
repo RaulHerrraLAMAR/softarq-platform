@@ -142,11 +142,29 @@ Antes de empezar: API recompilada y reiniciada con `SOFTARQ_DIR_DOCUMENTOS` y `d
 | E11 | Preparador: «Descartar la cotización…» en una cotización sin aprobación ni revisión pendiente | Pide motivo; tras confirmar, «… está descartada», solo lectura y folio conservado. Con revisión pendiente, aprobación o emisión no se ofrece y se explica por qué |
 | E12 | Ancho de teléfono en «Emisión», la tarjeta emitida y «Emisor» | Una columna y sin desplazamiento horizontal |
 
+### Excepciones (X1–X8, módulo 10; pendiente de ejecución formal)
+
+Recorrido 3 del libro con la excepción opcional de la guía de demostración: «block, con 13 pza/m² y un motivo». Sesiones del Preparador y del Revisor. Fuentes y decisiones: [ADR-0014](../adr/0014-excepciones.md).
+
+| Caso | Acción | Resultado esperado |
+|---|---|---|
+| X1 | Preparador: Calculadora → Ejemplo 3 → «Guardar como cotización»; en «Excepciones», «Registrar excepción…» | Ningún tipo preseleccionado; cada tipo explica qué cambia. Sin tipo ni motivo, «Revisar excepción» lleva el foco al resumen de errores |
+| X2 | Tipo «Rendimiento o desperdicio…», partida 1, componente CMP-00011 (muestra 12.5 pza del catálogo), «Desperdicio» con valor 1 | Se rechaza junto al campo: «0 <= d < 1». La captura se conserva |
+| X3 | «Rendimiento» con 13 y un motivo; «Revisar excepción» → «Agregar al borrador» | Aparece «Registrada · pendiente de autorización» y «Cambios sin guardar». «Calcular y guardar versión» da un total distinto del de referencia ($22,405.28 del ejemplo) |
+| X4 | Envía la versión a revisión | Se envía (la excepción registrada con motivo basta, TI-069) |
+| X5 | Revisor: abre la revisión | «Excepciones de la versión» muestra 12.5 pza del catálogo, 13 aplicado y el motivo; la verificación muestra BL-05 «no está autorizada». «Aprobar» se bloquea con BL-05 |
+| X6 | «Autorizar excepción 1…» con comentario opcional y confirma | «Excepción 1 autorizada», AV-04 en avisos, el bloqueo anterior desaparece; ahora se aprueba |
+| X7 | En otra cotización, el Revisor rechaza la excepción | La versión no se puede aprobar (bloqueo «fue rechazada»); se solicitan cambios; el Preparador corrige y calcula una versión nueva, cuya excepción vuelve a «Pendiente» |
+| X8 | Emitir la versión aprobada y abrir el PDF; ancho de 390 px en el editor y en la revisión | El PDF no menciona excepciones, rendimientos ni motivos. Una columna, sin desplazamiento horizontal, foco visible con teclado |
+
+En `softarq_dev` no hay conceptos personalizados ni otra forma de reproducir un precio vencido sin manipular fechas; esos casos están cubiertos por las pruebas automatizadas (no por esta guía).
+
 ## 4. Qué no hace todavía
 
 - La calculadora DEMO no guarda su captura (para conservarla, «Guardar como cotización»).
 - La aprobación **no es una emisión** ni una entrega al cliente. La emisión (módulo 8) genera un PDF **DEMO**: no se envía por correo ni al cliente y no es una cotización comercial real.
-- Sin duplicar cotizaciones, respuesta del cliente (Aceptada o Rechazada), vencimiento automático, excepciones, correo ni app móvil.
+- Sin duplicar cotizaciones, correo ni app móvil. Respuesta y vigencia: módulo 9; excepciones: módulo 10.
+- Sin administración de catálogos: no se crean conceptos personalizados desde la web.
 - Sin registro de usuarios ni recuperación de contraseña.
 - Solo punto decimal (por ejemplo, `0.12`).
 

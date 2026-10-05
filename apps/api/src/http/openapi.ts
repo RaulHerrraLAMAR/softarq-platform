@@ -42,6 +42,10 @@ import {
   EsquemaEventoRespuestaCliente,
   EsquemaRegistroRespuesta,
   EsquemaCorreccionRespuesta,
+  EsquemaDecisionExcepcion,
+  EsquemaExcepcionesVersion,
+  EsquemaRespuestaComponentesExcepcion,
+  EsquemaConsultaComponentesExcepcion,
   EsquemaConsultaConceptos,
   EsquemaConsultaOpcionesPrecio,
   EsquemaConsultaTiposAdicional,
@@ -82,7 +86,8 @@ const DESCRIPCION_ERROR: Record<number, string> = {
     "CONFLICTO_REVISION (la revisión cambió o ya se decidió; `revisionVigente` trae su estado), " +
     "VERSION_EMITIDA (la versión ya se emitió), APROBACION_NO_VIGENTE (la aprobación se anuló o cambió), " +
     "CONFLICTO_EMISION (la versión o la aprobación vistas ya no son las vigentes), FOLIO_NO_ACTIVO (cotización descartada), " +
-    "CONFLICTO_RESPUESTA (cabeza comercial cambió; seguimientoVigente trae el estado actual) o EMISION_SUSTITUIDA (sin primera respuesta sobre documento sustituido).",
+    "CONFLICTO_RESPUESTA (cabeza comercial cambió; seguimientoVigente trae el estado actual), EMISION_SUSTITUIDA (sin primera respuesta sobre documento sustituido) " +
+    "o CONFLICTO_EXCEPCION (otra persona ya decidió la excepción; `excepcionesVigentes` trae las decisiones vigentes).",
   413: "CUERPO_DEMASIADO_GRANDE.",
   415: "TIPO_DE_CONTENIDO_NO_ADMITIDO: el cuerpo debe ser application/json.",
   422:
@@ -90,6 +95,7 @@ const DESCRIPCION_ERROR: Record<number, string> = {
     "ENVIO_BLOQUEADO / APROBACION_BLOQUEADA (bloqueos vigentes; el estado no cambió), DECISION_BLOQUEADA (BL-17: quien aprueba no puede ser el autor), " +
     "EMISION_BLOQUEADA (BL-01 a BL-20 a la fecha de emisión; nada cambió), DESCARTE_BLOQUEADO (estado que no permite descartar), " +
     "FECHA_RESPUESTA_INVALIDA (anterior a emisión o futura), RESPUESTA_FUERA_VIGENCIA (recepción después del último día), " +
+    "EXCEPCION_INVALIDA (excepción que no corresponde a la captura, al catálogo o fuera de rango; nada se guardó), " +
     "IDEMPOTENCIA_CONFLICTO o IDEMPOTENCIA_CADUCADA.",
   429: "DEMASIADAS_SOLICITUDES (cabecera Retry-After).",
   503: "SERVICIO_NO_DISPONIBLE: PostgreSQL no disponible.",
@@ -480,6 +486,32 @@ export function construirDocumentoOpenApi(): Record<string, unknown> {
           responses: { "201": ok("EventoRespuestaCliente", "Corrección inmutable (o reproducida)."), ...errores(400, 401, 403, 404, 409, 413, 415, 422, 429, 503, 500) },
         },
       },
+      "/api/v1/excepciones/componentes": {
+        get: {
+          summary: "Componentes de catálogo para registrar una excepción de rendimiento (Preparador; capacidad excepciones.consultar)",
+          description: "Datos técnicos internos (rendimiento y desperdicio de catálogo), sin costos, tarifas ni traslape. Nunca forman parte de la proyección comercial ni del PDF.",
+          parameters: parametrosQuery(EsquemaConsultaComponentesExcepcion),
+          responses: { "200": ok("RespuestaComponentesExcepcion", "Componentes activos por concepto."), ...errores(400, 401, 403, 429, 503, 500) },
+        },
+      },
+      "/api/v1/cotizaciones/{id}/versiones/{numero}/excepciones": {
+        get: {
+          summary: "Excepciones congeladas en la versión, con sus decisiones (Preparador y Revisor; capacidad excepciones.consultar)",
+          description: "Valor de catálogo con el que se calculó la versión y valor aplicado. `acciones.decidir` indica si la sesión puede autorizar o rechazar (Revisor distinto del preparador, revisión pendiente).",
+          parameters: [PARAMETRO_ID, PARAMETRO_NUMERO],
+          responses: { "200": ok("ExcepcionesVersion", "Excepciones de la versión."), ...errores(401, 403, 404, 429, 503, 500) },
+        },
+      },
+      "/api/v1/revisiones/{id}/excepciones/{numero}/decision": {
+        post: {
+          summary: "Autoriza o rechaza la excepción N de la versión en revisión (Revisor distinto del preparador, BL-17)",
+          description: "Una decisión por excepción y versión, inmutable. Aprobar y emitir exigen todas las excepciones AUTORIZADAS; una RECHAZADA impide aprobar esa versión (se corrige en una versión nueva).",
+          security: CON_EFECTOS,
+          parameters: [PARAMETRO_ID, { name: "numero", in: "path", required: true, schema: { type: "integer", minimum: 1, maximum: 100 } }, CABECERA_IDEMPOTENCIA],
+          requestBody: cuerpo("DecisionExcepcion"),
+          responses: { "200": ok("ExcepcionesVersion", "Decisión registrada (o reproducida con Idempotent-Replayed)."), ...errores(400, 401, 403, 404, 409, 413, 415, 422, 429, 503, 500) },
+        },
+      },
       "/api/v1/emisor": {
         get: {
           summary: "Datos del emisor de la organización (BL-15) y lo que falta para emitir",
@@ -527,6 +559,9 @@ export function construirDocumentoOpenApi(): Record<string, unknown> {
       },
       schemas: {
         SeguimientoEmision: json(EsquemaSeguimientoEmision, "output"),
+        RespuestaComponentesExcepcion: json(EsquemaRespuestaComponentesExcepcion, "output"),
+        ExcepcionesVersion: json(EsquemaExcepcionesVersion, "output"),
+        DecisionExcepcion: json(EsquemaDecisionExcepcion, "input"),
         EventoRespuestaCliente: json(EsquemaEventoRespuestaCliente, "output"),
         RegistroRespuesta: json(EsquemaRegistroRespuesta, "input"),
         CorreccionRespuesta: json(EsquemaCorreccionRespuesta, "input"),

@@ -120,6 +120,7 @@ export interface PrecioLeido {
 
 export interface ConceptoDisponible {
   codigo: string;
+  clase: string;
   descripcion: string;
   unidad: string;
   tipoFormula: "CONTEO" | "LONGITUD" | "AREA" | "VOLUMEN";
@@ -617,7 +618,8 @@ export class RepositorioCatalogos {
   // --------------------- consultas para la API (módulo 3) ---------------------
 
   /**
-   * Conceptos activos y aprobados, con los insumos de sus componentes activos.
+   * Conceptos activos y aprobados, con los insumos de sus componentes activos. También los
+   * PERSONALIZADO activos aunque estén en Borrador (`BTN_AgregarConcepto`; exigen excepción, BL-04).
    * Búsqueda por código o descripción; `limite` acota el resultado (la API lo limita a 100).
    */
   async listarConceptosDisponibles(
@@ -628,16 +630,20 @@ export class RepositorioCatalogos {
       where: {
         organizacionId: ctx.organizacionId,
         activo: true,
-        estado: "Aprobado",
+        AND: [
+          { OR: [{ estado: "Aprobado" }, { clase: "PERSONALIZADO" }] },
+          ...(opciones.buscar
+            ? [
+                {
+                  OR: [
+                    { codigo: { contains: opciones.buscar, mode: "insensitive" as const } },
+                    { descripcion: { contains: opciones.buscar, mode: "insensitive" as const } },
+                  ],
+                },
+              ]
+            : []),
+        ],
         ...(opciones.codigos ? { codigo: { in: [...opciones.codigos] } } : {}),
-        ...(opciones.buscar
-          ? {
-              OR: [
-                { codigo: { contains: opciones.buscar, mode: "insensitive" as const } },
-                { descripcion: { contains: opciones.buscar, mode: "insensitive" as const } },
-              ],
-            }
-          : {}),
       },
       orderBy: { codigo: "asc" },
       take: opciones.limite,
@@ -651,6 +657,7 @@ export class RepositorioCatalogos {
     });
     return filas.map((f) => ({
       codigo: f.codigo,
+      clase: f.clase,
       descripcion: f.descripcion,
       unidad: f.unidad,
       tipoFormula: f.tipoFormula as ConceptoDisponible["tipoFormula"],
@@ -659,6 +666,39 @@ export class RepositorioCatalogos {
         codigo: c.insumo.codigo,
         descripcion: c.insumo.descripcion,
         unidadBase: c.insumo.unidadBase,
+      })),
+    }));
+  }
+
+  /**
+   * Componentes activos de conceptos activos, con su rendimiento y desperdicio de catálogo, para
+   * registrar una excepción (módulo 10). Datos técnicos internos: sin costos, tarifas ni traslape.
+   */
+  async componentesParaExcepcion(
+    ctx: ContextoOrganizacion,
+    codigos: readonly string[],
+  ): Promise<{ codigo: string; clase: string; componentes: { codigo: string; insumoCodigo: string; insumoDescripcion: string; unidad: string; rendimiento: string; desperdicio: string }[] }[]> {
+    const filas = await this.db.concepto.findMany({
+      where: { organizacionId: ctx.organizacionId, activo: true, codigo: { in: [...codigos] } },
+      orderBy: { codigo: "asc" },
+      include: {
+        componentes: {
+          where: { organizacionId: ctx.organizacionId, activo: true },
+          orderBy: { orden: "asc" },
+          include: { insumo: { select: { codigo: true, descripcion: true } } },
+        },
+      },
+    });
+    return filas.map((f) => ({
+      codigo: f.codigo,
+      clase: f.clase,
+      componentes: f.componentes.map((k) => ({
+        codigo: k.codigo,
+        insumoCodigo: k.insumo.codigo,
+        insumoDescripcion: k.insumo.descripcion,
+        unidad: k.unidadRendimiento,
+        rendimiento: textoDeDecimal(k.rendimiento),
+        desperdicio: textoDeDecimal(k.desperdicio),
       })),
     }));
   }

@@ -138,6 +138,9 @@ const ESTADO_NEGOCIO: Record<CodigoNegocio, number> = {
   EMISION_SUSTITUIDA: 409,
   FECHA_RESPUESTA_INVALIDA: 422,
   RESPUESTA_FUERA_VIGENCIA: 422,
+  // Módulo 10 (ADR-0014).
+  EXCEPCION_INVALIDA: 422,
+  CONFLICTO_EXCEPCION: 409,
 };
 
 export function traducirError(error: unknown): ErrorApi {

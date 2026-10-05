@@ -38,7 +38,7 @@ Los identificadores CR-01 a CR-16 están presentes en W v1.3 (§3.3 a §3.7) y e
 | CR-15 Redondeo mitad hacia arriba, simétrico | W §3.6; VBA `modRedondeo.RedondearMA` | `decimal.ts` (`redondearMA`) | PC-01 a PC-06; prueba de mutación (al cambiarlo por mitad al par fallan 4 pruebas) |
 | CR-16 Vigente hasta = emisión + N días naturales | W §3.7; VBA `CR16_VigenteHasta` | `vigencias.ts` (`cr16VigenteHasta`) | PC-41 y PC-42 |
 | Margen (venta − costo) ÷ venta; k ÷ (1 + k) | W §3.6; VBA `Margen`, `MargenDeRecargo` | `precio-venta.ts` | PC-35 y PC-36 |
-| Excepción de rendimiento o desperdicio (no rechazada) | W §3.10; VBA `Motor_Modelo` | `motor.ts` | `bloqueos.test.ts` (excepciones) |
+| Excepción de rendimiento o desperdicio (no rechazada) | W §3.10; VBA `Motor_Modelo`; TI-091, TI-339 | `motor.ts`; desde el borrador por `calculo-demo.aSolicitudCalculo` (módulo 10, ADR-0014) | `bloqueos.test.ts` (excepciones); `cotizaciones/__tests__/excepciones.test.ts` (337 piezas, TI-339; catálogo intacto, TI-092); `excepciones.integracion.test.ts` |
 | BL-03 Sin partidas, sin medición o cantidad ≤ 0 | W §3.11; VBA `Motor_Modelo`, `Calc_Ejecutar` | `motor.ts` | `bloqueos.test.ts` |
 | BL-05 Rendimiento ≤ 0 o desperdicio fuera de [0,1) (rangos) | W §3.11; VBA `modValidacion:102` | `motor.ts` | `bloqueos.test.ts` |
 | BL-06 Conversión faltante, tarifa en otra unidad o unidad del concepto que no corresponde a la fórmula | W §3.11; VBA `Calc_Ejecutar`, `Motor_Modelo`, `modValidacion:97`; unidades de `fuentes\build\modBuild.bas` | `motor.ts`, `unidades.ts` | `bloqueos.test.ts` |
@@ -80,10 +80,11 @@ Las medidas, precios y parámetros completos de cada escenario están en `domain
 | Regla | Módulo previsto / estado |
 |---|---|
 | BL-01 y BL-02 | **Implementadas**: activos al versionar (módulo 6) y al enviar y aprobar (módulo 7); al emitir, completas (contacto, ubicación, descripción, proyecto del cliente) y coherentes con las copias de la versión (módulo 8, `dominio/emision.ts`, `bl01` y `bl02`) |
-| BL-04 para conceptos personalizados con excepción autorizada | Excepciones y emisión (BL-04 de estado y BL-08 de selección inválida están en el ensamblador del módulo 2) |
+| BL-04 para conceptos personalizados con excepción | **Implementada** (módulo 10, ADR-0014): el ensamblador calcula un personalizado activo solo con su excepción registrada (`construir-entrada.ts`); al aprobar y emitir debe estar autorizada (`bloqueosExcepciones`). TI-088 |
 | BL-05 en su parte de trazabilidad (fuente, fecha y responsable técnico) | Catálogos (aprobación de conceptos) |
 | BL-07 (insumo sin producto activo) | **Implementada** en la verificación vigente al enviar, aprobar y emitir (`bl07`) |
-| BL-09 (precio no vigente) | **Implementada** al enviar, aprobar y emitir, con la fecha del servidor, que al emitir es la fecha de emisión (`bl09`). Sin excepciones: siempre bloquea |
+| BL-09 (precio no vigente) | **Implementada** al enviar, aprobar y emitir, con la fecha del servidor, que al emitir es la fecha de emisión (`bl09`). Desde el módulo 10, salvo excepción PRECIO_VENCIDO: registrada al enviar y autorizada al aprobar y emitir (`preciosConExcepcion`). TI-068 a TI-073 |
+| BL-04, BL-05 y BL-09 por excepciones pendientes o rechazadas | **Implementadas** (módulo 10): pendiente bloquea en modo estricto (aprobar, verificar en revisión y emitir), con el código de su tipo; rechazada bloquea siempre esa versión (`bloqueosExcepciones`). Además, `softarq_decidir_revision` rechaza APROBAR si falta alguna autorizada. TI-069, TI-070, TI-093 |
 | BL-14 (vigencia comercial) | **Implementada** en la verificación vigente (`bl14`) |
 | BL-15 (emisor) | **Implementada** al emitir (módulo 8, `faltantesEmisor` y `bl15`): nombre, domicilio, teléfono, correo y logotipo existente |
 | BL-20 (textos) | **Implementada** (módulo 8, `dominio/textos.ts`, `bl20`): textos de la versión al enviar, aprobar y emitir; no intervienen en el cálculo |
@@ -92,11 +93,11 @@ Las medidas, precios y parámetros completos de cada escenario están en `domain
 | BL-18 sobre la proyección guardada | **Implementada** en la verificación vigente (`bl18`) |
 | BL-19 (estado) | **Implementada** para enviar, decidir, guardar y calcular con revisión pendiente (módulo 7) y para emitir (ya emitida, no es la última, descartada, revisión pendiente; módulo 8, `bl19`) |
 | AV-02 (precio vence antes del fin de la vigencia comercial) | **Implementado** como aviso con la fecha del servidor (`av02`); al emitir, con la fecha de emisión + `VIGENCIA_DIAS` (CR-16) |
-| AV-04 (excepciones autorizadas) | Excepciones (la web no tiene excepciones) |
+| AV-04 (excepciones autorizadas) | **Implementado** (módulo 10, `av04`): un aviso por excepción autorizada, sin valores técnicos ni motivo en el texto. TI-072 |
 | AV-05 (concepto genérico o personalizado) | **Implementado** como aviso (`av05`) |
 | Folios, estados, inmutabilidad de lo emitido y PDF | **Implementados** (módulos 6 a 8): emisión inmutable, PDF DEMO con hash, descarte (ADR-0010) |
 
-Pruebas: `apps/api/src/modules/cotizaciones/__tests__/verificacion.test.ts` y `emision.test.ts` (unitarias), `revisiones.integracion.test.ts` y `emision.integracion.test.ts` (BL-01, 02, 08, 09, 10, 15, 17, 19, 20 y AV-02 con fechas distintas del servidor; los cuatro totales de referencia emitidos y leídos del PDF). Fuente: `Validar` y `Avisos` de `modValidacion.bas` y Word maestro §3.11 y §3.12.
+Pruebas: `apps/api/src/modules/cotizaciones/__tests__/verificacion.test.ts`, `emision.test.ts` y `excepciones.test.ts` (unitarias), `excepciones.integracion.test.ts` (módulo 10), `revisiones.integracion.test.ts` y `emision.integracion.test.ts` (BL-01, 02, 08, 09, 10, 15, 17, 19, 20 y AV-02 con fechas distintas del servidor; los cuatro totales de referencia emitidos y leídos del PDF). Fuente: `Validar` y `Avisos` de `modValidacion.bas` y Word maestro §3.11 y §3.12.
 
 ## 4. Discrepancias entre fuentes y decisión
 

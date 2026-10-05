@@ -88,3 +88,14 @@ DO $$ BEGIN
     GRANT EXECUTE ON FUNCTION public.softarq_registrar_respuesta(UUID,UUID,UUID,UUID,JSONB,DATE,TIMESTAMPTZ,UUID,TEXT,BYTEA,TIMESTAMPTZ) TO softarq_app;
   END IF;
 END $$;
+
+-- ADR-0014 (módulo 10). Condicional para poder restaurar también respaldos de módulos anteriores.
+DO $$ BEGIN
+  IF to_regclass('public.excepcion_decision') IS NOT NULL THEN
+    REVOKE UPDATE, DELETE ON TABLE public.excepcion_decision FROM softarq_app;
+    GRANT SELECT, INSERT ON TABLE public.excepcion_decision TO softarq_app;
+    REVOKE ALL ON FUNCTION public.excepcion_decision_inmutable(), public.excepcion_decision_validar() FROM PUBLIC;
+    REVOKE ALL ON FUNCTION public.softarq_decidir_excepcion(UUID,UUID,UUID,UUID,INTEGER,TEXT,TEXT,UUID,TEXT,BYTEA,TIMESTAMPTZ) FROM PUBLIC;
+    GRANT EXECUTE ON FUNCTION public.softarq_decidir_excepcion(UUID,UUID,UUID,UUID,INTEGER,TEXT,TEXT,UUID,TEXT,BYTEA,TIMESTAMPTZ) TO softarq_app;
+  END IF;
+END $$;

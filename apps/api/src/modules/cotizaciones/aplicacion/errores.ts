@@ -33,7 +33,10 @@ export type CodigoNegocio =
   | "CONFLICTO_RESPUESTA"
   | "EMISION_SUSTITUIDA"
   | "FECHA_RESPUESTA_INVALIDA"
-  | "RESPUESTA_FUERA_VIGENCIA";
+  | "RESPUESTA_FUERA_VIGENCIA"
+  // Módulo 10 (ADR-0014): excepciones B-22.
+  | "EXCEPCION_INVALIDA"
+  | "CONFLICTO_EXCEPCION";
 
 export interface DetalleError {
   campos?: { ruta: string; mensaje: string }[];
@@ -42,6 +45,8 @@ export interface DetalleError {
   /** Estado vigente de una revisión (409 CONFLICTO_REVISION). */
   revisionVigente?: unknown;
   seguimientoVigente?: unknown;
+  /** Excepciones de la versión con sus decisiones vigentes (409 CONFLICTO_EXCEPCION). */
+  excepcionesVigentes?: unknown;
 }
 
 export class ErrorNegocio extends Error {

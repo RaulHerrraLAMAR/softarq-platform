@@ -37,6 +37,8 @@ export const CAPACIDADES_POR_FUNCION: Readonly<Record<FuncionUsuario, readonly C
     "respuestas.registrar",
     "respuestas.corregir",
     "emisiones.emitir",
+    // Módulo 10 (ADR-0014): datos técnicos de las excepciones que registra (B-22).
+    "excepciones.consultar",
   ],
   REVISOR: [
     "sesion.propia",
@@ -45,6 +47,8 @@ export const CAPACIDADES_POR_FUNCION: Readonly<Record<FuncionUsuario, readonly C
     "cotizaciones.consultar",
     "revisiones.decidir",
     "emisiones.emitir",
+    // Módulo 10 (ADR-0014): ver las excepciones que autoriza o rechaza (B-29).
+    "excepciones.consultar",
   ],
   ADMIN_CATALOGO: ["sesion.propia", "catalogos.consultar", "clientes.consultar", "clientes.gestionar", "cotizaciones.consultar"],
   ADMIN_SISTEMA: ["sesion.propia", "catalogos.consultar", "clientes.consultar", "cotizaciones.consultar", "emisor.configurar"],
