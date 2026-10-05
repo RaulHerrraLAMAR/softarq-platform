@@ -147,6 +147,29 @@ Las relaciones del grafo son `EXTRACTED` (del AST), salvo 9 `INFERRED` de 4.699.
 - Los instaladores solo se ejecutaron en la copia desechable de `_work`.
 - `~/.claude` y `~/.codex` no se modificaron.
 
+## 7.1 Entornos que no encuentran Graphify (diagnóstico del 05/10/2026)
+
+En la sesión del módulo 9, Codex no pudo reconstruir el grafo: `python` daba ENOENT y el Python propio de su entorno no tenía el módulo `graphify`. Comprobado después desde la sesión del propietario (Claude Code, Git Bash y PowerShell):
+
+| Comprobación | Resultado |
+|---|---|
+| `graphify` en el PATH | `C:\Users\RAUL\AppData\Local\Python\pythoncore-3.14-64\Scripts\graphify.exe` |
+| `python` en el PATH | `C:\Users\RAUL\AppData\Local\Python\bin\python.exe` → intérprete `pythoncore-3.14-64`, con `graphifyy` 0.8.5 en su `site-packages` |
+| Qué usa `grafo.mjs` | `GRAPHIFY_EXE` o, si no existe, `graphify`; `GRAPHIFY_PYTHON` o, si no existe, `python` (detección del conjunto indexado). No hay rutas antiguas en el repositorio |
+| `pnpm grafo:actualizar` | Correcto: 221 archivos, 2.389 nodos y 5.124 aristas; `grafo:estado` VIGENTE |
+
+**Conclusión:** la instalación no estaba dañada. El fallo se debía a un entorno restringido sin el PATH del usuario. No se reinstaló nada ni se cambiaron perfiles.
+
+Si un entorno no hereda ese PATH, se pueden indicar las rutas solo para el comando, sin tocar configuraciones globales. Las variables ya existían en el script:
+
+```powershell
+$env:GRAPHIFY_EXE = 'C:\Users\RAUL\AppData\Local\Python\pythoncore-3.14-64\Scripts\graphify.exe'
+$env:GRAPHIFY_PYTHON = 'C:\Users\RAUL\AppData\Local\Python\pythoncore-3.14-64\python.exe'
+pnpm grafo:actualizar
+```
+
+Si el entorno no puede leer esas rutas (acceso denegado), no hay alternativa en el repositorio. Se trabaja con `rg` y el grafo se actualiza después desde el entorno del propietario. El procedimiento de reconstrucción limpia de la §6.1 no cambia.
+
 ## 8. Desinstalar del proyecto
 
 1. Borrar `graphify-out/`.
