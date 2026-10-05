@@ -90,6 +90,8 @@ const MENSAJES: Record<string, [CodigoNegocio, string]> = {
   FECHA_RESPUESTA_INVALIDA: ["FECHA_RESPUESTA_INVALIDA", "La fecha recibida debe estar entre la emisión y la fecha del servidor."],
   RESPUESTA_FUERA_VIGENCIA: ["RESPUESTA_FUERA_VIGENCIA", "La respuesta se recibió después del último día de vigencia del documento."],
   NO_ENCONTRADO: ["NO_ENCONTRADO", "El registro no existe en su organización."],
+  // softarq_exigir_funcion: la pertenencia perdió la función después de iniciar la sesión (403, no 500).
+  SIN_PERMISO: ["SIN_PERMISO", "Su pertenencia ya no tiene la función necesaria para esta operación."],
   CONFLICTO_EDICION: ["CONFLICTO_EDICION", "Otra persona o pestaña guardó cambios antes; revise la versión vigente."],
   BORRADOR_DESACTUALIZADO: [
     "BORRADOR_DESACTUALIZADO",

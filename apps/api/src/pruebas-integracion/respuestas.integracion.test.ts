@@ -11,6 +11,8 @@ import { ESCENARIOS } from "../modules/calculo/domain/__tests__/fixtures/escenar
 import { directorioDocumentosPrueba, prismaApp, urlDePrueba, vaciarDocumentosPrueba } from "./entorno.js";
 import { ClienteHttp, cuenta, crearCuentas, prismaMigrador, NOMBRE_COOKIE, type Credencial } from "./sesiones.js";
 import { borradorDesdeEntrada } from "./solicitudes.js";
+import { ServicioRespuestas } from "../modules/cotizaciones/aplicacion/servicio-respuestas.js";
+import { ErrorNegocio } from "../modules/cotizaciones/aplicacion/errores.js";
 const db = prismaApp();
 let admin: Awaited<ReturnType<typeof prismaMigrador>>, app: INestApplication, org: string;
 let p: ClienteHttp, p2: ClienteHttp, r: ClienteHttp, a: ClienteHttp, otro: ClienteHttp;
@@ -118,6 +120,18 @@ describe("seguimiento interno de una emisión exacta", () => {
     for(let n=2;n<=52;n++) { res=await p.post(`${ruta(e.emision)}/${res.cuerpo.id}/correcciones`, { ...datos, motivo: `Corrección de nota interna número ${n}.` },idem()); expect(res.status,res.texto).toBe(201); }
     const s=await seguimiento(e.emision); expect(s.historial).toHaveLength(50); expect(s.siguienteAntesDe).toBe(3);
     const pag=await p.get(`/api/v1/emisiones/${e.emision}/seguimiento?antesDe=${s.siguienteAntesDe}`); expect(pag.status).toBe(200); const anterior=EsquemaSeguimientoEmision.parse(pag.cuerpo); expect(anterior.historial.map((e)=>e.numero)).toEqual([2,1]); expect(anterior.respuestaVigente?.numero).toBe(52); expect(anterior.siguienteAntesDe).toBeNull();
+  });
+  it("si la base rechaza la función (pertenencia cambiada tras la sesión), responde SIN_PERMISO y no 500", async () => {
+    // Regresión: SOFTARQ:SIN_PERMISO de softarq_registrar_respuesta no se traducía y llegaba como ERROR_INTERNO.
+    const e = await emitir();
+    const revisor = await db.usuario.findUniqueOrThrow({ where: { correo: "rev.resp@softarq.test" } });
+    const servicio = new ServicioRespuestas(db, { hoy: () => hoy }, { ahora: () => new Date() }, "America/Mexico_City");
+    // La capacidad viene de una sesión anterior; la función real en la base es REVISOR.
+    const actor = { usuarioId: revisor.id, nombre: revisor.nombre, capacidades: ["respuestas.registrar"] as const };
+    const intento = servicio.registrar({ organizacionId: org }, actor, e.emision, null, { resultado: "ACEPTADA", fechaRespuesta: "2026-09-25", nota: null }, randomUUID());
+    await expect(intento).rejects.toBeInstanceOf(ErrorNegocio);
+    await expect(intento).rejects.toMatchObject({ codigo: "SIN_PERMISO" });
+    expect((await seguimiento(e.emision)).historial).toHaveLength(0);
   });
   it("rol de aplicación mínimo: sin UPDATE/DELETE ni DDL", async () => {
     const [f] = await db.$queryRaw<{ lectura:boolean; insercion:boolean; edicion:boolean; borrado:boolean; ddl:boolean }[]>`SELECT has_table_privilege(current_user,'public.respuesta_cliente_evento','SELECT') lectura,has_table_privilege(current_user,'public.respuesta_cliente_evento','INSERT') insercion,has_table_privilege(current_user,'public.respuesta_cliente_evento','UPDATE') edicion,has_table_privilege(current_user,'public.respuesta_cliente_evento','DELETE') borrado,has_schema_privilege(current_user,'public','CREATE') ddl`;
