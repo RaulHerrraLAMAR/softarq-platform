@@ -431,6 +431,7 @@ export class ServicioAdministracionCatalogos {
     const limite = limiteDe(c.limite);
     const r = await this.repo.listarInsumos(ctx, {
       ...(c.buscar !== undefined ? { buscar: c.buscar } : {}),
+      incluirInactivos: c.incluirInactivos ?? false,
       ...(c.despuesDe !== undefined ? { despuesDe: c.despuesDe } : {}),
       limite,
     });

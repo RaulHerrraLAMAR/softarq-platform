@@ -38,6 +38,15 @@ async function irACatalogo(p: Page, vista: "Proveedores" | "Productos" | "Precio
   await p.getByRole("navigation", { name: "Secciones del catálogo" }).getByRole("link", { name: vista }).click();
 }
 
+/** Selector con búsqueda (módulo 12): busca el código en el servidor y elige su resultado. */
+async function elegir(p: Page, grupo: RegExp, codigo: string): Promise<void> {
+  const g = p.getByRole("group", { name: grupo });
+  await g.getByRole("searchbox").fill(codigo);
+  await g.getByRole("button", { name: "Buscar" }).click();
+  await g.getByRole("radio", { name: new RegExp(codigo) }).check();
+  await expect(g).toContainText(`Seleccionado: ${codigo}`);
+}
+
 /** Mensaje de confirmación con el código creado. */
 async function codigoCreado(p: Page, patron: RegExp): Promise<string> {
   const mensaje = p.getByText(patron);
@@ -71,7 +80,7 @@ test("el Preparador no ve el catálogo; el Administrador registra proveedor, pro
 
   await irACatalogo(page, "Productos");
   await page.getByRole("button", { name: "Nuevo producto" }).click();
-  await page.getByLabel(etiqueta("Insumo que cubre")).selectOption("INS-00010");
+  await elegir(page, /Insumo que cubre/, "INS-00010");
   await page.getByLabel(etiqueta("Descripción comercial")).fill(`[DEMO] Block E2E ${s}`);
   await page.getByLabel(etiqueta("Presentación")).fill("pieza");
   await page.getByLabel(etiqueta("Unidad de compra")).selectOption("pza");
@@ -83,8 +92,8 @@ test("el Preparador no ve el catálogo; el Administrador registra proveedor, pro
 
   await irACatalogo(page, "Precios");
   await page.getByRole("button", { name: "Registrar precio" }).click();
-  await page.getByLabel("Producto comercial (activo)").selectOption(pcm);
-  await page.getByLabel("Proveedor (activo)").selectOption(prv);
+  await elegir(page, /^Producto comercial \(activo\)/, pcm);
+  await elegir(page, /^Proveedor \(activo\)/, prv);
   await page.getByLabel(/Precio en MXN por pza/).fill("13.7");
   await expect(page.getByLabel(etiqueta("Vigente desde"))).toHaveValue(HOY);
   await page.getByLabel(etiqueta("Vigente hasta")).fill("2027-03-31");
@@ -213,9 +222,10 @@ test("catálogo a 390 px con teclado: precios, foco visible y sin desborde @movi
   await page.keyboard.press("Enter");
   await expect(page.getByRole("form", { name: "Registrar precio" })).toBeVisible();
   // Al abrir el formulario, el foco pasa a su primer campo; Tab avanza al siguiente.
-  await expect(page.getByLabel("Producto comercial (activo)")).toBeFocused();
+  const producto = page.getByRole("group", { name: /Producto comercial/ });
+  await expect(producto.getByRole("searchbox")).toBeFocused();
   await page.keyboard.press("Tab");
-  await expect(page.getByLabel("Proveedor (activo)")).toBeFocused();
+  await expect(producto.getByRole("button", { name: "Buscar" })).toBeFocused();
   await sinDesbordeHorizontal(page);
   await evidencia(page, info, "05-movil-registrar-precio", true);
   await page.getByRole("button", { name: "Cancelar" }).click();

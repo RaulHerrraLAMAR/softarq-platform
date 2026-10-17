@@ -4,10 +4,10 @@
  * anuncia antes de la respuesta del servidor; conflictos que conservan lo escrito; respuestas
  * atrasadas descartadas; clasificación de los errores nuevos; rutas.
  */
-import { render, screen, waitFor, within } from "@testing-library/react";
+import { act, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
-import { EsquemaRespuestaCalculoDemo, type DetalleRevision, type ResumenRevision } from "@softarq/contracts";
+import { EsquemaRespuestaCalculoDemo, type DetalleRevision, type ExcepcionesVersion, type ResumenRevision } from "@softarq/contracts";
 import { crearClienteApi, type FalloApi, type ResultadoApi } from "../../api/cliente.ts";
 import type { ServiciosCotizaciones } from "../../api/servicios-cotizaciones.ts";
 import { ProveedorRuta, hashDe, interpretarHash } from "../../navegacion/ruta.tsx";
@@ -220,6 +220,73 @@ describe("decisión del revisor", () => {
     expect(alerta.textContent).toContain("No se puede aprobar; el estado no cambió.");
     expect(alerta.textContent).toContain("BL-09");
     expect(screen.getByText("En revisión")).toBeTruthy();
+  });
+});
+
+describe("aprobar y autorizar excepciones a la vez (regresión del fallo intermitente de E2E)", () => {
+  it("si la 422 de la aprobación llega mientras se autoriza la excepción, el bloqueo anterior no se queda en pantalla", async () => {
+    // Orden reproducido con promesas controladas: «Confirmar aprobación» → «Autorizar excepción» →
+    // llega la 422 de la aprobación → llega la autorización. Antes, `alDecidir` leía el estado del
+    // envío del render en que se pulsó «Autorizar» («enviando») y no limpiaba el bloqueo.
+    let resolverAprobacion!: (r: ResultadoApi<DetalleRevision>) => void;
+    let resolverDecision!: (r: ResultadoApi<ExcepcionesVersion>) => void;
+    const decidirRevision = vi.fn(() => new Promise<ResultadoApi<DetalleRevision>>((r) => (resolverAprobacion = r)));
+    const decidirExcepcion = vi.fn(() => new Promise<ResultadoApi<ExcepcionesVersion>>((r) => (resolverDecision = r)));
+    const excepciones: ExcepcionesVersion = {
+      versionId: VERSION_ID,
+      idVersion: "COT-2026-00010-v1",
+      revisionId: ID,
+      excepciones: [
+        {
+          numero: 1,
+          tipo: "RENDIMIENTO",
+          referencia: "rendimiento del componente CMP-00011 en la partida 1 (CON-00009)",
+          campo: "RENDIMIENTO",
+          valorOriginal: "12.5 pza",
+          valorAplicado: "13",
+          motivo: "Block de mayor formato verificado en obra.",
+          estado: "PENDIENTE",
+          decision: null,
+        },
+      ],
+      acciones: { decidir: { permitida: true, motivo: null } },
+    };
+    const autorizada: ExcepcionesVersion = {
+      ...excepciones,
+      excepciones: [{ ...excepciones.excepciones[0]!, estado: "AUTORIZADA", decision: { por: "[DEMO] Revisora", en: "2026-09-25T15:00:00Z", comentario: null } }],
+    };
+    const u = userEvent.setup();
+    window.history.replaceState(null, "", hashDe({ pantalla: "revision", id: ID }));
+    render(
+      <ProveedorRuta>
+        <PantallaRevision
+          servicios={servicios({ decidirRevision, decidirExcepcion, excepcionesVersion: () => ok(excepciones) })}
+          id={ID}
+          puedeVerExcepciones
+        />
+      </ProveedorRuta>,
+    );
+    await u.click(await screen.findByRole("button", { name: "Aprobar…" }));
+    await u.click(screen.getByRole("button", { name: /Confirmar aprobación/ }));
+    await u.click(await screen.findByRole("button", { name: "Autorizar excepción 1…" }));
+    await u.click(screen.getByRole("button", { name: "Confirmar autorización de la excepción 1" }));
+    await act(async () =>
+      resolverAprobacion({
+        ok: false,
+        fallo: {
+          tipo: "bloqueado",
+          codigo: "APROBACION_BLOQUEADA",
+          mensaje: "No se puede aprobar; el estado no cambió.",
+          problemas: [{ codigo: "BL-05", referencia: "1", mensaje: "La excepción 1 no está autorizada por el revisor." }],
+        },
+      }),
+    );
+    expect(await screen.findByText("No se puede aprobar; el estado no cambió.")).toBeTruthy();
+    await act(async () => resolverDecision({ ok: true, datos: autorizada }));
+    expect(await screen.findByText("Excepción 1 autorizada.")).toBeTruthy();
+    await waitFor(() => expect(screen.queryByText("No se puede aprobar; el estado no cambió.")).toBeNull());
+    // La pantalla no queda «enviando»: se puede volver a aprobar.
+    expect((screen.getByRole("button", { name: /Confirmar aprobación/ }) as HTMLButtonElement).disabled).toBe(false);
   });
 });
 

@@ -26,7 +26,9 @@ describe("la web no contiene fórmulas ni costos internos", () => {
   // del Administrador del catálogo, con contrato interno y capacidad propia (`catalogos.administrar`):
   // muestra tarifas, su rendimiento por jornada y precios de proveedor. Siguen prohibidos costos,
   // consumos, márgenes, recargos, desperdicios, traslapes y sobrantes, y nada de esto pasa a la
-  // cotización comercial ni al PDF.
+  // cotización comercial ni al PDF. Estar en esta carpeta no protege nada por sí solo: el acceso real lo
+  // comprueba la integración de la API (`acceso-admin.integracion.test.ts`: 403 en todas las rutas /admin
+  // para las demás funciones y respuestas comerciales sin datos técnicos).
   const PROHIBIDO_EN_CATALOGO = /costo|consumo|margen|recargo|desperdicio|traslape|sobrante[A-Z]|precioProveedor|@softarq\/api|prisma|apps\/api|fixtures/i;
   const enCatalogo = (archivo: string) => relative(SRC, archivo).split(/[\\/]/)[0] === "catalogo-admin";
 
@@ -52,6 +54,8 @@ describe("la web no contiene fórmulas ni costos internos", () => {
       .map((a) => relative(SRC, a).split(/[\\/]/).join("/"));
     expect(cubiertos.sort()).toEqual([
       "catalogo-admin/PantallasCatalogo.tsx",
+      "catalogo-admin/SelectorRegistro.tsx",
+      "catalogo-admin/buscadores.ts",
       "catalogo-admin/campos.tsx",
       "catalogo-admin/fallos.ts",
       "catalogo-admin/fechas.ts",

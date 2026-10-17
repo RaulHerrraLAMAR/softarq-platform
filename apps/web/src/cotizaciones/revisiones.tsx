@@ -558,8 +558,11 @@ function DetalleRevisionVista({
           numero={r.version.numero}
           alDecidir={() => {
             // La verificación (bloqueos y AV-04) cambia con cada decisión: se vuelve a leer sin recargar la
-            // pantalla, y un bloqueo mostrado antes de decidir deja de valer.
-            if (envio.fase === "bloqueado" || envio.fase === "error") setEnvio({ fase: "inactivo" });
+            // pantalla, y un bloqueo mostrado antes de decidir deja de valer. Actualización funcional:
+            // este callback puede ejecutarse con el estado de un render anterior (p. ej., si la 422 de
+            // una aprobación llegó mientras se autorizaba la excepción). Una decisión en curso cuya
+            // respuesta se descarta (contador `solicitud`) tampoco deja la pantalla «enviando».
+            setEnvio((e) => (e.fase === "bloqueado" || e.fase === "error" || e.fase === "enviando" ? { fase: "inactivo" } : e));
             const n = ++solicitud.current;
             void servicios.detalleRevision(r.id).then((d) => {
               if (d.ok && n === solicitud.current) alCambiar(d.datos);

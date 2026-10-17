@@ -149,7 +149,9 @@ describe("productos: bloqueo técnico explicado", () => {
     await usuario.click(await screen.findByRole("button", { name: "Gestionar" }));
     await usuario.click(await screen.findByRole("button", { name: "Corregir descripción" }));
     expect(await screen.findByText("Campos técnicos bloqueados")).toBeTruthy();
-    for (const etiqueta of [/Insumo que cubre/, /Presentación/, /Unidad de compra/, /Contenido por unidad de compra \(en kg\)/]) {
+    // El insumo se elige con el selector con búsqueda (pendiente del módulo 11): todo el grupo queda deshabilitado.
+    expect((screen.getByRole("group", { name: /Insumo que cubre/ }) as HTMLFieldSetElement).disabled).toBe(true);
+    for (const etiqueta of [/^Presentación/, /Unidad de compra/, /Contenido por unidad de compra \(en kg\)/]) {
       expect((screen.getByLabelText(etiqueta) as HTMLInputElement).disabled, String(etiqueta)).toBe(true);
     }
     const desc = screen.getByLabelText(/Descripción comercial/);

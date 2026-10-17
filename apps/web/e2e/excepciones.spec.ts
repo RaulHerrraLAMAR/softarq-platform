@@ -103,7 +103,10 @@ test("recorrido 3 con excepción: registrada → enviada → BL-05 → autorizad
   // Aprobar sin autorizar: bloqueado, el estado no cambia.
   await revisor.getByRole("button", { name: "Aprobar…" }).click();
   await revisor.getByRole("button", { name: `Confirmar aprobación de ${folio}-v1` }).click();
-  await expect(revisor.getByText(/BL-05/).first()).toBeVisible();
+  // Se espera la respuesta propia de la aprobación (422), no el BL-05 que la verificación ya mostraba:
+  // así la autorización empieza después de conocer el resultado de aprobar.
+  await expect(revisor.getByRole("alert").filter({ hasText: "No se puede aprobar; el estado no cambió." })).toBeVisible();
+  await expect(revisor.getByRole("alert").filter({ hasText: "No se puede aprobar" })).toContainText("BL-05");
   await expect(revisor.getByText(new RegExp(`${folio}-v1 aprobada por`))).toHaveCount(0);
 
   // Autorizar con confirmación (teclado) y aprobar: AV-04 visible.

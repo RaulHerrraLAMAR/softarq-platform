@@ -25,7 +25,7 @@ import {
   type ProveedorAdmin,
   type TarifaAdmin,
 } from "@softarq/contracts";
-import { useState, type FormEvent, type ReactNode } from "react";
+import { useMemo, useState, type FormEvent, type ReactNode } from "react";
 import type { FalloApi, ResultadoApi } from "../api/cliente.ts";
 import { Aviso, Boton, Codigo, Insignia } from "../comunes/componentes.tsx";
 import { formatearCantidad, formatearFecha, formatearImporte, formatearInstante } from "../comunes/formato.ts";
@@ -36,6 +36,8 @@ import { Enlace, VISTAS_CATALOGO_RUTA as VISTAS_CATALOGO, type VistaCatalogo } f
 import { AvisoFallo, CampoCasilla, CampoSeleccion, CampoTexto, ControlPaginas, errorDe, usePaginas } from "./campos.tsx";
 import { diaSiguiente, maxima } from "./fechas.ts";
 import type { ServiciosCatalogoAdmin } from "./servicios.ts";
+import { buscarInsumos, buscarProductos, buscarProveedores } from "./buscadores.ts";
+import { SelectorRegistro, type OpcionRegistro } from "./SelectorRegistro.tsx";
 
 const TITULOS: Record<VistaCatalogo, string> = {
   proveedores: "Proveedores",
@@ -490,13 +492,12 @@ function FormularioProducto({
   alCancelar: () => void;
   alRecargar?: () => void;
 }) {
-  const referencias = useCarga(async (s) => {
-    const [insumos, unidades] = await Promise.all([servicios.listarInsumos({}, s), servicios.unidades(s)]);
-    if (!insumos.ok) return insumos;
-    if (!unidades.ok) return unidades;
-    return { ok: true as const, datos: { insumos: insumos.datos.insumos, unidades: unidades.datos.unidades } };
-  }, []);
+  const referencias = useCarga((s) => servicios.unidades(s), []);
+  const buscarInsumo = useMemo(() => buscarInsumos(servicios), [servicios]);
   const [insumo, setInsumo] = useState(inicial?.insumo.codigo ?? "");
+  const [insumoElegido, setInsumoElegido] = useState<OpcionRegistro | null>(
+    inicial ? { codigo: inicial.insumo.codigo, texto: `${inicial.insumo.codigo} · ${inicial.insumo.descripcion} (${inicial.insumo.unidadBase})`, disponible: inicial.insumo.activo, detalle: inicial.insumo.unidadBase } : null,
+  );
   const [descripcion, setDescripcion] = useState(inicial?.descripcion ?? "");
   const [presentacion, setPresentacion] = useState(inicial?.presentacion ?? "");
   const [unidad, setUnidad] = useState(inicial?.unidadCompra ?? "");
@@ -507,10 +508,10 @@ function FormularioProducto({
   const envio = useEnvio();
   const bloqueado = inicial?.tienePrecios === true;
 
-  if (referencias.estado.fase === "cargando") return <Cargando etiqueta="Cargando insumos y unidades…" />;
+  if (referencias.estado.fase === "cargando") return <Cargando etiqueta="Cargando unidades…" />;
   if (referencias.estado.fase === "error") return <CargaFallida fallo={referencias.estado.fallo} alReintentar={referencias.recargar} />;
-  const { insumos, unidades } = referencias.estado.datos;
-  const unidadBase = insumos.find((i) => i.codigo === insumo)?.unidadBase ?? inicial?.insumo.unidadBase ?? "unidad base";
+  const { unidades } = referencias.estado.datos;
+  const unidadBase = (insumoElegido?.codigo === insumo ? insumoElegido.detalle : undefined) ?? "unidad base";
   const faltantes = {
     insumo: insumo === "",
     descripcion: descripcion.trim() === "",
@@ -548,15 +549,17 @@ function FormularioProducto({
           </p>
         </Aviso>
       ) : null}
-      <CampoSeleccion
+      <SelectorRegistro
         etiqueta="Insumo que cubre"
         enfocar={!bloqueado}
         valor={insumo}
-        alCambiar={setInsumo}
+        seleccion={insumoElegido}
+        alCambiar={(c, o) => (setInsumo(c), setInsumoElegido(o))}
+        buscar={buscarInsumo}
         obligatorio
         deshabilitado={bloqueado}
-        opciones={insumos.filter((i) => i.activo || i.codigo === insumo).map((i) => ({ valor: i.codigo, texto: `${i.codigo} · ${i.descripcion} (${i.unidadBase})` }))}
         error={falta("insumo", "Seleccione un insumo activo.", "insumoCodigo")}
+        ayuda="Busque por código o descripción; solo se ofrecen insumos activos."
       />
       <CampoTexto
         etiqueta="Descripción comercial"
@@ -835,13 +838,10 @@ function InsigniaPrecio({ estado }: { estado: EstadoPrecio }) {
 }
 
 function FormularioPrecio({ servicios, hoy, alGuardar, alCancelar }: { servicios: ServiciosCatalogoAdmin; hoy: string; alGuardar: (d: { productoCodigo: string; proveedorCodigo: string; precioUnitario: string; vigenteDesde: string; vigenteHasta: string; fuente: string }) => Promise<ResultadoApi<unknown>>; alCancelar: () => void }) {
-  const referencias = useCarga(async (s) => {
-    const [productos, proveedores] = await Promise.all([servicios.listarProductos({}, s), servicios.listarProveedores({}, s)]);
-    if (!productos.ok) return productos;
-    if (!proveedores.ok) return proveedores;
-    return { ok: true as const, datos: { productos: productos.datos.productos, proveedores: proveedores.datos.proveedores } };
-  }, []);
+  const buscarProducto = useMemo(() => buscarProductos(servicios), [servicios]);
+  const buscarProveedor = useMemo(() => buscarProveedores(servicios), [servicios]);
   const [producto, setProducto] = useState("");
+  const [productoElegido, setProductoElegido] = useState<OpcionRegistro | null>(null);
   const [proveedor, setProveedor] = useState("");
   const [precio, setPrecio] = useState("");
   const [desde, setDesde] = useState(hoy);
@@ -849,10 +849,7 @@ function FormularioPrecio({ servicios, hoy, alGuardar, alCancelar }: { servicios
   const [fuente, setFuente] = useState("");
   const [intentado, setIntentado] = useState(false);
   const envio = useEnvio();
-  if (referencias.estado.fase === "cargando") return <Cargando etiqueta="Cargando productos y proveedores…" />;
-  if (referencias.estado.fase === "error") return <CargaFallida fallo={referencias.estado.fallo} alReintentar={referencias.recargar} />;
-  const { productos, proveedores } = referencias.estado.datos;
-  const elegido = productos.find((p) => p.codigo === producto);
+  const unidadCompra = productoElegido?.codigo === producto ? productoElegido.detalle : undefined;
   const faltan = { producto: producto === "", proveedor: proveedor === "", precio: precio.trim() === "", desde: desde === "", hasta: hasta === "", fuente: fuente.trim() === "" };
   const enviar = (e: FormEvent) => {
     e.preventDefault();
@@ -866,33 +863,34 @@ function FormularioPrecio({ servicios, hoy, alGuardar, alCancelar }: { servicios
       <p className="formulario-titulo">Registrar precio</p>
       <p className="ayuda">Los precios no se editan: si cambia, cierre la vigencia y registre el sucesor. No puede haber dos precios del mismo producto y proveedor en fechas que se crucen.</p>
       <div className="formulario-fila">
-        <CampoSeleccion
+        <SelectorRegistro
           etiqueta="Producto comercial (activo)"
           enfocar
           valor={producto}
-          alCambiar={setProducto}
+          seleccion={productoElegido}
+          alCambiar={(c, o) => (setProducto(c), setProductoElegido(o))}
+          buscar={buscarProducto}
           obligatorio
-          opciones={productos.map((p) => ({ valor: p.codigo, texto: `${p.codigo} · ${p.descripcion} · ${p.presentacion}` }))}
           error={falta("producto", "Seleccione el producto.", "productoCodigo")}
         />
-        <CampoSeleccion
+        <SelectorRegistro
           etiqueta="Proveedor (activo)"
           valor={proveedor}
-          alCambiar={setProveedor}
+          alCambiar={(c) => setProveedor(c)}
+          buscar={buscarProveedor}
           obligatorio
-          opciones={proveedores.map((p) => ({ valor: p.codigo, texto: `${p.codigo} · ${p.nombre}` }))}
           error={falta("proveedor", "Seleccione el proveedor.", "proveedorCodigo")}
         />
       </div>
       <CampoTexto
-        etiqueta={`Precio en MXN por ${elegido?.unidadCompra ?? "unidad de compra"}`}
+        etiqueta={`Precio en MXN por ${unidadCompra ?? "unidad de compra"}`}
         valor={precio}
         alCambiar={setPrecio}
         max={30}
         inputMode="decimal"
         obligatorio
         error={falta("precio", "Indique el precio (mayor que cero).", "precioUnitario")}
-        ayuda={`Antes de impuestos${elegido ? `, por cada ${elegido.unidadCompra} (${elegido.presentacion})` : ""}. Punto decimal, hasta 6 decimales; no se redondea.`}
+        ayuda={`Antes de impuestos${unidadCompra ? `, por cada ${unidadCompra}` : ""}. Punto decimal, hasta 6 decimales; no se redondea.`}
       />
       <div className="formulario-fila">
         <CampoTexto etiqueta="Vigente desde" tipo="date" valor={desde} alCambiar={setDesde} max={10} obligatorio error={falta("desde", "Indique la fecha inicial.", "vigenteDesde")} ayuda="Inclusive." />
@@ -1293,12 +1291,8 @@ function FormularioAnulacion({
 // ---------------------------------------------------------------------------
 
 function FormularioTarifa({ servicios, hoy, alGuardar, alCancelar }: { servicios: ServiciosCatalogoAdmin; hoy: string; alGuardar: (d: { modalidad: ModalidadManoObra; descripcion: string; unidad: string; importe: string; rendimientoJornada: string | null; proveedorCodigo: string | null; vigenteDesde: string; vigenteHasta: string; fuente: string }) => Promise<ResultadoApi<unknown>>; alCancelar: () => void }) {
-  const referencias = useCarga(async (s) => {
-    const [unidades, proveedores] = await Promise.all([servicios.unidades(s), servicios.listarProveedores({}, s)]);
-    if (!unidades.ok) return unidades;
-    if (!proveedores.ok) return proveedores;
-    return { ok: true as const, datos: { unidades: unidades.datos.unidades, proveedores: proveedores.datos.proveedores } };
-  }, []);
+  const referencias = useCarga((s) => servicios.unidades(s), []);
+  const buscarProveedor = useMemo(() => buscarProveedores(servicios), [servicios]);
   const [modalidad, setModalidad] = useState<ModalidadManoObra | "">("");
   const [descripcion, setDescripcion] = useState("");
   const [unidad, setUnidad] = useState("");
@@ -1312,7 +1306,7 @@ function FormularioTarifa({ servicios, hoy, alGuardar, alCancelar }: { servicios
   const envio = useEnvio();
   if (referencias.estado.fase === "cargando") return <Cargando etiqueta="Cargando unidades y proveedores…" />;
   if (referencias.estado.fase === "error") return <CargaFallida fallo={referencias.estado.fallo} alReintentar={referencias.recargar} />;
-  const { unidades, proveedores } = referencias.estado.datos;
+  const { unidades } = referencias.estado.datos;
   const faltan = {
     modalidad: modalidad === "",
     descripcion: descripcion.trim() === "",
@@ -1382,12 +1376,13 @@ function FormularioTarifa({ servicios, hoy, alGuardar, alCancelar }: { servicios
           />
         ) : null}
       </div>
-      <CampoSeleccion
+      <SelectorRegistro
         etiqueta="Subcontratista"
         valor={proveedor}
-        alCambiar={setProveedor}
-        vacio="Sin subcontratista"
-        opciones={proveedores.map((p) => ({ valor: p.codigo, texto: `${p.codigo} · ${p.nombre}` }))}
+        alCambiar={(c) => setProveedor(c)}
+        buscar={buscarProveedor}
+        textoVacio="Sin subcontratista"
+        permitirQuitar
         error={errorDe(envio.fallo, "proveedorCodigo")}
       />
       <div className="formulario-fila">

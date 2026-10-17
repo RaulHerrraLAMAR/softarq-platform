@@ -80,7 +80,7 @@ export interface ServiciosCatalogoAdmin {
   cambiarActivaTarifa(codigo: string, d: { revision: number; activa: boolean }): Promise<ResultadoApi<TarifaAdmin>>;
   listarConceptos(f: FiltroListado, signal?: AbortSignal): Promise<ResultadoApi<RespuestaConceptosAdmin>>;
   asignarTarifa(concepto: string, d: AsignacionTarifa, clave: string): Promise<ResultadoApi<ConceptoTarifaAdmin>>;
-  listarInsumos(f: FiltroListado, signal?: AbortSignal): Promise<ResultadoApi<RespuestaInsumosAdmin>>;
+  listarInsumos(f: FiltroListado & { incluirInactivos?: boolean }, signal?: AbortSignal): Promise<ResultadoApi<RespuestaInsumosAdmin>>;
   unidades(signal?: AbortSignal): Promise<ResultadoApi<RespuestaUnidades>>;
 }
 
@@ -144,7 +144,11 @@ export function crearServiciosCatalogoAdmin(cliente: ClienteApi): ServiciosCatal
     asignarTarifa: (concepto, d, clave) =>
       cliente.enviar(ruta("conceptos", concepto, "/tarifa"), EsquemaConceptoTarifaAdmin, { cuerpo: d, cabeceras: conClave(clave) }),
     listarInsumos: (f, signal) =>
-      cliente.obtener(`/api/v1/admin/insumos${consulta({ buscar: recortar(f.buscar), despuesDe: f.despuesDe, limite: 100 })}`, EsquemaRespuestaInsumosAdmin, { signal }),
+      cliente.obtener(
+        `/api/v1/admin/insumos${consulta({ buscar: recortar(f.buscar), incluirInactivos: f.incluirInactivos, despuesDe: f.despuesDe, limite: LIMITE })}`,
+        EsquemaRespuestaInsumosAdmin,
+        { signal },
+      ),
     unidades: (signal) => cliente.obtener("/api/v1/admin/unidades", EsquemaRespuestaUnidades, { signal }),
   };
 }

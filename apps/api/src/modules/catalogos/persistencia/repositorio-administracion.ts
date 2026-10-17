@@ -652,10 +652,11 @@ export class RepositorioAdministracion {
 
   // ------------------------------- referencias ------------------------------
 
-  async listarInsumos(ctx: ContextoOrganizacion, f: Pagina & { buscar?: string }): Promise<{ filas: InsumoAdmin[]; siguiente: string | null }> {
+  async listarInsumos(ctx: ContextoOrganizacion, f: Pagina & { buscar?: string; incluirInactivos?: boolean }): Promise<{ filas: InsumoAdmin[]; siguiente: string | null }> {
     const filas = await this.db.insumo.findMany({
       where: {
         organizacionId: ctx.organizacionId,
+        ...(f.incluirInactivos ? {} : { activo: true }),
         ...(f.buscar ? { OR: [{ codigo: contiene(f.buscar) }, { descripcion: contiene(f.buscar) }] } : {}),
         ...(f.despuesDe ? { codigo: { gt: f.despuesDe } } : {}),
       },

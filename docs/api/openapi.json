@@ -7548,6 +7548,18 @@
             }
           },
           {
+            "name": "incluirInactivos",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "true",
+                "false"
+              ]
+            }
+          },
+          {
             "name": "despuesDe",
             "in": "query",
             "required": false,

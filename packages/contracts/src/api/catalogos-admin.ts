@@ -594,7 +594,8 @@ export type RespuestaConceptosAdmin = z.infer<typeof EsquemaRespuestaConceptosAd
 // Referencias de solo lectura para los formularios
 // ---------------------------------------------------------------------------
 
-export const EsquemaConsultaInsumosAdmin = z.strictObject({ buscar, despuesDe, limite });
+/** Por omisión solo insumos activos (los que se ofrecen para registros nuevos). */
+export const EsquemaConsultaInsumosAdmin = z.strictObject({ buscar, incluirInactivos: booleanoTexto, despuesDe, limite });
 export type ConsultaInsumosAdmin = z.infer<typeof EsquemaConsultaInsumosAdmin>;
 
 export const EsquemaInsumoAdmin = z.strictObject({
