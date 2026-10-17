@@ -200,16 +200,16 @@ describe("bloqueos de negocio (422, sin importes)", () => {
   });
 
   it("concepto no aprobado → BL-04", async () => {
-    await repo.cambiarEstadoConcepto(demo, "CON-00007", "Borrador");
+    await new RepositorioCatalogos(migrador).cambiarEstadoConcepto(demo, "CON-00007", "Borrador");
     try {
       bloqueado(await post(base()), "BL-04");
     } finally {
-      await repo.cambiarEstadoConcepto(demo, "CON-00007", "Aprobado");
+      await new RepositorioCatalogos(migrador).cambiarEstadoConcepto(demo, "CON-00007", "Aprobado");
     }
   });
 
   it("parámetros ausentes en la base → BL-12 y BL-13 (no es una petición mal formada)", async () => {
-    await repo.actualizarParametros(demo, {
+    await new RepositorioCatalogos(migrador).actualizarParametros(demo, {
       ...DEMO_PARAMETROS,
       recargoSobreCosto: null,
       impuestoTasa: null,
@@ -222,7 +222,7 @@ describe("bloqueos de negocio (422, sin importes)", () => {
       bloqueado(r, "BL-12");
       expect(r.cuerpo.error.problemas.map((p: { codigo: string }) => p.codigo)).toContain("BL-13");
     } finally {
-      await repo.actualizarParametros(demo, DEMO_PARAMETROS);
+      await new RepositorioCatalogos(migrador).actualizarParametros(demo, DEMO_PARAMETROS);
     }
   });
 });

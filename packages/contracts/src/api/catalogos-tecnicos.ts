@@ -20,6 +20,7 @@ import {
   EsquemaConceptoTarifaAdmin,
   EsquemaEventoCatalogo,
   EsquemaFechaReal,
+  EsquemaImpactoVersiones,
   EsquemaInsumoAdmin,
   PIEZAS_CATALOGO,
   esquemaDecimalPositivo,
@@ -225,6 +226,8 @@ export type ConversionAdmin = z.infer<typeof EsquemaConversionAdmin>;
 export const EsquemaDetalleInsumoAdmin = z.strictObject({
   insumo: EsquemaInsumoAdmin,
   conversiones: z.array(EsquemaConversionAdmin),
+  /** Cotizaciones abiertas cuyas versiones o borradores usan el insumo (cambiar una conversión las afecta). */
+  impacto: EsquemaImpactoVersiones,
   historial: z.array(EsquemaEventoCatalogo),
 });
 export type DetalleInsumoAdmin = z.infer<typeof EsquemaDetalleInsumoAdmin>;
@@ -331,6 +334,8 @@ export const EsquemaDetalleConceptoAdmin = z.strictObject({
   componentes: z.array(EsquemaComponenteAdmin),
   /** Lista del servidor: vacía = puede aprobarse. */
   requisitos: z.array(EsquemaRequisitoConcepto),
+  /** Cotizaciones abiertas que usan el concepto, por borradores y últimas versiones (ADR-0017 §1.3). */
+  impacto: EsquemaImpactoVersiones,
   historial: z.array(EsquemaEventoCatalogo),
 });
 export type DetalleConceptoAdmin = z.infer<typeof EsquemaDetalleConceptoAdmin>;

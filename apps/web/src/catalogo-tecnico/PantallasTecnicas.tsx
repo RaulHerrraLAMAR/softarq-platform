@@ -22,6 +22,7 @@ import {
   type ConversionAdmin,
   type DetalleConceptoAdmin,
   type FamiliaEstructura,
+  type ImpactoVersiones,
   type InsumoAdmin,
   type RequisitoConcepto,
   type SolicitudConcepto,
@@ -36,7 +37,7 @@ import { CargaFallida, Cargando, EstadoRegistro, SinResultados } from "../comune
 import { useCarga } from "../comunes/usarCarga.ts";
 import { buscarInsumos, buscarTipos } from "../catalogo-admin/buscadores.ts";
 import { AvisoFallo, CampoCasilla, CampoSeleccion, CampoTexto, ControlPaginas, errorDe, usePaginas } from "../catalogo-admin/campos.tsx";
-import { Acciones, Busqueda, Confirmacion, FormularioAsignacion, Historial, opcional, textoImporteTarifa, TEXTO_MODALIDAD, useEnvio } from "../catalogo-admin/piezas.tsx";
+import { Acciones, Busqueda, Confirmacion, FormularioAsignacion, Historial, opcional, textoImporteTarifa, textoImpactoVersiones, TEXTO_MODALIDAD, useEnvio } from "../catalogo-admin/piezas.tsx";
 import { SelectorRegistro, type OpcionRegistro } from "../catalogo-admin/SelectorRegistro.tsx";
 import type { ServiciosCatalogoAdmin } from "../catalogo-admin/servicios.ts";
 
@@ -587,7 +588,7 @@ function PanelInsumo({ codigo, servicios, alCambiar }: { codigo: string; alCambi
       ) : (
         <ul className="lista-registros" aria-label={`Conversiones de ${codigo}`}>
           {conversiones.map((c) => (
-            <FilaConversion key={c.unidadOrigen} c={c} servicios={servicios} alGuardada={(m) => (setAviso(m), recargar())} />
+            <FilaConversion key={c.unidadOrigen} c={c} impacto={estado.datos.impacto} servicios={servicios} alGuardada={(m) => (setAviso(m), recargar())} />
           ))}
         </ul>
       )}
@@ -679,7 +680,7 @@ function FormularioConversion({
   );
 }
 
-function FilaConversion({ c, servicios, alGuardada }: { c: ConversionAdmin; alGuardada: (m: string) => void } & Props) {
+function FilaConversion({ c, impacto, servicios, alGuardada }: { c: ConversionAdmin; impacto: ImpactoVersiones; alGuardada: (m: string) => void } & Props) {
   const [editando, setEditando] = useState(false);
   const [factor, setFactor] = useState(c.factor);
   const [fuente, setFuente] = useState(c.fuente);
@@ -738,7 +739,7 @@ function FilaConversion({ c, servicios, alGuardada }: { c: ConversionAdmin; alGu
                 aprobados.length > 0
                   ? `Volverán a Borrador y perderán su aprobación: ${aprobados.map((x) => x.codigo).join(", ")}. Deberán aprobarse de nuevo.`
                   : "Ningún concepto aprobado la usa."
-              } Las versiones calculadas y los PDF emitidos conservan el factor anterior; las cotizaciones abiertas deberán recalcular.`}
+              } ${textoImpactoVersiones(impacto) ?? "Ninguna cotización abierta usa el insumo."} Las versiones emitidas y sus PDF conservan el factor anterior.`}
               accion="Guardar conversión"
               variante="primario"
               alConfirmar={() => void guardar()}
@@ -1161,7 +1162,7 @@ function PanelConcepto({ codigo, servicios, alCambiar }: { codigo: string; alCam
           {confirmar === "tecnico" && pendiente ? (
             <Confirmacion
               texto={`Es un cambio técnico: ${codigo} volverá a Borrador y perderá la aprobación de ${c.aprobadoPor ?? "la carga anterior"}. ${
-                c.borradoresAbiertos > 0 ? `${c.borradoresAbiertos} cotización(es) abierta(s) lo usan: el cálculo lo bloqueará (BL-04) hasta la nueva aprobación.` : ""
+                textoImpactoVersiones(d.impacto) ?? "Ninguna cotización abierta lo usa."
               } Las versiones calculadas y los PDF emitidos no cambian.`}
               accion="Guardar y volver a Borrador"
               variante="primario"
@@ -1251,6 +1252,9 @@ function PanelConcepto({ codigo, servicios, alCambiar }: { codigo: string; alCam
       )}
 
       <SeccionComponentes d={d} servicios={servicios} alCambiar={(m) => (setAviso(m), recargar())} />
+
+      <h3 className="subtitulo">Cotizaciones abiertas</h3>
+      <p className="ayuda">{textoImpactoVersiones(d.impacto) ?? "Ninguna cotización abierta usa este concepto."}</p>
 
       <h3 className="subtitulo">Aprobación</h3>
       {c.estado === "Aprobado" ? (

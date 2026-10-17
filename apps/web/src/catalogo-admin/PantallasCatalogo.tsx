@@ -40,7 +40,7 @@ import { diaSiguiente, maxima } from "./fechas.ts";
 import type { ServiciosCatalogoAdmin } from "./servicios.ts";
 import { buscarInsumos, buscarProductos, buscarProveedores } from "./buscadores.ts";
 import { VistaConceptosTecnicos, VistaInsumos, VistaTiposEstructura } from "../catalogo-tecnico/PantallasTecnicas.tsx";
-import { Acciones, Busqueda, Confirmacion, FormularioAsignacion, Historial, mxn, opcional, TEXTO_MODALIDAD, textoImporteTarifa, useEnvio, vigencia } from "./piezas.tsx";
+import { Acciones, Busqueda, Confirmacion, FormularioAsignacion, Historial, mxn, opcional, TEXTO_MODALIDAD, textoImporteTarifa, textoImpactoVersiones, useEnvio, vigencia } from "./piezas.tsx";
 import { SelectorRegistro, type OpcionRegistro } from "./SelectorRegistro.tsx";
 
 const TITULOS: Record<VistaCatalogo, string> = {
@@ -98,7 +98,10 @@ function textoImpacto(i: ImpactoCatalogo, que: string): string {
   if (i.preciosVigentes > 0) partes.push(`${i.preciosVigentes} precio(s) vigente(s) hoy dejarán de ofrecerse para selecciones nuevas`);
   if (i.tarifas > 0) partes.push(`${i.tarifas} tarifa(s) activa(s) lo citan como subcontratista`);
   if (i.conceptos > 0) partes.push(`${i.conceptos} concepto(s) usan esta tarifa: al calcular quedarán bloqueados (BL-10) hasta asignarles otra`);
-  if (i.borradoresAbiertos > 0) {
+  const versiones = textoImpactoVersiones(i.versiones);
+  if (versiones) {
+    partes.push(`${versiones} Las elecciones afectadas se conservan marcadas como no disponibles y el Preparador decide cómo corregirlas`);
+  } else if (i.borradoresAbiertos > 0) {
     partes.push(
       `${i.borradoresAbiertos} cotización(es) abierta(s) lo usan: conservan su elección marcada como no disponible y el Preparador decide cómo corregirla`,
     );

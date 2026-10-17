@@ -219,7 +219,10 @@ export class RepositorioCatalogos {
     return { id: ctx.organizacionId, creado: true };
   }
 
-  /** Reemplaza los parámetros de venta (uso administrativo; queda para el módulo de configuración). */
+  /**
+   * SOLO pruebas y ajustes de `softarq_test`, con un repositorio del ROL MIGRADOR: reemplaza los
+   * parámetros de venta. La aplicación los edita con `softarq_editar_parametros` (ADR-0017).
+   */
   async actualizarParametros(ctx: ContextoOrganizacion, d: DatosParametros): Promise<void> {
     await this.db.parametrosCalculo.update({
       where: { organizacionId: ctx.organizacionId },
@@ -371,35 +374,23 @@ export class RepositorioCatalogos {
   }
 
   /**
-   * Devolver a Borrador es una escritura directa (el disparador retira la aprobación). Aprobar pasa
-   * por `aprobarCargaBase`: misma marca y mismos requisitos que la operación Aprobar.
+   * SOLO pruebas y `pruebas-e2e/ajustar-base.ts`, con un repositorio del ROL MIGRADOR: fuerza el estado
+   * de un concepto de `softarq_test`. El rol de la aplicación no tiene UPDATE de `estado` ni de
+   * `aprobado_*` (ADR-0017 §1.2) y el disparador rechaza su paso a Aprobado.
    */
   async cambiarEstadoConcepto(ctx: ContextoOrganizacion, codigo: string, estado: "Borrador" | "Aprobado"): Promise<void> {
-    if (estado === "Aprobado") return this.aprobarCargaBase(ctx, codigo);
-    const r = await this.db.concepto.updateMany({ where: { organizacionId: ctx.organizacionId, codigo }, data: { estado } });
+    const data = estado === "Aprobado" ? { estado, aprobadoEn: new Date() } : { estado };
+    const r = await this.db.concepto.updateMany({ where: { organizacionId: ctx.organizacionId, codigo }, data });
     if (r.count !== 1) throw new ErrorReferenciaCatalogo("el concepto", codigo);
   }
 
   /**
-   * Aprobación de la carga base (sin persona: `aprobado_por` NULL). Exige la lista completa de
-   * requisitos (`softarq_problemas_concepto`) y usa la marca local de la transacción que acepta el
-   * disparador del concepto. La usan la carga DEMO al crear un concepto y las pruebas.
+   * Aprobación de la carga base (sin persona: `aprobado_por` NULL), con `softarq_aprobar_carga_base`
+   * (SECURITY DEFINER): solo organizaciones DEMO, conceptos creados por la carga en esta misma
+   * transacción y con la lista completa de requisitos (`softarq_problemas_concepto`).
    */
   async aprobarCargaBase(ctx: ContextoOrganizacion, codigo: string): Promise<void> {
-    const aprobar = async (db: Prisma.TransactionClient) => {
-      const id = await this.idConcepto(ctx, codigo);
-      const problemas = await db.$queryRaw<{ codigo: string; mensaje: string }[]>`
-        SELECT codigo, mensaje FROM softarq_problemas_concepto(${ctx.organizacionId}::uuid, ${id}::uuid)`;
-      if (problemas.length > 0) {
-        throw new Error(`El concepto ${codigo} no cumple los requisitos de aprobación: ${problemas.map((p) => p.mensaje).join(" ")}`);
-      }
-      await db.$executeRaw`SELECT set_config('softarq.aprobacion_concepto', ${id}, true)`;
-      await db.$executeRaw`UPDATE concepto SET estado = 'Aprobado', aprobado_en = now(), revision = revision + 1
-                            WHERE organizacion_id = ${ctx.organizacionId}::uuid AND id = ${id}::uuid`;
-      await db.$executeRaw`SELECT set_config('softarq.aprobacion_concepto', '', true)`;
-    };
-    if ("$transaction" in this.db) await this.db.$transaction((tx) => aprobar(tx));
-    else await aprobar(this.db);
+    await this.db.$queryRaw`SELECT softarq_aprobar_carga_base(${ctx.organizacionId}::uuid, ${codigo})::text AS r`;
   }
 
   async asegurarTarifa(

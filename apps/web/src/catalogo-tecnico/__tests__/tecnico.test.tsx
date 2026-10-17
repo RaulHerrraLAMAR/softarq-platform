@@ -65,6 +65,7 @@ const detalleConcepto = (c: Partial<ConceptoTarifaAdmin> = {}, d: Partial<Detall
   cambioTecnicoEn: INSTANTE,
   componentes: [],
   requisitos: [],
+  impacto: { cotizaciones: 0, borradores: 0, sinEnviar: 0, enRevision: 0, aprobadasSinEmitir: 0 },
   historial: [],
   ...d,
 });
@@ -161,7 +162,8 @@ describe("conceptos y componentes", () => {
 
   it("antes de un cambio técnico de un concepto aprobado avisa que vuelve a Borrador y envía solo lo cambiado", async () => {
     const editarConcepto = vi.fn<ServiciosCatalogoAdmin["editarConcepto"]>(() => ok(detalleConcepto({ estado: "Borrador", aprobadoPor: null, aprobadoEn: null, revision: 4, revisionTecnica: 6 })));
-    const u = await abrirConcepto(servicios({ editarConcepto }));
+    const impacto = { cotizaciones: 2, borradores: 2, sinEnviar: 1, enRevision: 0, aprobadasSinEmitir: 0 };
+    const u = await abrirConcepto(servicios({ editarConcepto, detalleConcepto: () => ok(detalleConcepto({}, { impacto })) }));
     await u.click(await screen.findByRole("button", { name: "Editar datos" }));
     const regla = screen.getByLabelText(/^Regla de medición/);
     await u.clear(regla);
@@ -170,7 +172,7 @@ describe("conceptos y componentes", () => {
     await u.click(screen.getByRole("button", { name: "Revisar y confirmar" }));
     const grupo = screen.getByRole("group", { name: /Confirmar: Guardar y volver a Borrador/ });
     expect(grupo.textContent).toMatch(/perderá la aprobación de \[DEMO\] Administradora/);
-    expect(grupo.textContent).toMatch(/2 cotización\(es\) abierta\(s\)/);
+    expect(grupo.textContent).toMatch(/Afecta a 2 cotización\(es\) abierta\(s\): 2 borrador\(es\).*1 versión\(es\) calculada\(s\) sin enviar/);
     expect(editarConcepto).not.toHaveBeenCalled();
     await u.click(within(grupo).getByRole("button", { name: "Guardar y volver a Borrador" }));
     expect(editarConcepto).toHaveBeenCalledWith("CON-00010", { revision: 3, reglaMedicion: "[DEMO] Regla corregida." });
@@ -268,6 +270,7 @@ describe("insumos y conversiones", () => {
           conceptos: [{ codigo: "CON-00007", descripcion: "[DEMO] Cubierta", estado: "Aprobado", activo: true }],
         },
       ],
+      impacto: { cotizaciones: 3, borradores: 1, sinEnviar: 1, enRevision: 1, aprobadasSinEmitir: 1 },
       historial: [],
     };
     const editarConversion = vi.fn<ServiciosCatalogoAdmin["editarConversion"]>(() => ok(detalle));
@@ -287,6 +290,11 @@ describe("insumos y conversiones", () => {
     await u.click(screen.getByRole("button", { name: "Revisar y confirmar" }));
     const grupo = screen.getByRole("group", { name: /Confirmar: Guardar conversión/ });
     expect(grupo.textContent).toMatch(/Volverán a Borrador y perderán su aprobación: CON-00007/);
+    // Impacto por versiones (ADR-0017 §1.3): cotizaciones sin repetir y qué recalcular o revisar.
+    expect(grupo.textContent).toMatch(/Afecta a 3 cotización\(es\) abierta\(s\)/);
+    expect(grupo.textContent).toMatch(/1 versión\(es\) calculada\(s\) sin enviar deberán recalcularse/);
+    expect(grupo.textContent).toMatch(/1 versión\(es\) en revisión quedarán bloqueadas/);
+    expect(grupo.textContent).toMatch(/1 versión\(es\) aprobada\(s\) sin emitir no podrán emitirse/);
     await u.click(within(grupo).getByRole("button", { name: "Guardar conversión" }));
     expect(editarConversion).toHaveBeenCalledWith("INS-00006", "m", { revision: 0, motivo: "[DEMO] Ficha técnica nueva del fabricante.", factor: "4.3" });
   });

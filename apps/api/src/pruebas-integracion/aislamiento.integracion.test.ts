@@ -60,15 +60,15 @@ async function conceptoAprobado(ctx: ContextoOrganizacion, codigo: string, descr
     fecha: "2026-09-01",
     responsable: "[DEMO] Responsable de prueba",
   });
-  await repo.cambiarEstadoConcepto(ctx, codigo, "Aprobado");
+  await new RepositorioCatalogos(migrador).cambiarEstadoConcepto(ctx, codigo, "Aprobado");
 }
 
 beforeAll(async () => {
+  migrador = await prismaMigrador();
   orgA = { organizacionId: (await cargarDemo(prisma, { codigo: "DEMO-ISO-A", nombre: "[DEMO] Organización A" })).organizacionId };
   orgB = { organizacionId: (await cargarDemo(prisma, { codigo: "DEMO-ISO-B", nombre: "[DEMO] Organización B" })).organizacionId };
   await conceptoAprobado(orgA, "CON-ISO-A1", "[DEMO] Aislamiento exclusivo de A");
   await conceptoAprobado(orgB, "CON-ISO-B1", "[DEMO] Aislamiento exclusivo de B");
-  migrador = await prismaMigrador();
   credA = (await crearCuentas(migrador, "DEMO-ISO-A", [cuenta("preparador.a@softarq.test", "[DEMO] Preparador A", "PREPARADOR")]))[
     "preparador.a@softarq.test"
   ]!;
@@ -137,7 +137,7 @@ describe("cada sesión ve solo su organización", () => {
   });
 
   it("los parámetros de cada organización se aplican según la sesión", async () => {
-    await repo.actualizarParametros(orgB, { ...PARAMETROS_DEMO, impuestoTasa: null, impuestoBase: null, impuestoTratamiento: null, impuestoNombre: null });
+    await new RepositorioCatalogos(migrador).actualizarParametros(orgB, { ...PARAMETROS_DEMO, impuestoTasa: null, impuestoBase: null, impuestoTratamiento: null, impuestoNombre: null });
     try {
       const a = await (await entrar(credA)).post("/api/v1/calculos/demo", solicitudDemoDesdeEntrada(R1.entrada));
       const b = await (await entrar(credB)).post("/api/v1/calculos/demo", solicitudDemoDesdeEntrada(R1.entrada));
@@ -146,7 +146,7 @@ describe("cada sesión ve solo su organización", () => {
       expect(b.status).toBe(422);
       expect(b.cuerpo.error.problemas.map((p: { codigo: string }) => p.codigo)).toContain("BL-13");
     } finally {
-      await repo.actualizarParametros(orgB, { ...PARAMETROS_DEMO });
+      await new RepositorioCatalogos(migrador).actualizarParametros(orgB, { ...PARAMETROS_DEMO });
     }
   });
 });

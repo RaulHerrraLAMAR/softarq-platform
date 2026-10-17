@@ -4,7 +4,7 @@
  * asignación de tarifa a un concepto (Word §3.5). Se separaron de `PantallasCatalogo.tsx` sin cambiar
  * su comportamiento para reutilizarlas en el catálogo técnico (`catalogo-tecnico/`).
  */
-import { LIMITES_CATALOGO_ADMIN, type ConceptoTarifaAdmin, type EventoCatalogo, type ModalidadManoObra } from "@softarq/contracts";
+import { LIMITES_CATALOGO_ADMIN, type ConceptoTarifaAdmin, type EventoCatalogo, type ImpactoVersiones, type ModalidadManoObra } from "@softarq/contracts";
 import { useState, type ReactNode } from "react";
 import type { FalloApi, ResultadoApi } from "../api/cliente.ts";
 import { Aviso, Boton } from "../comunes/componentes.tsx";
@@ -125,6 +125,20 @@ function detalleEvento(e: EventoCatalogo): ReactNode {
   if (d["completadoHeredado"] === true) partes.push("completa los datos de la carga anterior");
   if (typeof d["motivo"] === "string") partes.push(`motivo: ${d["motivo"]}`);
   return partes.length > 0 ? <span className="ayuda bloque">{partes.join(" · ")}</span> : null;
+}
+
+/**
+ * Impacto en cotizaciones abiertas (ADR-0017 §1.3): distingue cotizaciones (sin repetir) de borradores
+ * y últimas versiones, y dice qué hay que recalcular o revisar. `null` si no afecta a ninguna.
+ */
+export function textoImpactoVersiones(v: ImpactoVersiones): string | null {
+  if (v.cotizaciones === 0) return null;
+  const partes: string[] = [];
+  if (v.borradores > 0) partes.push(`${v.borradores} borrador(es) se calcularán con el cambio al recalcular`);
+  if (v.sinEnviar > 0) partes.push(`${v.sinEnviar} versión(es) calculada(s) sin enviar deberán recalcularse antes de enviarse`);
+  if (v.enRevision > 0) partes.push(`${v.enRevision} versión(es) en revisión quedarán bloqueadas: hay que retirarlas y recalcular`);
+  if (v.aprobadasSinEmitir > 0) partes.push(`${v.aprobadasSinEmitir} versión(es) aprobada(s) sin emitir no podrán emitirse (BL-16) sin una versión nueva`);
+  return `Afecta a ${v.cotizaciones} cotización(es) abierta(s): ${partes.join("; ")}. Una cotización puede estar en varios casos; las versiones emitidas no cambian.`;
 }
 
 export function Confirmacion({ texto, accion, variante = "peligro", alConfirmar, alCancelar, ocupado }: { texto: string; accion: string; variante?: "peligro" | "primario"; alConfirmar: () => void; alCancelar: () => void; ocupado: boolean }) {

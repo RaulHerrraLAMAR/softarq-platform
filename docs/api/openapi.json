@@ -19777,13 +19777,52 @@
                 "type": "integer",
                 "minimum": 0,
                 "maximum": 9007199254740991
+              },
+              "versiones": {
+                "type": "object",
+                "properties": {
+                  "cotizaciones": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 9007199254740991
+                  },
+                  "borradores": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 9007199254740991
+                  },
+                  "sinEnviar": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 9007199254740991
+                  },
+                  "enRevision": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 9007199254740991
+                  },
+                  "aprobadasSinEmitir": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 9007199254740991
+                  }
+                },
+                "required": [
+                  "cotizaciones",
+                  "borradores",
+                  "sinEnviar",
+                  "enRevision",
+                  "aprobadasSinEmitir"
+                ],
+                "additionalProperties": false
               }
             },
             "required": [
               "preciosVigentes",
               "tarifas",
               "conceptos",
-              "borradoresAbiertos"
+              "borradoresAbiertos",
+              "versiones"
             ],
             "additionalProperties": false
           },
@@ -20259,13 +20298,52 @@
                 "type": "integer",
                 "minimum": 0,
                 "maximum": 9007199254740991
+              },
+              "versiones": {
+                "type": "object",
+                "properties": {
+                  "cotizaciones": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 9007199254740991
+                  },
+                  "borradores": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 9007199254740991
+                  },
+                  "sinEnviar": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 9007199254740991
+                  },
+                  "enRevision": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 9007199254740991
+                  },
+                  "aprobadasSinEmitir": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 9007199254740991
+                  }
+                },
+                "required": [
+                  "cotizaciones",
+                  "borradores",
+                  "sinEnviar",
+                  "enRevision",
+                  "aprobadasSinEmitir"
+                ],
+                "additionalProperties": false
               }
             },
             "required": [
               "preciosVigentes",
               "tarifas",
               "conceptos",
-              "borradoresAbiertos"
+              "borradoresAbiertos",
+              "versiones"
             ],
             "additionalProperties": false
           },
@@ -20863,13 +20941,52 @@
                 "type": "integer",
                 "minimum": 0,
                 "maximum": 9007199254740991
+              },
+              "versiones": {
+                "type": "object",
+                "properties": {
+                  "cotizaciones": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 9007199254740991
+                  },
+                  "borradores": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 9007199254740991
+                  },
+                  "sinEnviar": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 9007199254740991
+                  },
+                  "enRevision": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 9007199254740991
+                  },
+                  "aprobadasSinEmitir": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 9007199254740991
+                  }
+                },
+                "required": [
+                  "cotizaciones",
+                  "borradores",
+                  "sinEnviar",
+                  "enRevision",
+                  "aprobadasSinEmitir"
+                ],
+                "additionalProperties": false
               }
             },
             "required": [
               "preciosVigentes",
               "tarifas",
               "conceptos",
-              "borradoresAbiertos"
+              "borradoresAbiertos",
+              "versiones"
             ],
             "additionalProperties": false
           },
@@ -21690,13 +21807,52 @@
                 "type": "integer",
                 "minimum": 0,
                 "maximum": 9007199254740991
+              },
+              "versiones": {
+                "type": "object",
+                "properties": {
+                  "cotizaciones": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 9007199254740991
+                  },
+                  "borradores": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 9007199254740991
+                  },
+                  "sinEnviar": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 9007199254740991
+                  },
+                  "enRevision": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 9007199254740991
+                  },
+                  "aprobadasSinEmitir": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 9007199254740991
+                  }
+                },
+                "required": [
+                  "cotizaciones",
+                  "borradores",
+                  "sinEnviar",
+                  "enRevision",
+                  "aprobadasSinEmitir"
+                ],
+                "additionalProperties": false
               }
             },
             "required": [
               "preciosVigentes",
               "tarifas",
               "conceptos",
-              "borradoresAbiertos"
+              "borradoresAbiertos",
+              "versiones"
             ],
             "additionalProperties": false
           },
@@ -22526,6 +22682,44 @@
               "additionalProperties": false
             }
           },
+          "impacto": {
+            "type": "object",
+            "properties": {
+              "cotizaciones": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              },
+              "borradores": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              },
+              "sinEnviar": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              },
+              "enRevision": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              },
+              "aprobadasSinEmitir": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              }
+            },
+            "required": [
+              "cotizaciones",
+              "borradores",
+              "sinEnviar",
+              "enRevision",
+              "aprobadasSinEmitir"
+            ],
+            "additionalProperties": false
+          },
           "historial": {
             "type": "array",
             "items": {
@@ -22561,6 +22755,7 @@
         "required": [
           "insumo",
           "conversiones",
+          "impacto",
           "historial"
         ],
         "additionalProperties": false
@@ -23469,6 +23664,44 @@
               "additionalProperties": false
             }
           },
+          "impacto": {
+            "type": "object",
+            "properties": {
+              "cotizaciones": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              },
+              "borradores": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              },
+              "sinEnviar": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              },
+              "enRevision": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              },
+              "aprobadasSinEmitir": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              }
+            },
+            "required": [
+              "cotizaciones",
+              "borradores",
+              "sinEnviar",
+              "enRevision",
+              "aprobadasSinEmitir"
+            ],
+            "additionalProperties": false
+          },
           "historial": {
             "type": "array",
             "items": {
@@ -23512,6 +23745,7 @@
           "cambioTecnicoEn",
           "componentes",
           "requisitos",
+          "impacto",
           "historial"
         ],
         "additionalProperties": false

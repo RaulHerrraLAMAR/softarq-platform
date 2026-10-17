@@ -14,7 +14,7 @@ import { PantallaCatalogo } from "../PantallasCatalogo.tsx";
 import type { ServiciosCatalogoAdmin } from "../servicios.ts";
 
 const ok = <T,>(datos: T): Promise<ResultadoApi<T>> => Promise.resolve({ ok: true, datos });
-const SIN_IMPACTO = { preciosVigentes: 0, tarifas: 0, conceptos: 0, borradoresAbiertos: 0 };
+const SIN_IMPACTO = { preciosVigentes: 0, tarifas: 0, conceptos: 0, borradoresAbiertos: 0, versiones: { cotizaciones: 0, borradores: 0, sinEnviar: 0, enRevision: 0, aprobadasSinEmitir: 0 } };
 
 const PROVEEDOR: ProveedorAdmin = {
   codigo: "PRV-00003",

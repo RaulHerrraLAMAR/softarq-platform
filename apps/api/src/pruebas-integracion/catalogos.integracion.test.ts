@@ -13,6 +13,8 @@ import {
 } from "../modules/catalogos/persistencia/repositorio-catalogos.js";
 import { construirEntradaCalculo } from "../modules/calculo/aplicacion/construir-entrada.js";
 import { prismaApp } from "./entorno.js";
+import { prismaMigrador } from "./sesiones.js";
+import type { ClientePrisma } from "../infraestructura/prisma/cliente.js";
 
 const app = prismaApp();
 const repo = new RepositorioCatalogos(app);
@@ -24,7 +26,20 @@ beforeAll(async () => {
   demo = { organizacionId: r.organizacionId };
   otra = { organizacionId: (await repo.asegurarOrganizacion("PRUEBA-AISLAMIENTO", "[PRUEBA] Segunda organización", false)).id };
 });
-afterAll(() => app.$disconnect());
+/**
+ * ADR-0017 §1.2: forzar el estado de un concepto o reemplazar los parámetros ya no lo puede hacer el
+ * rol de la aplicación; estas preparaciones de prueba usan el rol migrador.
+ */
+let migrador: ClientePrisma | undefined;
+async function repoMigrador(): Promise<RepositorioCatalogos> {
+  migrador ??= await prismaMigrador();
+  return new RepositorioCatalogos(migrador);
+}
+
+afterAll(async () => {
+  await app.$disconnect();
+  await migrador?.$disconnect();
+});
 
 const CONTEOS_DEMO = {
   insumos: 11,
@@ -317,7 +332,7 @@ describe("decimales sin pérdida de precisión", () => {
       vigenciaDias: null,
     });
     expect(await repo.obtenerParametros(o)).toMatchObject({ recargoSobreCosto: null, impuesto: null });
-    await repo.actualizarParametros(o, {
+    await (await repoMigrador()).actualizarParametros(o, {
       ambiente: "PRODUCCION",
       moneda: "MXN",
       recargoSobreCosto: "0",

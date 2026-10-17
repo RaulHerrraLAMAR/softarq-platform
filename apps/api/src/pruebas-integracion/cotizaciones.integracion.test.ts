@@ -282,7 +282,7 @@ describe("versiones inmutables e historial", () => {
     // Cambios posteriores: nombres, recargo y el precio elegido anulado (catálogo propio de DEMO-COT-H).
     expect((await c.patch(`/api/v1/clientes/${cliente.id}`, { revision: cliente.revision, nombre: "[DEMO] Cliente renombrado" })).status).toBe(200);
     expect((await c.patch(`/api/v1/proyectos/${proyecto.id}`, { revision: proyecto.revision, nombre: "[DEMO] Obra renombrada" })).status).toBe(200);
-    await repo.actualizarParametros(orgH, { ...PARAMETROS_DEMO, recargoSobreCosto: "0.40" });
+    await new RepositorioCatalogos(migrador).actualizarParametros(orgH, { ...PARAMETROS_DEMO, recargoSobreCosto: "0.40" });
     await repo.anularPrecio(orgH, R1.entrada.selecciones[0]!.precioId);
 
     const leida = await c.get(`/api/v1/cotizaciones/${id}/versiones/1`);
@@ -383,7 +383,7 @@ describe("conservar lo capturado cuando una referencia deja de estar disponible 
     const filaAntes = await filaVersion(id, 1);
 
     // El concepto CON-00007 deja de estar disponible y un precio de CON-00008 se anula (catálogo real).
-    await repo.cambiarEstadoConcepto(orgS, "CON-00007", "Borrador");
+    await new RepositorioCatalogos(migrador).cambiarEstadoConcepto(orgS, "CON-00007", "Borrador");
     await repo.anularPrecio(orgS, "PRE-000011");
 
     // Recargar: el servidor informa la indisponibilidad sin cambiar la captura.
@@ -426,7 +426,7 @@ describe("conservar lo capturado cuando una referencia deja de estar disponible 
     const c = await preparadorS();
     const { proyecto } = await crearClienteProyecto(c, "Nuevas");
     // Mismo estado del catálogo que la prueba anterior (idempotente: no depende del orden).
-    await repo.cambiarEstadoConcepto(orgS, "CON-00007", "Borrador");
+    await new RepositorioCatalogos(migrador).cambiarEstadoConcepto(orgS, "CON-00007", "Borrador");
     await repo.anularPrecio(orgS, "PRE-000011");
     const base: CapturaBorrador = { consolidarCompras: false, partidas: [], seleccion: [] };
     const cot = await crearCotizacion(c, proyecto.id, base);

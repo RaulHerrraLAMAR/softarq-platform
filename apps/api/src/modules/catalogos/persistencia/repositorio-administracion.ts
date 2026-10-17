@@ -27,6 +27,7 @@ import { decimalOpcionalParaColumna, decimalParaColumna, textoDeDecimal, textoDe
 import { fechaDeColumna, fechaParaColumna } from "../../../infraestructura/prisma/fechas.js";
 import type { Idempotencia, RegistroIdempotencia } from "../../cotizaciones/aplicacion/idempotencia.js";
 import { estadoPrecio, tarifaVigente } from "../dominio/administracion.js";
+import { impactoVersiones, SIN_IMPACTO_VERSIONES } from "./impacto-versiones.js";
 import type { ContextoOrganizacion, Db } from "./repositorio-catalogos.js";
 
 export interface AutorAdmin {
@@ -312,7 +313,7 @@ export function aInsumo(f: FilaInsumo): InsumoAdmin {
   };
 }
 
-const SIN_IMPACTO: ImpactoCatalogo = { preciosVigentes: 0, tarifas: 0, conceptos: 0, borradoresAbiertos: 0 };
+const SIN_IMPACTO: ImpactoCatalogo = { preciosVigentes: 0, tarifas: 0, conceptos: 0, borradoresAbiertos: 0, versiones: SIN_IMPACTO_VERSIONES };
 
 export class RepositorioAdministracion {
   constructor(private readonly db: Db) {}
@@ -360,8 +361,9 @@ export class RepositorioAdministracion {
       this.db.tarifaManoObra.count({ where: { organizacionId: ctx.organizacionId, proveedorId, activa: true } }),
       this.db.precio.findMany({ where: { organizacionId: ctx.organizacionId, proveedorId }, select: { codigo: true } }),
     ]);
-    const borradoresAbiertos = await this.borradoresConPrecios(ctx, codigos.map((c) => c.codigo));
-    return { ...SIN_IMPACTO, preciosVigentes, tarifas, borradoresAbiertos };
+    const precios = codigos.map((c) => c.codigo);
+    const [borradoresAbiertos, versiones] = await Promise.all([this.borradoresConPrecios(ctx, precios), impactoVersiones(this.db, ctx, { precios })]);
+    return { ...SIN_IMPACTO, preciosVigentes, tarifas, borradoresAbiertos, versiones };
   }
 
   async crearProveedor(
@@ -432,8 +434,9 @@ export class RepositorioAdministracion {
       }),
       this.db.precio.findMany({ where: { organizacionId: ctx.organizacionId, productoId }, select: { codigo: true } }),
     ]);
-    const borradoresAbiertos = await this.borradoresConPrecios(ctx, codigos.map((c) => c.codigo));
-    return { ...SIN_IMPACTO, preciosVigentes, borradoresAbiertos };
+    const precios = codigos.map((c) => c.codigo);
+    const [borradoresAbiertos, versiones] = await Promise.all([this.borradoresConPrecios(ctx, precios), impactoVersiones(this.db, ctx, { precios })]);
+    return { ...SIN_IMPACTO, preciosVigentes, borradoresAbiertos, versiones };
   }
 
   async crearProducto(
@@ -536,7 +539,8 @@ export class RepositorioAdministracion {
   }
 
   async impactoPrecio(ctx: ContextoOrganizacion, codigo: string): Promise<ImpactoCatalogo> {
-    return { ...SIN_IMPACTO, borradoresAbiertos: await this.borradoresConPrecios(ctx, [codigo]) };
+    const [borradoresAbiertos, versiones] = await Promise.all([this.borradoresConPrecios(ctx, [codigo]), impactoVersiones(this.db, ctx, { precios: [codigo] })]);
+    return { ...SIN_IMPACTO, borradoresAbiertos, versiones };
   }
 
   async registrarPrecio(
@@ -617,9 +621,13 @@ export class RepositorioAdministracion {
     });
   }
 
-  async impactoTarifa(ctx: ContextoOrganizacion, conceptos: readonly string[]): Promise<ImpactoCatalogo> {
-    const porConcepto = await this.borradoresPorConcepto(ctx, conceptos);
-    return { ...SIN_IMPACTO, conceptos: conceptos.length, borradoresAbiertos: porConcepto.total };
+  async impactoTarifa(ctx: ContextoOrganizacion, tarifa: string, conceptos: readonly string[]): Promise<ImpactoCatalogo> {
+    // Borradores: por los conceptos que la usan (la tarifa sale del concepto al calcular); versiones: tarifa congelada.
+    const [porConcepto, versiones] = await Promise.all([
+      this.borradoresPorConcepto(ctx, conceptos),
+      impactoVersiones(this.db, ctx, { conceptosBorrador: conceptos, tarifas: [tarifa] }),
+    ]);
+    return { ...SIN_IMPACTO, conceptos: conceptos.length, borradoresAbiertos: porConcepto.total, versiones };
   }
 
   async registrarTarifa(

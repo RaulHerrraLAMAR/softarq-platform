@@ -20,6 +20,8 @@ import { ESCENARIOS } from "../modules/calculo/domain/__tests__/fixtures/escenar
 import { calcularCotizacion } from "../modules/calculo/domain/motor.js";
 import { aVistaComercial } from "../modules/calculo/domain/vista-comercial.js";
 import { prismaApp } from "./entorno.js";
+import { prismaMigrador } from "./sesiones.js";
+import type { ClientePrisma } from "../infraestructura/prisma/cliente.js";
 
 const app = prismaApp();
 const repo = new RepositorioCatalogos(app);
@@ -33,7 +35,20 @@ beforeAll(async () => {
       .organizacionId,
   };
 });
-afterAll(() => app.$disconnect());
+/**
+ * ADR-0017 §1.2: forzar el estado de un concepto o reemplazar los parámetros ya no lo puede hacer el
+ * rol de la aplicación; estas preparaciones de prueba usan el rol migrador.
+ */
+let migrador: ClientePrisma | undefined;
+async function repoMigrador(): Promise<RepositorioCatalogos> {
+  migrador ??= await prismaMigrador();
+  return new RepositorioCatalogos(migrador);
+}
+
+afterAll(async () => {
+  await app.$disconnect();
+  await migrador?.$disconnect();
+});
 
 /** Tipos de costo adicional del catálogo DEMO por categoría (CAD-00001 a CAD-00003). */
 const TIPO_POR_CATEGORIA: Record<string, string> = {
@@ -193,7 +208,7 @@ describe("bloqueos y proyección comercial con datos de la base", () => {
   };
 
   it("recargo e impuesto NULL en la base: BL-12 y BL-13, sin importes", async () => {
-    await repo.actualizarParametros(demo, {
+    await (await repoMigrador()).actualizarParametros(demo, {
       ...demoParametros,
       recargoSobreCosto: null,
       impuestoTasa: null,
@@ -209,30 +224,30 @@ describe("bloqueos y proyección comercial con datos de la base", () => {
       );
       expect(r).not.toHaveProperty("totales");
     } finally {
-      await repo.actualizarParametros(demo, demoParametros);
+      await (await repoMigrador()).actualizarParametros(demo, demoParametros);
     }
   });
 
   it('recargo "0" guardado es válido y distinto de ausente', async () => {
-    await repo.actualizarParametros(demo, { ...demoParametros, recargoSobreCosto: "0" });
+    await (await repoMigrador()).actualizarParametros(demo, { ...demoParametros, recargoSobreCosto: "0" });
     try {
       const entrada = await entradaDesdeBase(solicitudDesdeFixture(escenario().entrada));
       expect(entrada.parametros.recargoSobreCosto).toBe("0");
       expect(calcularCotizacion(entrada).estado).toBe("CALCULADO");
     } finally {
-      await repo.actualizarParametros(demo, demoParametros);
+      await (await repoMigrador()).actualizarParametros(demo, demoParametros);
     }
   });
 
   it("BL-04: un concepto no aprobado no se arma", async () => {
-    await repo.cambiarEstadoConcepto(demo, "CON-00001", "Borrador");
+    await (await repoMigrador()).cambiarEstadoConcepto(demo, "CON-00001", "Borrador");
     try {
       expect(await construirEntradaCalculo(repo, demo, solicitudDesdeFixture(escenario().entrada))).toMatchObject({
         estado: "BLOQUEADO",
         problemas: [{ codigo: "BL-04", referencia: "CON-00001" }],
       });
     } finally {
-      await repo.cambiarEstadoConcepto(demo, "CON-00001", "Aprobado");
+      await (await repoMigrador()).cambiarEstadoConcepto(demo, "CON-00001", "Aprobado");
     }
   });
 

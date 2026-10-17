@@ -131,8 +131,9 @@ END $$;
 -- ADR-0016 (módulo 12): insumos, conversiones, tipos de estructura, conceptos y componentes. UPDATE
 -- solo de las columnas que escriben las funciones: nunca códigos, organización, concepto u orden de un
 -- componente, datos de alta ni la marca `heredado` (la quita el disparador al completar el concepto).
--- `estado` y `aprobado_*` sí, porque los disparadores limitan el cambio: pasar a Aprobado solo dentro
--- de softarq_aprobar_concepto. Sin DELETE ni DDL. Condicional para restaurar respaldos anteriores.
+-- Desde ADR-0017 tampoco `estado` ni `aprobado_*`: aprobar solo ocurre dentro de las funciones
+-- SECURITY DEFINER (y el disparador lo vuelve a exigir). Sin DELETE ni DDL. Condicional para
+-- restaurar respaldos anteriores.
 DO $$ BEGIN
   IF to_regclass('public.tipo_estructura') IS NOT NULL THEN
     REVOKE UPDATE ON TABLE public.tipo_estructura, public.insumo, public.conversion, public.concepto, public.componente FROM softarq_app;
@@ -140,7 +141,7 @@ DO $$ BEGIN
     GRANT UPDATE (descripcion, especificacion, unidad_base, activo, revision, modificado_por, modificado_en) ON TABLE public.insumo TO softarq_app;
     GRANT UPDATE (factor, fuente, revision, modificado_por, modificado_en) ON TABLE public.conversion TO softarq_app;
     GRANT UPDATE (tipo_id, descripcion, unidad, tipo_formula, permite_descuento, regla_medicion, criterios, clase, tarifa_id, activo,
-                  estado, aprobado_por, aprobado_en, revision, revision_tecnica, cambio_tecnico_por, cambio_tecnico_en,
+                  revision, revision_tecnica, cambio_tecnico_por, cambio_tecnico_en,
                   modificado_por, modificado_en) ON TABLE public.concepto TO softarq_app;
     GRANT UPDATE (insumo_id, rendimiento, unidad_rendimiento, desperdicio, factor_traslape, fuente, fecha, responsable, activo,
                   revision, modificado_por, modificado_en) ON TABLE public.componente TO softarq_app;
@@ -156,5 +157,15 @@ DO $$ BEGIN
     GRANT EXECUTE ON FUNCTION public.softarq_aprobar_concepto(UUID, UUID, TEXT, INTEGER, UUID, TEXT, BYTEA, TIMESTAMPTZ) TO softarq_app;
     GRANT EXECUTE ON FUNCTION public.softarq_crear_componente(UUID, UUID, TEXT, JSONB, UUID, TEXT, BYTEA, TIMESTAMPTZ) TO softarq_app;
     GRANT EXECUTE ON FUNCTION public.softarq_editar_componente(UUID, UUID, TEXT, TEXT, INTEGER, JSONB) TO softarq_app;
+  END IF;
+END $$;
+
+-- ADR-0017 §1.2 (permisos efectivos): sin UPDATE en tablas que la aplicación no modifica
+-- (`organizacion`, `tipo_adicional`) ni en `parametros_calculo` fuera de las columnas editables que
+-- concede el bloque de parámetros. Condicional para restaurar respaldos anteriores.
+REVOKE UPDATE ON TABLE public.organizacion, public.tipo_adicional, public.parametros_calculo FROM softarq_app;
+DO $$ BEGIN
+  IF to_regprocedure('public.softarq_aprobar_carga_base(uuid,text)') IS NOT NULL THEN
+    GRANT EXECUTE ON FUNCTION public.softarq_aprobar_carga_base(UUID, TEXT) TO softarq_app;
   END IF;
 END $$;

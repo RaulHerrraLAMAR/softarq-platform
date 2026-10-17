@@ -9,23 +9,28 @@
  * `sesiones revocar` simula que la sesión terminó en el servidor (revocación con UPDATE, lo único
  * que el rol de la aplicación puede modificar en `sesion`).
  *
- * Exige softarq_test local (mismo guardia que las pruebas de integración) y usa el rol de la
- * aplicación, que no tiene DELETE ni DDL.
+ * Exige softarq_test local (mismo guardia que las pruebas de integración). Las sesiones se revocan con
+ * el rol de la aplicación; proveedores, conceptos y parámetros se ajustan con el rol migrador, porque
+ * la aplicación ya no puede forzar estados de concepto ni reemplazar parámetros (ADR-0017 §1.2).
  */
 import { PARAMETROS_DEMO, ORGANIZACION_DEMO } from "../modules/catalogos/demo/datos-demo.js";
 import { RepositorioCatalogos } from "../modules/catalogos/persistencia/repositorio-catalogos.js";
 import { cargarEntornoDePrueba, confirmarBase, prismaApp, urlDePrueba } from "../pruebas-integracion/entorno.js";
+import { prismaMigrador } from "../pruebas-integracion/sesiones.js";
 
 async function principal(args: string[]): Promise<void> {
   cargarEntornoDePrueba();
   urlDePrueba("DATABASE_URL");
   const prisma = prismaApp();
+  let migrador: Awaited<ReturnType<typeof prismaMigrador>> | undefined;
   try {
     await confirmarBase(prisma);
     const org = await prisma.organizacion.findUnique({ where: { codigo: ORGANIZACION_DEMO.codigo } });
     if (!org) throw new Error("La organización DEMO no existe en softarq_test.");
     const ctx = { organizacionId: org.id };
-    const repo = new RepositorioCatalogos(prisma);
+    // ADR-0017 §1.2: estados de concepto y parámetros solo con el rol migrador.
+    migrador = await prismaMigrador();
+    const repo = new RepositorioCatalogos(migrador);
     const [que, a, b] = args;
     if (que === "proveedor" && a && (b === "activo" || b === "inactivo")) {
       await repo.cambiarActivoProveedor(ctx, a, b === "activo");
@@ -54,6 +59,7 @@ async function principal(args: string[]): Promise<void> {
     }
     console.log(`[e2e] softarq_test: ${args.join(" ")}`);
   } finally {
+    await migrador?.$disconnect();
     await prisma.$disconnect();
   }
 }

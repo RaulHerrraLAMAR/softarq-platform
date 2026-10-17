@@ -24,6 +24,7 @@ import { textoDeDecimal, textoDeDecimalOpcional } from "../../../infraestructura
 import { fechaDeColumna } from "../../../infraestructura/prisma/fechas.js";
 import type { Idempotencia, RegistroIdempotencia } from "../../cotizaciones/aplicacion/idempotencia.js";
 import { aConcepto, aInsumo, seleccionConcepto, seleccionInsumo, type AutorAdmin } from "./repositorio-administracion.js";
+import { impactoVersiones, type CriterioImpacto } from "./impacto-versiones.js";
 import type { ContextoOrganizacion, Db } from "./repositorio-catalogos.js";
 
 interface Pagina {
@@ -445,6 +446,21 @@ export class RepositorioCatalogoTecnico {
   }
 
   // -------------------------------- utilidades --------------------------------
+
+  /** Impacto en cotizaciones abiertas (ADR-0017 §1.3). Solo lee. */
+  impacto(ctx: ContextoOrganizacion, c: CriterioImpacto) {
+    return impactoVersiones(this.db, ctx, c);
+  }
+
+  /** Conceptos con un componente activo del insumo (sus borradores se recalcularían con el cambio). */
+  async conceptosConInsumo(ctx: ContextoOrganizacion, insumoId: string): Promise<string[]> {
+    const filas = await this.db.componente.findMany({
+      where: { organizacionId: ctx.organizacionId, insumoId, activo: true },
+      select: { concepto: { select: { codigo: true } } },
+      distinct: ["conceptoId"],
+    });
+    return filas.map((f) => f.concepto.codigo);
+  }
 
   async codigoPorId(ctx: ContextoOrganizacion, tipo: "tipo" | "insumo" | "concepto", id: string): Promise<string | null> {
     const w = { where: { organizacionId: ctx.organizacionId, id }, select: { codigo: true } };

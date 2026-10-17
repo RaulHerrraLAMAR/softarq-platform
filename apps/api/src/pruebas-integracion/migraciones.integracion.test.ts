@@ -9,6 +9,9 @@ import { RAIZ_API, confirmarBase, prismaApp, urlDePrueba } from "./entorno.js";
 const app = prismaApp();
 afterAll(() => app.$disconnect());
 
+/** Funciones SECURITY DEFINER previstas (ADR-0017): propietario migrador y `search_path` fijo. */
+const DEFINER = ["softarq_aprobar_carga_base", "softarq_aprobar_concepto"];
+
 describe("migraciones (globalSetup: esquema vaciado y migrate deploy)", () => {
   it("la conexión de la aplicación está en softarq_test", async () => {
     await confirmarBase(app);
@@ -209,7 +212,7 @@ describe("permisos del rol de la aplicación (softarq_app)", () => {
       expect(Number(del!.n)).toBe(0);
     });
 
-    it("las funciones de escritura no se pueden ejecutar desde PUBLIC y son SECURITY INVOKER", async () => {
+    it("las funciones de escritura no se pueden ejecutar desde PUBLIC y solo las previstas son SECURITY DEFINER", async () => {
       const filas = await app.$queryRaw<{ nombre: string; definer: boolean; publico: boolean; app: boolean }[]>`
         SELECT p.proname AS nombre, p.prosecdef AS definer,
                has_function_privilege('public', p.oid, 'EXECUTE') AS publico,
@@ -221,6 +224,7 @@ describe("permisos del rol de la aplicación (softarq_app)", () => {
         // Módulo 11 (ADR-0015): administración de catálogos.
         "softarq_anular_precio",
         // Módulo 12 (ADR-0016): catálogo técnico y aprobación de conceptos (también las altas y ediciones nuevas).
+        "softarq_aprobar_carga_base",
         "softarq_aprobar_concepto",
         "softarq_asignar_tarifa_concepto",
         "softarq_cambiar_activa_tarifa",
@@ -265,7 +269,10 @@ describe("permisos del rol de la aplicación (softarq_app)", () => {
         "softarq_retirar_revision",
         "softarq_siguiente",
       ]);
-      for (const f of filas) expect(f, f.nombre).toMatchObject({ definer: false, publico: false, app: true });
+      // ADR-0017 §1.2: solo las funciones de aprobación (y, desde el módulo 13, las de identidad) son
+      // SECURITY DEFINER; el resto actúa con los permisos del rol de la aplicación.
+      const definer = new Set(DEFINER);
+      for (const f of filas) expect(f, f.nombre).toMatchObject({ definer: definer.has(f.nombre), publico: false, app: true });
     });
   });
 

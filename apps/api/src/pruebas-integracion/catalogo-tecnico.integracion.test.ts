@@ -510,9 +510,17 @@ describe("conceptos y componentes (Val_Concepto, Val_Componente)", () => {
 describe("PostgreSQL impone las reglas aunque se escriba con SQL directo (rol de la aplicación)", () => {
   it("no se aprueba sin la operación, no se marca ni desmarca heredado, y un alta empieza en Borrador", async () => {
     const o = org["m12"]!;
+    // ADR-0017 §1.2 (cambio intencionado): el rol de la aplicación ya no tiene UPDATE de `estado` ni
+    // `aprobado_*`, y la antigua marca local tampoco sirve: aprobar solo ocurre en la función DEFINER.
     await expect(prisma.$executeRaw`UPDATE concepto SET estado = 'Aprobado', aprobado_en = now() WHERE organizacion_id = ${o}::uuid AND estado = 'Borrador'`).rejects.toThrow(
-      /APROBACION_DIRECTA/,
+      /permission denied|permiso denegado/i,
     );
+    await expect(
+      prisma.$transaction([
+        prisma.$executeRaw`SELECT set_config('softarq.aprobacion_concepto', (SELECT id::text FROM concepto WHERE organizacion_id = ${o}::uuid AND estado = 'Borrador' LIMIT 1), true)`,
+        prisma.$executeRaw`UPDATE concepto SET estado = 'Aprobado', aprobado_en = now() WHERE organizacion_id = ${o}::uuid AND estado = 'Borrador'`,
+      ]),
+    ).rejects.toThrow(/permission denied|permiso denegado/i);
     await expect(prisma.$executeRaw`UPDATE concepto SET heredado = true WHERE organizacion_id = ${o}::uuid AND codigo = 'CON-00001'`).rejects.toThrow(/permission denied|permiso denegado/i);
     await expect(prisma.$executeRaw`UPDATE concepto SET codigo = 'CON-99999' WHERE organizacion_id = ${o}::uuid AND codigo = 'CON-00001'`).rejects.toThrow(/permission denied|permiso denegado/i);
     const tipo = (await prisma.tipoEstructura.findFirstOrThrow({ where: { organizacionId: o, codigo: "TES-00004" } })).id;
@@ -525,7 +533,8 @@ describe("PostgreSQL impone las reglas aunque se escriba con SQL directo (rol de
        WHERE grantee = 'softarq_app' AND table_name = 'concepto' AND privilege_type = 'UPDATE' ORDER BY 1`;
     const editables = columnas.map((c) => c.column_name);
     for (const fija of ["heredado", "codigo", "organizacion_id", "id", "creado_por", "creado_en"]) expect(editables).not.toContain(fija);
-    expect(editables).toEqual(expect.arrayContaining(["estado", "aprobado_por", "aprobado_en", "revision_tecnica", "tipo_id", "regla_medicion"]));
+    for (const aprobacion of ["estado", "aprobado_por", "aprobado_en"]) expect(editables).not.toContain(aprobacion);
+    expect(editables).toEqual(expect.arrayContaining(["revision_tecnica", "tipo_id", "regla_medicion"]));
   });
 });
 

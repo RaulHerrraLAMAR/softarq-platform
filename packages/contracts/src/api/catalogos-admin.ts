@@ -230,6 +230,24 @@ export const EsquemaRespuestaProveedoresAdmin = z.strictObject({
 });
 export type RespuestaProveedoresAdmin = z.infer<typeof EsquemaRespuestaProveedoresAdmin>;
 
+/**
+ * Cotizaciones abiertas afectadas por un cambio (ADR-0017 §1.3). `cotizaciones` cuenta cotizaciones
+ * DISTINTAS; las demás cifras cuentan borradores o últimas versiones (una por cotización como mucho) y
+ * pueden coincidir en la misma cotización. Las versiones emitidas no se cuentan: no cambian.
+ */
+export const EsquemaImpactoVersiones = z.strictObject({
+  cotizaciones: z.number().int().nonnegative(),
+  /** Borradores guardados que usan el registro: al recalcular se aplicará el cambio. */
+  borradores: z.number().int().nonnegative(),
+  /** Últimas versiones calculadas sin enviar (o devueltas o retiradas): hay que recalcular antes de enviar. */
+  sinEnviar: z.number().int().nonnegative(),
+  /** Últimas versiones en revisión pendiente: el Revisor verá el bloqueo; hay que retirarlas y recalcular. */
+  enRevision: z.number().int().nonnegative(),
+  /** Últimas versiones aprobadas sin emitir: no podrán emitirse (BL-16) sin una versión nueva. */
+  aprobadasSinEmitir: z.number().int().nonnegative(),
+});
+export type ImpactoVersiones = z.infer<typeof EsquemaImpactoVersiones>;
+
 /** Lo que afecta una desactivación (`Cat_CambiarActivo`), para confirmarla con información. */
 export const EsquemaImpactoCatalogo = z.strictObject({
   /** Precios no anulados vigentes hoy que dejarían de ofrecerse. */
@@ -240,6 +258,8 @@ export const EsquemaImpactoCatalogo = z.strictObject({
   conceptos: z.number().int().nonnegative(),
   /** Cotizaciones activas cuyo borrador guardado lo usa: quedarán con la referencia no disponible o pendientes de recalcular. */
   borradoresAbiertos: z.number().int().nonnegative(),
+  /** Detalle por borradores y últimas versiones (ADR-0017 §1.3). */
+  versiones: EsquemaImpactoVersiones,
 });
 export type ImpactoCatalogo = z.infer<typeof EsquemaImpactoCatalogo>;
 

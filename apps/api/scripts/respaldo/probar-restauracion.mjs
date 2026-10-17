@@ -244,8 +244,9 @@ async function comprobarDestino(manifiesto) {
           (SELECT count(*)::int FROM pg_indexes WHERE indexname IN ('insumo_descripcion_normalizada_key','tipo_estructura_familia_nombre_key',
             'concepto_tipo_descripcion_key','componente_concepto_insumo_key','conversion_insumo_origen_key')) unicos`)).rows[0];
       registrar(
+        // ADR-0017 §1.2: sin UPDATE de `estado` (aprobar solo dentro de la función DEFINER).
         "catálogo técnico: permisos mínimos, funciones, disparadores e índices restaurados",
-        permisos.estado && !permisos.heredado && !permisos.codigo && !permisos.componente && !permisos.borrado && permisos.funcion && permisos.disparadores === 7 && permisos.unicos === 5,
+        !permisos.estado && !permisos.heredado && !permisos.codigo && !permisos.componente && !permisos.borrado && permisos.funcion && permisos.disparadores === 7 && permisos.unicos === 5,
         JSON.stringify(permisos),
       );
       const origen = new pg.Client({ connectionString: urlRespaldo().cadena }); await origen.connect();

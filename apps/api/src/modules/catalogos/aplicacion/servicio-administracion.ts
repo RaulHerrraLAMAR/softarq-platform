@@ -371,7 +371,7 @@ export class ServicioAdministracionCatalogos {
     const { id, ...tarifa } = t;
     const conceptos = await this.repo.conceptosDeTarifa(ctx, id);
     const [impacto, historial] = await Promise.all([
-      this.repo.impactoTarifa(ctx, conceptos.map((c) => c.codigo)),
+      this.repo.impactoTarifa(ctx, codigo, conceptos.map((c) => c.codigo)),
       this.repo.historial(ctx, "tarifa", id, LIMITES_CATALOGO_ADMIN.historial),
     ]);
     return { tarifa, fechaReferencia: hoy, conceptos, impacto, historial };

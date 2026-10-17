@@ -170,11 +170,13 @@ export class ServicioCatalogoTecnico {
   async detalleInsumo(ctx: ContextoOrganizacion, codigo: string): Promise<DetalleInsumoAdmin> {
     const i = await this.repo.obtenerInsumo(ctx, codigo);
     if (!i) throw NO_ENCONTRADO("El insumo");
-    const [conversiones, historial] = await Promise.all([
+    const [conversiones, historial, conceptos] = await Promise.all([
       this.repo.conversionesDeInsumo(ctx, i.id),
       this.admin.historial(ctx, "insumo", i.id, LIMITES_CATALOGO_ADMIN.historial),
+      this.repo.conceptosConInsumo(ctx, i.id),
     ]);
-    return { insumo: sinId(i), conversiones, historial };
+    const impacto = await this.repo.impacto(ctx, { conceptosBorrador: conceptos, insumos: [codigo] });
+    return { insumo: sinId(i), conversiones, impacto, historial };
   }
 
   async crearInsumo(ctx: ContextoOrganizacion, autor: AutorAdmin, s: SolicitudInsumo, clave: string): Promise<{ insumo: InsumoAdmin; reproducida: boolean }> {
@@ -281,10 +283,11 @@ export class ServicioCatalogoTecnico {
   async detalleConcepto(ctx: ContextoOrganizacion, codigo: string): Promise<DetalleConceptoAdmin> {
     const d = await this.repo.obtenerConcepto(ctx, codigo);
     if (!d) throw NO_ENCONTRADO("El concepto");
-    const [borradores, requisitos, historial] = await Promise.all([
+    const [borradores, requisitos, historial, impacto] = await Promise.all([
       this.admin.borradoresPorConcepto(ctx, [codigo]),
       this.repo.requisitos(ctx, d.id),
       this.admin.historial(ctx, "concepto", d.id, LIMITES_CATALOGO_ADMIN.historial),
+      this.repo.impacto(ctx, { conceptos: [codigo] }),
     ]);
     return {
       concepto: this.repo.aConceptoListado(d.fila, borradores.porCodigo.get(codigo) ?? 0),
@@ -297,6 +300,7 @@ export class ServicioCatalogoTecnico {
       cambioTecnicoEn: d.cambioTecnicoEn,
       componentes: d.componentes,
       requisitos,
+      impacto,
       historial,
     };
   }
