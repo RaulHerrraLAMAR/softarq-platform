@@ -7,6 +7,10 @@
  *   ni siquiera tiene permiso DELETE.
  * - Ejecutarla dos veces no duplica registros.
  * - Informa (sin corregir) los registros DEMO existentes cuyo valor difiera del esperado.
+ * - Módulo 12 (ADR-0016): crea los seis tipos de estructura base que falten. Un concepto se crea
+ *   completo y en Borrador; si el libro lo tiene aprobado, se aprueba como carga base SOLO cuando se
+ *   acaba de crear (con sus componentes y comprobando sus requisitos). Repetir la carga no completa
+ *   conceptos heredados ni restaura aprobaciones retiradas.
  */
 import type { PrismaClient } from "../../../generated/prisma/client.js";
 import { RepositorioCatalogos, type ContextoOrganizacion } from "../persistencia/repositorio-catalogos.js";
@@ -22,6 +26,7 @@ import {
   PROVEEDORES_DEMO,
   TARIFAS_DEMO,
   TIPOS_ADICIONAL_DEMO,
+  TIPOS_ESTRUCTURA_BASE,
 } from "./datos-demo.js";
 
 export interface ResumenCarga {
@@ -59,8 +64,15 @@ export async function cargarDemo(
     for (const d of PRODUCTOS_DEMO) anotar("producto", (await repo.asegurarProducto(ctx, d)).creado);
     for (const d of PRECIOS_DEMO) anotar("precio", (await repo.asegurarPrecio(ctx, d)).creado);
     for (const d of TARIFAS_DEMO) anotar("tarifa", (await repo.asegurarTarifa(ctx, d)).creado);
-    for (const d of CONCEPTOS_DEMO) anotar("concepto", (await repo.asegurarConcepto(ctx, d)).creado);
+    for (const d of TIPOS_ESTRUCTURA_BASE) anotar("tipoEstructura", (await repo.asegurarTipoEstructura(ctx, d)).creado);
+    const porAprobar: string[] = [];
+    for (const d of CONCEPTOS_DEMO) {
+      const alta = await repo.asegurarConcepto(ctx, d);
+      anotar("concepto", alta.creado);
+      if (alta.creado && d.estado === "Aprobado") porAprobar.push(d.codigo);
+    }
     for (const d of COMPONENTES_DEMO) anotar("componente", (await repo.asegurarComponente(ctx, d)).creado);
+    for (const codigo of porAprobar) await repo.aprobarCargaBase(ctx, codigo);
     for (const d of TIPOS_ADICIONAL_DEMO) anotar("tipoAdicional", (await repo.asegurarTipoAdicional(ctx, d)).creado);
 
     return { organizacionId: org.id, creados, existentes, diferencias: await diferenciasDemo(repo, ctx) };

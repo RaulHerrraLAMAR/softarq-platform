@@ -33,7 +33,16 @@ export interface AutorAdmin {
   readonly usuarioId: string;
 }
 
-export type EntidadBitacoraCatalogo = "proveedor" | "producto" | "precio" | "tarifa" | "concepto";
+export type EntidadBitacoraCatalogo =
+  | "proveedor"
+  | "producto"
+  | "precio"
+  | "tarifa"
+  | "concepto"
+  | "tipo_estructura"
+  | "insumo"
+  | "conversion"
+  | "componente";
 
 interface Pagina {
   despuesDe?: string;
@@ -215,6 +224,92 @@ function filtroEstadoPrecio(estado: EstadoPrecio | undefined, hoy: Date): Prisma
     default:
       return {};
   }
+}
+
+/** Concepto en la administración (módulos 11 y 12). */
+export const seleccionConcepto = {
+  id: true,
+  codigo: true,
+  descripcion: true,
+  unidad: true,
+  tipoFormula: true,
+  clase: true,
+  estado: true,
+  activo: true,
+  heredado: true,
+  revision: true,
+  revisionTecnica: true,
+  aprobadoEn: true,
+  aprobador: nombreDe,
+  tipo: { select: { codigo: true, familia: true, nombre: true, activo: true } },
+  tarifa: {
+    select: { codigo: true, modalidad: true, descripcion: true, unidad: true, importe: true, activa: true, vigenteDesde: true, vigenteHasta: true },
+  },
+} satisfies Prisma.ConceptoSelect;
+
+export type FilaConcepto = Prisma.ConceptoGetPayload<{ select: typeof seleccionConcepto }>;
+
+export function aConcepto(c: FilaConcepto, borradoresAbiertos: number): ConceptoTarifaAdmin {
+  return {
+    codigo: c.codigo,
+    descripcion: c.descripcion,
+    unidad: c.unidad,
+    tipoFormula: c.tipoFormula,
+    clase: c.clase,
+    estado: c.estado,
+    activo: c.activo,
+    tipo: c.tipo ? { ...c.tipo } : null,
+    heredado: c.heredado,
+    revision: c.revision,
+    revisionTecnica: c.revisionTecnica,
+    aprobadoPor: c.aprobador?.usuario.nombre ?? null,
+    aprobadoEn: c.aprobadoEn ? c.aprobadoEn.toISOString() : null,
+    tarifa: c.tarifa
+      ? {
+          codigo: c.tarifa.codigo,
+          modalidad: c.tarifa.modalidad as ModalidadManoObra,
+          descripcion: c.tarifa.descripcion,
+          unidad: c.tarifa.unidad,
+          importe: textoDeDecimal(c.tarifa.importe),
+          activa: c.tarifa.activa,
+          vigenteDesde: fechaDeColumna(c.tarifa.vigenteDesde),
+          vigenteHasta: fechaDeColumna(c.tarifa.vigenteHasta),
+        }
+      : null,
+    borradoresAbiertos,
+  };
+}
+
+/** Insumo en la administración (módulos 11 y 12), con sus referencias. */
+export const seleccionInsumo = {
+  id: true,
+  codigo: true,
+  descripcion: true,
+  especificacion: true,
+  unidadBase: true,
+  activo: true,
+  revision: true,
+  creadoEn: true,
+  modificadoEn: true,
+  modificador: nombreDe,
+  _count: { select: { productos: true, conversiones: true, componentes: true } },
+} satisfies Prisma.InsumoSelect;
+
+export type FilaInsumo = Prisma.InsumoGetPayload<{ select: typeof seleccionInsumo }>;
+
+export function aInsumo(f: FilaInsumo): InsumoAdmin {
+  return {
+    codigo: f.codigo,
+    descripcion: f.descripcion,
+    especificacion: f.especificacion,
+    unidadBase: f.unidadBase,
+    activo: f.activo,
+    revision: f.revision,
+    referencias: { ...f._count },
+    creadoEn: f.creadoEn.toISOString(),
+    modificadoEn: f.modificadoEn.toISOString(),
+    modificadoPor: f.modificador?.usuario.nombre ?? null,
+  };
 }
 
 const SIN_IMPACTO: ImpactoCatalogo = { preciosVigentes: 0, tarifas: 0, conceptos: 0, borradoresAbiertos: 0 };
@@ -563,54 +658,27 @@ export class RepositorioAdministracion {
 
   // ---------------------------- conceptos (tarifa) ---------------------------
 
-  async listarConceptos(ctx: ContextoOrganizacion, f: Pagina & { buscar?: string; codigos?: readonly string[] }): Promise<{ filas: ConceptoTarifaAdmin[]; siguiente: string | null }> {
+  async listarConceptos(
+    ctx: ContextoOrganizacion,
+    f: Pagina & { buscar?: string; codigos?: readonly string[]; estado?: "Borrador" | "Aprobado"; tipoCodigo?: string; soloActivos?: boolean },
+  ): Promise<{ filas: ConceptoTarifaAdmin[]; siguiente: string | null }> {
     const filas = await this.db.concepto.findMany({
       where: {
         organizacionId: ctx.organizacionId,
         ...(f.codigos ? { codigo: { in: [...f.codigos] } } : {}),
+        ...(f.estado ? { estado: f.estado } : {}),
+        ...(f.tipoCodigo ? { tipo: { codigo: f.tipoCodigo } } : {}),
+        ...(f.soloActivos ? { activo: true } : {}),
         ...(f.buscar ? { OR: [{ codigo: contiene(f.buscar) }, { descripcion: contiene(f.buscar) }] } : {}),
         ...(f.despuesDe ? { codigo: { gt: f.despuesDe } } : {}),
       },
-      select: {
-        codigo: true,
-        descripcion: true,
-        unidad: true,
-        clase: true,
-        estado: true,
-        activo: true,
-        tarifa: {
-          select: { codigo: true, modalidad: true, descripcion: true, unidad: true, importe: true, activa: true, vigenteDesde: true, vigenteHasta: true },
-        },
-      },
+      select: seleccionConcepto,
       orderBy: { codigo: "asc" },
       take: f.limite + 1,
     });
     const p = paginar(filas, f.limite);
     const borradores = await this.borradoresPorConcepto(ctx, p.filas.map((c) => c.codigo));
-    return {
-      filas: p.filas.map((c) => ({
-        codigo: c.codigo,
-        descripcion: c.descripcion,
-        unidad: c.unidad,
-        clase: c.clase,
-        estado: c.estado,
-        activo: c.activo,
-        tarifa: c.tarifa
-          ? {
-              codigo: c.tarifa.codigo,
-              modalidad: c.tarifa.modalidad as ModalidadManoObra,
-              descripcion: c.tarifa.descripcion,
-              unidad: c.tarifa.unidad,
-              importe: textoDeDecimal(c.tarifa.importe),
-              activa: c.tarifa.activa,
-              vigenteDesde: fechaDeColumna(c.tarifa.vigenteDesde),
-              vigenteHasta: fechaDeColumna(c.tarifa.vigenteHasta),
-            }
-          : null,
-        borradoresAbiertos: borradores.porCodigo.get(c.codigo) ?? 0,
-      })),
-      siguiente: p.siguiente,
-    };
+    return { filas: p.filas.map((c) => aConcepto(c, borradores.porCodigo.get(c.codigo) ?? 0)), siguiente: p.siguiente };
   }
 
   async conceptoId(ctx: ContextoOrganizacion, codigo: string): Promise<string | null> {
@@ -660,11 +728,12 @@ export class RepositorioAdministracion {
         ...(f.buscar ? { OR: [{ codigo: contiene(f.buscar) }, { descripcion: contiene(f.buscar) }] } : {}),
         ...(f.despuesDe ? { codigo: { gt: f.despuesDe } } : {}),
       },
-      select: { codigo: true, descripcion: true, unidadBase: true, activo: true },
+      select: seleccionInsumo,
       orderBy: { codigo: "asc" },
       take: f.limite + 1,
     });
-    return paginar(filas, f.limite);
+    const p = paginar(filas, f.limite);
+    return { filas: p.filas.map(aInsumo), siguiente: p.siguiente };
   }
 
   async listarUnidades(): Promise<{ clave: string; nombre: string; magnitud: string }[]> {

@@ -39,7 +39,14 @@ export type OperacionIdempotente =
   | "anular_precio"
   | "cerrar_vigencia_precio"
   | "registrar_tarifa"
-  | "asignar_tarifa";
+  | "asignar_tarifa"
+  // Módulo 12 (ADR-0016): catálogo técnico y aprobación de conceptos.
+  | "crear_tipo_estructura"
+  | "crear_insumo"
+  | "crear_conversion"
+  | "crear_concepto"
+  | "crear_componente"
+  | "aprobar_concepto";
 
 export interface Idempotencia {
   readonly clave: string;

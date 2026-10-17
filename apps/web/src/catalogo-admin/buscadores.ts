@@ -41,3 +41,12 @@ export function buscarInsumos(s: ServiciosCatalogoAdmin): BuscarRegistros {
       siguiente: d.siguiente,
     }));
 }
+
+/** Tipos de estructura activos (módulo 12): solo se ofrecen para conceptos nuevos o para reclasificar. */
+export function buscarTipos(s: ServiciosCatalogoAdmin): BuscarRegistros {
+  return async (texto, despuesDe, signal) =>
+    adaptar(await s.listarTipos(filtro(texto, despuesDe), signal), (d) => ({
+      opciones: d.tipos.map((t) => ({ codigo: t.codigo, texto: `${t.codigo} · [${t.familia}] ${t.nombre}`, disponible: t.activo, detalle: t.familia })),
+      siguiente: d.siguiente,
+    }));
+}

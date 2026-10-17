@@ -30,22 +30,44 @@ let credA: Credencial;
 let credB: Credencial;
 let credNoDemo: Credencial;
 
+// Módulo 12: un concepto propio se crea completo (tipo, regla, tarifa y un componente trazable) y se
+// aprueba con la misma comprobación de requisitos que la operación Aprobar.
 const conceptoPropio = (codigo: string, descripcion: string) => ({
   codigo,
+  tipo: "TES-00004",
   descripcion,
-  unidad: "pza",
-  tipoFormula: "CONTEO" as const,
+  unidad: "m2",
+  tipoFormula: "AREA" as const,
   permiteDescuento: false,
   clase: "ESTANDAR",
-  estado: "Aprobado",
-  tarifa: null,
+  tarifa: "TMO-00001",
+  reglaMedicion: "[DEMO] Regla de prueba de aislamiento",
+  criterios: null,
 });
+
+async function conceptoAprobado(ctx: ContextoOrganizacion, codigo: string, descripcion: string): Promise<void> {
+  await repo.asegurarConcepto(ctx, conceptoPropio(codigo, descripcion));
+  await repo.asegurarComponente(ctx, {
+    codigo: `CMP-${codigo.slice(4)}`,
+    concepto: codigo,
+    orden: 1,
+    insumo: "INS-00001",
+    rendimiento: "1",
+    unidadRendimiento: "pza",
+    desperdicio: "0",
+    factorTraslape: null,
+    fuente: "[DEMO] Prueba de aislamiento",
+    fecha: "2026-09-01",
+    responsable: "[DEMO] Responsable de prueba",
+  });
+  await repo.cambiarEstadoConcepto(ctx, codigo, "Aprobado");
+}
 
 beforeAll(async () => {
   orgA = { organizacionId: (await cargarDemo(prisma, { codigo: "DEMO-ISO-A", nombre: "[DEMO] Organización A" })).organizacionId };
   orgB = { organizacionId: (await cargarDemo(prisma, { codigo: "DEMO-ISO-B", nombre: "[DEMO] Organización B" })).organizacionId };
-  await repo.asegurarConcepto(orgA, conceptoPropio("CON-ISO-A1", "[DEMO] Aislamiento exclusivo de A"));
-  await repo.asegurarConcepto(orgB, conceptoPropio("CON-ISO-B1", "[DEMO] Aislamiento exclusivo de B"));
+  await conceptoAprobado(orgA, "CON-ISO-A1", "[DEMO] Aislamiento exclusivo de A");
+  await conceptoAprobado(orgB, "CON-ISO-B1", "[DEMO] Aislamiento exclusivo de B");
   migrador = await prismaMigrador();
   credA = (await crearCuentas(migrador, "DEMO-ISO-A", [cuenta("preparador.a@softarq.test", "[DEMO] Preparador A", "PREPARADOR")]))[
     "preparador.a@softarq.test"

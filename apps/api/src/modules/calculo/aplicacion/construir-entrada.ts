@@ -12,6 +12,8 @@
  *   Un concepto PERSONALIZADO activo puede usarse aunque esté en Borrador solo si la solicitud trae
  *   su excepción CONCEPTO_PERSONALIZADO registrada (W §3.10; `Validar` en modo ENVIAR). Que esté
  *   AUTORIZADA lo exige la verificación al aprobar y emitir, no el cálculo.
+ * - BL-05 de trazabilidad (módulo 12, `Validar`): un componente activo sin fuente, fecha o responsable
+ *   técnico bloquea. El motor y su huella no cambian: es un dato del catálogo, no del cálculo.
  */
 import type {
   EntradaCalculo,
@@ -130,6 +132,20 @@ export async function construirEntradaCalculo(
         referencia: c.codigo,
         mensaje: `El concepto ${c.codigo} no está aprobado o está inactivo (estado ${c.estado}).`,
       });
+    }
+  }
+
+  // BL-05 (`Validar`): rendimiento y desperdicio trazables (fuente, fecha y responsable técnico).
+  for (const p of s.partidas) {
+    if (p.tipo !== "CONCEPTO") continue;
+    for (const k of conceptoPorCodigo.get(p.conceptoCodigo)!.componentes) {
+      if (k.activo && !k.trazable) {
+        problemas.push({
+          codigo: "BL-05",
+          referencia: k.codigo,
+          mensaje: `Partida ${p.id}: el componente ${k.codigo} no tiene rendimiento o desperdicio trazable (fuente, fecha y responsable técnico).`,
+        });
+      }
     }
   }
 

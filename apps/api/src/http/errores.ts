@@ -150,6 +150,12 @@ const ESTADO_NEGOCIO: Record<CodigoNegocio, number> = {
   VIGENCIA_INVALIDA: 422,
   PRECIO_ANULADO: 409,
   VALOR_INVALIDO: 422,
+  // Módulo 12 (ADR-0016).
+  TIPO_CON_CONCEPTOS: 422,
+  INSUMO_CON_REFERENCIAS: 422,
+  CONCEPTO_INCOMPLETO: 422,
+  REQUISITOS_INCOMPLETOS: 422,
+  CONFLICTO_APROBACION: 409,
 };
 
 export function traducirError(error: unknown): ErrorApi {

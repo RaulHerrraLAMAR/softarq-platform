@@ -45,7 +45,13 @@ export type CodigoNegocio =
   | "CONFLICTO_TARIFA"
   | "VIGENCIA_INVALIDA"
   | "PRECIO_ANULADO"
-  | "VALOR_INVALIDO";
+  | "VALOR_INVALIDO"
+  // Módulo 12 (ADR-0016): catálogo técnico y aprobación de conceptos.
+  | "TIPO_CON_CONCEPTOS"
+  | "INSUMO_CON_REFERENCIAS"
+  | "CONCEPTO_INCOMPLETO"
+  | "REQUISITOS_INCOMPLETOS"
+  | "CONFLICTO_APROBACION";
 
 export interface DetalleError {
   campos?: { ruta: string; mensaje: string }[];
@@ -144,6 +150,29 @@ const MENSAJES: Record<string, [CodigoNegocio, string]> = {
   VALOR_INVALIDO: ["VALOR_INVALIDO", "Algún valor no es válido para este registro."],
   REGISTRO_INMUTABLE: ["VALOR_INVALIDO", "Ese dato no se edita: registre uno nuevo."],
   PROYECTO_INACTIVO: ["REGISTRO_INACTIVO", "El proyecto está inactivo: no se ofrece para cotizaciones nuevas."],
+  // Módulo 12 (ADR-0016): catálogo técnico y aprobación de conceptos.
+  TIPO_INACTIVO: ["REGISTRO_INACTIVO", "El tipo de estructura está inactivo: no se ofrece para conceptos nuevos ni para reclasificar."],
+  TIPO_CON_CONCEPTOS: [
+    "TIPO_CON_CONCEPTOS",
+    "El tipo ya tiene conceptos: su familia no cambia. Registre otro tipo para la nueva familia; los conceptos no se trasladan solos.",
+  ],
+  INSUMO_CON_REFERENCIAS: [
+    "INSUMO_CON_REFERENCIAS",
+    "No puede cambiar la unidad base: el insumo ya tiene productos, conversiones o componentes. Registre un insumo nuevo.",
+  ],
+  CONVERSION_DESTINO: ["VALOR_INVALIDO", "La unidad de origen es la unidad base del insumo; no requiere conversión."],
+  UNIDAD_FORMULA: ["VALOR_INVALIDO", "La unidad del concepto no corresponde al tipo de fórmula de medición."],
+  CONCEPTO_INCOMPLETO: [
+    "CONCEPTO_INCOMPLETO",
+    "Datos incompletos de la carga anterior: complete el tipo de estructura y la regla de medición antes de cambiar el concepto o sus componentes.",
+  ],
+  REQUISITOS_INCOMPLETOS: ["REQUISITOS_INCOMPLETOS", "El concepto no cumple los requisitos de aprobación."],
+  CONFLICTO_APROBACION: [
+    "CONFLICTO_APROBACION",
+    "El contenido técnico del concepto cambió mientras lo revisaba: revise la versión vigente antes de aprobar.",
+  ],
+  YA_APROBADO: ["CONFLICTO_APROBACION", "El concepto ya está aprobado."],
+  APROBACION_DIRECTA: ["VALOR_INVALIDO", "El concepto se aprueba con la operación Aprobar."],
 };
 
 /** Traduce un error de las funciones de la base a `ErrorNegocio`; si no lo reconoce, lo devuelve igual. */

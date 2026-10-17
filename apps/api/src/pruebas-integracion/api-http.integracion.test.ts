@@ -341,15 +341,18 @@ describe("catálogos", () => {
 describe("aislamiento: identificadores de otra organización → 404", () => {
   beforeAll(async () => {
     const otra = { organizacionId: (await repo.asegurarOrganizacion("PRUEBA-HTTP-OTRA", "[PRUEBA] Otra", false)).id };
+    await repo.asegurarTipoEstructura(otra, { codigo: "TES-00002", familia: "Concreto reforzado", nombre: "Genérico - Concreto reforzado" });
     await repo.asegurarConcepto(otra, {
       codigo: "CON-OTRA-1",
+      tipo: "TES-00002",
       descripcion: "[PRUEBA] Concepto de otra organización",
       unidad: "m2",
       tipoFormula: "AREA",
       permiteDescuento: false,
       clase: "ESTANDAR",
-      estado: "Aprobado",
       tarifa: null,
+      reglaMedicion: "[PRUEBA] Regla de otra organización",
+      criterios: null,
     });
     await repo.asegurarInsumo(otra, { codigo: "INS-OTRA-1", descripcion: "x", unidadBase: "kg" });
     await repo.asegurarProducto(otra, {

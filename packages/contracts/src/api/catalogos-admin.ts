@@ -171,6 +171,9 @@ export type EventoCatalogo = z.infer<typeof EsquemaEventoCatalogo>;
 
 export const EsquemaParametroCodigo = z.strictObject({ codigo: EsquemaCodigo });
 
+/** Piezas comunes que reutiliza el catálogo técnico (módulo 12, `catalogos-tecnicos.ts`). */
+export const PIEZAS_CATALOGO = { textoObligatorio, textoOpcional, motivo, buscar, limite, despuesDe, booleanoTexto, revision, alMenosUnCambio, EsquemaInstante };
+
 // ---------------------------------------------------------------------------
 // Proveedores (03 PROVEEDORES)
 // ---------------------------------------------------------------------------
@@ -556,16 +559,38 @@ export const EsquemaAsignacionTarifa = z
   .refine((a) => a.tarifaActual !== a.tarifaNueva, { error: "La tarifa nueva es la que ya está asignada.", path: ["tarifaNueva"] });
 export type AsignacionTarifa = z.infer<typeof EsquemaAsignacionTarifa>;
 
-export const EsquemaConsultaConceptosAdmin = z.strictObject({ buscar, despuesDe, limite });
+export const EsquemaConsultaConceptosAdmin = z.strictObject({
+  buscar,
+  /** Módulo 12: filtros de la administración de conceptos. */
+  estado: z.enum(["Borrador", "Aprobado"]).optional(),
+  tipoCodigo: EsquemaCodigo.optional(),
+  /** Por omisión se listan también los inactivos (como en el módulo 11). */
+  soloActivos: booleanoTexto,
+  despuesDe,
+  limite,
+});
 export type ConsultaConceptosAdmin = z.infer<typeof EsquemaConsultaConceptosAdmin>;
 
+/**
+ * Concepto en la administración (módulo 11: tarifa; módulo 12, ADR-0016: tipo, fórmula, aprobación,
+ * revisión técnica y marca de heredado). Por compatibilidad conserva su nombre del módulo 11.
+ */
 export const EsquemaConceptoTarifaAdmin = z.strictObject({
   codigo: z.string(),
   descripcion: z.string(),
   unidad: z.string(),
+  tipoFormula: z.string(),
   clase: z.string(),
   estado: z.string(),
   activo: z.boolean(),
+  tipo: z.strictObject({ codigo: z.string(), familia: z.string(), nombre: z.string(), activo: z.boolean() }).nullable(),
+  /** Datos incompletos de la carga anterior (sin tipo ni regla de medición). */
+  heredado: z.boolean(),
+  revision: z.number().int(),
+  revisionTecnica: z.number().int(),
+  /** `null` si no está aprobado, o si lo aprobó la carga base (`aprobadoEn` presente) o la carga anterior (sin fecha). */
+  aprobadoPor: z.string().nullable(),
+  aprobadoEn: EsquemaInstante.nullable(),
   tarifa: z
     .strictObject({
       codigo: z.string(),
@@ -598,11 +623,19 @@ export type RespuestaConceptosAdmin = z.infer<typeof EsquemaRespuestaConceptosAd
 export const EsquemaConsultaInsumosAdmin = z.strictObject({ buscar, incluirInactivos: booleanoTexto, despuesDe, limite });
 export type ConsultaInsumosAdmin = z.infer<typeof EsquemaConsultaInsumosAdmin>;
 
+/** Insumo técnico. Módulo 12 (ADR-0016): especificación, revisión, referencias y autoría. */
 export const EsquemaInsumoAdmin = z.strictObject({
   codigo: z.string(),
   descripcion: z.string(),
+  especificacion: z.string().nullable(),
   unidadBase: z.string(),
   activo: z.boolean(),
+  revision: z.number().int(),
+  /** Productos, conversiones o componentes que lo citan: con alguno, la unidad base ya no cambia. */
+  referencias: z.strictObject({ productos: z.number().int(), conversiones: z.number().int(), componentes: z.number().int() }),
+  creadoEn: EsquemaInstante,
+  modificadoEn: EsquemaInstante,
+  modificadoPor: z.string().nullable(),
 });
 export type InsumoAdmin = z.infer<typeof EsquemaInsumoAdmin>;
 

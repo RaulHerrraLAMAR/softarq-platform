@@ -33,7 +33,7 @@ async function otraPersona(browser: Browser, cuenta: CuentaE2E, ancho = 1440): P
   return p;
 }
 
-async function irACatalogo(p: Page, vista: "Proveedores" | "Productos" | "Precios" | "Mano de obra" | "Tarifa de conceptos"): Promise<void> {
+async function irACatalogo(p: Page, vista: "Proveedores" | "Productos" | "Precios" | "Mano de obra" | "Conceptos y componentes"): Promise<void> {
   await p.getByRole("navigation", { name: "Secciones" }).getByRole("link", { name: "Catálogo" }).click();
   await p.getByRole("navigation", { name: "Secciones del catálogo" }).getByRole("link", { name: vista }).click();
 }
@@ -177,11 +177,12 @@ test("asignar otra tarifa al concepto: el editor avisa que la v1 ya no es vigent
   await expect(prep.getByText(/La v1 corresponde a la captura guardada/)).toBeVisible();
   await expect(prep.getByText(/El catálogo cambió después de calcular/)).toHaveCount(0);
 
-  // Administrador: asigna la tarifa nueva al concepto del muro.
-  await irACatalogo(page, "Tarifa de conceptos");
+  // Administrador: asigna la tarifa nueva al concepto del muro (módulo 12: desde el detalle del concepto).
+  await irACatalogo(page, "Conceptos y componentes");
   await page.getByRole("searchbox", { name: /Buscar por código/ }).fill("CON-00009");
-  await page.getByRole("button", { name: "Buscar" }).click();
-  await page.getByRole("row", { name: /CON-00009/ }).getByRole("button", { name: "Asignar tarifa" }).click();
+  await page.getByRole("button", { name: "Buscar", exact: true }).click();
+  await page.getByRole("row", { name: /CON-00009/ }).getByRole("button", { name: "Gestionar" }).click();
+  await page.locator(".panel-registro").getByRole("button", { name: "Asignar tarifa" }).click();
   await page.getByLabel(/Tarifa nueva \(activas en m2\)/).selectOption(tmo);
   await page.getByLabel(etiqueta("Motivo")).fill(MOTIVO);
   await page.getByRole("button", { name: "Revisar y confirmar" }).click();
@@ -199,7 +200,7 @@ test("asignar otra tarifa al concepto: el editor avisa que la v1 ya no es vigent
     await evidencia(prep, info, "04-editor-catalogo-cambiado", true);
   } finally {
     // Restaurar la tarifa de referencia del concepto (los ejemplos de las demás pruebas la usan).
-    await page.getByRole("row", { name: /CON-00009/ }).getByRole("button", { name: "Asignar tarifa" }).click();
+    await page.locator(".panel-registro").getByRole("button", { name: "Asignar tarifa" }).click();
     await page.getByLabel(/Tarifa nueva \(activas en m2\)/).selectOption("TMO-00005");
     await page.getByLabel(etiqueta("Motivo")).fill("[DEMO] Restaurar la tarifa de referencia");
     await page.getByRole("button", { name: "Revisar y confirmar" }).click();

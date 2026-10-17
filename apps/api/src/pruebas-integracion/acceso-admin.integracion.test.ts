@@ -39,6 +39,8 @@ const CODIGO_POR_SEGMENTO: Record<string, string> = {
   conceptos: "CON-00001",
   insumos: "INS-00001",
   "tipos-estructura": "TES-00001",
+  componentes: "CMP-00001",
+  conversiones: "m",
 };
 
 function rutasAdmin(): { metodo: string; ruta: string }[] {

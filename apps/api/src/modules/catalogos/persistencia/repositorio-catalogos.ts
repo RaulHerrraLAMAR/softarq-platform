@@ -73,6 +73,8 @@ export interface ComponenteLeido {
   desperdicio: string;
   factorTraslape: string | null;
   activo: boolean;
+  /** Fuente, fecha y responsable técnico presentes (BL-05 al calcular; módulo 12). */
+  trazable: boolean;
 }
 
 export interface ConceptoLeido {
@@ -229,14 +231,23 @@ export class RepositorioCatalogos {
 
   async asegurarInsumo(
     ctx: ContextoOrganizacion,
-    d: { codigo: string; descripcion: string; unidadBase: string },
+    d: { codigo: string; descripcion: string; unidadBase: string; especificacion?: string | null },
   ): Promise<Alta> {
     const org = ctx.organizacionId;
     const e = await this.db.insumo.findUnique({ where: { organizacionId_codigo: { organizacionId: org, codigo: d.codigo } } });
     if (e) return { id: e.id, creado: false };
     const n = await this.db.insumo.create({
-      data: { organizacionId: org, codigo: d.codigo, descripcion: d.descripcion, unidadBase: d.unidadBase },
+      data: { organizacionId: org, codigo: d.codigo, descripcion: d.descripcion, unidadBase: d.unidadBase, especificacion: d.especificacion ?? null },
     });
+    return { id: n.id, creado: true };
+  }
+
+  /** Tipos de estructura base (módulo 12): solo crea los ausentes; nunca sobrescribe ediciones. */
+  async asegurarTipoEstructura(ctx: ContextoOrganizacion, d: { codigo: string; familia: string; nombre: string }): Promise<Alta> {
+    const org = ctx.organizacionId;
+    const e = await this.db.tipoEstructura.findUnique({ where: { organizacionId_codigo: { organizacionId: org, codigo: d.codigo } } });
+    if (e) return { id: e.id, creado: false };
+    const n = await this.db.tipoEstructura.create({ data: { organizacionId: org, codigo: d.codigo, familia: d.familia, nombre: d.nombre } });
     return { id: n.id, creado: true };
   }
 
@@ -359,9 +370,36 @@ export class RepositorioCatalogos {
     if (r.count !== 1) throw new ErrorReferenciaCatalogo("el producto", codigo);
   }
 
+  /**
+   * Devolver a Borrador es una escritura directa (el disparador retira la aprobación). Aprobar pasa
+   * por `aprobarCargaBase`: misma marca y mismos requisitos que la operación Aprobar.
+   */
   async cambiarEstadoConcepto(ctx: ContextoOrganizacion, codigo: string, estado: "Borrador" | "Aprobado"): Promise<void> {
+    if (estado === "Aprobado") return this.aprobarCargaBase(ctx, codigo);
     const r = await this.db.concepto.updateMany({ where: { organizacionId: ctx.organizacionId, codigo }, data: { estado } });
     if (r.count !== 1) throw new ErrorReferenciaCatalogo("el concepto", codigo);
+  }
+
+  /**
+   * Aprobación de la carga base (sin persona: `aprobado_por` NULL). Exige la lista completa de
+   * requisitos (`softarq_problemas_concepto`) y usa la marca local de la transacción que acepta el
+   * disparador del concepto. La usan la carga DEMO al crear un concepto y las pruebas.
+   */
+  async aprobarCargaBase(ctx: ContextoOrganizacion, codigo: string): Promise<void> {
+    const aprobar = async (db: Prisma.TransactionClient) => {
+      const id = await this.idConcepto(ctx, codigo);
+      const problemas = await db.$queryRaw<{ codigo: string; mensaje: string }[]>`
+        SELECT codigo, mensaje FROM softarq_problemas_concepto(${ctx.organizacionId}::uuid, ${id}::uuid)`;
+      if (problemas.length > 0) {
+        throw new Error(`El concepto ${codigo} no cumple los requisitos de aprobación: ${problemas.map((p) => p.mensaje).join(" ")}`);
+      }
+      await db.$executeRaw`SELECT set_config('softarq.aprobacion_concepto', ${id}, true)`;
+      await db.$executeRaw`UPDATE concepto SET estado = 'Aprobado', aprobado_en = now(), revision = revision + 1
+                            WHERE organizacion_id = ${ctx.organizacionId}::uuid AND id = ${id}::uuid`;
+      await db.$executeRaw`SELECT set_config('softarq.aprobacion_concepto', '', true)`;
+    };
+    if ("$transaction" in this.db) await this.db.$transaction((tx) => aprobar(tx));
+    else await aprobar(this.db);
   }
 
   async asegurarTarifa(
@@ -398,32 +436,43 @@ export class RepositorioCatalogos {
     return { id: n.id, creado: true };
   }
 
+  /**
+   * Alta de la carga: siempre en Borrador y completa (tipo y regla; módulo 12). Si los datos dicen
+   * Aprobado, el llamador lo aprueba con `aprobarCargaBase` después de crear sus componentes.
+   */
   async asegurarConcepto(
     ctx: ContextoOrganizacion,
     d: {
       codigo: string;
+      tipo: string;
       descripcion: string;
       unidad: string;
       tipoFormula: "CONTEO" | "LONGITUD" | "AREA" | "VOLUMEN";
       permiteDescuento: boolean;
       clase: string;
-      estado: string;
       tarifa: string | null;
+      reglaMedicion: string;
+      criterios: string | null;
     },
   ): Promise<Alta> {
     const org = ctx.organizacionId;
     const e = await this.db.concepto.findUnique({ where: { organizacionId_codigo: { organizacionId: org, codigo: d.codigo } } });
     if (e) return { id: e.id, creado: false };
+    const tipo = await this.db.tipoEstructura.findUnique({ where: { organizacionId_codigo: { organizacionId: org, codigo: d.tipo } }, select: { id: true } });
+    if (!tipo) throw new ErrorReferenciaCatalogo("el tipo de estructura", d.tipo);
     const n = await this.db.concepto.create({
       data: {
         organizacionId: org,
         codigo: d.codigo,
+        tipoId: tipo.id,
         descripcion: d.descripcion,
         unidad: d.unidad,
         tipoFormula: d.tipoFormula,
         permiteDescuento: d.permiteDescuento,
         clase: d.clase,
-        estado: d.estado,
+        estado: "Borrador",
+        reglaMedicion: d.reglaMedicion,
+        criterios: d.criterios,
         tarifaId: d.tarifa === null ? null : await this.idTarifa(ctx, d.tarifa),
       },
     });
@@ -532,6 +581,7 @@ export class RepositorioCatalogos {
         desperdicio: textoDeDecimal(c.desperdicio),
         factorTraslape: textoDeDecimalOpcional(c.factorTraslape),
         activo: c.activo,
+        trazable: c.fuente !== null && c.fecha !== null && c.responsable !== null,
       })),
     }));
   }

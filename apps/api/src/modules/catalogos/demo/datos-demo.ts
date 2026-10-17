@@ -11,6 +11,11 @@
  * Se excluyen: las plantillas CON-00003 a CON-00006 (sin reglas aprobadas) y CAD-00004
  * (tipo creado por el usuario del libro, no es dato DEMO).
  *
+ * Módulo 12 (ADR-0016): tipo de estructura, regla de medición y criterios de cada concepto, y
+ * especificación de cada insumo, copiados de tblConceptos y tblInsumos (lectura del 17/10/2026 de una
+ * copia en _work, mismo MD5). Solo se usan al CREAR registros: la carga nunca completa ni modifica
+ * los existentes (los conceptos heredados de la carga anterior conservan sus datos tal cual).
+ *
  * El libro guarda `contenido` como double (2.1960000000000002); aquí se usa el decimal
  * que reconstruye su función Dec(): 2.196 y 2.977.
  *
@@ -35,18 +40,35 @@ export const PARAMETROS_DEMO = {
   vigenciaDias: 15,
 } as const;
 
+/**
+ * tblTiposEstructura: las seis familias de tblListas.FAMILIA, con su tipo genérico. Son DATOS BASE
+ * del catálogo (la copia maestra sin DEMO los conserva), no datos DEMO: se crean en toda
+ * organización que no los tenga y nunca se sobrescriben.
+ */
+export const TIPOS_ESTRUCTURA_BASE = [
+  { codigo: "TES-00001", familia: "Cimentaciones", nombre: "Genérico - Cimentaciones" },
+  { codigo: "TES-00002", familia: "Concreto reforzado", nombre: "Genérico - Concreto reforzado" },
+  { codigo: "TES-00003", familia: "Acero estructural", nombre: "Genérico - Acero estructural" },
+  { codigo: "TES-00004", familia: "Mampostería reforzada", nombre: "Genérico - Mampostería reforzada" },
+  { codigo: "TES-00005", familia: "Cubiertas ligeras", nombre: "Genérico - Cubiertas ligeras" },
+  { codigo: "TES-00006", familia: "Conceptos personalizados", nombre: "Genérico - Conceptos personalizados" },
+] as const;
+
+const E_913 = "Ilustrativo seccion 9.13";
+const E_REC = "Ilustrativo del recorrido guiado; no es dato tecnico";
+
 export const INSUMOS_DEMO = [
-  { codigo: "INS-00001", descripcion: "[DEMO] Insumo A (pieza)", unidadBase: "pza" },
-  { codigo: "INS-00002", descripcion: "[DEMO] Insumo B (kg)", unidadBase: "kg" },
-  { codigo: "INS-00003", descripcion: "[DEMO] Insumo C (m3)", unidadBase: "m3" },
-  { codigo: "INS-00004", descripcion: "[DEMO] Lamina acanalada galvanizada (m2)", unidadBase: "m2" },
-  { codigo: "INS-00005", descripcion: "[DEMO] Tornillo autotaladrante con arandela (pza)", unidadBase: "pza" },
-  { codigo: "INS-00006", descripcion: "[DEMO] Larguero de acero (kg)", unidadBase: "kg" },
-  { codigo: "INS-00007", descripcion: "[DEMO] Concreto premezclado (m3)", unidadBase: "m3" },
-  { codigo: "INS-00008", descripcion: "[DEMO] Acero de refuerzo (kg)", unidadBase: "kg" },
-  { codigo: "INS-00009", descripcion: "[DEMO] Triplay para cimbra (m2)", unidadBase: "m2" },
-  { codigo: "INS-00010", descripcion: "[DEMO] Block hueco de concreto 15x20x40 (pza)", unidadBase: "pza" },
-  { codigo: "INS-00011", descripcion: "[DEMO] Mortero premezclado en seco (kg)", unidadBase: "kg" },
+  { codigo: "INS-00001", descripcion: "[DEMO] Insumo A (pieza)", especificacion: E_913, unidadBase: "pza" },
+  { codigo: "INS-00002", descripcion: "[DEMO] Insumo B (kg)", especificacion: E_913, unidadBase: "kg" },
+  { codigo: "INS-00003", descripcion: "[DEMO] Insumo C (m3)", especificacion: E_913, unidadBase: "m3" },
+  { codigo: "INS-00004", descripcion: "[DEMO] Lamina acanalada galvanizada (m2)", especificacion: E_REC, unidadBase: "m2" },
+  { codigo: "INS-00005", descripcion: "[DEMO] Tornillo autotaladrante con arandela (pza)", especificacion: E_REC, unidadBase: "pza" },
+  { codigo: "INS-00006", descripcion: "[DEMO] Larguero de acero (kg)", especificacion: E_REC, unidadBase: "kg" },
+  { codigo: "INS-00007", descripcion: "[DEMO] Concreto premezclado (m3)", especificacion: E_REC, unidadBase: "m3" },
+  { codigo: "INS-00008", descripcion: "[DEMO] Acero de refuerzo (kg)", especificacion: E_REC, unidadBase: "kg" },
+  { codigo: "INS-00009", descripcion: "[DEMO] Triplay para cimbra (m2)", especificacion: E_REC, unidadBase: "m2" },
+  { codigo: "INS-00010", descripcion: "[DEMO] Block hueco de concreto 15x20x40 (pza)", especificacion: E_REC, unidadBase: "pza" },
+  { codigo: "INS-00011", descripcion: "[DEMO] Mortero premezclado en seco (kg)", especificacion: E_REC, unidadBase: "kg" },
 ] as const;
 
 export const CONVERSIONES_DEMO = [
@@ -156,23 +178,42 @@ function t(
   return { codigo, modalidad, descripcion, unidad, importe, rendimientoJornada, vigenteDesde, vigenteHasta, fuente };
 }
 
+/**
+ * tblConceptos (estado Aprobado en el libro). `tipo`, `reglaMedicion` y `criterios` son los del libro
+ * (`id_tipo`, `regla_medicion`, `criterios_especiales`). La regla es TEXTO DESCRIPTIVO para quien mide;
+ * el motor calcula con `tipoFormula` y no la interpreta. Una organización nueva los recibe aprobados
+ * por la carga base (sin persona), después de comprobar sus requisitos.
+ */
 export const CONCEPTOS_DEMO = [
-  c("CON-00001", "[DEMO] Concepto X (ilustrativo, m2)", "m2", "AREA", true, "TMO-00001"),
-  c("CON-00002", "[DEMO] Concepto Y (ilustrativo, m3)", "m3", "VOLUMEN", false, "TMO-00002"),
-  c("CON-00007", "[DEMO] Cubierta ligera de lamina sobre largueros (ilustrativa, m2)", "m2", "AREA", true, "TMO-00003"),
-  c("CON-00008", "[DEMO] Losa de concreto reforzado (ilustrativa, m3)", "m3", "VOLUMEN", false, "TMO-00004"),
-  c("CON-00009", "[DEMO] Muro de block de concreto reforzado (ilustrativo, m2)", "m2", "AREA", true, "TMO-00005"),
+  c("CON-00001", "TES-00004", "[DEMO] Concepto X (ilustrativo, m2)", "m2", "AREA", true, "TMO-00001",
+    "[DEMO] Area = piezas x largo x alto por pano; los vanos se descuentan con signo - (regla ilustrativa, pendiente de la regla aprobada del cliente).",
+    null),
+  c("CON-00002", "TES-00002", "[DEMO] Concepto Y (ilustrativo, m3)", "m3", "VOLUMEN", false, "TMO-00002",
+    "[DEMO] Volumen = piezas x largo x ancho x alto (regla ilustrativa, pendiente de la regla aprobada del cliente).",
+    null),
+  c("CON-00007", "TES-00005", "[DEMO] Cubierta ligera de lamina sobre largueros (ilustrativa, m2)", "m2", "AREA", true, "TMO-00003",
+    "[DEMO] Area = piezas x largo x ancho de cada faldon (medida sobre la pendiente); tragaluces y huecos se descuentan con signo - (regla ilustrativa, no validada).",
+    "[DEMO] Traslape de lamina como factor 0.10 del componente; larguero medido en m y convertido a kg (ilustrativo)."),
+  c("CON-00008", "TES-00002", "[DEMO] Losa de concreto reforzado (ilustrativa, m3)", "m3", "VOLUMEN", false, "TMO-00004",
+    "[DEMO] Volumen = piezas x largo x ancho x espesor de cada tablero (regla ilustrativa, no validada).",
+    "[DEMO] Concreto con venta fraccionada cada 0.5 m3; cuadrilla por jornada fraccionaria (ilustrativo)."),
+  c("CON-00009", "TES-00004", "[DEMO] Muro de block de concreto reforzado (ilustrativo, m2)", "m2", "AREA", true, "TMO-00005",
+    "[DEMO] Area = piezas x largo x alto de cada muro; puertas y ventanas se descuentan con signo - (regla ilustrativa, no validada).",
+    "[DEMO] Acero de refuerzo medido en m y convertido a kg con el factor del insumo (ilustrativo)."),
 ] as const;
 
 function c(
   codigo: string,
+  tipo: string,
   descripcion: string,
   unidad: string,
   tipoFormula: "CONTEO" | "LONGITUD" | "AREA" | "VOLUMEN",
   permiteDescuento: boolean,
   tarifa: string,
+  reglaMedicion: string,
+  criterios: string | null,
 ) {
-  return { codigo, descripcion, unidad, tipoFormula, permiteDescuento, clase: "ESTANDAR", estado: "Aprobado", tarifa };
+  return { codigo, tipo, descripcion, unidad, tipoFormula, permiteDescuento, clase: "ESTANDAR", estado: "Aprobado", tarifa, reglaMedicion, criterios };
 }
 
 const FC_913 = "Ejemplo ilustrativo seccion 9.13 (no tecnico)";

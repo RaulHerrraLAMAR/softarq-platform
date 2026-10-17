@@ -1,6 +1,8 @@
 /**
  * Administración de proveedores, productos, precios y tarifas (módulo 11, ADR-0015). Solo con la
  * capacidad `catalogos.administrar` (Administrador del catálogo); la API lo exige de todos modos.
+ * Las pestañas de insumos, tipos de estructura y conceptos (módulo 12, ADR-0016) están en
+ * `catalogo-tecnico/`; la asignación de tarifa se hace en el detalle de cada concepto.
  *
  * - Muestra importes internos (precios de proveedor y tarifas) solo en esta sección: no se mezclan
  *   con la cotización comercial, la calculadora ni el PDF.
@@ -37,6 +39,8 @@ import { AvisoFallo, CampoCasilla, CampoSeleccion, CampoTexto, ControlPaginas, e
 import { diaSiguiente, maxima } from "./fechas.ts";
 import type { ServiciosCatalogoAdmin } from "./servicios.ts";
 import { buscarInsumos, buscarProductos, buscarProveedores } from "./buscadores.ts";
+import { VistaConceptosTecnicos, VistaInsumos, VistaTiposEstructura } from "../catalogo-tecnico/PantallasTecnicas.tsx";
+import { Acciones, Busqueda, Confirmacion, FormularioAsignacion, Historial, mxn, opcional, TEXTO_MODALIDAD, textoImporteTarifa, useEnvio, vigencia } from "./piezas.tsx";
 import { SelectorRegistro, type OpcionRegistro } from "./SelectorRegistro.tsx";
 
 const TITULOS: Record<VistaCatalogo, string> = {
@@ -44,13 +48,9 @@ const TITULOS: Record<VistaCatalogo, string> = {
   productos: "Productos",
   precios: "Precios",
   "mano-de-obra": "Mano de obra",
-  conceptos: "Tarifa de conceptos",
-};
-
-const TEXTO_MODALIDAD: Record<ModalidadManoObra, string> = {
-  UNIDAD: "Por unidad del concepto",
-  JORNADA: "Por jornada de cuadrilla",
-  SUBCONTRATO: "Precio de subcontrato",
+  insumos: "Insumos y conversiones",
+  "tipos-estructura": "Tipos de estructura",
+  conceptos: "Conceptos y componentes",
 };
 
 const TEXTO_ESTADO_PRECIO: Record<EstadoPrecio, string> = {
@@ -60,19 +60,11 @@ const TEXTO_ESTADO_PRECIO: Record<EstadoPrecio, string> = {
   ANULADO: "Anulado",
 };
 
-/** Importe interno con al menos dos decimales, sin pasar por `number` ("13.7" → "$13.70"). */
-const mxn = (t: string) => {
-  const m = /^(-?\d+)(?:\.(\d*))?$/.exec(t);
-  return formatearImporte(m ? `${m[1]}.${(m[2] ?? "").padEnd(2, "0")}` : t, "MXN");
-};
-const vigencia = (desde: string, hasta: string) => `${formatearFecha(desde)} a ${formatearFecha(hasta)}`;
-const opcional = (t: string) => (t.trim() === "" ? null : t.trim());
-
 export function PantallaCatalogo({ servicios, vista }: { servicios: ServiciosCatalogoAdmin; vista: VistaCatalogo }) {
   return (
     <Pagina
-      titulo="Catálogo de compras y mano de obra"
-      subtitulo="Administrador del catálogo. Datos DEMO ilustrativos. Los precios de proveedor y las tarifas son internos: no aparecen en la cotización comercial ni en el PDF."
+      titulo="Catálogo"
+      subtitulo="Administrador del catálogo. Datos DEMO ilustrativos. Precios de proveedor, tarifas y datos técnicos son internos: no aparecen en la cotización comercial ni en el PDF."
     >
       <nav aria-label="Secciones del catálogo">
         <ul className="navegacion-catalogo">
@@ -89,7 +81,9 @@ export function PantallaCatalogo({ servicios, vista }: { servicios: ServiciosCat
       {vista === "productos" ? <VistaProductos servicios={servicios} /> : null}
       {vista === "precios" ? <VistaPrecios servicios={servicios} /> : null}
       {vista === "mano-de-obra" ? <VistaTarifas servicios={servicios} /> : null}
-      {vista === "conceptos" ? <VistaConceptos servicios={servicios} /> : null}
+      {vista === "insumos" ? <VistaInsumos servicios={servicios} /> : null}
+      {vista === "tipos-estructura" ? <VistaTiposEstructura servicios={servicios} /> : null}
+      {vista === "conceptos" ? <VistaConceptosTecnicos servicios={servicios} /> : null}
     </Pagina>
   );
 }
@@ -97,76 +91,6 @@ export function PantallaCatalogo({ servicios, vista }: { servicios: ServiciosCat
 // ---------------------------------------------------------------------------
 // Piezas comunes
 // ---------------------------------------------------------------------------
-
-function Busqueda({ etiqueta, alBuscar, children }: { etiqueta: string; alBuscar: (t: string) => void; children?: ReactNode }) {
-  const [texto, setTexto] = useState("");
-  return (
-    <form
-      className="barra-busqueda"
-      role="search"
-      onSubmit={(e) => {
-        e.preventDefault();
-        alBuscar(texto.trim());
-      }}
-    >
-      <label className="etiqueta" htmlFor="buscar-catalogo">
-        {etiqueta}
-      </label>
-      <div className="entrada-con-accion">
-        <input id="buscar-catalogo" type="search" value={texto} maxLength={LIMITES_CATALOGO_ADMIN.longitudBusqueda} onChange={(e) => setTexto(e.target.value)} />
-        <Boton type="submit">Buscar</Boton>
-      </div>
-      {children}
-    </form>
-  );
-}
-
-function Historial({ eventos }: { eventos: EventoCatalogo[] }) {
-  if (eventos.length === 0) return <p className="ayuda">Sin cambios registrados desde la carga DEMO.</p>;
-  return (
-    <ul className="lista-historial" aria-label="Historial de cambios">
-      {eventos.map((e, i) => (
-        <li key={`${e.tipo}-${e.ocurridoEn}-${i}`}>
-          <strong>{textoEvento(e.tipo)}</strong> · {formatearInstante(e.ocurridoEn)} · {e.usuario}
-          {detalleEvento(e)}
-        </li>
-      ))}
-    </ul>
-  );
-}
-
-const TEXTOS_EVENTO: Record<string, string> = {
-  PROVEEDOR_CREADO: "Alta",
-  PROVEEDOR_EDITADO: "Edición",
-  PROVEEDOR_DESACTIVADO: "Desactivado",
-  PROVEEDOR_REACTIVADO: "Reactivado",
-  PRODUCTO_CREADO: "Alta",
-  PRODUCTO_EDITADO: "Edición",
-  PRODUCTO_DESACTIVADO: "Desactivado",
-  PRODUCTO_REACTIVADO: "Reactivado",
-  PRECIO_REGISTRADO: "Registrado",
-  PRECIO_ANULADO: "Anulado por error de captura",
-  PRECIO_VIGENCIA_CERRADA: "Vigencia cerrada con sucesor",
-  TARIFA_REGISTRADA: "Registrada",
-  TARIFA_DESACTIVADA: "Desactivada",
-  TARIFA_REACTIVADA: "Reactivada",
-  CONCEPTO_TARIFA_ASIGNADA: "Tarifa asignada",
-};
-const textoEvento = (tipo: string) => TEXTOS_EVENTO[tipo] ?? tipo;
-
-function detalleEvento(e: EventoCatalogo): ReactNode {
-  const d = e.detalle as Record<string, unknown>;
-  const partes: string[] = [];
-  if (Array.isArray(d["campos"])) partes.push(`campos: ${(d["campos"] as unknown[]).join(", ")}`);
-  if (typeof d["hastaAnterior"] === "string" && typeof d["hastaNueva"] === "string") {
-    partes.push(`fin ${formatearFecha(d["hastaAnterior"])} → ${formatearFecha(d["hastaNueva"])}`);
-  }
-  if (typeof d["sucesor"] === "string") partes.push(`sucesor ${d["sucesor"]}`);
-  if (typeof d["sucesorDe"] === "string") partes.push(`sucesor de ${d["sucesorDe"]}`);
-  if (typeof d["tarifaNueva"] === "string") partes.push(`${typeof d["tarifaAnterior"] === "string" ? d["tarifaAnterior"] : "sin tarifa"} → ${d["tarifaNueva"]}`);
-  if (typeof d["motivo"] === "string") partes.push(`motivo: ${d["motivo"]}`);
-  return partes.length > 0 ? <span className="ayuda bloque">{partes.join(" · ")}</span> : null;
-}
 
 /** Texto del impacto de un cambio, sin importes. */
 function textoImpacto(i: ImpactoCatalogo, que: string): string {
@@ -181,51 +105,6 @@ function textoImpacto(i: ImpactoCatalogo, que: string): string {
   }
   const base = `${que} No se borra; las versiones calculadas y los PDF emitidos no cambian.`;
   return partes.length > 0 ? `${base} Efecto: ${partes.join("; ")}.` : `${base} Hoy no afecta a precios vigentes ni a cotizaciones abiertas.`;
-}
-
-function Confirmacion({ texto, accion, variante = "peligro", alConfirmar, alCancelar, ocupado }: { texto: string; accion: string; variante?: "peligro" | "primario"; alConfirmar: () => void; alCancelar: () => void; ocupado: boolean }) {
-  return (
-    <div className="confirmacion" role="group" aria-label={`Confirmar: ${accion}`}>
-      <span>{texto}</span>
-      <Boton variante={variante} onClick={alConfirmar} disabled={ocupado} aria-disabled={ocupado}>
-        {ocupado ? "Guardando…" : accion}
-      </Boton>
-      <Boton onClick={alCancelar} autoFocus disabled={ocupado}>
-        Cancelar
-      </Boton>
-    </div>
-  );
-}
-
-/** Envío de un formulario con estado y fallo; conserva lo escrito si falla. */
-function useEnvio() {
-  const [enviando, setEnviando] = useState(false);
-  const [fallo, setFallo] = useState<FalloApi | null>(null);
-  const ejecutar = async <T,>(accion: () => Promise<ResultadoApi<T>>): Promise<ResultadoApi<T> | null> => {
-    if (enviando) return null;
-    setEnviando(true);
-    setFallo(null);
-    const r = await accion();
-    setEnviando(false);
-    if (!r.ok && r.fallo.tipo !== "cancelado") setFallo(r.fallo);
-    return r;
-  };
-  return { enviando, fallo, setFallo, ejecutar };
-}
-
-function Acciones({ enviando, texto, alCancelar }: { enviando: boolean; texto: string; alCancelar?: () => void }) {
-  return (
-    <div className="formulario-acciones">
-      <Boton type="submit" variante="primario" disabled={enviando} aria-disabled={enviando}>
-        {enviando ? "Guardando…" : texto}
-      </Boton>
-      {alCancelar ? (
-        <Boton variante="enlace" onClick={alCancelar} disabled={enviando}>
-          Cancelar
-        </Boton>
-      ) : null}
-    </div>
-  );
 }
 
 // ---------------------------------------------------------------------------
@@ -1484,9 +1363,6 @@ function VistaTarifas({ servicios }: { servicios: ServiciosCatalogoAdmin }) {
   );
 }
 
-const textoImporteTarifa = (t: { modalidad: ModalidadManoObra; importe: string; unidad: string }) =>
-  t.modalidad === "JORNADA" ? `${mxn(t.importe)} / jornada` : `${mxn(t.importe)} / ${t.unidad}`;
-
 function FilaTarifa({ t, servicios, abierto, alAlternar, alCambiar }: { t: TarifaAdmin; servicios: ServiciosCatalogoAdmin; abierto: boolean; alAlternar: () => void; alCambiar: (m: string) => void }) {
   return (
     <>
@@ -1568,185 +1444,3 @@ function PanelTarifa({ codigo, servicios, alCambiar }: { codigo: string; servici
 // ---------------------------------------------------------------------------
 // Asignación de tarifa a conceptos (dependencia mínima autorizada)
 // ---------------------------------------------------------------------------
-
-function VistaConceptos({ servicios }: { servicios: ServiciosCatalogoAdmin }) {
-  const [buscar, setBuscar] = useState("");
-  const [abierto, setAbierto] = useState<string | null>(null);
-  const [mensaje, setMensaje] = useState<string | null>(null);
-  const paginas = usePaginas();
-  const { estado, recargar } = useCarga((s) => servicios.listarConceptos({ buscar, ...(paginas.actual ? { despuesDe: paginas.actual } : {}) }, s), [buscar, paginas.actual]);
-  return (
-    <section className="seccion" aria-labelledby="titulo-conceptos-tarifa">
-      <h2 id="titulo-conceptos-tarifa" className="seccion-titulo">
-        Tarifa asignada a cada concepto
-      </h2>
-      <p className="ayuda">
-        Aquí solo se cambia la tarifa de un concepto (Word §3.5). La edición de conceptos y componentes llegará en otro módulo. Cambiar solo la tarifa
-        conserva la aprobación técnica del concepto.
-      </p>
-      <div aria-live="polite">{mensaje ? <Aviso tono="correcto" titulo={mensaje} /> : null}</div>
-      <Busqueda etiqueta="Buscar por código o descripción" alBuscar={(t) => (paginas.reiniciar(), setBuscar(t))} />
-      {estado.fase === "cargando" ? <Cargando etiqueta="Cargando conceptos…" /> : null}
-      {estado.fase === "error" ? <CargaFallida fallo={estado.fallo} alReintentar={recargar} /> : null}
-      {estado.fase === "listo" ? (
-        estado.datos.conceptos.length === 0 ? (
-          <SinResultados>No hay conceptos con esos criterios.</SinResultados>
-        ) : (
-          <>
-            <div className="tabla-contenedor">
-              <table className="tabla tabla-registros">
-                <caption className="solo-lector">Conceptos y tarifa</caption>
-                <thead>
-                  <tr>
-                    <th scope="col">Concepto</th>
-                    <th scope="col">Unidad</th>
-                    <th scope="col">Tarifa actual</th>
-                    <th scope="col">Cotizaciones abiertas</th>
-                    <th scope="col">Acciones</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {estado.datos.conceptos.map((c) => (
-                    <FilaConcepto
-                      key={c.codigo}
-                      c={c}
-                      servicios={servicios}
-                      abierto={abierto === c.codigo}
-                      alAlternar={() => (setMensaje(null), setAbierto((a) => (a === c.codigo ? null : c.codigo)))}
-                      alAsignada={(m) => (setMensaje(m), setAbierto(null), recargar())}
-                      alRecargar={recargar}
-                    />
-                  ))}
-                </tbody>
-              </table>
-            </div>
-            <ControlPaginas paginas={paginas} siguiente={estado.datos.siguiente} />
-          </>
-        )
-      ) : null}
-    </section>
-  );
-}
-
-function FilaConcepto({ c, servicios, abierto, alAlternar, alAsignada, alRecargar }: { c: ConceptoTarifaAdmin; servicios: ServiciosCatalogoAdmin; abierto: boolean; alAlternar: () => void; alAsignada: (m: string) => void; alRecargar: () => void }) {
-  return (
-    <>
-      <tr>
-        <td data-etiqueta="Concepto">
-          <Codigo>{c.codigo}</Codigo> {c.descripcion}
-          <span className="ayuda bloque">
-            {c.estado}
-            {c.activo ? "" : " · inactivo"}
-          </span>
-        </td>
-        <td data-etiqueta="Unidad">{c.unidad}</td>
-        <td data-etiqueta="Tarifa actual">
-          {c.tarifa ? (
-            <>
-              <Codigo>{c.tarifa.codigo}</Codigo> {TEXTO_MODALIDAD[c.tarifa.modalidad]} · {textoImporteTarifa(c.tarifa)}
-              <span className="ayuda bloque">
-                {vigencia(c.tarifa.vigenteDesde, c.tarifa.vigenteHasta)}
-                {c.tarifa.activa ? "" : " · inactiva"}
-              </span>
-            </>
-          ) : (
-            <span className="ayuda">Sin tarifa</span>
-          )}
-        </td>
-        <td data-etiqueta="Cotizaciones abiertas" className="numero">
-          {c.borradoresAbiertos}
-        </td>
-        <td data-etiqueta="Acciones" className="celda-acciones">
-          <Boton variante="enlace" onClick={alAlternar} aria-expanded={abierto}>
-            {abierto ? "Cerrar" : "Asignar tarifa"}
-          </Boton>
-        </td>
-      </tr>
-      {abierto ? (
-        <tr>
-          <td colSpan={5}>
-            <FormularioAsignacion concepto={c} servicios={servicios} alAsignada={alAsignada} alRecargar={alRecargar} />
-          </td>
-        </tr>
-      ) : null}
-    </>
-  );
-}
-
-function FormularioAsignacion({ concepto, servicios, alAsignada, alRecargar }: { concepto: ConceptoTarifaAdmin; servicios: ServiciosCatalogoAdmin; alAsignada: (m: string) => void; alRecargar: () => void }) {
-  const tarifas = useCarga((s) => servicios.listarTarifas({ unidad: concepto.unidad }, s), [concepto.unidad]);
-  const [nueva, setNueva] = useState("");
-  const [motivo, setMotivo] = useState("");
-  const [confirmar, setConfirmar] = useState(false);
-  const [intentado, setIntentado] = useState(false);
-  const envio = useEnvio();
-  const intenciones = useIntenciones();
-  if (tarifas.estado.fase === "cargando") return <Cargando etiqueta="Cargando tarifas de la misma unidad…" />;
-  if (tarifas.estado.fase === "error") return <CargaFallida fallo={tarifas.estado.fallo} alReintentar={tarifas.recargar} />;
-  const opciones = tarifas.estado.datos.tarifas.filter((t) => t.codigo !== concepto.tarifa?.codigo);
-  const corto = motivo.trim().length < LIMITES_CATALOGO_ADMIN.minimoMotivo;
-  const cuerpo = { tarifaActual: concepto.tarifa?.codigo ?? null, tarifaNueva: nueva, motivo: motivo.trim() };
-  const elegida = opciones.find((t) => t.codigo === nueva);
-  const ejecutar = async () => {
-    const r = await envio.ejecutar(() => servicios.asignarTarifa(concepto.codigo, cuerpo, intenciones.clave(`tarifa:${concepto.codigo}`, cuerpo)));
-    setConfirmar(false);
-    if (r?.ok) {
-      intenciones.olvidar(`tarifa:${concepto.codigo}`, cuerpo);
-      alAsignada(`Tarifa ${nueva} asignada a ${concepto.codigo}. Las cotizaciones abiertas deben recalcular.`);
-    }
-  };
-  return (
-    <form
-      className="formulario"
-      noValidate
-      aria-label={`Asignar tarifa a ${concepto.codigo}`}
-      onSubmit={(e) => {
-        e.preventDefault();
-        setIntentado(true);
-        if (nueva && !corto) setConfirmar(true);
-      }}
-    >
-      <p className="formulario-titulo">Asignar tarifa a {concepto.codigo}</p>
-      {opciones.length === 0 ? (
-        <Aviso tono="info" titulo={`No hay otras tarifas activas en ${concepto.unidad}`}>
-          <p>Registre una tarifa en la unidad del concepto en «Mano de obra».</p>
-        </Aviso>
-      ) : (
-        <CampoSeleccion
-          etiqueta={`Tarifa nueva (activas en ${concepto.unidad})`}
-          valor={nueva}
-          alCambiar={setNueva}
-          obligatorio
-          opciones={opciones.map((t) => ({ valor: t.codigo, texto: `${t.codigo} · ${TEXTO_MODALIDAD[t.modalidad]} · ${textoImporteTarifa(t)}${t.vigenteHoy ? "" : " · no vigente hoy"}` }))}
-          error={intentado && !nueva ? "Seleccione la tarifa." : errorDe(envio.fallo, "tarifaNueva")}
-        />
-      )}
-      <CampoTexto
-        etiqueta="Motivo"
-        valor={motivo}
-        alCambiar={setMotivo}
-        max={LIMITES_CATALOGO_ADMIN.longitudMotivo}
-        obligatorio
-        multilinea
-        error={intentado && corto ? `Explique el motivo (al menos ${LIMITES_CATALOGO_ADMIN.minimoMotivo} caracteres).` : errorDe(envio.fallo, "motivo")}
-      />
-      {envio.fallo && envio.fallo.tipo !== "invalida" ? <AvisoFallo fallo={envio.fallo} alRecargar={alRecargar} /> : null}
-      {confirmar ? (
-        <Confirmacion
-          texto={`${concepto.codigo} pasará de ${concepto.tarifa?.codigo ?? "sin tarifa"} a ${nueva}${elegida && !elegida.vigenteHoy ? " (no vigente hoy: el cálculo la bloqueará fuera de su vigencia, BL-10)" : ""}. La aprobación técnica del concepto se conserva. ${
-            concepto.borradoresAbiertos > 0
-              ? `${concepto.borradoresAbiertos} cotización(es) abierta(s) lo usan: deberán recalcular, y sus versiones ya calculadas no podrán enviarse ni aprobarse sin una versión nueva (BL-16).`
-              : "Ninguna cotización abierta lo usa."
-          } Las versiones y los PDF emitidos conservan su tarifa.`}
-          accion="Asignar tarifa"
-          variante="primario"
-          alConfirmar={() => void ejecutar()}
-          alCancelar={() => setConfirmar(false)}
-          ocupado={envio.enviando}
-        />
-      ) : opciones.length > 0 ? (
-        <Acciones enviando={envio.enviando} texto="Revisar y confirmar" />
-      ) : null}
-    </form>
-  );
-}

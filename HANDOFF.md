@@ -2,9 +2,16 @@
 
 > Léelo al empezar. Actualízalo al terminar cada tarea (sección por sección, sin borrar el historial de la tabla 4). Reglas de trabajo: [`AGENTS.md`](AGENTS.md).
 
-**Última actualización:** 17/10/2026 · Claude Code (Claude Opus 5.5) · módulo 11, administración de proveedores, productos, precios y tarifas (§20), sobre `a454053`. Anterior: módulo 10, excepciones B-22 (§19).
+**Última actualización:** 17/10/2026 · Claude Code (Claude Opus 5.5) · módulo 12, catálogo técnico y aprobación de conceptos (§21), sobre `3599ece` (correcciones del módulo 11). Anterior: módulo 11 (§20).
 
 ## 1. Estado actual
+
+- **Módulo 12:** implementado (ADR-0016). El Administrador del catálogo gestiona en «Catálogo» y en `/api/v1/admin` tipos de estructura, insumos, conversiones, conceptos y componentes, y aprueba conceptos (también el que los creó, como en el libro), ligado a la revisión técnica revisada.
+  - **Decisiones del propietario:** conversión editable que devuelve a Borrador los conceptos aprobados; seis tipos genéricos del libro como datos base; conceptos heredados sin tipo ni regla (CON-00001, 00002, 00007–00009 en `softarq_dev`) marcados, sin rellenar y funcionando; aprobación por cualquier Administrador del catálogo.
+  - **Cálculo:** BL-05 de trazabilidad en el ensamblador; motor intacto; los cuatro totales de referencia sin cambios.
+  - **Personalizados:** se crean en la web y se cotizan con su excepción (sin aprobarse).
+  - Antes, en `3599ece`: corrección del fallo intermitente de `excepciones.spec.ts`, selectores con búsqueda y paginación y prueba de acceso por ruta.
+  - Detalle y pruebas en §21.
 
 - **Módulo 11:** implementado (ADR-0015). El Administrador del catálogo (`catalogos.administrar`) gestiona en la web «Catálogo» y en `/api/v1/admin` proveedores, productos (presentación y contenido), precios con vigencia y tarifas de mano de obra.
   - **Reglas comunes:** sin borrado; desactivación con impacto previo; historial en bitácora; concurrencia por revisión; idempotencia.
@@ -540,20 +547,18 @@ En los cuatro, el resultado completo es idéntico al calculado con los fixtures 
 
 ## 7. Siguiente tarea
 
-1. **Recompilar y reiniciar** la API y la web del propietario si están en marcha con código anterior. `softarq_dev` ya tiene la migración del módulo 11, y el código anterior no conoce sus columnas, funciones ni la capacidad `catalogos.administrar` (§20, «Abrir»).
-2. **Siguiente módulo recomendado:** catálogos (2).
-   - **Alcance:** insumos y conversiones, conceptos y componentes con trazabilidad BL-05 (fuente, fecha y responsable), aprobación de conceptos y conceptos personalizados.
-   - **Pendiente heredado:** restringir las columnas de `concepto` que `softarq_app` puede actualizar (hoy, UPDATE de tabla; ADR-0015 §7).
-   - **Después:** salidas internas de solo lectura; parámetros y personas; duplicar, modo de precios y vista previa BORRADOR; Expo (alcance por decidir); cierre integral.
+1. **Recompilar y reiniciar** la API y la web del propietario si están en marcha con código anterior: `softarq_dev` ya tiene la migración del módulo 12 (§21).
+2. **Regularizar los conceptos heredados** de `softarq_dev` cuando el propietario lo decida, con el mapeo documentado (ADR-0016 §2.3): completar tipo y regla vuelve el concepto a Borrador y exige una nueva aprobación. No se ejecuta automáticamente.
+3. **Siguiente módulo recomendado:** salidas internas de solo lectura, o parámetros y personas. Después: duplicar, modo de precios y vista previa BORRADOR; Expo (alcance por decidir); cierre integral.
    - Matriz y estimación en [`docs/cobertura-demo.md`](docs/cobertura-demo.md).
-3. **Pendiente del cliente:**
+4. **Pendiente del cliente:**
    - definir P3, la política de vigencias; la adaptación del DEMO está en ADR-0015 §2.2;
    - entregar los datos reales del capítulo 8 (precios, proveedores y tarifas), que ya se podrán capturar en la web.
-4. **Ejecución formal de la guía manual** [`docs/web/guia-prueba-manual.md`](docs/web/guia-prueba-manual.md), con el registro de la §5:
-   - bloques A1–A9, 1–14, C1–C15, R1–R10, E1–E12, S1–S10, X1–X8 y K1–K10;
+5. **Ejecución formal de la guía manual** [`docs/web/guia-prueba-manual.md`](docs/web/guia-prueba-manual.md), con el registro de la §5:
+   - bloques A1–A9, 1–14, C1–C15, R1–R10, E1–E12, S1–S10, X1–X8, K1–K10 y T1–T10;
    - complementa la revisión personal ya declarada;
    - no cuenta como PR-41 ni PR-44.
-5. **Operación:** repetir el aprovisionamiento administrativo de respaldo cuando haya una credencial local autorizada (no había archivo DPAPI en `_work\secrets`; no se ejecutó). Copia externa periódica de `D:\Proyecto_SoftArq\respaldos` sigue siendo una decisión pendiente.
+6. **Operación:** repetir el aprovisionamiento administrativo de respaldo cuando haya una credencial local autorizada (no había archivo DPAPI en `_work\secrets`; no se ejecutó). Copia externa periódica de `D:\Proyecto_SoftArq\respaldos` sigue siendo una decisión pendiente.
 
 Alternativas más cortas:
 - **web DEMO:** coma decimal, conservar el borrador durante la sesión y más de 20 conceptos por consulta;
@@ -579,6 +584,9 @@ Alternativas más cortas:
 - MD5 del libro oficial al cerrar el módulo 10: `b60debc121957b8d8e3f2c2edd9a5b4f` (sin cambios).
 - `a454053`: Módulo 10.
 - Módulo 11: commit «Módulo 11: administración de proveedores, productos, precios y tarifas» (§20); consultar `git log -1 --oneline` para su hash. MD5 del libro al cerrar: `b60debc121957b8d8e3f2c2edd9a5b4f` (sin cambios).
+
+- `3599ece`: correcciones pendientes del módulo 11 (fallo intermitente, selectores, acceso por ruta).
+- Módulo 12: commit «Módulo 12: catálogo técnico y aprobación de conceptos» (§21); consultar `git log -1 --oneline` para su hash. MD5 del libro al cerrar: `b60debc121957b8d8e3f2c2edd9a5b4f` (sin cambios).
 
 Rama `main`. Sin remoto ni push.
 
@@ -1150,3 +1158,49 @@ Guía K1–K10 (`docs/web/guia-prueba-manual.md`). Credenciales en `_work\secret
 - aviso de Vite por el chunk de unos 530 kB.
 
 **Siguiente módulo recomendado:** catálogos (2) (§7 y `docs/cobertura-demo.md`).
+
+## 21. Catálogo técnico y aprobación de conceptos (módulo 12)
+
+Decisiones y reglas: [ADR-0016](docs/adr/0016-catalogo-tecnico-aprobacion-conceptos.md). Antes del módulo, commit `3599ece` con los pendientes del módulo 11.
+
+**Pendientes del módulo 11 resueltos (`3599ece`):**
+- **Fallo intermitente de `excepciones.spec.ts:74`:** causa reproducida con una prueba web de promesas controladas (registro en `_work\registros\modulo12\01-reproduccion-intermitente.log`): `alDecidir` leía un estado de envío antiguo y no limpiaba el bloqueo si la 422 de aprobar llegaba mientras se autorizaba la excepción. Corregido con actualización funcional; la E2E espera el aviso propio de la aprobación, sin esperas añadidas.
+- **Selectores:** `SelectorRegistro` con búsqueda en el servidor y cursor, selección actual fuera de la página marcada «no disponible» sin sustituirla y respuestas tardías descartadas.
+- **Acceso real:** `acceso-admin.integracion.test.ts` recorre todas las rutas `/admin` de OpenAPI (403 para Preparador, Revisor y Administrador del sistema, sin escrituras; 404 entre organizaciones) y respuestas comerciales reales sin datos técnicos.
+- **Permisos de `concepto`:** restringidos por columna en el módulo 12.
+
+**Qué se hizo:**
+
+| Capa | Cambio |
+|---|---|
+| Base | Migración `20261018120000_administracion_conceptos` (tabla `tipo_estructura`, columnas, CHECK, índices normalizados, 8 disparadores, 13 funciones); bloque de permisos por columna en `permisos-app.sql` |
+| API | `servicio-catalogo-tecnico.ts`, `repositorio-catalogo-tecnico.ts`, `controladores-catalogo-tecnico.ts`; listados de insumos y conceptos ampliados; BL-05 de trazabilidad en `construir-entrada.ts`; carga DEMO con tipos base y conceptos completos aprobados solo al crearlos |
+| Contratos | `catalogos-tecnicos.ts` (escalas de columna, `null` distinto de cero, fechas reales); 5 códigos de error nuevos |
+| Web | `catalogo-tecnico/PantallasTecnicas.tsx` (tres pestañas); piezas comunes en `catalogo-admin/piezas.tsx`; «Tarifa de conceptos» integrada en el detalle del concepto; excepción acotada nueva en `sin-datos-internos` |
+| Respaldo | `probar-restauracion.mjs`: coherencia, permisos, 7 disparadores, 5 índices y registros idénticos del catálogo técnico |
+
+**Pruebas de ESTA sesión** (registros en `D:\Proyecto_SoftArq\_work\registros\modulo12`):
+
+| Comando o comprobación | Resultado |
+|---|---|
+| `pnpm verificar` (antes del commit 1) | API 427, web 222; código 0 |
+| `pnpm verificar` (final) | **667/667** (API 436, web 231); código 0. Cambios intencionados de expectativas: inventarios de `sin-datos-internos`, de funciones SQL y de rutas OpenAPI; rutas web del catálogo; fixtures de pruebas que creaban conceptos sin tipo ni regla |
+| Integración completa (un worker, `softarq_test`) | **292/292**, 17 archivos (17 nuevas del módulo, 9 unitarias aparte). La primera corrida tuvo 2 fallos esperables (deriva de dos índices sin declarar en `schema.prisma` y el inventario de funciones), corregidos |
+| E2E completa (Edge, un worker) | **59/59** (3 nuevas: catálogo técnico con aprobación por el creador y vuelta a Borrador; personalizado cotizado con excepción hasta la aprobación de la versión; 390 px con teclado) |
+| Cuatro referencias | 54,190.68; 43,312.16; 22,405.28; 4,911.79 sin cambios (integración y humo) |
+| Respaldo antes de migrar `softarq_dev` | `softarq_dev-20261017T194652Z-d315cb`, COMPLETO; **VÁLIDO, pero verificado después de migrar** por un error de orden (faltaba la carpeta en `respaldo:verificar`); el respaldo no cambió |
+| `db:migrar` (desarrollo) | Código 0; heredados marcados: exactamente CON-00001, 00002, 00007, 00008 y 00009 (aprobados, sin tipo) |
+| `db:cargar-demo` (dos veces) | Primera: creados `{"tipoEstructura":6}`; repetida: `{}`; «Los valores DEMO coinciden» |
+| Humo con la API real (127.0.0.1:3200, detenida al terminar; `_work\tmp\m12\humo-m12.mjs`) | **33 pasos correctos**: 403 del Preparador; cuatro totales; heredado con requisitos y edición sin completar 422; TES-00007, INS-00012 y conversión; CON-00003 aprobado por su creador (reintento reproducido) y vuelta a Borrador; personalizado CON-00004 cotizado con excepción, autorizada (AV-04), versión aprobada y **emitida** (`COT-2026-00010`, PDF DEMO); el concepto sigue en Borrador |
+| `respaldo:probar-restauracion` | **47/47** (3 nuevas del catálogo técnico); 6 PDF |
+| Revisión visual | Capturas en `_work\evidencias\modulo12` revisadas (escritorio 02, 03, 04; móvil 09) |
+| Graphify | `pnpm grafo:actualizar`; estado VIGENTE (260 archivos); `explain ServicioCatalogoTecnico` y `path` del controlador al repositorio correctos |
+| MD5 del libro | `b60debc121957b8d8e3f2c2edd9a5b4f` antes y después |
+
+**Incidencias y límites:**
+- `npx eslint` descargó ESLint en la caché de npm de `_work` (el repositorio no tiene ESLint); no se añadió como dependencia.
+- La marca de aprobación del disparador protege de escrituras directas accidentales, no de quien ya ejecuta SQL arbitrario con el rol de la aplicación (ADR-0016 §5).
+- El impacto mostrado cuenta cotizaciones abiertas; no cuenta aparte versiones sin enviar.
+- Tipos de costo adicional siguen solo con la carga DEMO.
+
+**Datos DEMO creados en `softarq_dev`:** TES-00007, INS-00012, CON-00003 (Borrador tras el cambio técnico), CON-00004 (personalizado, Borrador), `COT-2026-00010` emitida. Ninguno altera los ejemplos de referencia.

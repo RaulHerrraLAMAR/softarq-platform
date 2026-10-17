@@ -46,7 +46,9 @@ import { ServicioRevisiones } from "../modules/cotizaciones/aplicacion/servicio-
 import { ServicioRespuestas } from "../modules/cotizaciones/aplicacion/servicio-respuestas.js";
 import { ServicioExcepciones } from "../modules/cotizaciones/aplicacion/servicio-excepciones.js";
 import { ServicioAdministracionCatalogos } from "../modules/catalogos/aplicacion/servicio-administracion.js";
+import { ServicioCatalogoTecnico } from "../modules/catalogos/aplicacion/servicio-catalogo-tecnico.js";
 import { AdministracionCatalogosController } from "./controladores-catalogos-admin.js";
+import { CatalogoTecnicoController } from "./controladores-catalogo-tecnico.js";
 import { generarPdf, type GeneradorPdf } from "../modules/cotizaciones/dominio/pdf/generador-pdf.js";
 import {
   AlmacenArchivos,
@@ -90,6 +92,7 @@ import {
   SERVICIO_RESPUESTAS,
   SERVICIO_EXCEPCIONES,
   SERVICIO_ADMIN_CATALOGOS,
+  SERVICIO_CATALOGO_TECNICO,
 } from "./tokens.js";
 
 const VENTANA_LIMITADOR_MS = 60_000;
@@ -155,6 +158,7 @@ function moduloRaiz(config: ConfiguracionApi, opciones: OpcionesAplicacion): Dyn
       ExcepcionesRevisionController,
       VerificacionVersionController,
       AdministracionCatalogosController,
+      CatalogoTecnicoController,
       EmisorController,
       OpenApiController,
     ],
@@ -241,6 +245,11 @@ function moduloRaiz(config: ConfiguracionApi, opciones: OpcionesAplicacion): Dyn
       {
         provide: SERVICIO_ADMIN_CATALOGOS,
         useFactory: (bd: ServicioBaseDeDatos, reloj: Reloj, instante: RelojSesiones) => new ServicioAdministracionCatalogos(bd.cliente, reloj, instante),
+        inject: [BASE_DE_DATOS, RELOJ, RELOJ_SESIONES],
+      },
+      {
+        provide: SERVICIO_CATALOGO_TECNICO,
+        useFactory: (bd: ServicioBaseDeDatos, reloj: Reloj, instante: RelojSesiones) => new ServicioCatalogoTecnico(bd.cliente, reloj, instante),
         inject: [BASE_DE_DATOS, RELOJ, RELOJ_SESIONES],
       },
       {

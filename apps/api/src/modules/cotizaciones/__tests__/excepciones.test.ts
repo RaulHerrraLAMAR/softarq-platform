@@ -66,6 +66,7 @@ const componente = (codigo: string, insumo: string) => ({
   desperdicio: "0.05",
   factorTraslape: null,
   activo: true,
+  trazable: true,
 });
 const concepto = (codigo: string, clase: string, componentes = [componente("CMP-00011", "INS-00010")]): ConceptoLeido => ({
   codigo,

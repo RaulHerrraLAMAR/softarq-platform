@@ -20,8 +20,8 @@ const concepto = (codigo: string, extra: Partial<ConceptoLeido> = {}): ConceptoL
   activo: true,
   tarifa: null,
   componentes: [
-    { codigo: `${codigo}-1`, orden: 1, insumoCodigo: "INS-00004", rendimiento: "1", unidadRendimiento: "m2", desperdicio: "0", factorTraslape: null, activo: true },
-    { codigo: `${codigo}-2`, orden: 2, insumoCodigo: "INS-00009", rendimiento: "1", unidadRendimiento: "m2", desperdicio: "0", factorTraslape: null, activo: false },
+    { codigo: `${codigo}-1`, orden: 1, insumoCodigo: "INS-00004", rendimiento: "1", unidadRendimiento: "m2", desperdicio: "0", factorTraslape: null, activo: true, trazable: true },
+    { codigo: `${codigo}-2`, orden: 2, insumoCodigo: "INS-00009", rendimiento: "1", unidadRendimiento: "m2", desperdicio: "0", factorTraslape: null, activo: false, trazable: true },
   ],
   ...extra,
 });

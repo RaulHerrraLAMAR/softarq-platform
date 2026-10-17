@@ -120,7 +120,7 @@ Toda relación entre datos propios es una FK compuesta con `organizacion_id`, de
 | `cotizaciones.consultar` **y** `excepciones.consultar` | `GET /cotizaciones/{id}/versiones/{n}/excepciones` | ✓ | ✓ | ✗ | ✗ | Tabla «EXCEPCIONES DE LA VERSION» de 14 REVISION. Capacidad nueva para el contrato interno (ADR-0014) |
 | `revisiones.decidir` **y** `excepciones.consultar` | `POST /revisiones/{id}/excepciones/{n}/decision` | ✗ | ✓ ² | ✗ | ✗ | `BTN_AutorizarExcepcion`: `FN_REV` ≠ preparador (B-29) |
 | `cotizaciones.consultar` | `GET /cotizaciones/{id}/versiones/{n}/verificacion` (si el catálogo cambió después del cálculo; sin importes) | ✓ | ✓ | ✓ | ✓ | Módulo 11: misma verificación que al enviar (`Validar`), de solo lectura |
-| `catalogos.administrar` | `GET`, `POST` y `PATCH /api/v1/admin/{proveedores,productos,precios,tarifas}`; `POST /admin/precios/{c}/anulacion` y `/cierre-vigencia`; `GET /admin/conceptos` y `POST /admin/conceptos/{c}/tarifa`; `GET /admin/insumos` y `/admin/unidades` | ✗ | ✗ | ✓ ³ | ✗ | `Cat_RequiereFuncion` y `BTN_PrecioAnular`: `Req_Funcion FN_ADMCAT` (módulo 11, ADR-0015) |
+| `catalogos.administrar` | `GET`, `POST` y `PATCH /api/v1/admin/{proveedores,productos,precios,tarifas}`; `POST /admin/precios/{c}/anulacion` y `/cierre-vigencia`; `GET /admin/unidades`; módulo 12: `GET`, `POST` y `PATCH /admin/{tipos-estructura,insumos,conceptos}`, `POST /admin/insumos/{c}/conversiones`, `PATCH /admin/insumos/{c}/conversiones/{u}`, `POST /admin/conceptos/{c}/{tarifa,aprobacion,componentes}`, `PATCH /admin/conceptos/{c}/componentes/{k}` | ✗ | ✗ | ✓ ³ | ✗ | `Cat_RequiereFuncion` y `BTN_PrecioAnular`: `Req_Funcion FN_ADMCAT` (módulo 11, ADR-0015) |
 
 ¹ Por identidad, además de la capacidad: un Revisor no emite una versión que él preparó. Y siempre hace falta una aprobación vigente de esa versión, hecha por una persona distinta de su autor. Poder emitir no concede aprobar.
 
@@ -212,3 +212,22 @@ La emisión fija su cotización y versión; la respuesta nunca se copia a otra e
 | Persona en turno y bitácora del libro | Usuario de la sesión, autoría por columnas y bitácora por evento |
 
 Las versiones, aprobaciones, emisiones y PDF no cambian por la administración. Un cambio posterior al cálculo bloquea por BL-16 al enviar, aprobar o emitir esa versión. El editor avisa que la versión ya no es vigente.
+
+## 13. Catálogo técnico y aprobación de conceptos (módulo 12, ADR-0016)
+
+| Tabla | Clave y relaciones | Notas |
+|---|---|---|
+| `tipo_estructura` | `TES-NNNNN`; única por (familia, nombre normalizado) | Seis familias de `tblListas.FAMILIA` y seis genéricos del libro (datos base). Con conceptos, la familia no cambia; inactivo no se ofrece para conceptos nuevos y no permite aprobarlos |
+| `insumo` | `INS-NNNNN`; descripción única normalizada | Especificación, revisión y autoría. Con productos, conversiones o componentes, la unidad base no cambia |
+| `conversion` | Única por (insumo, unidad de origen); destino = unidad base | Solo cambian factor y fuente, con motivo; los conceptos aprobados que la usan vuelven a Borrador |
+| `concepto` | `CON-NNNNN`; FK (organización, tipo); única por (tipo, descripción normalizada) | Regla de medición, criterios, `heredado`, `revision_tecnica`, aprobación (quién y cuándo) y último cambio técnico. Aprobar solo con `softarq_aprobar_concepto` |
+| `componente` | `CMP-NNNNN`; único por (concepto, insumo) | Trazabilidad opcional al guardar, obligatoria para aprobar y calcular (BL-05). Cualquier cambio sube la revisión técnica del concepto |
+| `bitacora` | Entidades `tipo_estructura`, `insumo`, `conversion`, `componente` y `concepto` | Altas, ediciones, activación, aprobación, vuelta a Borrador (motivo y aprobación anterior) y conversión editada (factores y conceptos afectados) |
+
+| Libro | Web |
+|---|---|
+| `Val_Insumo`: la unidad base no cambia con productos o conversiones | También con componentes (más estricto) |
+| Concepto «Inactivo» como estado | `activo = false` conserva el estado; reactivar vuelve a Borrador (mismo efecto) |
+| `Concepto_Problemas` | La misma lista, más la convertibilidad de cada componente (la exige el motor) |
+| `Concepto_Aprobar` (cualquier `FN_ADMCAT`) | Igual, ligado a la revisión técnica revisada (409 si cambió) |
+| Conceptos cargados sin tipo ni regla | No existen en el libro: marca `heredado` transitoria para los cinco conceptos de la carga anterior |

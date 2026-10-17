@@ -49,21 +49,22 @@ model Organizacion {
   esDemo   Boolean  @map("es_demo")
   creadoEn DateTime @default(now()) @map("creado_en") @db.Timestamptz(3)
 
-  parametros     ParametrosCalculo?
-  insumos        Insumo[]
-  conversiones   Conversion[]
-  proveedores    Proveedor[]
-  productos      Producto[]
-  precios        Precio[]
-  tarifas        TarifaManoObra[]
-  conceptos      Concepto[]
-  componentes    Componente[]
-  tiposAdicional TipoAdicional[]
-  membresias     Membresia[]
-  clientes       Cliente[]
-  contadores     Contador[]
-  bitacora       Bitacora[]
-  emisor         Emisor?
+  parametros      ParametrosCalculo?
+  insumos         Insumo[]
+  conversiones    Conversion[]
+  proveedores     Proveedor[]
+  productos       Producto[]
+  precios         Precio[]
+  tarifas         TarifaManoObra[]
+  conceptos       Concepto[]
+  componentes     Componente[]
+  tiposAdicional  TipoAdicional[]
+  tiposEstructura TipoEstructura[]
+  membresias      Membresia[]
+  clientes        Cliente[]
+  contadores      Contador[]
+  bitacora        Bitacora[]
+  emisor          Emisor?
 
   @@map("organizacion")
 }
@@ -85,16 +86,27 @@ model ParametrosCalculo {
   @@map("parametros_calculo")
 }
 
+/// Insumo técnico (tblInsumos). Módulo 12 (ADR-0016): especificación, revisión y autoría;
+/// descripción única por organización según `Normalizar`; la unidad base no cambia con referencias.
 model Insumo {
-  id             String  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  organizacionId String  @map("organizacion_id") @db.Uuid
-  codigo         String  @db.VarChar(40)
-  descripcion    String  @db.VarChar(500)
-  unidadBase     String  @map("unidad_base") @db.VarChar(10)
-  activo         Boolean @default(true)
+  id             String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organizacionId String   @map("organizacion_id") @db.Uuid
+  codigo         String   @db.VarChar(40)
+  descripcion    String   @db.VarChar(500)
+  unidadBase     String   @map("unidad_base") @db.VarChar(10)
+  activo         Boolean  @default(true)
+  especificacion String?  @db.VarChar(2000)
+  revision       Int      @default(0)
+  /// NULL solo en los registros de la carga DEMO (sin persona).
+  creadoPor      String?  @map("creado_por") @db.Uuid
+  creadoEn       DateTime @default(now()) @map("creado_en") @db.Timestamptz(3)
+  modificadoPor  String?  @map("modificado_por") @db.Uuid
+  modificadoEn   DateTime @default(now()) @map("modificado_en") @db.Timestamptz(3)
 
   organizacion Organizacion @relation(fields: [organizacionId], references: [id], onDelete: Restrict, onUpdate: Restrict)
   unidad       Unidad       @relation(fields: [unidadBase], references: [clave], onDelete: Restrict, onUpdate: Restrict)
+  autor        Membresia?   @relation("InsumoCreadoPor", fields: [organizacionId, creadoPor], references: [organizacionId, usuarioId], onDelete: Restrict, onUpdate: Restrict, map: "insumo_creado_por_fk")
+  modificador  Membresia?   @relation("InsumoModificadoPor", fields: [organizacionId, modificadoPor], references: [organizacionId, usuarioId], onDelete: Restrict, onUpdate: Restrict, map: "insumo_modificado_por_fk")
   conversiones Conversion[]
   productos    Producto[]
   componentes  Componente[]
@@ -105,21 +117,30 @@ model Insumo {
 }
 
 model Conversion {
-  id             String  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  organizacionId String  @map("organizacion_id") @db.Uuid
-  insumoId       String  @map("insumo_id") @db.Uuid
-  unidadOrigen   String  @map("unidad_origen") @db.VarChar(10)
-  unidadDestino  String  @map("unidad_destino") @db.VarChar(10)
+  id             String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organizacionId String   @map("organizacion_id") @db.Uuid
+  insumoId       String   @map("insumo_id") @db.Uuid
+  unidadOrigen   String   @map("unidad_origen") @db.VarChar(10)
+  unidadDestino  String   @map("unidad_destino") @db.VarChar(10)
   /// Unidades de destino por unidad de origen (> 0).
-  factor         Decimal @db.Decimal(20, 10)
-  fuente         String  @db.VarChar(500)
+  factor         Decimal  @db.Decimal(20, 10)
+  fuente         String   @db.VarChar(500)
+  /// Módulo 12 (ADR-0016): se identifica por (insumo, unidad de origen); el destino es la unidad base.
+  revision       Int      @default(0)
+  registradoPor  String?  @map("registrado_por") @db.Uuid
+  registradoEn   DateTime @default(now()) @map("registrado_en") @db.Timestamptz(3)
+  modificadoPor  String?  @map("modificado_por") @db.Uuid
+  modificadoEn   DateTime @default(now()) @map("modificado_en") @db.Timestamptz(3)
 
   organizacion Organizacion @relation(fields: [organizacionId], references: [id], onDelete: Restrict, onUpdate: Restrict)
   insumo       Insumo       @relation(fields: [organizacionId, insumoId], references: [organizacionId, id], onDelete: Restrict, onUpdate: Restrict)
   origen       Unidad       @relation("ConversionOrigen", fields: [unidadOrigen], references: [clave], onDelete: Restrict, onUpdate: Restrict)
   destino      Unidad       @relation("ConversionDestino", fields: [unidadDestino], references: [clave], onDelete: Restrict, onUpdate: Restrict)
+  registrador  Membresia?   @relation("ConversionRegistradaPor", fields: [organizacionId, registradoPor], references: [organizacionId, usuarioId], onDelete: Restrict, onUpdate: Restrict, map: "conversion_registrado_por_fk")
+  modificador  Membresia?   @relation("ConversionModificadaPor", fields: [organizacionId, modificadoPor], references: [organizacionId, usuarioId], onDelete: Restrict, onUpdate: Restrict, map: "conversion_modificado_por_fk")
 
   @@unique([insumoId, unidadOrigen, unidadDestino])
+  @@unique([insumoId, unidadOrigen], map: "conversion_insumo_origen_key")
   @@map("conversion")
 }
 
@@ -190,16 +211,16 @@ model Producto {
 /// Módulo 11 (ADR-0015): la única modificación de un precio vigente es acortar su vigencia al
 /// registrar un sucesor (adaptación autorizada; P3 pendiente) y la anulación con motivo.
 model Precio {
-  id             String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  organizacionId String   @map("organizacion_id") @db.Uuid
-  codigo         String   @db.VarChar(40)
-  productoId     String   @map("producto_id") @db.Uuid
-  proveedorId    String   @map("proveedor_id") @db.Uuid
-  precioUnitario Decimal  @map("precio_unitario") @db.Decimal(18, 6)
-  vigenteDesde   DateTime @map("vigente_desde") @db.Date
-  vigenteHasta   DateTime @map("vigente_hasta") @db.Date
-  anulado        Boolean  @default(false)
-  fuente         String   @db.VarChar(500)
+  id              String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organizacionId  String    @map("organizacion_id") @db.Uuid
+  codigo          String    @db.VarChar(40)
+  productoId      String    @map("producto_id") @db.Uuid
+  proveedorId     String    @map("proveedor_id") @db.Uuid
+  precioUnitario  Decimal   @map("precio_unitario") @db.Decimal(18, 6)
+  vigenteDesde    DateTime  @map("vigente_desde") @db.Date
+  vigenteHasta    DateTime  @map("vigente_hasta") @db.Date
+  anulado         Boolean   @default(false)
+  fuente          String    @db.VarChar(500)
   motivoAnulacion String?   @map("motivo_anulacion") @db.VarChar(500)
   anuladoPor      String?   @map("anulado_por") @db.Uuid
   anuladoEn       DateTime? @map("anulado_en") @db.Timestamptz(3)
@@ -252,54 +273,118 @@ model TarifaManoObra {
   @@map("tarifa_mano_obra")
 }
 
+/// Concepto (tblConceptos). Módulo 12 (ADR-0016): tipo de estructura, regla de medición, criterios,
+/// aprobación (quién y cuándo) y revisión técnica. `heredado` marca los conceptos que ya existían
+/// al migrar sin tipo ni regla (carga anterior): solo pasa de true a false al completarlos.
 model Concepto {
-  id               String  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  organizacionId   String  @map("organizacion_id") @db.Uuid
-  codigo           String  @db.VarChar(40)
-  descripcion      String  @db.VarChar(500)
-  unidad           String  @db.VarChar(10)
-  tipoFormula      String  @map("tipo_formula") @db.VarChar(10)
-  permiteDescuento Boolean @map("permite_descuento")
-  clase            String  @db.VarChar(15)
-  estado           String  @db.VarChar(10)
-  tarifaId         String? @map("tarifa_id") @db.Uuid
-  activo           Boolean @default(true)
+  id               String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organizacionId   String    @map("organizacion_id") @db.Uuid
+  codigo           String    @db.VarChar(40)
+  descripcion      String    @db.VarChar(500)
+  unidad           String    @db.VarChar(10)
+  tipoFormula      String    @map("tipo_formula") @db.VarChar(10)
+  permiteDescuento Boolean   @map("permite_descuento")
+  clase            String    @db.VarChar(15)
+  estado           String    @db.VarChar(10)
+  tarifaId         String?   @map("tarifa_id") @db.Uuid
+  activo           Boolean   @default(true)
+  tipoId           String?   @map("tipo_id") @db.Uuid
+  reglaMedicion    String?   @map("regla_medicion") @db.VarChar(2000)
+  criterios        String?   @db.VarChar(2000)
+  heredado         Boolean   @default(false)
+  /// Sube con cada cambio técnico del concepto, de sus componentes o de una conversión que usan.
+  /// La aprobación corresponde exactamente a la revisión técnica revisada.
+  revisionTecnica  Int       @default(0) @map("revision_tecnica")
+  revision         Int       @default(0)
+  aprobadoPor      String?   @map("aprobado_por") @db.Uuid
+  aprobadoEn       DateTime? @map("aprobado_en") @db.Timestamptz(3)
+  cambioTecnicoPor String?   @map("cambio_tecnico_por") @db.Uuid
+  cambioTecnicoEn  DateTime? @map("cambio_tecnico_en") @db.Timestamptz(3)
+  creadoPor        String?   @map("creado_por") @db.Uuid
+  creadoEn         DateTime  @default(now()) @map("creado_en") @db.Timestamptz(3)
+  modificadoPor    String?   @map("modificado_por") @db.Uuid
+  modificadoEn     DateTime  @default(now()) @map("modificado_en") @db.Timestamptz(3)
 
-  organizacion Organizacion    @relation(fields: [organizacionId], references: [id], onDelete: Restrict, onUpdate: Restrict)
-  unidadRef    Unidad          @relation(fields: [unidad], references: [clave], onDelete: Restrict, onUpdate: Restrict)
-  tarifa       TarifaManoObra? @relation(fields: [organizacionId, tarifaId], references: [organizacionId, id], onDelete: Restrict, onUpdate: Restrict)
-  componentes  Componente[]
+  organizacion  Organizacion    @relation(fields: [organizacionId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  unidadRef     Unidad          @relation(fields: [unidad], references: [clave], onDelete: Restrict, onUpdate: Restrict)
+  tarifa        TarifaManoObra? @relation(fields: [organizacionId, tarifaId], references: [organizacionId, id], onDelete: Restrict, onUpdate: Restrict)
+  tipo          TipoEstructura? @relation(fields: [organizacionId, tipoId], references: [organizacionId, id], onDelete: Restrict, onUpdate: Restrict, map: "concepto_tipo_fk")
+  aprobador     Membresia?      @relation("ConceptoAprobadoPor", fields: [organizacionId, aprobadoPor], references: [organizacionId, usuarioId], onDelete: Restrict, onUpdate: Restrict, map: "concepto_aprobado_por_fk")
+  editorTecnico Membresia?      @relation("ConceptoCambioTecnicoPor", fields: [organizacionId, cambioTecnicoPor], references: [organizacionId, usuarioId], onDelete: Restrict, onUpdate: Restrict, map: "concepto_cambio_tecnico_por_fk")
+  autor         Membresia?      @relation("ConceptoCreadoPor", fields: [organizacionId, creadoPor], references: [organizacionId, usuarioId], onDelete: Restrict, onUpdate: Restrict, map: "concepto_creado_por_fk")
+  modificador   Membresia?      @relation("ConceptoModificadoPor", fields: [organizacionId, modificadoPor], references: [organizacionId, usuarioId], onDelete: Restrict, onUpdate: Restrict, map: "concepto_modificado_por_fk")
+  componentes   Componente[]
 
   @@unique([organizacionId, id])
   @@unique([organizacionId, codigo])
+  @@index([organizacionId, tipoId], map: "concepto_tipo_idx")
   @@map("concepto")
 }
 
 /// Componente de un concepto. `orden` conserva el orden del libro: define el remanente del prorrateo (CR-08).
 model Componente {
-  id                String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  organizacionId    String   @map("organizacion_id") @db.Uuid
-  codigo            String   @db.VarChar(40)
-  conceptoId        String   @map("concepto_id") @db.Uuid
-  insumoId          String   @map("insumo_id") @db.Uuid
+  id                String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organizacionId    String    @map("organizacion_id") @db.Uuid
+  codigo            String    @db.VarChar(40)
+  conceptoId        String    @map("concepto_id") @db.Uuid
+  insumoId          String    @map("insumo_id") @db.Uuid
   orden             Int
-  rendimiento       Decimal  @db.Decimal(20, 6)
-  unidadRendimiento String   @map("unidad_rendimiento") @db.VarChar(10)
-  desperdicio       Decimal  @db.Decimal(7, 6)
-  factorTraslape    Decimal? @map("factor_traslape") @db.Decimal(9, 6)
-  fuente            String   @db.VarChar(500)
-  fecha             DateTime @db.Date
-  responsable       String   @db.VarChar(200)
-  activo            Boolean  @default(true)
+  rendimiento       Decimal   @db.Decimal(20, 6)
+  unidadRendimiento String    @map("unidad_rendimiento") @db.VarChar(10)
+  desperdicio       Decimal   @db.Decimal(7, 6)
+  factorTraslape    Decimal?  @map("factor_traslape") @db.Decimal(9, 6)
+  /// Trazabilidad (fuente, fecha y responsable técnico): opcional al guardar, como en el libro;
+  /// obligatoria para aprobar el concepto y para calcular (BL-05). Módulo 12 (ADR-0016).
+  fuente            String?   @db.VarChar(500)
+  fecha             DateTime? @db.Date
+  responsable       String?   @db.VarChar(200)
+  activo            Boolean   @default(true)
+  revision          Int       @default(0)
+  creadoPor         String?   @map("creado_por") @db.Uuid
+  creadoEn          DateTime  @default(now()) @map("creado_en") @db.Timestamptz(3)
+  modificadoPor     String?   @map("modificado_por") @db.Uuid
+  modificadoEn      DateTime  @default(now()) @map("modificado_en") @db.Timestamptz(3)
 
   organizacion Organizacion @relation(fields: [organizacionId], references: [id], onDelete: Restrict, onUpdate: Restrict)
   concepto     Concepto     @relation(fields: [organizacionId, conceptoId], references: [organizacionId, id], onDelete: Restrict, onUpdate: Restrict)
   insumo       Insumo       @relation(fields: [organizacionId, insumoId], references: [organizacionId, id], onDelete: Restrict, onUpdate: Restrict)
   unidad       Unidad       @relation(fields: [unidadRendimiento], references: [clave], onDelete: Restrict, onUpdate: Restrict)
+  autor        Membresia?   @relation("ComponenteCreadoPor", fields: [organizacionId, creadoPor], references: [organizacionId, usuarioId], onDelete: Restrict, onUpdate: Restrict, map: "componente_creado_por_fk")
+  modificador  Membresia?   @relation("ComponenteModificadoPor", fields: [organizacionId, modificadoPor], references: [organizacionId, usuarioId], onDelete: Restrict, onUpdate: Restrict, map: "componente_modificado_por_fk")
 
   @@unique([organizacionId, codigo])
   @@unique([conceptoId, orden])
+  @@unique([conceptoId, insumoId], map: "componente_concepto_insumo_key")
+  @@index([organizacionId, insumoId, unidadRendimiento], map: "componente_insumo_idx")
   @@map("componente")
+}
+
+/// Tipo de estructura (tblTiposEstructura). Módulo 12 (ADR-0016). Las seis familias son las de
+/// `tblListas.FAMILIA`; los seis genéricos son datos base del libro. La familia no cambia si el
+/// tipo ya tiene conceptos (disparador).
+model TipoEstructura {
+  id             String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organizacionId String   @map("organizacion_id") @db.Uuid
+  codigo         String   @db.VarChar(40)
+  familia        String   @db.VarChar(40)
+  nombre         String   @db.VarChar(200)
+  /// «Tipo prioritario (validación exhaustiva)» del libro; informativo.
+  prioritario    Boolean  @default(false)
+  activo         Boolean  @default(true)
+  revision       Int      @default(0)
+  creadoPor      String?  @map("creado_por") @db.Uuid
+  creadoEn       DateTime @default(now()) @map("creado_en") @db.Timestamptz(3)
+  modificadoPor  String?  @map("modificado_por") @db.Uuid
+  modificadoEn   DateTime @default(now()) @map("modificado_en") @db.Timestamptz(3)
+
+  organizacion Organizacion @relation(fields: [organizacionId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  autor        Membresia?   @relation("TipoEstructuraCreadoPor", fields: [organizacionId, creadoPor], references: [organizacionId, usuarioId], onDelete: Restrict, onUpdate: Restrict, map: "tipo_estructura_creado_por_fk")
+  modificador  Membresia?   @relation("TipoEstructuraModificadoPor", fields: [organizacionId, modificadoPor], references: [organizacionId, usuarioId], onDelete: Restrict, onUpdate: Restrict, map: "tipo_estructura_modificado_por_fk")
+  conceptos    Concepto[]
+
+  @@unique([organizacionId, id])
+  @@unique([organizacionId, codigo])
+  @@map("tipo_estructura")
 }
 
 model TipoAdicional {
@@ -358,37 +443,50 @@ model Membresia {
   sesiones     Sesion[]
 
   // Autoría (módulo 6): FK compuestas (organización, usuario); el autor pertenece a la organización.
-  clientesCreados      Cliente[]            @relation("ClienteCreadoPor")
-  clientesModificados  Cliente[]            @relation("ClienteModificadoPor")
-  proyectosCreados     Proyecto[]           @relation("ProyectoCreadoPor")
-  proyectosModificados Proyecto[]           @relation("ProyectoModificadoPor")
-  cotizacionesCreadas  Cotizacion[]
-  borradoresGuardados  CotizacionBorrador[]
-  versionesCreadas     CotizacionVersion[]
+  clientesCreados            Cliente[]                @relation("ClienteCreadoPor")
+  clientesModificados        Cliente[]                @relation("ClienteModificadoPor")
+  proyectosCreados           Proyecto[]               @relation("ProyectoCreadoPor")
+  proyectosModificados       Proyecto[]               @relation("ProyectoModificadoPor")
+  cotizacionesCreadas        Cotizacion[]
+  borradoresGuardados        CotizacionBorrador[]
+  versionesCreadas           CotizacionVersion[]
   // Revisión (módulo 7, ADR-0009).
-  revisionesPreparadas Revision[]           @relation("RevisionPreparador")
-  revisionesEnviadas   Revision[]           @relation("RevisionEnviadaPor")
-  revisionesResueltas  Revision[]           @relation("RevisionResueltaPor")
-  eventosRevision      RevisionEvento[]
+  revisionesPreparadas       Revision[]               @relation("RevisionPreparador")
+  revisionesEnviadas         Revision[]               @relation("RevisionEnviadaPor")
+  revisionesResueltas        Revision[]               @relation("RevisionResueltaPor")
+  eventosRevision            RevisionEvento[]
   // Emisión, anulación y descarte (módulo 8, ADR-0010).
-  emisionesPreparadas  Emision[]            @relation("EmisionPreparadaPor")
-  emisionesAprobadas   Emision[]            @relation("EmisionAprobadaPor")
-  emisionesEmitidas    Emision[]            @relation("EmisionEmitidaPor")
-  emisoresModificados  Emisor[]
-  cotizacionesDescartadas Cotizacion[]      @relation("CotizacionDescartadaPor")
-  eventos              Bitacora[]
-  idempotencia         Idempotencia[]
-  respuestasCliente    RespuestaClienteEvento[]
-  excepcionesDecididas ExcepcionDecision[]
+  emisionesPreparadas        Emision[]                @relation("EmisionPreparadaPor")
+  emisionesAprobadas         Emision[]                @relation("EmisionAprobadaPor")
+  emisionesEmitidas          Emision[]                @relation("EmisionEmitidaPor")
+  emisoresModificados        Emisor[]
+  cotizacionesDescartadas    Cotizacion[]             @relation("CotizacionDescartadaPor")
+  eventos                    Bitacora[]
+  idempotencia               Idempotencia[]
+  respuestasCliente          RespuestaClienteEvento[]
+  excepcionesDecididas       ExcepcionDecision[]
   // Administración de catálogos (módulo 11, ADR-0015).
-  proveedoresCreados     Proveedor[]      @relation("ProveedorCreadoPor")
-  proveedoresModificados Proveedor[]      @relation("ProveedorModificadoPor")
-  productosCreados       Producto[]       @relation("ProductoCreadoPor")
-  productosModificados   Producto[]       @relation("ProductoModificadoPor")
-  preciosRegistrados     Precio[]         @relation("PrecioRegistradoPor")
-  preciosAnulados        Precio[]         @relation("PrecioAnuladoPor")
-  tarifasRegistradas     TarifaManoObra[] @relation("TarifaRegistradaPor")
-  tarifasModificadas     TarifaManoObra[] @relation("TarifaModificadaPor")
+  proveedoresCreados         Proveedor[]              @relation("ProveedorCreadoPor")
+  proveedoresModificados     Proveedor[]              @relation("ProveedorModificadoPor")
+  productosCreados           Producto[]               @relation("ProductoCreadoPor")
+  productosModificados       Producto[]               @relation("ProductoModificadoPor")
+  preciosRegistrados         Precio[]                 @relation("PrecioRegistradoPor")
+  preciosAnulados            Precio[]                 @relation("PrecioAnuladoPor")
+  tarifasRegistradas         TarifaManoObra[]         @relation("TarifaRegistradaPor")
+  tarifasModificadas         TarifaManoObra[]         @relation("TarifaModificadaPor")
+  // Catálogo técnico (módulo 12, ADR-0016).
+  insumosCreados             Insumo[]                 @relation("InsumoCreadoPor")
+  insumosModificados         Insumo[]                 @relation("InsumoModificadoPor")
+  conversionesRegistradas    Conversion[]             @relation("ConversionRegistradaPor")
+  conversionesModificadas    Conversion[]             @relation("ConversionModificadaPor")
+  conceptosAprobados         Concepto[]               @relation("ConceptoAprobadoPor")
+  conceptosCambioTecnico     Concepto[]               @relation("ConceptoCambioTecnicoPor")
+  conceptosCreados           Concepto[]               @relation("ConceptoCreadoPor")
+  conceptosModificados       Concepto[]               @relation("ConceptoModificadoPor")
+  componentesCreados         Componente[]             @relation("ComponenteCreadoPor")
+  componentesModificados     Componente[]             @relation("ComponenteModificadoPor")
+  tiposEstructuraCreados     TipoEstructura[]         @relation("TipoEstructuraCreadoPor")
+  tiposEstructuraModificados TipoEstructura[]         @relation("TipoEstructuraModificadoPor")
 
   @@unique([organizacionId, usuarioId])
   @@index([usuarioId])
@@ -428,23 +526,23 @@ model Sesion {
 
 /// Quien recibe la cotización (tblClientes). Sin cuenta. Solo los campos que este flujo necesita.
 model Cliente {
-  id             String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  organizacionId String   @map("organizacion_id") @db.Uuid
+  id               String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organizacionId   String   @map("organizacion_id") @db.Uuid
   /// CLI-00001, por organización (contador; no se reutiliza).
-  codigo         String   @db.VarChar(20)
+  codigo           String   @db.VarChar(20)
   /// nombre_razon_social del libro.
-  nombre         String   @db.VarChar(200)
+  nombre           String   @db.VarChar(200)
   /// Contacto del cliente (BL-01: nombre y teléfono o correo para emitir; módulo 8).
   contactoNombre   String?  @map("contacto_nombre") @db.VarChar(200)
   contactoTelefono String?  @map("contacto_telefono") @db.VarChar(40)
   contactoCorreo   String?  @map("contacto_correo") @db.VarChar(254)
-  activo         Boolean  @default(true)
+  activo           Boolean  @default(true)
   /// Control de concurrencia optimista de la edición.
-  revision       Int      @default(0)
-  creadoPor      String   @map("creado_por") @db.Uuid
-  creadoEn       DateTime @default(now()) @map("creado_en") @db.Timestamptz(3)
-  modificadoPor  String   @map("modificado_por") @db.Uuid
-  modificadoEn   DateTime @default(now()) @map("modificado_en") @db.Timestamptz(3)
+  revision         Int      @default(0)
+  creadoPor        String   @map("creado_por") @db.Uuid
+  creadoEn         DateTime @default(now()) @map("creado_en") @db.Timestamptz(3)
+  modificadoPor    String   @map("modificado_por") @db.Uuid
+  modificadoEn     DateTime @default(now()) @map("modificado_en") @db.Timestamptz(3)
 
   organizacion Organizacion @relation(fields: [organizacionId], references: [id], onDelete: Restrict, onUpdate: Restrict)
   autor        Membresia    @relation("ClienteCreadoPor", fields: [organizacionId, creadoPor], references: [organizacionId, usuarioId], onDelete: Restrict, onUpdate: Restrict)
@@ -488,33 +586,33 @@ model Proyecto {
 
 /// Cotización con folio (tblCotizaciones). El folio fija cliente y proyecto.
 model Cotizacion {
-  id             String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  organizacionId String   @map("organizacion_id") @db.Uuid
+  id             String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organizacionId String    @map("organizacion_id") @db.Uuid
   /// COT-AAAA-NNNNN (formato del libro); contador propio de la web por organización y año.
-  folio          String   @db.VarChar(20)
-  anioFolio      Int      @map("anio_folio")
+  folio          String    @db.VarChar(20)
+  anioFolio      Int       @map("anio_folio")
   /// WEB_DEMO: historial independiente de la fase Excel (CHECK).
-  origen         String   @db.VarChar(20)
+  origen         String    @db.VarChar(20)
   /// ACTIVO | DESCARTADO (CHECK). El descarte (módulo 8) es definitivo y no reutiliza el folio.
-  estadoFolio    String   @default("ACTIVO") @map("estado_folio") @db.VarChar(20)
+  estadoFolio    String    @default("ACTIVO") @map("estado_folio") @db.VarChar(20)
   /// Descarte (B-37): quién, cuándo y por qué. Solo los fija `softarq_descartar_cotizacion`.
   descartadaPor  String?   @map("descartada_por") @db.Uuid
   descartadaEn   DateTime? @map("descartada_en") @db.Timestamptz(3)
   motivoDescarte String?   @map("motivo_descarte") @db.VarChar(500)
-  clienteId      String   @map("cliente_id") @db.Uuid
-  proyectoId     String   @map("proyecto_id") @db.Uuid
+  clienteId      String    @map("cliente_id") @db.Uuid
+  proyectoId     String    @map("proyecto_id") @db.Uuid
   /// Último número de versión asignado (0 = sin versiones). Se incrementa atómicamente.
-  ultimaVersion  Int      @default(0) @map("ultima_version")
-  creadoPor      String   @map("creado_por") @db.Uuid
-  creadoEn       DateTime @default(now()) @map("creado_en") @db.Timestamptz(3)
+  ultimaVersion  Int       @default(0) @map("ultima_version")
+  creadoPor      String    @map("creado_por") @db.Uuid
+  creadoEn       DateTime  @default(now()) @map("creado_en") @db.Timestamptz(3)
 
-  proyecto   Proyecto            @relation(fields: [organizacionId, clienteId, proyectoId], references: [organizacionId, clienteId, id], onDelete: Restrict, onUpdate: Restrict)
-  autor      Membresia           @relation(fields: [organizacionId, creadoPor], references: [organizacionId, usuarioId], onDelete: Restrict, onUpdate: Restrict)
-  descartador Membresia?         @relation("CotizacionDescartadaPor", fields: [organizacionId, descartadaPor], references: [organizacionId, usuarioId], onDelete: Restrict, onUpdate: Restrict)
-  borrador   CotizacionBorrador?
-  versiones  CotizacionVersion[]
-  revisiones Revision[]
-  emisiones  Emision[]
+  proyecto    Proyecto            @relation(fields: [organizacionId, clienteId, proyectoId], references: [organizacionId, clienteId, id], onDelete: Restrict, onUpdate: Restrict)
+  autor       Membresia           @relation(fields: [organizacionId, creadoPor], references: [organizacionId, usuarioId], onDelete: Restrict, onUpdate: Restrict)
+  descartador Membresia?          @relation("CotizacionDescartadaPor", fields: [organizacionId, descartadaPor], references: [organizacionId, usuarioId], onDelete: Restrict, onUpdate: Restrict)
+  borrador    CotizacionBorrador?
+  versiones   CotizacionVersion[]
+  revisiones  Revision[]
+  emisiones   Emision[]
 
   @@unique([organizacionId, id])
   @@unique([organizacionId, folio])
@@ -611,13 +709,13 @@ model Revision {
   /// Observaciones de la decisión o motivo de la retirada.
   observaciones  String?   @db.VarChar(2000)
 
-  cotizacion Cotizacion        @relation(fields: [organizacionId, cotizacionId, folio], references: [organizacionId, id, folio], onDelete: Restrict, onUpdate: Restrict)
-  version    CotizacionVersion @relation(fields: [organizacionId, cotizacionId, versionNumero, versionId], references: [organizacionId, cotizacionId, numero, id], onDelete: Restrict, onUpdate: Restrict)
-  preparador Membresia         @relation("RevisionPreparador", fields: [organizacionId, preparadorId], references: [organizacionId, usuarioId], onDelete: Restrict, onUpdate: Restrict)
-  emisor     Membresia         @relation("RevisionEnviadaPor", fields: [organizacionId, enviadoPor], references: [organizacionId, usuarioId], onDelete: Restrict, onUpdate: Restrict)
-  resolutor  Membresia?        @relation("RevisionResueltaPor", fields: [organizacionId, resueltaPor], references: [organizacionId, usuarioId], onDelete: Restrict, onUpdate: Restrict)
-  eventos    RevisionEvento[]
-  emisiones  Emision[]
+  cotizacion  Cotizacion          @relation(fields: [organizacionId, cotizacionId, folio], references: [organizacionId, id, folio], onDelete: Restrict, onUpdate: Restrict)
+  version     CotizacionVersion   @relation(fields: [organizacionId, cotizacionId, versionNumero, versionId], references: [organizacionId, cotizacionId, numero, id], onDelete: Restrict, onUpdate: Restrict)
+  preparador  Membresia           @relation("RevisionPreparador", fields: [organizacionId, preparadorId], references: [organizacionId, usuarioId], onDelete: Restrict, onUpdate: Restrict)
+  emisor      Membresia           @relation("RevisionEnviadaPor", fields: [organizacionId, enviadoPor], references: [organizacionId, usuarioId], onDelete: Restrict, onUpdate: Restrict)
+  resolutor   Membresia?          @relation("RevisionResueltaPor", fields: [organizacionId, resueltaPor], references: [organizacionId, usuarioId], onDelete: Restrict, onUpdate: Restrict)
+  eventos     RevisionEvento[]
+  emisiones   Emision[]
   excepciones ExcepcionDecision[]
 
   @@unique([organizacionId, id])
@@ -712,12 +810,12 @@ model Emision {
   archivoBytes     Int      @map("archivo_bytes")
   archivoSha256    Bytes    @map("archivo_sha256")
 
-  cotizacion Cotizacion        @relation(fields: [organizacionId, cotizacionId, folio], references: [organizacionId, id, folio], onDelete: Restrict, onUpdate: Restrict)
-  version    CotizacionVersion @relation(fields: [organizacionId, cotizacionId, versionNumero, versionId], references: [organizacionId, cotizacionId, numero, id], onDelete: Restrict, onUpdate: Restrict)
-  revision   Revision          @relation(fields: [organizacionId, revisionId, versionId], references: [organizacionId, id, versionId], onDelete: Restrict, onUpdate: Restrict)
-  preparador Membresia         @relation("EmisionPreparadaPor", fields: [organizacionId, preparadoPor], references: [organizacionId, usuarioId], onDelete: Restrict, onUpdate: Restrict)
-  aprobador  Membresia         @relation("EmisionAprobadaPor", fields: [organizacionId, aprobadoPor], references: [organizacionId, usuarioId], onDelete: Restrict, onUpdate: Restrict)
-  emisor     Membresia         @relation("EmisionEmitidaPor", fields: [organizacionId, emitidoPor], references: [organizacionId, usuarioId], onDelete: Restrict, onUpdate: Restrict)
+  cotizacion Cotizacion               @relation(fields: [organizacionId, cotizacionId, folio], references: [organizacionId, id, folio], onDelete: Restrict, onUpdate: Restrict)
+  version    CotizacionVersion        @relation(fields: [organizacionId, cotizacionId, versionNumero, versionId], references: [organizacionId, cotizacionId, numero, id], onDelete: Restrict, onUpdate: Restrict)
+  revision   Revision                 @relation(fields: [organizacionId, revisionId, versionId], references: [organizacionId, id, versionId], onDelete: Restrict, onUpdate: Restrict)
+  preparador Membresia                @relation("EmisionPreparadaPor", fields: [organizacionId, preparadoPor], references: [organizacionId, usuarioId], onDelete: Restrict, onUpdate: Restrict)
+  aprobador  Membresia                @relation("EmisionAprobadaPor", fields: [organizacionId, aprobadoPor], references: [organizacionId, usuarioId], onDelete: Restrict, onUpdate: Restrict)
+  emisor     Membresia                @relation("EmisionEmitidaPor", fields: [organizacionId, emitidoPor], references: [organizacionId, usuarioId], onDelete: Restrict, onUpdate: Restrict)
   respuestas RespuestaClienteEvento[]
 
   /// Una emisión por versión.
@@ -745,9 +843,9 @@ model RespuestaClienteEvento {
   fechaRegistro    DateTime @map("fecha_registro") @db.Date
   motivo           String?  @db.VarChar(500)
 
-  emision   Emision   @relation(fields: [organizacionId, emisionId], references: [organizacionId, id], onDelete: Restrict, onUpdate: Restrict, map: "respuesta_evento_emision_fk")
-  autor     Membresia @relation(fields: [organizacionId, registradoPor], references: [organizacionId, usuarioId], onDelete: Restrict, onUpdate: Restrict, map: "respuesta_evento_autor_fk")
-  anterior  RespuestaClienteEvento?  @relation("CorreccionRespuesta", fields: [organizacionId, emisionId, anteriorId], references: [organizacionId, emisionId, id], onDelete: Restrict, onUpdate: Restrict, map: "respuesta_evento_anterior_fk")
+  emision    Emision                  @relation(fields: [organizacionId, emisionId], references: [organizacionId, id], onDelete: Restrict, onUpdate: Restrict, map: "respuesta_evento_emision_fk")
+  autor      Membresia                @relation(fields: [organizacionId, registradoPor], references: [organizacionId, usuarioId], onDelete: Restrict, onUpdate: Restrict, map: "respuesta_evento_autor_fk")
+  anterior   RespuestaClienteEvento?  @relation("CorreccionRespuesta", fields: [organizacionId, emisionId, anteriorId], references: [organizacionId, emisionId, id], onDelete: Restrict, onUpdate: Restrict, map: "respuesta_evento_anterior_fk")
   siguientes RespuestaClienteEvento[] @relation("CorreccionRespuesta")
 
   @@unique([organizacionId, emisionId, id], map: "respuesta_evento_org_emision_id_key")

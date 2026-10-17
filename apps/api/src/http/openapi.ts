@@ -84,6 +84,24 @@ import {
   EsquemaRespuestaCierreVigencia,
   EsquemaRespuestaConceptosAdmin,
   EsquemaRespuestaInsumosAdmin,
+  EsquemaInsumoAdmin,
+  EsquemaSolicitudInsumo,
+  EsquemaEdicionInsumo,
+  EsquemaDetalleInsumoAdmin,
+  EsquemaSolicitudConversion,
+  EsquemaEdicionConversion,
+  EsquemaSolicitudTipoEstructura,
+  EsquemaEdicionTipoEstructura,
+  EsquemaTipoEstructuraAdmin,
+  EsquemaRespuestaTiposEstructura,
+  EsquemaDetalleTipoEstructura,
+  EsquemaConsultaTiposEstructura,
+  EsquemaSolicitudConcepto,
+  EsquemaEdicionConcepto,
+  EsquemaAprobacionConcepto,
+  EsquemaDetalleConceptoAdmin,
+  EsquemaSolicitudComponente,
+  EsquemaEdicionComponente,
   EsquemaRespuestaPreciosAdmin,
   EsquemaRespuestaProductosAdmin,
   EsquemaRespuestaProveedoresAdmin,
@@ -124,7 +142,8 @@ const DESCRIPCION_ERROR: Record<number, string> = {
     "CONFLICTO_RESPUESTA (cabeza comercial cambió; seguimientoVigente trae el estado actual), EMISION_SUSTITUIDA (sin primera respuesta sobre documento sustituido), " +
     "CONFLICTO_EXCEPCION (otra persona ya decidió la excepción; `excepcionesVigentes` trae las decisiones vigentes), " +
     "DUPLICADO (proveedor o producto ya existente; `registroVigente`), SOLAPE_VIGENCIA (precio del mismo producto y proveedor en el periodo; `registroVigente`), " +
-    "CONFLICTO_TARIFA (otra persona cambió la tarifa del concepto) o PRECIO_ANULADO (la anulación es definitiva).",
+    "CONFLICTO_TARIFA (otra persona cambió la tarifa del concepto), PRECIO_ANULADO (la anulación es definitiva) o " +
+    "CONFLICTO_APROBACION (el contenido técnico del concepto cambió o ya se aprobó; `registroVigente`).",
   413: "CUERPO_DEMASIADO_GRANDE.",
   415: "TIPO_DE_CONTENIDO_NO_ADMITIDO: el cuerpo debe ser application/json.",
   422:
@@ -134,6 +153,8 @@ const DESCRIPCION_ERROR: Record<number, string> = {
     "FECHA_RESPUESTA_INVALIDA (anterior a emisión o futura), RESPUESTA_FUERA_VIGENCIA (recepción después del último día), " +
     "EXCEPCION_INVALIDA (excepción que no corresponde a la captura, al catálogo o fuera de rango; nada se guardó), " +
     "PRODUCTO_CON_PRECIOS (campos técnicos bloqueados), UNIDAD_INCOMPATIBLE (BL-06), VIGENCIA_INVALIDA, VALOR_INVALIDO, " +
+    "TIPO_CON_CONCEPTOS (la familia no cambia), INSUMO_CON_REFERENCIAS (la unidad base no cambia), " +
+    "CONCEPTO_INCOMPLETO (concepto heredado: complete tipo y regla), REQUISITOS_INCOMPLETOS (`problemas` de aprobación), " +
     "IDEMPOTENCIA_CONFLICTO o IDEMPOTENCIA_CADUCADA.",
   429: "DEMASIADAS_SOLICITUDES (cabecera Retry-After).",
   503: "SERVICIO_NO_DISPONIBLE: PostgreSQL no disponible.",
@@ -165,6 +186,10 @@ const cuerpo = (ref: string) => ({
 const PARAMETRO_ID = { name: "id", in: "path", required: true, schema: { type: "string", format: "uuid" } };
 const PARAMETRO_CODIGO = { name: "codigo", in: "path", required: true, schema: { type: "string", pattern: "^[A-Z0-9][A-Z0-9_-]{0,39}$" } };
 const ADMIN = "Contrato INTERNO con importes de proveedor y tarifas; capacidad catalogos.administrar (Administrador del catálogo). Nunca forma parte de la proyección comercial ni del PDF.";
+const TECNICO =
+  "Contrato INTERNO con rendimientos, desperdicios, factores, reglas de medición y trazabilidad (ADR-0016); capacidad catalogos.administrar. Nunca forma parte de la proyección comercial ni del PDF.";
+const PARAMETRO_UNIDAD = { name: "unidad", in: "path", required: true, schema: { type: "string", pattern: "^[a-z0-9]{1,10}$" } };
+const PARAMETRO_COMPONENTE = { name: "componente", in: "path", required: true, schema: { type: "string", pattern: "^[A-Z0-9][A-Z0-9_-]{0,39}$" } };
 const PARAMETRO_NUMERO = { name: "numero", in: "path", required: true, schema: { type: "integer", minimum: 1 } };
 const CABECERA_IDEMPOTENCIA = {
   name: "Idempotency-Key",
@@ -728,10 +753,96 @@ export function construirDocumentoOpenApi(): Record<string, unknown> {
       },
       "/api/v1/admin/conceptos": {
         get: {
-          summary: "Conceptos con su tarifa asignada (solo para asignar tarifas; la edición de conceptos es de otro módulo)",
+          summary: "Conceptos con tipo, estado, aprobación y tarifa asignada",
           description: ADMIN,
           parameters: parametrosQuery(EsquemaConsultaConceptosAdmin),
           responses: { "200": ok("RespuestaConceptosAdmin", "Página de conceptos."), ...errores(400, 401, 403, 429, 503, 500) },
+        },
+        post: {
+          summary: "Nuevo concepto (CON-NNNNN) en Borrador (Val_Concepto): tipo activo, unidad acorde a la fórmula, regla de medición y tarifa de la misma unidad",
+          description: `${TECNICO} La descripción es única dentro del tipo (Normalizar).`,
+          security: CON_EFECTOS,
+          parameters: [CABECERA_IDEMPOTENCIA],
+          requestBody: cuerpo("SolicitudConcepto"),
+          responses: { "201": ok("DetalleConceptoAdmin", "Concepto creado (o reproducido)."), ...errores(400, 401, 403, 404, 409, 413, 415, 422, 429, 503, 500) },
+        },
+      },
+      "/api/v1/admin/conceptos/{codigo}": {
+        get: {
+          summary: "Detalle del concepto: componentes con convertibilidad y trazabilidad, requisitos de aprobación del servidor e historial",
+          description: TECNICO,
+          parameters: [PARAMETRO_CODIGO],
+          responses: { "200": ok("DetalleConceptoAdmin", "Concepto."), ...errores(401, 403, 404, 429, 503, 500) },
+        },
+        patch: {
+          summary: "Editar o activar/desactivar el concepto: un cambio técnico lo devuelve a Borrador y retira la aprobación",
+          description: `${TECNICO} Desactivar conserva la aprobación; reactivar vuelve a Borrador (BTN_ConceptoActivo). Un concepto heredado exige completar tipo y regla (422 CONCEPTO_INCOMPLETO).`,
+          security: CON_EFECTOS,
+          parameters: [PARAMETRO_CODIGO],
+          requestBody: cuerpo("EdicionConcepto"),
+          responses: { "200": ok("DetalleConceptoAdmin", "Concepto guardado."), ...errores(400, 401, 403, 404, 409, 413, 415, 422, 429, 503, 500) },
+        },
+      },
+      "/api/v1/admin/conceptos/{codigo}/aprobacion": {
+        post: {
+          summary: "Aprobar el concepto (Concepto_Aprobar, B-13): cualquier Administrador del catálogo, también quien lo creó",
+          description: `${TECNICO} Aprueba exactamente la revisión técnica indicada: si cambió, 409 CONFLICTO_APROBACION. Con requisitos pendientes, 422 REQUISITOS_INCOMPLETOS con la lista.`,
+          security: CON_EFECTOS,
+          parameters: [PARAMETRO_CODIGO, CABECERA_IDEMPOTENCIA],
+          requestBody: cuerpo("AprobacionConcepto"),
+          responses: { "200": ok("DetalleConceptoAdmin", "Concepto aprobado (o reproducido)."), ...errores(400, 401, 403, 404, 409, 413, 415, 422, 429, 503, 500) },
+        },
+      },
+      "/api/v1/admin/conceptos/{codigo}/componentes": {
+        post: {
+          summary: "Nuevo componente (CMP-NNNNN; Val_Componente): devuelve el concepto a Borrador",
+          description: `${TECNICO} Fuente, fecha y responsable son opcionales al guardar y obligatorios para aprobar y calcular (BL-05). Un componente por insumo en cada concepto.`,
+          security: CON_EFECTOS,
+          parameters: [PARAMETRO_CODIGO, CABECERA_IDEMPOTENCIA],
+          requestBody: cuerpo("SolicitudComponente"),
+          responses: { "201": ok("DetalleConceptoAdmin", "Componente creado (o reproducido)."), ...errores(400, 401, 403, 404, 409, 413, 415, 422, 429, 503, 500) },
+        },
+      },
+      "/api/v1/admin/conceptos/{codigo}/componentes/{componente}": {
+        patch: {
+          summary: "Editar o activar/desactivar un componente: devuelve el concepto a Borrador (Concepto_ABorrador)",
+          description: TECNICO,
+          security: CON_EFECTOS,
+          parameters: [PARAMETRO_CODIGO, PARAMETRO_COMPONENTE],
+          requestBody: cuerpo("EdicionComponente"),
+          responses: { "200": ok("DetalleConceptoAdmin", "Componente guardado."), ...errores(400, 401, 403, 404, 409, 413, 415, 422, 429, 503, 500) },
+        },
+      },
+      "/api/v1/admin/tipos-estructura": {
+        get: {
+          summary: "Tipos de estructura (familias de tblListas.FAMILIA y sus tipos)",
+          description: TECNICO,
+          parameters: parametrosQuery(EsquemaConsultaTiposEstructura),
+          responses: { "200": ok("RespuestaTiposEstructura", "Página de tipos."), ...errores(400, 401, 403, 429, 503, 500) },
+        },
+        post: {
+          summary: "Nuevo tipo de estructura (TES-NNNNN; Val_TipoEst): único por familia y nombre normalizado",
+          description: TECNICO,
+          security: CON_EFECTOS,
+          parameters: [CABECERA_IDEMPOTENCIA],
+          requestBody: cuerpo("SolicitudTipoEstructura"),
+          responses: { "201": ok("TipoEstructuraAdmin", "Tipo creado (o reproducido)."), ...errores(400, 401, 403, 409, 413, 415, 422, 429, 503, 500) },
+        },
+      },
+      "/api/v1/admin/tipos-estructura/{codigo}": {
+        get: {
+          summary: "Detalle del tipo de estructura con su historial",
+          description: TECNICO,
+          parameters: [PARAMETRO_CODIGO],
+          responses: { "200": ok("DetalleTipoEstructura", "Tipo."), ...errores(401, 403, 404, 429, 503, 500) },
+        },
+        patch: {
+          summary: "Editar o activar/desactivar el tipo: con conceptos, la familia no cambia (422 TIPO_CON_CONCEPTOS)",
+          description: `${TECNICO} Desactivarlo conserva sus conceptos; deja de ofrecerse para conceptos nuevos o para reclasificar e impide aprobar sus conceptos.`,
+          security: CON_EFECTOS,
+          parameters: [PARAMETRO_CODIGO],
+          requestBody: cuerpo("EdicionTipoEstructura"),
+          responses: { "200": ok("TipoEstructuraAdmin", "Tipo guardado."), ...errores(400, 401, 403, 404, 409, 413, 415, 422, 429, 503, 500) },
         },
       },
       "/api/v1/admin/conceptos/{codigo}/tarifa": {
@@ -746,10 +857,54 @@ export function construirDocumentoOpenApi(): Record<string, unknown> {
       },
       "/api/v1/admin/insumos": {
         get: {
-          summary: "Insumos (solo lectura) para elegir el insumo de un producto",
+          summary: "Insumos técnicos con sus referencias (por omisión, solo activos)",
           description: ADMIN,
           parameters: parametrosQuery(EsquemaConsultaInsumosAdmin),
           responses: { "200": ok("RespuestaInsumosAdmin", "Página de insumos."), ...errores(400, 401, 403, 429, 503, 500) },
+        },
+        post: {
+          summary: "Nuevo insumo (INS-NNNNN; Val_Insumo): descripción técnica única normalizada y unidad base válida",
+          description: TECNICO,
+          security: CON_EFECTOS,
+          parameters: [CABECERA_IDEMPOTENCIA],
+          requestBody: cuerpo("SolicitudInsumo"),
+          responses: { "201": ok("InsumoAdmin", "Insumo creado (o reproducido)."), ...errores(400, 401, 403, 409, 413, 415, 422, 429, 503, 500) },
+        },
+      },
+      "/api/v1/admin/insumos/{codigo}": {
+        get: {
+          summary: "Detalle del insumo con sus conversiones y los conceptos que las usan",
+          description: TECNICO,
+          parameters: [PARAMETRO_CODIGO],
+          responses: { "200": ok("DetalleInsumoAdmin", "Insumo."), ...errores(401, 403, 404, 429, 503, 500) },
+        },
+        patch: {
+          summary: "Editar o activar/desactivar el insumo: con productos, conversiones o componentes, la unidad base no cambia",
+          description: TECNICO,
+          security: CON_EFECTOS,
+          parameters: [PARAMETRO_CODIGO],
+          requestBody: cuerpo("EdicionInsumo"),
+          responses: { "200": ok("InsumoAdmin", "Insumo guardado."), ...errores(400, 401, 403, 404, 409, 413, 415, 422, 429, 503, 500) },
+        },
+      },
+      "/api/v1/admin/insumos/{codigo}/conversiones": {
+        post: {
+          summary: "Nueva conversión (Val_Conversion): de otra unidad a la unidad base del insumo, factor > 0 y fuente",
+          description: `${TECNICO} Una por insumo y unidad de origen; el motor solo usa conversiones directas.`,
+          security: CON_EFECTOS,
+          parameters: [PARAMETRO_CODIGO, CABECERA_IDEMPOTENCIA],
+          requestBody: cuerpo("SolicitudConversion"),
+          responses: { "201": ok("DetalleInsumoAdmin", "Conversión registrada (o reproducida)."), ...errores(400, 401, 403, 404, 409, 413, 415, 422, 429, 503, 500) },
+        },
+      },
+      "/api/v1/admin/insumos/{codigo}/conversiones/{unidad}": {
+        patch: {
+          summary: "Editar factor o fuente con motivo: los conceptos aprobados que la usan vuelven a Borrador",
+          description: `${TECNICO} Decisión del propietario (ADR-0016 §2.1). Las versiones conservan su instantánea.`,
+          security: CON_EFECTOS,
+          parameters: [PARAMETRO_CODIGO, PARAMETRO_UNIDAD],
+          requestBody: cuerpo("EdicionConversion"),
+          responses: { "200": ok("DetalleInsumoAdmin", "Conversión guardada."), ...errores(400, 401, 403, 404, 409, 413, 415, 422, 429, 503, 500) },
         },
       },
       "/api/v1/admin/unidades": {
@@ -853,6 +1008,23 @@ export function construirDocumentoOpenApi(): Record<string, unknown> {
         ConceptoTarifaAdmin: json(EsquemaConceptoTarifaAdmin, "output"),
         RespuestaConceptosAdmin: json(EsquemaRespuestaConceptosAdmin, "output"),
         RespuestaInsumosAdmin: json(EsquemaRespuestaInsumosAdmin, "output"),
+        InsumoAdmin: json(EsquemaInsumoAdmin, "output"),
+        SolicitudInsumo: json(EsquemaSolicitudInsumo, "input"),
+        EdicionInsumo: json(EsquemaEdicionInsumo, "input"),
+        DetalleInsumoAdmin: json(EsquemaDetalleInsumoAdmin, "output"),
+        SolicitudConversion: json(EsquemaSolicitudConversion, "input"),
+        EdicionConversion: json(EsquemaEdicionConversion, "input"),
+        SolicitudTipoEstructura: json(EsquemaSolicitudTipoEstructura, "input"),
+        EdicionTipoEstructura: json(EsquemaEdicionTipoEstructura, "input"),
+        TipoEstructuraAdmin: json(EsquemaTipoEstructuraAdmin, "output"),
+        RespuestaTiposEstructura: json(EsquemaRespuestaTiposEstructura, "output"),
+        DetalleTipoEstructura: json(EsquemaDetalleTipoEstructura, "output"),
+        SolicitudConcepto: json(EsquemaSolicitudConcepto, "input"),
+        EdicionConcepto: json(EsquemaEdicionConcepto, "input"),
+        AprobacionConcepto: json(EsquemaAprobacionConcepto, "input"),
+        DetalleConceptoAdmin: json(EsquemaDetalleConceptoAdmin, "output"),
+        SolicitudComponente: json(EsquemaSolicitudComponente, "input"),
+        EdicionComponente: json(EsquemaEdicionComponente, "input"),
         RespuestaUnidades: json(EsquemaRespuestaUnidades, "output"),
       },
     },

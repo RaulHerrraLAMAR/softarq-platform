@@ -216,6 +216,52 @@ async function comprobarDestino(manifiesto) {
         registrar("catálogo administrado: registros, vigencias, asignaciones e historial íntegros tras restaurar", a === b, `${eventos} eventos de catálogo comparados con origen (solo lectura)`);
       } finally { await origen.end(); }
     }
+    // Módulo 12 (ADR-0016): catálogo técnico. Condicional: respaldos anteriores no tienen la tabla.
+    const conTecnico = (await c.query("SELECT to_regclass('public.tipo_estructura') IS NOT NULL AS t")).rows[0].t;
+    if (conTecnico) {
+      const inconsistencias = (await c.query(`SELECT
+          (SELECT count(*) FROM concepto x JOIN tipo_estructura t ON t.id=x.tipo_id WHERE t.organizacion_id<>x.organizacion_id)
+        + (SELECT count(*) FROM concepto x WHERE NOT x.heredado AND (x.tipo_id IS NULL OR x.regla_medicion IS NULL))
+        + (SELECT count(*) FROM concepto x WHERE x.estado='Aprobado' AND x.aprobado_en IS NULL AND NOT x.heredado)
+        + (SELECT count(*) FROM concepto x WHERE x.estado='Borrador' AND (x.aprobado_por IS NOT NULL OR x.aprobado_en IS NOT NULL))
+        + (SELECT count(*) FROM conversion v JOIN insumo i ON i.id=v.insumo_id WHERE v.unidad_destino<>i.unidad_base)
+        + (SELECT count(*) FROM componente k JOIN concepto x ON x.id=k.concepto_id WHERE x.organizacion_id<>k.organizacion_id)
+        + (SELECT count(*) FROM bitacora b WHERE b.entidad='tipo_estructura' AND NOT EXISTS (SELECT 1 FROM tipo_estructura x WHERE x.id=b.entidad_id AND x.organizacion_id=b.organizacion_id))
+        + (SELECT count(*) FROM bitacora b WHERE b.entidad='insumo' AND NOT EXISTS (SELECT 1 FROM insumo x WHERE x.id=b.entidad_id AND x.organizacion_id=b.organizacion_id))
+        + (SELECT count(*) FROM bitacora b WHERE b.entidad='conversion' AND NOT EXISTS (SELECT 1 FROM conversion x WHERE x.id=b.entidad_id AND x.organizacion_id=b.organizacion_id))
+        + (SELECT count(*) FROM bitacora b WHERE b.entidad='componente' AND NOT EXISTS (SELECT 1 FROM componente x WHERE x.id=b.entidad_id AND x.organizacion_id=b.organizacion_id))
+        AS n`)).rows[0].n;
+      registrar("catálogo técnico: tipos, heredados, aprobaciones, conversiones y bitácora coherentes", Number(inconsistencias) === 0, `${inconsistencias} incoherencias`);
+      const permisos = (await c.query(`SELECT
+          has_column_privilege('softarq_app','public.concepto','estado','UPDATE') estado,
+          has_column_privilege('softarq_app','public.concepto','heredado','UPDATE') heredado,
+          has_column_privilege('softarq_app','public.concepto','codigo','UPDATE') codigo,
+          has_column_privilege('softarq_app','public.componente','concepto_id','UPDATE') componente,
+          has_table_privilege('softarq_app','public.concepto','DELETE') borrado,
+          has_function_privilege('softarq_app','public.softarq_aprobar_concepto(uuid,uuid,text,integer,uuid,text,bytea,timestamptz)','EXECUTE') funcion,
+          (SELECT count(*)::int FROM pg_trigger t JOIN pg_class k ON k.oid=t.tgrelid
+            WHERE k.relname IN ('tipo_estructura','insumo','conversion','componente','concepto') AND NOT t.tgisinternal) disparadores,
+          (SELECT count(*)::int FROM pg_indexes WHERE indexname IN ('insumo_descripcion_normalizada_key','tipo_estructura_familia_nombre_key',
+            'concepto_tipo_descripcion_key','componente_concepto_insumo_key','conversion_insumo_origen_key')) unicos`)).rows[0];
+      registrar(
+        "catálogo técnico: permisos mínimos, funciones, disparadores e índices restaurados",
+        permisos.estado && !permisos.heredado && !permisos.codigo && !permisos.componente && !permisos.borrado && permisos.funcion && permisos.disparadores === 7 && permisos.unicos === 5,
+        JSON.stringify(permisos),
+      );
+      const origen = new pg.Client({ connectionString: urlRespaldo().cadena }); await origen.connect();
+      try {
+        const sql = `SELECT json_build_array(
+            (SELECT coalesce(json_agg(to_jsonb(x) ORDER BY x.organizacion_id, x.codigo), '[]') FROM tipo_estructura x),
+            (SELECT coalesce(json_agg(to_jsonb(x) ORDER BY x.organizacion_id, x.codigo), '[]') FROM insumo x),
+            (SELECT coalesce(json_agg(to_jsonb(x) ORDER BY x.organizacion_id, x.insumo_id, x.unidad_origen), '[]') FROM conversion x),
+            (SELECT coalesce(json_agg(to_jsonb(x) ORDER BY x.organizacion_id, x.codigo), '[]') FROM concepto x),
+            (SELECT coalesce(json_agg(to_jsonb(x) ORDER BY x.organizacion_id, x.codigo), '[]') FROM componente x)
+          )::text AS f`;
+        const a = (await origen.query(sql)).rows[0].f, b = (await c.query(sql)).rows[0].f;
+        const heredados = (await c.query("SELECT count(*)::int n FROM concepto WHERE heredado")).rows[0].n;
+        registrar("catálogo técnico: registros, marcas de heredado y aprobaciones íntegros tras restaurar", a === b, `${heredados} concepto(s) heredado(s) comparados con origen (solo lectura)`);
+      } finally { await origen.end(); }
+    }
     const resumen = (await c.query(`SELECT
         (SELECT count(*) FROM organizacion)::int organizaciones, (SELECT count(*) FROM usuario)::int usuarios,
         (SELECT count(*) FROM cotizacion)::int cotizaciones, (SELECT count(*) FROM cotizacion_version)::int versiones,

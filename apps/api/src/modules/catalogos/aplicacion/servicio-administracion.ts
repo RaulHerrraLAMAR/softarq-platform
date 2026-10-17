@@ -406,7 +406,10 @@ export class ServicioAdministracionCatalogos {
     const limite = limiteDe(c.limite);
     const r = await this.repo.listarConceptos(ctx, {
       ...(c.buscar !== undefined ? { buscar: c.buscar } : {}),
+      ...(c.estado !== undefined ? { estado: c.estado } : {}),
+      ...(c.tipoCodigo !== undefined ? { tipoCodigo: c.tipoCodigo } : {}),
       ...(c.despuesDe !== undefined ? { despuesDe: c.despuesDe } : {}),
+      soloActivos: c.soloActivos ?? false,
       limite,
     });
     return { conceptos: r.filas, limite, siguiente: r.siguiente };

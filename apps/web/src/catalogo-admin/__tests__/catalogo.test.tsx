@@ -7,7 +7,7 @@
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
-import type { DetallePrecioAdmin, DetalleProductoAdmin, DetalleProveedorAdmin, PrecioAdmin, ProductoAdmin, ProveedorAdmin } from "@softarq/contracts";
+import type { DetallePrecioAdmin, DetalleProductoAdmin, DetalleProveedorAdmin, InsumoAdmin, PrecioAdmin, ProductoAdmin, ProveedorAdmin } from "@softarq/contracts";
 import type { ResultadoApi } from "../../api/cliente.ts";
 import { ProveedorRuta, hashDe, interpretarHash } from "../../navegacion/ruta.tsx";
 import { PantallaCatalogo } from "../PantallasCatalogo.tsx";
@@ -63,6 +63,16 @@ const PRECIO: PrecioAdmin = {
   registradoEn: "2026-10-17T15:00:00.000Z",
 };
 
+const INSUMO: InsumoAdmin = {
+  ...PRODUCTO.insumo,
+  especificacion: null,
+  revision: 0,
+  referencias: { productos: 1, conversiones: 0, componentes: 2 },
+  creadoEn: "2026-10-17T15:00:00.000Z",
+  modificadoEn: "2026-10-17T15:00:00.000Z",
+  modificadoPor: null,
+};
+
 function servicios(s: Partial<ServiciosCatalogoAdmin> = {}): ServiciosCatalogoAdmin {
   const noUsar = () => Promise.reject(new Error("no se esperaba esta llamada"));
   return {
@@ -85,8 +95,23 @@ function servicios(s: Partial<ServiciosCatalogoAdmin> = {}): ServiciosCatalogoAd
     cambiarActivaTarifa: vi.fn(),
     listarConceptos: () => ok({ conceptos: [], limite: 50, siguiente: null }),
     asignarTarifa: vi.fn(),
-    listarInsumos: () => ok({ insumos: [PRODUCTO.insumo], limite: 100, siguiente: null }),
+    listarInsumos: () => ok({ insumos: [INSUMO], limite: 100, siguiente: null }),
     unidades: () => ok({ unidades: [{ clave: "bulto", nombre: "Bulto", magnitud: "conteo" }, { clave: "kg", nombre: "Kilogramo", magnitud: "masa" }] }),
+    listarTipos: noUsar,
+    detalleTipo: noUsar,
+    crearTipo: noUsar,
+    editarTipo: noUsar,
+    detalleInsumo: noUsar,
+    crearInsumo: noUsar,
+    editarInsumo: noUsar,
+    crearConversion: noUsar,
+    editarConversion: noUsar,
+    detalleConcepto: noUsar,
+    crearConcepto: noUsar,
+    editarConcepto: noUsar,
+    aprobarConcepto: noUsar,
+    crearComponente: noUsar,
+    editarComponente: noUsar,
     ...s,
   };
 }
@@ -100,11 +125,11 @@ const montar = (s: ServiciosCatalogoAdmin, vista: "proveedores" | "productos" | 
 
 describe("rutas del catálogo", () => {
   it("cada vista tiene su URL; una vista desconocida no es una ruta del catálogo", () => {
-    for (const vista of ["proveedores", "productos", "precios", "mano-de-obra", "conceptos"] as const) {
+    for (const vista of ["proveedores", "productos", "precios", "mano-de-obra", "insumos", "tipos-estructura", "conceptos"] as const) {
       expect(interpretarHash(hashDe({ pantalla: "catalogo", vista }))).toEqual({ pantalla: "catalogo", vista });
     }
     expect(interpretarHash("#/catalogo")).toEqual({ pantalla: "catalogo", vista: "proveedores" });
-    expect(interpretarHash("#/catalogo/insumos")).toEqual({ pantalla: "no-encontrada" });
+    expect(interpretarHash("#/catalogo/componentes")).toEqual({ pantalla: "no-encontrada" });
   });
 });
 

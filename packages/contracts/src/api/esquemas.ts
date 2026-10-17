@@ -440,6 +440,12 @@ export const CODIGOS_ERROR_API = [
   "VIGENCIA_INVALIDA",
   "PRECIO_ANULADO",
   "VALOR_INVALIDO",
+  // Módulo 12 (ADR-0016): catálogo técnico y aprobación de conceptos.
+  "TIPO_CON_CONCEPTOS",
+  "INSUMO_CON_REFERENCIAS",
+  "CONCEPTO_INCOMPLETO",
+  "REQUISITOS_INCOMPLETOS",
+  "CONFLICTO_APROBACION",
 ] as const;
 export type CodigoErrorApi = (typeof CODIGOS_ERROR_API)[number];
 

@@ -150,7 +150,7 @@ beforeAll(async () => {
   // Concepto PERSONALIZADO en Borrador, creado para la prueba (el catálogo DEMO no tiene ninguno).
   const repo = new RepositorioCatalogos(prisma);
   const ctx = { organizacionId: org };
-  await repo.asegurarConcepto(ctx, { codigo: "CON-PER-01", descripcion: "[DEMO] Muro personalizado de prueba", unidad: "m2", tipoFormula: "AREA", permiteDescuento: true, clase: "PERSONALIZADO", estado: "Borrador", tarifa: "TMO-00001" });
+  await repo.asegurarConcepto(ctx, { codigo: "CON-PER-01", tipo: "TES-00006", descripcion: "[DEMO] Muro personalizado de prueba", unidad: "m2", tipoFormula: "AREA", permiteDescuento: true, clase: "PERSONALIZADO", tarifa: "TMO-00001", reglaMedicion: "[DEMO] Área = largo x alto (prueba)", criterios: null });
   await repo.asegurarComponente(ctx, { codigo: "CMP-PER-01", concepto: "CON-PER-01", orden: 1, insumo: "INS-00010", rendimiento: "12.5", unidadRendimiento: "pza", desperdicio: "0.05", factorTraslape: null, fuente: "[DEMO] prueba", fecha: "2026-09-01", responsable: "[DEMO] Responsable" });
   migrador = await prismaMigrador();
   Object.assign(

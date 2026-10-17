@@ -157,7 +157,7 @@ Recorrido 3 del libro con la excepción opcional de la guía de demostración: �
 | X7 | En otra cotización, el Revisor rechaza la excepción | La versión no se puede aprobar (bloqueo «fue rechazada»); se solicitan cambios; el Preparador corrige y calcula una versión nueva, cuya excepción vuelve a «Pendiente» |
 | X8 | Emitir la versión aprobada y abrir el PDF; ancho de 390 px en el editor y en la revisión | El PDF no menciona excepciones, rendimientos ni motivos. Una columna, sin desplazamiento horizontal, foco visible con teclado |
 
-En `softarq_dev` no hay conceptos personalizados ni otra forma de reproducir un precio vencido sin manipular fechas; esos casos están cubiertos por las pruebas automatizadas (no por esta guía).
+En `softarq_dev` no hay otra forma de reproducir un precio vencido sin manipular fechas; ese caso está cubierto por las pruebas automatizadas (no por esta guía). Desde el módulo 12 se puede crear un concepto personalizado en «Catálogo» (bloque T).
 
 ### Catálogo: proveedores, productos, precios y tarifas (K1–K10, módulo 11; pendiente de ejecución formal)
 
@@ -178,14 +178,33 @@ En `softarq_dev` no hay conceptos personalizados ni otra forma de reproducir un 
 | K9 | Dos pestañas editan el mismo proveedor | La segunda recibe el conflicto, conserva lo escrito y ofrece «Recargar el registro vigente» |
 | K10 | 390 px y teclado en «Precios» | Una columna, foco visible, el foco va al primer campo del formulario y no hay desplazamiento horizontal |
 
-«Mano de obra» y «Tarifa de conceptos» registran tarifas y las asignan a un concepto. Para la prueba en persona, en `softarq_dev`, **no asigne** otra tarifa a los conceptos de los ejemplos: sus totales de referencia dependen de TMO-00001…005. La asignación está cubierta por las pruebas automatizadas en `softarq_test`.
+«Mano de obra» registra tarifas; «Conceptos y componentes» → «Gestionar» → «Asignar tarifa» las asigna a un concepto. Para la prueba en persona, en `softarq_dev`, **no asigne** otra tarifa a los conceptos de los ejemplos: sus totales de referencia dependen de TMO-00001…005. La asignación está cubierta por las pruebas automatizadas en `softarq_test`.
+
+### Catálogo técnico: tipos, insumos, conversiones, conceptos y componentes (T1–T10, módulo 12; pendiente de ejecución formal)
+
+- **Sesión:** cuenta `[DEMO] Administrador` (Administrador del catálogo).
+- **Qué registrar:** solo registros nuevos marcados `[DEMO]`. **No edite** CON-00001, CON-00002, CON-00007 a CON-00009, sus componentes ni las conversiones de INS-00006 e INS-00008: sostienen los totales de referencia y, al editarlos, perderían su aprobación.
+- **Fuentes y decisiones:** [ADR-0016](../adr/0016-catalogo-tecnico-aprobacion-conceptos.md).
+
+| Caso | Acción | Resultado esperado |
+|---|---|---|
+| T1 | «Catálogo» → «Tipos de estructura» | Los seis genéricos del libro (TES-00001…006); «Nuevo tipo» crea `TES-…`; el mismo nombre en la misma familia se rechaza |
+| T2 | «Gestionar» TES-00004 → «Editar datos» | La familia aparece bloqueada con la explicación (tiene conceptos) |
+| T3 | «Insumos y conversiones» → «Nuevo insumo» `[DEMO] …` en kg → «Nueva conversión» | La unidad base no se ofrece como origen; factor con punto decimal; la conversión aparece como «1 m = … kg» |
+| T4 | «Gestionar» INS-00006 → «Editar factor o fuente» (sin confirmar) | Antes de confirmar lista CON-00007 como concepto que vuelve a Borrador. **Cancele** |
+| T5 | «Conceptos y componentes» → «Gestionar» CON-00009 | «Datos incompletos de la carga anterior»: falta tipo y regla; sigue calculando; no se pueden agregar componentes |
+| T6 | «Nuevo concepto» `[DEMO] …`: tipo TES-00004, fórmula Área | La unidad solo ofrece unidades de área; con tarifa TMO-00005; queda en Borrador |
+| T7 | Agregar un componente sin fuente | Se guarda; «Falta: fuente…» y la lista de requisitos impide aprobar |
+| T8 | Completar la trazabilidad → «Aprobar concepto» | La confirmación indica la revisión técnica; queda «Aprobado por [DEMO] Administrador» |
+| T9 | «Editar datos» del concepto aprobado y cambiar la regla | Aviso «Al guardar, el concepto aprobado vuelve a Borrador»; tras confirmar queda en Borrador |
+| T10 | 390 px y teclado en «Conceptos y componentes» | Una columna, foco en el primer campo del formulario y sin desplazamiento horizontal |
 
 ## 4. Qué no hace todavía
 
 - La calculadora DEMO no guarda su captura (para conservarla, «Guardar como cotización»).
 - La aprobación **no es una emisión** ni una entrega al cliente. La emisión (módulo 8) genera un PDF **DEMO**: no se envía por correo ni al cliente y no es una cotización comercial real.
 - Sin duplicar cotizaciones, correo ni app móvil. Respuesta y vigencia: módulo 9; excepciones: módulo 10.
-- Administración de catálogos solo de proveedores, productos, precios y tarifas (módulo 11). Sin insumos, conversiones, conceptos ni componentes: no se crean conceptos personalizados desde la web.
+- Los tipos de costo adicional siguen solo con la carga DEMO. Los cinco conceptos heredados de `softarq_dev` muestran «Datos incompletos de la carga anterior» hasta que el Administrador los complete (ADR-0016 §2.3).
 - Sin registro de usuarios ni recuperación de contraseña.
 - Solo punto decimal (por ejemplo, `0.12`).
 

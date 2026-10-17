@@ -137,7 +137,7 @@ En los registros de la carga DEMO, la autoría es NULL porque no tienen persona.
 - **`softarq_app`** (`permisos-app.sql`, bloque condicional para restaurar respaldos anteriores): UPDATE solo de columnas editables.
   - **Nunca:** código, organización, importe, inicio de vigencia, fuente ni datos de alta.
   - **Sin** DELETE ni DDL.
-  - En `concepto`, el permiso actual se mantiene y se restringirá con el bloque de conceptos.
+  - En `concepto`, el permiso actual se mantenía y se restringió con el bloque de conceptos (ADR-0016 §5).
 - **Respaldo:** `softarq_respaldo` ya lee todas las tablas (no hay tablas nuevas). `probar-restauracion.mjs` comprueba coherencia, permisos, disparadores, índices y que los registros administrativos y su historial sean idénticos tras restaurar.
 
 ## 8. Concurrencia, idempotencia y límites
@@ -151,4 +151,4 @@ En los registros de la carga DEMO, la autoría es NULL porque no tienen persona.
 - El DEMO puede mantener proveedores, productos, precios y tarifas sin la carga fija. La carga DEMO repetida no revierte ediciones: informa diferencias sin corregirlas.
 - **P3 (política de vigencias)** sigue pendiente con el cliente. Si se define otra, se cambia `softarq_cerrar_vigencia_precio` y su disparador.
 - **Dependencia mínima de conceptos:** solo la asignación de tarifa. La edición de conceptos y componentes, la trazabilidad de BL-05 en pantalla, los insumos y las conversiones quedan para el bloque siguiente.
-- **Límite de los formularios:** el de precios ofrece la primera página de productos y proveedores activos, hasta 50. Basta para el DEMO; con catálogos reales hará falta un selector con búsqueda.
+- **Límite de los formularios (resuelto tras el módulo 11):** los formularios usan un selector con búsqueda en el servidor y paginación por código (`SelectorRegistro`), que conserva la selección actual aunque no esté en la página y la marca si ya no está disponible.

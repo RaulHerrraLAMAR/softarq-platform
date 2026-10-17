@@ -32,12 +32,26 @@ describe("la web no contiene fórmulas ni costos internos", () => {
   const PROHIBIDO_EN_CATALOGO = /costo|consumo|margen|recargo|desperdicio|traslape|sobrante[A-Z]|precioProveedor|@softarq\/api|prisma|apps\/api|fixtures/i;
   const enCatalogo = (archivo: string) => relative(SRC, archivo).split(/[\\/]/)[0] === "catalogo-admin";
 
+  // Excepción explícita y acotada (módulo 12, ADR-0016): la carpeta `catalogo-tecnico/` administra
+  // insumos, conversiones, conceptos y componentes del Administrador del catálogo: muestra
+  // rendimientos, desperdicios, traslapes, factores y tarifas. Siguen prohibidos costos, consumos,
+  // márgenes, recargos y sobrantes. Igual que la anterior, el acceso real lo comprueba la API
+  // (`acceso-admin.integracion.test.ts` recorre también las rutas del módulo 12).
+  const PROHIBIDO_EN_TECNICO = /costo|consumo|margen|recargo|sobrante[A-Z]|precioProveedor|@softarq\/api|prisma|apps\/api|fixtures/i;
+  const enTecnico = (archivo: string) => relative(SRC, archivo).split(/[\\/]/)[0] === "catalogo-tecnico";
+
   it.each(archivos(SRC).map((a) => [relative(SRC, a), a]))("%s", (_nombre, archivo) => {
     const lineas = readFileSync(archivo, "utf-8")
       .split("\n")
       // Los textos de interfaz pueden mencionar «costos adicionales» (partidas ADICIONAL del contrato).
       .filter((l) => !/costos? adicional|Costo adicional|costo que usted captura/i.test(l));
-    const patron = enExcepciones(archivo) ? PROHIBIDO_EN_EXCEPCIONES : enCatalogo(archivo) ? PROHIBIDO_EN_CATALOGO : PROHIBIDO;
+    const patron = enExcepciones(archivo)
+      ? PROHIBIDO_EN_EXCEPCIONES
+      : enCatalogo(archivo)
+        ? PROHIBIDO_EN_CATALOGO
+        : enTecnico(archivo)
+          ? PROHIBIDO_EN_TECNICO
+          : PROHIBIDO;
     expect(lineas.filter((l) => patron.test(l))).toEqual([]);
   });
 
@@ -59,8 +73,16 @@ describe("la web no contiene fórmulas ni costos internos", () => {
       "catalogo-admin/campos.tsx",
       "catalogo-admin/fallos.ts",
       "catalogo-admin/fechas.ts",
+      "catalogo-admin/piezas.tsx",
       "catalogo-admin/servicios.ts",
     ]);
+  });
+
+  it("la excepción del módulo 12 cubre solo la carpeta catalogo-tecnico/ y sus archivos", () => {
+    const cubiertos = archivos(SRC)
+      .filter(enTecnico)
+      .map((a) => relative(SRC, a).split(/[\\/]/).join("/"));
+    expect(cubiertos.sort()).toEqual(["catalogo-tecnico/PantallasTecnicas.tsx"]);
   });
 
   it("no hay HTML interpretado", () => {

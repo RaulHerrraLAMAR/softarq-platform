@@ -58,6 +58,8 @@ export type FalloApi =
       mensaje: string;
       registroVigente?: unknown;
       campos?: { ruta: string; mensaje: string }[];
+      /** 422 REQUISITOS_INCOMPLETOS (módulo 12): requisitos de aprobación pendientes del servidor. */
+      problemas?: { codigo: string; referencia: string; mensaje: string }[];
     }
   /** 422 CAPTURA_INCOMPLETA: la captura no está lista; no se guardó ninguna versión. */
   | { tipo: "incompleta"; campos: { ruta: string; mensaje: string }[] }
@@ -329,7 +331,14 @@ function falloPorEstado(respuesta: Response, error: RespuestaError | null): Fall
           return { tipo: "idempotencia", mensaje: e.mensaje };
         default:
           if (e && FALLOS_CATALOGO_422.has(e.codigo) && esCodigoFalloCatalogo(e.codigo)) {
-            return { tipo: "catalogo", codigo: e.codigo, mensaje: e.mensaje, registroVigente: e.registroVigente ?? null, campos: e.campos ?? [] };
+            return {
+              tipo: "catalogo",
+              codigo: e.codigo,
+              mensaje: e.mensaje,
+              registroVigente: e.registroVigente ?? null,
+              campos: e.campos ?? [],
+              ...(e.problemas ? { problemas: e.problemas } : {}),
+            };
           }
           return { tipo: "incompatible" };
       }
