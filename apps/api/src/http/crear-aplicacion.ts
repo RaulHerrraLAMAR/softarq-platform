@@ -45,6 +45,8 @@ import { ServicioEmisiones, type GanchosEmision } from "../modules/cotizaciones/
 import { ServicioRevisiones } from "../modules/cotizaciones/aplicacion/servicio-revisiones.js";
 import { ServicioRespuestas } from "../modules/cotizaciones/aplicacion/servicio-respuestas.js";
 import { ServicioExcepciones } from "../modules/cotizaciones/aplicacion/servicio-excepciones.js";
+import { ServicioAdministracionCatalogos } from "../modules/catalogos/aplicacion/servicio-administracion.js";
+import { AdministracionCatalogosController } from "./controladores-catalogos-admin.js";
 import { generarPdf, type GeneradorPdf } from "../modules/cotizaciones/dominio/pdf/generador-pdf.js";
 import {
   AlmacenArchivos,
@@ -69,6 +71,7 @@ import {
   ExcepcionesCatalogoController,
   ExcepcionesVersionController,
   ExcepcionesRevisionController,
+  VerificacionVersionController,
 } from "./controladores-cotizaciones.js";
 import { FiltroErrores, errorDeValidacion } from "./errores.js";
 import { GuardiaSesion } from "./guardia-sesion.js";
@@ -86,6 +89,7 @@ import {
   SERVICIO_REVISIONES,
   SERVICIO_RESPUESTAS,
   SERVICIO_EXCEPCIONES,
+  SERVICIO_ADMIN_CATALOGOS,
 } from "./tokens.js";
 
 const VENTANA_LIMITADOR_MS = 60_000;
@@ -149,6 +153,8 @@ function moduloRaiz(config: ConfiguracionApi, opciones: OpcionesAplicacion): Dyn
       ExcepcionesCatalogoController,
       ExcepcionesVersionController,
       ExcepcionesRevisionController,
+      VerificacionVersionController,
+      AdministracionCatalogosController,
       EmisorController,
       OpenApiController,
     ],
@@ -230,6 +236,11 @@ function moduloRaiz(config: ConfiguracionApi, opciones: OpcionesAplicacion): Dyn
         provide: SERVICIO_RESPUESTAS,
         useFactory: (bd: ServicioBaseDeDatos, reloj: Reloj, instante: RelojSesiones) =>
           new ServicioRespuestas(bd.cliente, reloj, instante, config.zonaHoraria),
+        inject: [BASE_DE_DATOS, RELOJ, RELOJ_SESIONES],
+      },
+      {
+        provide: SERVICIO_ADMIN_CATALOGOS,
+        useFactory: (bd: ServicioBaseDeDatos, reloj: Reloj, instante: RelojSesiones) => new ServicioAdministracionCatalogos(bd.cliente, reloj, instante),
         inject: [BASE_DE_DATOS, RELOJ, RELOJ_SESIONES],
       },
       {

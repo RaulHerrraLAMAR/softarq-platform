@@ -13,6 +13,8 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Calculadora } from "./App.tsx";
 import type { ServiciosApi } from "./api/servicios.ts";
 import type { ServiciosCotizaciones } from "./api/servicios-cotizaciones.ts";
+import { PantallaCatalogo } from "./catalogo-admin/PantallasCatalogo.tsx";
+import type { ServiciosCatalogoAdmin } from "./catalogo-admin/servicios.ts";
 import { Aviso, Boton } from "./comunes/componentes.tsx";
 import { Marco } from "./comunes/Marco.tsx";
 import { Pagina } from "./comunes/pagina.tsx";
@@ -29,6 +31,8 @@ export interface PropsAplicacion {
   sesion: RespuestaSesion;
   servicios: ServiciosApi;
   cotizaciones: ServiciosCotizaciones;
+  /** Administración de catálogos (módulo 11): solo se usa con `catalogos.administrar`. */
+  catalogoAdmin: ServiciosCatalogoAdmin;
   barraSesion: ReactNode;
   motivoSinCalculo: string | null;
 }
@@ -50,12 +54,15 @@ const SECCIONES: { ruta: Ruta; texto: string; seccion: NonNullable<ReturnType<ty
   { ruta: { pantalla: "emisor" }, texto: "Emisor", seccion: "emisor" },
 ];
 
-function Navegacion({ ruta }: { ruta: Ruta }) {
+/** Solo con `catalogos.administrar` (Administrador del catálogo); la API lo exige de todos modos. */
+const SECCION_CATALOGO = { ruta: { pantalla: "catalogo", vista: "proveedores" } as Ruta, texto: "Catálogo", seccion: "catalogo" as const };
+
+function Navegacion({ ruta, puedeAdministrarCatalogo }: { ruta: Ruta; puedeAdministrarCatalogo: boolean }) {
   const actual = seccionDe(ruta);
   return (
     <nav className="navegacion" aria-label="Secciones">
       <ul>
-        {SECCIONES.map((s) => (
+        {[...SECCIONES, ...(puedeAdministrarCatalogo ? [SECCION_CATALOGO] : [])].map((s) => (
           <li key={s.seccion}>
             <Enlace a={s.ruta} className="navegacion-enlace" actual={actual === s.seccion}>
               {s.texto}
@@ -67,7 +74,7 @@ function Navegacion({ ruta }: { ruta: Ruta }) {
   );
 }
 
-function Contenido({ sesion, servicios, cotizaciones, barraSesion, motivoSinCalculo }: PropsAplicacion) {
+function Contenido({ sesion, servicios, cotizaciones, catalogoAdmin, barraSesion, motivoSinCalculo }: PropsAplicacion) {
   const { ruta, pendiente, confirmarSalida, cancelarSalida, navegar } = useRuta();
   const puede = (c: Capacidad) => sesion.capacidades.includes(c);
   const puedePreparar = puede("cotizaciones.preparar");
@@ -75,6 +82,7 @@ function Contenido({ sesion, servicios, cotizaciones, barraSesion, motivoSinCalc
   const puedeEnviarRevision = puede("revisiones.enviar");
   const puedeEmitir = puede("emisiones.emitir");
   const puedeVerExcepciones = puede("excepciones.consultar");
+  const puedeAdministrarCatalogo = puede("catalogos.administrar");
   const [capturaPendiente, setCapturaPendiente] = useState<CapturaBorrador | null>(null);
   const editorCalculadora = useCaptura(servicios);
 
@@ -129,6 +137,16 @@ function Contenido({ sesion, servicios, cotizaciones, barraSesion, motivoSinCalc
         );
       case "emisor":
         return <PantallaEmisor cotizaciones={cotizaciones} />;
+      case "catalogo":
+        return puedeAdministrarCatalogo ? (
+          <PantallaCatalogo servicios={catalogoAdmin} vista={ruta.vista} />
+        ) : (
+          <Pagina titulo="Sin permiso">
+            <Aviso tono="info" titulo="Su función no administra el catálogo">
+              <p>En el libro de la fase 1, proveedores, productos, precios y mano de obra los administra el Administrador del catálogo.</p>
+            </Aviso>
+          </Pagina>
+        );
       case "revisiones":
         return <BandejaRevisiones servicios={cotizaciones} />;
       case "revision":
@@ -153,7 +171,7 @@ function Contenido({ sesion, servicios, cotizaciones, barraSesion, motivoSinCalc
   })();
 
   return (
-    <Marco barraSesion={barraSesion} navegacion={<Navegacion ruta={ruta} />} pie="SoftArq · entorno DEMO local. Datos ilustrativos, sin validez comercial.">
+    <Marco barraSesion={barraSesion} navegacion={<Navegacion ruta={ruta} puedeAdministrarCatalogo={puedeAdministrarCatalogo} />} pie="SoftArq · entorno DEMO local. Datos ilustrativos, sin validez comercial.">
       {pendiente ? (
         <div className="aviso-salida">
           <Aviso tono="aviso" titulo="Hay cambios sin guardar" rol="alert">

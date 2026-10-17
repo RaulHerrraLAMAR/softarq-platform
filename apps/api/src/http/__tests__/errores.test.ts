@@ -65,6 +65,20 @@ describe("OpenAPI", () => {
 
   it("documenta todos los endpoints y esquemas", () => {
     expect(Object.keys(doc.paths).sort()).toEqual([
+      "/api/v1/admin/conceptos",
+      "/api/v1/admin/conceptos/{codigo}/tarifa",
+      "/api/v1/admin/insumos",
+      "/api/v1/admin/precios",
+      "/api/v1/admin/precios/{codigo}",
+      "/api/v1/admin/precios/{codigo}/anulacion",
+      "/api/v1/admin/precios/{codigo}/cierre-vigencia",
+      "/api/v1/admin/productos",
+      "/api/v1/admin/productos/{codigo}",
+      "/api/v1/admin/proveedores",
+      "/api/v1/admin/proveedores/{codigo}",
+      "/api/v1/admin/tarifas",
+      "/api/v1/admin/tarifas/{codigo}",
+      "/api/v1/admin/unidades",
       "/api/v1/auth/csrf",
       "/api/v1/auth/sesion",
       "/api/v1/calculos/demo",
@@ -83,6 +97,7 @@ describe("OpenAPI", () => {
       "/api/v1/cotizaciones/{id}/versiones/{numero}/emision/validacion",
       "/api/v1/cotizaciones/{id}/versiones/{numero}/excepciones",
       "/api/v1/cotizaciones/{id}/versiones/{numero}/revisiones",
+      "/api/v1/cotizaciones/{id}/versiones/{numero}/verificacion",
       "/api/v1/emisiones/{id}",
       "/api/v1/emisiones/{id}/documento",
       "/api/v1/emisiones/{id}/respuestas",
@@ -104,6 +119,10 @@ describe("OpenAPI", () => {
     // Módulo 8 (ADR-0010).
     // Módulo 9 añade tres rutas documentadas sin retirar endpoints anteriores.
     expect(Object.keys(doc.components.schemas)).toEqual(expect.arrayContaining(["SeguimientoEmision", "EventoRespuestaCliente", "RegistroRespuesta", "CorreccionRespuesta"]));
+    // Módulo 11 (ADR-0015) añade 14 rutas internas /admin y la verificación de una versión, sin retirar ninguna.
+    expect(Object.keys(doc.components.schemas)).toEqual(
+      expect.arrayContaining(["ProveedorAdmin", "ProductoAdmin", "PrecioAdmin", "TarifaAdmin", "CierreVigenciaPrecio", "AsignacionTarifa", "VerificacionRevision"]),
+    );
     // Módulo 10 (ADR-0014) añade tres rutas internas de excepciones, sin retirar ninguna.
     expect(Object.keys(doc.components.schemas)).toEqual(expect.arrayContaining(["ExcepcionesVersion", "DecisionExcepcion", "RespuestaComponentesExcepcion"]));
     expect(Object.keys(doc.components.schemas)).toEqual(
@@ -114,6 +133,35 @@ describe("OpenAPI", () => {
       expect.arrayContaining(["CapturaBorrador", "SolicitudBorrador", "SolicitudVersion", "Version", "DetalleCotizacion"]),
     );
     expect(Object.keys(doc.components.schemas)).toEqual(expect.arrayContaining(["SolicitudAcceso", "RespuestaSesion", "RespuestaCsrf"]));
+  });
+
+  it("administración de catálogos (ADR-0015): escrituras con CSRF e idempotencia; sin campos internos en el contrato comercial", () => {
+    const d = doc as unknown as {
+      paths: Record<string, Record<string, { security?: unknown; parameters?: { name: string; in: string; required: boolean }[] }>>;
+    };
+    const conClave: [string, string][] = [
+      ["/api/v1/admin/proveedores", "post"],
+      ["/api/v1/admin/productos", "post"],
+      ["/api/v1/admin/precios", "post"],
+      ["/api/v1/admin/precios/{codigo}/anulacion", "post"],
+      ["/api/v1/admin/precios/{codigo}/cierre-vigencia", "post"],
+      ["/api/v1/admin/tarifas", "post"],
+      ["/api/v1/admin/conceptos/{codigo}/tarifa", "post"],
+    ];
+    for (const [ruta, metodo] of conClave) {
+      const op = d.paths[ruta]?.[metodo];
+      expect(op?.security, `${metodo} ${ruta}`).toEqual([{ cookieSesion: [], tokenCsrf: [] }]);
+      expect(op?.parameters?.some((p) => p.name === "Idempotency-Key" && p.in === "header" && p.required), `${metodo} ${ruta}`).toBe(true);
+    }
+    for (const ruta of ["/api/v1/admin/proveedores/{codigo}", "/api/v1/admin/productos/{codigo}", "/api/v1/admin/tarifas/{codigo}"]) {
+      expect(d.paths[ruta]?.["patch"]?.security).toEqual([{ cookieSesion: [], tokenCsrf: [] }]);
+    }
+    // La proyección comercial, la versión y la verificación siguen sin datos de proveedor, presentación ni tarifas.
+    for (const esquema of ["Version", "DetalleCotizacion", "VerificacionRevision"]) {
+      expect(JSON.stringify(doc.components.schemas[esquema]), esquema).not.toMatch(/rendimientoJornada|"contenido"|motivoAnulacion|"fuente"|proveedor|incrementoMinimo/i);
+    }
+    // Las opciones de precio del Preparador muestran proveedor y presentación, nunca el importe de compra.
+    expect(JSON.stringify(doc.components.schemas["RespuestaOpcionesPrecio"])).not.toMatch(/precioUnitario|rendimientoJornada|"contenido"|motivoAnulacion|"fuente"/);
   });
 
   it("documenta la seguridad: cookie de sesión por omisión y rutas públicas sin seguridad (ADR-0007)", () => {

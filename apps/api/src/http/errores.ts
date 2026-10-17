@@ -141,6 +141,15 @@ const ESTADO_NEGOCIO: Record<CodigoNegocio, number> = {
   // Módulo 10 (ADR-0014).
   EXCEPCION_INVALIDA: 422,
   CONFLICTO_EXCEPCION: 409,
+  // Módulo 11 (ADR-0015).
+  DUPLICADO: 409,
+  SOLAPE_VIGENCIA: 409,
+  PRODUCTO_CON_PRECIOS: 422,
+  UNIDAD_INCOMPATIBLE: 422,
+  CONFLICTO_TARIFA: 409,
+  VIGENCIA_INVALIDA: 422,
+  PRECIO_ANULADO: 409,
+  VALOR_INVALIDO: 422,
 };
 
 export function traducirError(error: unknown): ErrorApi {

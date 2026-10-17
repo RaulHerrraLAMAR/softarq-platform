@@ -55,6 +55,7 @@ import {
   type Emisor,
   type SolicitudEmision,
   type ValidacionEmision,
+  type VerificacionRevision,
   type DetalleRevision,
   type RespuestaRevisiones,
   type RetiroRevision,
@@ -440,6 +441,23 @@ function versionDeRuta(params: unknown): { id: string; numero: number } {
   const r = EsquemaParametroNumeroVersion.safeParse(params);
   if (!r.success) throw new ErrorApi(404, "NO_ENCONTRADO", "La versión no existe en su organización.");
   return r.data;
+}
+
+/**
+ * Verificación vigente de una versión (módulo 11, ADR-0015): el editor la consulta para avisar que
+ * el catálogo cambió después del cálculo. Sin importes ni datos internos.
+ */
+@Controller("cotizaciones")
+@SkipThrottle({ calculo: true })
+export class VerificacionVersionController {
+  constructor(@Inject(SERVICIO_REVISIONES) private readonly servicio: ServicioRevisiones) {}
+
+  @Get(":id/versiones/:numero/verificacion")
+  @Requiere("cotizaciones.consultar")
+  verificar(@Req() req: Request, @Param() params: unknown): Promise<VerificacionRevision> {
+    const v = versionDeRuta(params);
+    return this.servicio.verificacionDeVersion(organizacionDe(req), v.id, v.numero);
+  }
 }
 
 /** Validar y emitir una versión concreta: `/cotizaciones/{id}/versiones/{numero}/emision`. */

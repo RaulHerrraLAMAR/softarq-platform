@@ -179,6 +179,36 @@ describe("permisos del rol de la aplicación (softarq_app)", () => {
       }
     });
 
+    it("catálogos administrados (ADR-0015): UPDATE solo de columnas editables; nunca importe, inicio de vigencia, fuente ni código", async () => {
+      const filas = await app.$queryRaw<{ tabla: string; columna: string }[]>`
+        SELECT table_name AS tabla, column_name AS columna FROM information_schema.column_privileges
+         WHERE grantee = 'softarq_app' AND privilege_type = 'UPDATE'
+           AND table_name IN ('proveedor', 'producto', 'precio', 'tarifa_mano_obra')
+         ORDER BY 1, 2`;
+      const porTabla = (t: string) => filas.filter((f) => f.tabla === t).map((f) => f.columna);
+      expect(porTabla("precio")).toEqual(["anulado", "anulado_en", "anulado_por", "motivo_anulacion", "revision", "vigente_hasta"]);
+      expect(porTabla("tarifa_mano_obra")).toEqual(["activa", "modificado_en", "modificado_por", "revision"]);
+      expect(porTabla("proveedor")).toEqual(["activo", "contacto", "correo", "modificado_en", "modificado_por", "nombre", "revision", "telefono"]);
+      expect(porTabla("producto")).toEqual([
+        "activo",
+        "contenido",
+        "descripcion",
+        "fraccionable",
+        "incremento_minimo",
+        "insumo_id",
+        "modificado_en",
+        "modificado_por",
+        "presentacion",
+        "revision",
+        "unidad_compra",
+      ]);
+      const [del] = await app.$queryRaw<{ n: bigint }[]>`
+        SELECT count(*) AS n FROM information_schema.table_privileges
+         WHERE grantee = 'softarq_app' AND privilege_type IN ('DELETE', 'TRUNCATE')
+           AND table_name IN ('proveedor', 'producto', 'precio', 'tarifa_mano_obra', 'concepto')`;
+      expect(Number(del!.n)).toBe(0);
+    });
+
     it("las funciones de escritura no se pueden ejecutar desde PUBLIC y son SECURITY INVOKER", async () => {
       const filas = await app.$queryRaw<{ nombre: string; definer: boolean; publico: boolean; app: boolean }[]>`
         SELECT p.proname AS nombre, p.prosecdef AS definer,
@@ -188,8 +218,16 @@ describe("permisos del rol de la aplicación (softarq_app)", () => {
          WHERE n.nspname = 'public' AND p.proname LIKE 'softarq\\_%' ORDER BY 1`;
       expect(filas.map((f) => f.nombre)).toEqual([
         "softarq_anular_aprobacion",
+        // Módulo 11 (ADR-0015): administración de catálogos.
+        "softarq_anular_precio",
+        "softarq_asignar_tarifa_concepto",
+        "softarq_cambiar_activa_tarifa",
+        "softarq_cerrar_vigencia_precio",
+        "softarq_codigo_catalogo",
         "softarq_crear_cliente",
         "softarq_crear_cotizacion",
+        "softarq_crear_producto",
+        "softarq_crear_proveedor",
         "softarq_crear_proyecto",
         "softarq_crear_version",
         // Módulo 10 (ADR-0014): decisión del Revisor sobre una excepción.
@@ -197,6 +235,8 @@ describe("permisos del rol de la aplicación (softarq_app)", () => {
         "softarq_decidir_revision",
         "softarq_descartar_cotizacion",
         "softarq_editar_cliente",
+        "softarq_editar_producto",
+        "softarq_editar_proveedor",
         "softarq_editar_proyecto",
         "softarq_emitir_version",
         "softarq_enviar_revision",
@@ -204,8 +244,11 @@ describe("permisos del rol de la aplicación (softarq_app)", () => {
         "softarq_exigir_funcion",
         "softarq_guardar_borrador",
         "softarq_guardar_emisor",
+        "softarq_normalizar",
         "softarq_registrar_idempotencia",
+        "softarq_registrar_precio",
         "softarq_registrar_respuesta",
+        "softarq_registrar_tarifa",
         "softarq_retirar_revision",
         "softarq_siguiente",
       ]);

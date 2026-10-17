@@ -31,7 +31,15 @@ export type OperacionIdempotente =
   | "registrar_respuesta"
   | "corregir_respuesta"
   // Módulo 10 (ADR-0014): autorizar o rechazar una excepción.
-  | "decidir_excepcion";
+  | "decidir_excepcion"
+  // Módulo 11 (ADR-0015): administración de catálogos.
+  | "crear_proveedor"
+  | "crear_producto"
+  | "registrar_precio"
+  | "anular_precio"
+  | "cerrar_vigencia_precio"
+  | "registrar_tarifa"
+  | "asignar_tarifa";
 
 export interface Idempotencia {
   readonly clave: string;

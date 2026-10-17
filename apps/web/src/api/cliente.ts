@@ -20,6 +20,7 @@
  */
 import { CABECERA_CSRF, EsquemaRespuestaError, type RespuestaError } from "@softarq/contracts";
 import type { z } from "zod";
+import { FALLOS_CATALOGO_409, FALLOS_CATALOGO_422, esCodigoFalloCatalogo, type CodigoFalloCatalogo } from "../catalogo-admin/fallos.ts";
 
 export type FalloApi =
   | { tipo: "respuesta"; codigo: "CONFLICTO_RESPUESTA" | "EMISION_SUSTITUIDA" | "FECHA_RESPUESTA_INVALIDA" | "RESPUESTA_FUERA_VIGENCIA"; mensaje: string; seguimientoVigente?: unknown; campos?: { ruta: string; mensaje: string }[] }
@@ -40,8 +41,24 @@ export type FalloApi =
   | { tipo: "credenciales" }
   | { tipo: "sin_permiso" }
   | { tipo: "csrf" }
-  /** 409 (ADR-0008): revisión obsoleta o borrador cambiado; `actual` trae el estado vigente. */
-  | { tipo: "conflicto"; codigo: "CONFLICTO_EDICION" | "BORRADOR_DESACTUALIZADO"; mensaje: string; actual: ActualServidor | null }
+  /**
+   * 409 (ADR-0008): revisión obsoleta o borrador cambiado; `actual` trae el estado vigente. En la
+   * administración de catálogos (módulo 11) `registroVigente` trae el registro actual sin validar.
+   */
+  | { tipo: "conflicto"; codigo: "CONFLICTO_EDICION" | "BORRADOR_DESACTUALIZADO"; mensaje: string; actual: ActualServidor | null; registroVigente?: unknown }
+  /**
+   * Administración de catálogos (módulo 11, ADR-0015): duplicado, solape de vigencia, bloqueo
+   * técnico del producto, unidad incompatible, asignación cambiada por otra persona, fechas
+   * inválidas, precio anulado o valor inválido (`catalogo-admin/fallos.ts`). `registroVigente`
+   * (sin validar) trae el registro relacionado.
+   */
+  | {
+      tipo: "catalogo";
+      codigo: CodigoFalloCatalogo;
+      mensaje: string;
+      registroVigente?: unknown;
+      campos?: { ruta: string; mensaje: string }[];
+    }
   /** 422 CAPTURA_INCOMPLETA: la captura no está lista; no se guardó ninguna versión. */
   | { tipo: "incompleta"; campos: { ruta: string; mensaje: string }[] }
   /** 422 REGISTRO_INACTIVO: el cliente o el proyecto no se ofrece para registros nuevos. */
@@ -263,7 +280,16 @@ function falloPorEstado(respuesta: Response, error: RespuestaError | null): Fall
         return { tipo: "excepcion", codigo: e.codigo, mensaje: e.mensaje, excepcionesVigentes: e.excepcionesVigentes };
       }
       if (e?.codigo === "CONFLICTO_EDICION" || e?.codigo === "BORRADOR_DESACTUALIZADO") {
-        return { tipo: "conflicto", codigo: e.codigo, mensaje: e.mensaje, actual: e.actual ?? null };
+        return {
+          tipo: "conflicto",
+          codigo: e.codigo,
+          mensaje: e.mensaje,
+          actual: e.actual ?? null,
+          ...(e.registroVigente !== undefined ? { registroVigente: e.registroVigente } : {}),
+        };
+      }
+      if (e && FALLOS_CATALOGO_409.has(e.codigo) && esCodigoFalloCatalogo(e.codigo)) {
+        return { tipo: "catalogo", codigo: e.codigo, mensaje: e.mensaje, registroVigente: e.registroVigente ?? null };
       }
       if (e?.codigo === "REVISION_PENDIENTE" || e?.codigo === "VERSION_NO_VIGENTE" || e?.codigo === "CONFLICTO_REVISION") {
         return { tipo: "revision", codigo: e.codigo, mensaje: e.mensaje, revisionVigente: e.revisionVigente ?? null };
@@ -302,6 +328,9 @@ function falloPorEstado(respuesta: Response, error: RespuestaError | null): Fall
         case "IDEMPOTENCIA_CADUCADA":
           return { tipo: "idempotencia", mensaje: e.mensaje };
         default:
+          if (e && FALLOS_CATALOGO_422.has(e.codigo) && esCodigoFalloCatalogo(e.codigo)) {
+            return { tipo: "catalogo", codigo: e.codigo, mensaje: e.mensaje, registroVigente: e.registroVigente ?? null, campos: e.campos ?? [] };
+          }
           return { tipo: "incompatible" };
       }
     case 429:
@@ -337,6 +366,7 @@ export function mensajeDeFallo(fallo: FalloApi): string {
     case "referencia":
       return "Hay referencias nuevas que no existen o no están disponibles hoy. Revise los campos marcados.";
     case "excepcion":
+    case "catalogo":
       return fallo.mensaje;
     case "revision":
     case "respuesta":

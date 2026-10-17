@@ -13,6 +13,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import { crearClienteApi, type FalloApi } from "../api/cliente.ts";
 import { crearServicios, type ServiciosApi } from "../api/servicios.ts";
 import { crearServiciosCotizaciones, type ServiciosCotizaciones } from "../api/servicios-cotizaciones.ts";
+import { crearServiciosCatalogoAdmin, type ServiciosCatalogoAdmin } from "../catalogo-admin/servicios.ts";
 import { crearServiciosSesion, type ServiciosSesion } from "./servicios.ts";
 
 export type MotivoAcceso = null | "cerrada" | "vencida";
@@ -31,6 +32,8 @@ export interface ValorSesion {
   servicios: ServiciosApi;
   /** Clientes, proyectos y cotizaciones (mismo cliente). */
   cotizaciones: ServiciosCotizaciones;
+  /** Administración de catálogos (módulo 11, mismo cliente). */
+  catalogoAdmin: ServiciosCatalogoAdmin;
   iniciar(correo: string, contrasena: string): Promise<ResultadoInicio>;
   cerrar(): Promise<ResultadoInicio>;
   reintentarVerificacion(): void;
@@ -58,7 +61,7 @@ export function ProveedorSesion({ urlApi, children, hacerFetch }: PropsProveedor
   const vencer = useRef<() => void>(() => {});
   const renovarCsrf = useRef<() => Promise<boolean>>(async () => false);
 
-  const { cliente, servicios, cotizaciones, sesion } = useMemo(() => {
+  const { cliente, servicios, cotizaciones, catalogoAdmin, sesion } = useMemo(() => {
     const cliente = crearClienteApi(urlApi, hacerFetch, {
       csrf: () => csrf.current,
       alNoAutenticado: () => vencer.current(),
@@ -68,6 +71,7 @@ export function ProveedorSesion({ urlApi, children, hacerFetch }: PropsProveedor
       cliente,
       servicios: crearServicios(cliente),
       cotizaciones: crearServiciosCotizaciones(cliente),
+      catalogoAdmin: crearServiciosCatalogoAdmin(cliente),
       sesion: crearServiciosSesion(cliente) as ServiciosSesion,
     };
   }, [urlApi, hacerFetch]);
@@ -142,8 +146,8 @@ export function ProveedorSesion({ urlApi, children, hacerFetch }: PropsProveedor
   }, [cliente, sesion, olvidar]);
 
   const valor = useMemo<ValorSesion>(
-    () => ({ estado, servicios, cotizaciones, iniciar, cerrar, reintentarVerificacion: () => setIntento((n) => n + 1) }),
-    [estado, servicios, cotizaciones, iniciar, cerrar],
+    () => ({ estado, servicios, cotizaciones, catalogoAdmin, iniciar, cerrar, reintentarVerificacion: () => setIntento((n) => n + 1) }),
+    [estado, servicios, cotizaciones, catalogoAdmin, iniciar, cerrar],
   );
   return <ContextoSesion.Provider value={valor}>{children}</ContextoSesion.Provider>;
 }

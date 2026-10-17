@@ -76,8 +76,8 @@ Versión      1 ── N Excepción      (rendimiento, precio vencido, concepto 
 | Unidades y su magnitud | **Común** | `unidad` | Referencia fija del sistema (modBuild.bas); la aplicación solo la lee. Se carga en la migración. |
 | Parámetros de venta: ambiente, moneda, recargo, impuesto y vigencia | Propio | `parametros_calculo` | Política comercial y fiscal de cada organización. NULL = no definido. |
 | Insumos y conversiones | Propio | `insumo`, `conversion` | Rendimientos y factores con fuente y responsable propios. |
-| Proveedores, productos y precios | Propio | `proveedor`, `producto`, `precio` | Costos internos: nunca salen del servidor ni se comparten. |
-| Tarifas de mano de obra | Propio | `tarifa_mano_obra` | Costos internos. |
+| Proveedores, productos y precios | Propio | `proveedor`, `producto`, `precio` | Costos internos: solo salen por las rutas `/admin` del Administrador del catálogo (módulo 11, §12), nunca hacia el cliente. |
+| Tarifas de mano de obra | Propio | `tarifa_mano_obra` | Costos internos (mismo criterio). |
 | Conceptos y componentes | Propio | `concepto`, `componente` | Reglas técnicas aprobadas por cada organización. |
 | Tipos de costo adicional | Propio | `tipo_adicional` | Catálogo de cada organización. |
 
@@ -86,7 +86,7 @@ Toda relación entre datos propios es una FK compuesta con `organizacion_id`, de
 ## 5. Pendiente de decidir (módulos posteriores)
 
 - Selección o cambio de organización para usuarios con varias pertenencias.
-- Capacidades de administración (alta de personas, catálogos). Las de revisión y emisión están en §6 (módulos 7 y 8).
+- Capacidades de administración de personas, parámetros, insumos, conversiones, conceptos y componentes. Las de revisión y emisión están en §6 (módulos 7 y 8); proveedores, productos, precios y tarifas, en §12 (módulo 11).
 - Si los catálogos se comparten entre organizaciones o son siempre propios.
 - Planes o suscripciones (fuera del DEMO).
 - Esquema de PostgreSQL y migración desde los CSV del libro (Prisma, según ADR-0003).
@@ -119,6 +119,8 @@ Toda relación entre datos propios es una FK compuesta con `organizacion_id`, de
 | `cotizaciones.preparar` **y** `excepciones.consultar` | `GET /excepciones/componentes` | ✓ | ✗ | ✗ | ✗ | Lista de componentes de `BTN_RegistrarExcepcion` |
 | `cotizaciones.consultar` **y** `excepciones.consultar` | `GET /cotizaciones/{id}/versiones/{n}/excepciones` | ✓ | ✓ | ✗ | ✗ | Tabla «EXCEPCIONES DE LA VERSION» de 14 REVISION. Capacidad nueva para el contrato interno (ADR-0014) |
 | `revisiones.decidir` **y** `excepciones.consultar` | `POST /revisiones/{id}/excepciones/{n}/decision` | ✗ | ✓ ² | ✗ | ✗ | `BTN_AutorizarExcepcion`: `FN_REV` ≠ preparador (B-29) |
+| `cotizaciones.consultar` | `GET /cotizaciones/{id}/versiones/{n}/verificacion` (si el catálogo cambió después del cálculo; sin importes) | ✓ | ✓ | ✓ | ✓ | Módulo 11: misma verificación que al enviar (`Validar`), de solo lectura |
+| `catalogos.administrar` | `GET`, `POST` y `PATCH /api/v1/admin/{proveedores,productos,precios,tarifas}`; `POST /admin/precios/{c}/anulacion` y `/cierre-vigencia`; `GET /admin/conceptos` y `POST /admin/conceptos/{c}/tarifa`; `GET /admin/insumos` y `/admin/unidades` | ✗ | ✗ | ✓ ³ | ✗ | `Cat_RequiereFuncion` y `BTN_PrecioAnular`: `Req_Funcion FN_ADMCAT` (módulo 11, ADR-0015) |
 
 ¹ Por identidad, además de la capacidad: un Revisor no emite una versión que él preparó. Y siempre hace falta una aprobación vigente de esa versión, hecha por una persona distinta de su autor. Poder emitir no concede aprobar.
 
@@ -126,7 +128,9 @@ Toda relación entre datos propios es una FK compuesta con `organizacion_id`, de
 
 ² Por identidad: quien preparó la versión no autoriza ni rechaza sus excepciones (API, función de la base y CHECK). La decisión solo se toma con una revisión PENDIENTE de esa versión.
 
-**Previsto para módulos posteriores** (no implementado): editar catálogos y aprobar conceptos (Administrador del catálogo); parámetros distintos del emisor y personas (Administrador del sistema).
+³ Además, cada función de la base vuelve a exigir la función Administrador del catálogo en la pertenencia vigente (`softarq_exigir_funcion`): si se pierde durante la sesión, 403 sin escribir. Consultar datos técnicos o decidir excepciones no concede administrar el catálogo.
+
+**Previsto para módulos posteriores** (no implementado): insumos y conversiones, conceptos y componentes y aprobar conceptos (Administrador del catálogo); parámetros distintos del emisor y personas (Administrador del sistema).
 
 ## 7. Clientes, proyectos y cotizaciones (módulo 6, ADR-0008)
 
@@ -189,3 +193,22 @@ La emisión fija su cotización y versión; la respuesta nunca se copia a otra e
 - **Decisión** (`excepcion_decision`): una por excepción y versión, AUTORIZADA o RECHAZADA, inmutable, tomada por un Revisor distinto del preparador durante una revisión PENDIENTE de esa versión, con comentario opcional. Conserva la revisión, la persona y el instante.
 - **Relaciones**: `Versión 1 ── N Excepción (en la captura)`; `Revisión 1 ── N Decisión`; `Versión 1 ── N Decisión` (UNIQUE por número). Una versión nueva no hereda decisiones.
 - **Efecto**: las de rendimiento se aplican al calcular (pendientes o autorizadas); aprobar y emitir exigen todas autorizadas; una rechazada bloquea esa versión. El contenido comercial y el PDF no las incluyen.
+
+## 12. Administración de proveedores, productos, precios y tarifas (módulo 11, ADR-0015)
+
+| Tabla | Clave y relaciones | Notas |
+|---|---|---|
+| `proveedor` | `PRV-NNNNN`; nombre único normalizado por organización | Contacto, teléfono y correo; revisión; autoría (`creado_*`, `modificado_*`; NULL en la carga DEMO); activo |
+| `producto` | `PCM-NNNNN`; FK (organización, insumo); descripción y presentación únicas normalizadas | Presentación, unidad de compra, contenido (en la unidad base del insumo), fraccionable e incremento. **Con algún precio, los campos técnicos ya no cambian** (decisión del propietario; disparador) |
+| `precio` | `PRE-NNNNNN`; FK (organización, producto) y (organización, proveedor); exclusión de vigencias solapadas no anuladas | No se edita. Anulación definitiva con motivo, persona e instante. La única otra modificación: acortar `vigente_hasta` al registrar un sucesor (adaptación; P3 pendiente) |
+| `tarifa_mano_obra` | `TMO-NNNNN`; FK opcional (organización, proveedor) = subcontratista | No se edita: solo `activa`. Se asigna a `concepto.tarifa_id` (solo esa columna; la aprobación del concepto se conserva) |
+| `bitacora` | Entidades `proveedor`, `producto`, `precio`, `tarifa`, `concepto` | Altas, ediciones (campos), activación, anulación, cierre de vigencia (fechas anterior y nueva, motivo, sucesor) y asignación de tarifa (anterior, nueva, motivo) |
+
+| Libro | Web |
+|---|---|
+| `Editar producto` cambia todos los campos | Con precios solo la descripción comercial; otra presentación = producto nuevo |
+| «Registrar precio» y «Anular precio erróneo» | Igual, más «Cerrar vigencia y registrar sucesor» en una operación (adaptación del DEMO; P3 pendiente) |
+| `Val_Tarifa`: «registre una tarifa nueva y asígnela al concepto» | Registrar tarifa y «Asignar tarifa» al concepto (dependencia mínima del bloque de conceptos) |
+| Persona en turno y bitácora del libro | Usuario de la sesión, autoría por columnas y bitácora por evento |
+
+Las versiones, aprobaciones, emisiones y PDF no cambian por la administración. Un cambio posterior al cálculo bloquea por BL-16 al enviar, aprobar o emitir esa versión. El editor avisa que la versión ya no es vigente.

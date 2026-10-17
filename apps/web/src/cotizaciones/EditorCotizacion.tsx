@@ -595,6 +595,9 @@ function EditorBorrador({
           {relacionVersion}
         </p>
       </div>
+      {ultima && !sucio && ultima.revisionBorrador === guardada.revision ? (
+        <AvisoCatalogoCambiado cotizaciones={cotizaciones} id={id} numero={ultima.numero} clave={ultima.id} />
+      ) : null}
       {guardado.fase === "formato" ? (
         <Aviso tono="error" titulo="No se guardó: hay valores con formato inválido" rol="alert">
           <p>Corrija los {guardado.campos} campos marcados (punto decimal, sin comas ni espacios). Sus cambios siguen en pantalla.</p>
@@ -793,6 +796,36 @@ function EditorBorrador({
       ayudaCalcular="Vista previa del servidor con la captura en pantalla. No se guarda ni crea versión."
       motivoSinCalculo={motivoSinCalculo}
     />
+  );
+}
+
+/** Bloqueos que indican que el catálogo cambió después de calcular la versión (módulo 11). */
+const CODIGOS_CATALOGO = new Set(["BL-04", "BL-05", "BL-06", "BL-07", "BL-08", "BL-09", "BL-10", "BL-16"]);
+
+/**
+ * Si un cambio de catálogo (precio cerrado o anulado, proveedor o producto desactivado, mano de
+ * obra reasignada o desactivada…) invalidó la última versión, lo dice: lo calculado ya no se
+ * presenta como vigente. Consulta la verificación del servidor; no recalcula ni cambia la versión.
+ */
+function AvisoCatalogoCambiado({ cotizaciones, id, numero, clave }: { cotizaciones: ServiciosCotizaciones; id: string; numero: number; clave: string }) {
+  const { estado } = useCarga((s) => cotizaciones.verificarVersion(id, numero, s), [id, numero, clave]);
+  if (estado.fase !== "listo") return null;
+  const problemas = estado.datos.bloqueos.filter((b) => CODIGOS_CATALOGO.has(b.codigo));
+  if (problemas.length === 0) return null;
+  return (
+    <Aviso tono="aviso" titulo={`El catálogo cambió después de calcular la v${numero}: su resultado ya no es vigente`} rol="status">
+      <p>
+        Lo calculado en la v{numero} no corresponde a las condiciones vigentes y no se puede enviar, aprobar ni emitir así. Recalcule para crear una
+        versión nueva; si alguna selección ya no está disponible, elíjala de nuevo. La v{numero} se conserva sin cambios.
+      </p>
+      <ul className="lista-problemas">
+        {problemas.map((p, i) => (
+          <li key={`${p.codigo}-${i}`}>
+            <Codigo>{p.codigo}</Codigo> {p.mensaje}
+          </li>
+        ))}
+      </ul>
+    </Aviso>
   );
 }
 

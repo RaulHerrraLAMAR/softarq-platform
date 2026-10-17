@@ -210,6 +210,15 @@ export class ServicioRevisiones {
     return { fechaReferencia: hoy, ...r };
   }
 
+  /**
+   * Verificación vigente de una versión para el editor del borrador (módulo 11, ADR-0015): indica si
+   * el catálogo cambió después de calcularla (BL-16, BL-08, BL-09, BL-10…) para no presentarla como
+   * vigente. Es la misma comprobación que al enviar (`estricto` = false); no escribe nada.
+   */
+  async verificacionDeVersion(ctx: ContextoOrganizacion, cotizacionId: string, numero: number): Promise<VerificacionRevision> {
+    return sinVigencia(await this.verificar(ctx, cotizacionId, numero, this.reloj.hoy(), false));
+  }
+
   // ------------------------------- escrituras -------------------------------
 
   /** Enviar a revisión (B-26) la última versión, que debe corresponder a la captura guardada. */

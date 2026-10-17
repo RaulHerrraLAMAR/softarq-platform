@@ -159,12 +159,33 @@ Recorrido 3 del libro con la excepción opcional de la guía de demostración: �
 
 En `softarq_dev` no hay conceptos personalizados ni otra forma de reproducir un precio vencido sin manipular fechas; esos casos están cubiertos por las pruebas automatizadas (no por esta guía).
 
+### Catálogo: proveedores, productos, precios y tarifas (K1–K10, módulo 11; pendiente de ejecución formal)
+
+- **Sesión:** cuenta `[DEMO] Administrador` (Administrador del catálogo).
+- **Qué registrar:** solo registros nuevos marcados `[DEMO]`, sin proveedores reales. No cambie los proveedores, precios ni tarifas de los ejemplos (PRV-00001/2, PRE-000001…017, TMO-00001…005), porque sostienen los totales de referencia.
+- **Fuentes y decisiones:** [ADR-0015](../adr/0015-administracion-catalogos.md).
+
+| Caso | Acción | Resultado esperado |
+|---|---|---|
+| K1 | Preparador y Revisor: barra de secciones; abrir `#/catalogo/precios` | No ven «Catálogo»; la dirección muestra «Sin permiso» |
+| K2 | Administrador → «Catálogo» → «Proveedores» → «Nuevo proveedor» `[DEMO] …`; repetir el nombre con otras mayúsculas o espacios | Código `PRV-…` nuevo (no reutiliza PRV-00001/2); el repetido se rechaza: «Ya existe el proveedor PRV-…» |
+| K3 | «Productos» → «Nuevo producto» de un insumo DEMO, con presentación, unidad de compra y contenido | La ayuda indica la unidad base del insumo; con 7 decimales en el contenido, el servidor lo rechaza junto al campo |
+| K4 | «Precios» → «Registrar precio» del producto nuevo y el proveedor nuevo; repetir con una vigencia que se cruce (mismo día final) | El segundo se rechaza: «Ya existe un precio vigente de ese proveedor en el periodo (PRE-…, …)» |
+| K5 | «Gestionar» el precio → «Cerrar vigencia y registrar sucesor» | Propone hoy como último día y mañana para el sucesor; la confirmación explica el efecto sin cambiar importes. Ayer como último día se rechaza |
+| K6 | «Productos» → «Gestionar» el producto con precio → «Corregir descripción» | Insumo, presentación, unidad, contenido y venta fraccionada aparecen bloqueados, con la explicación; la descripción sí se guarda |
+| K7 | Preparador: Calculadora → Ejemplo 3, grupo INS-00010 | Aparece la opción nueva **sin elegirse**; el ejemplo conserva su precio |
+| K8 | Administrador: desactiva el proveedor nuevo (lee el impacto antes de confirmar) | Precios vigentes y cotizaciones abiertas afectadas; tras confirmar, la opción desaparece para selecciones nuevas |
+| K9 | Dos pestañas editan el mismo proveedor | La segunda recibe el conflicto, conserva lo escrito y ofrece «Recargar el registro vigente» |
+| K10 | 390 px y teclado en «Precios» | Una columna, foco visible, el foco va al primer campo del formulario y no hay desplazamiento horizontal |
+
+«Mano de obra» y «Tarifa de conceptos» registran tarifas y las asignan a un concepto. Para la prueba en persona, en `softarq_dev`, **no asigne** otra tarifa a los conceptos de los ejemplos: sus totales de referencia dependen de TMO-00001…005. La asignación está cubierta por las pruebas automatizadas en `softarq_test`.
+
 ## 4. Qué no hace todavía
 
 - La calculadora DEMO no guarda su captura (para conservarla, «Guardar como cotización»).
 - La aprobación **no es una emisión** ni una entrega al cliente. La emisión (módulo 8) genera un PDF **DEMO**: no se envía por correo ni al cliente y no es una cotización comercial real.
 - Sin duplicar cotizaciones, correo ni app móvil. Respuesta y vigencia: módulo 9; excepciones: módulo 10.
-- Sin administración de catálogos: no se crean conceptos personalizados desde la web.
+- Administración de catálogos solo de proveedores, productos, precios y tarifas (módulo 11). Sin insumos, conversiones, conceptos ni componentes: no se crean conceptos personalizados desde la web.
 - Sin registro de usuarios ni recuperación de contraseña.
 - Solo punto decimal (por ejemplo, `0.12`).
 

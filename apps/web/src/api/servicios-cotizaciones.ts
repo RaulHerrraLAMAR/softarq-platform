@@ -23,6 +23,8 @@ import {
   EsquemaEventoRespuestaCliente,
   EsquemaExcepcionesVersion,
   EsquemaRespuestaComponentesExcepcion,
+  EsquemaVerificacionRevision,
+  type VerificacionRevision,
   type DecisionExcepcion,
   type ExcepcionesVersion,
   type RespuestaComponentesExcepcion,
@@ -88,6 +90,8 @@ export interface ServiciosCotizaciones {
   guardarBorrador(id: string, revision: number, captura: CapturaBorrador): Promise<ResultadoApi<RespuestaBorradorGuardado>>;
   crearVersion(id: string, revisionBorrador: number, motivo: string | null, clave: string): Promise<ResultadoApi<Version>>;
   consultarVersion(id: string, numero: number, signal?: AbortSignal): Promise<ResultadoApi<Version>>;
+  /** Verificación vigente de una versión (módulo 11): si el catálogo cambió después de calcularla. */
+  verificarVersion(id: string, numero: number, signal?: AbortSignal): Promise<ResultadoApi<VerificacionRevision>>;
   // Revisión (módulo 7, ADR-0009). La identidad sale de la sesión: los cuerpos no la llevan.
   enviarRevision(id: string, numero: number, revisionBorrador: number, clave: string): Promise<ResultadoApi<DetalleRevision>>;
   listarRevisiones(estado: EstadoRevision, signal?: AbortSignal): Promise<ResultadoApi<RespuestaRevisiones>>;
@@ -188,6 +192,11 @@ export function crearServiciosCotizaciones(cliente: ClienteApi): ServiciosCotiza
       }),
     consultarVersion: (id, numero, signal) =>
       cliente.obtener(`/api/v1/cotizaciones/${encodeURIComponent(id)}/versiones/${numero}`, EsquemaVersion, { signal }),
+    verificarVersion: (id, numero, signal) =>
+      cliente.obtener(`/api/v1/cotizaciones/${encodeURIComponent(id)}/versiones/${numero}/verificacion`, EsquemaVerificacionRevision, {
+        signal,
+        tiempoMaximo: 30_000,
+      }),
     enviarRevision: (id, numero, revisionBorrador, clave) =>
       cliente.enviar(`/api/v1/cotizaciones/${encodeURIComponent(id)}/versiones/${numero}/revisiones`, EsquemaDetalleRevision, {
         cuerpo: { revisionBorrador },

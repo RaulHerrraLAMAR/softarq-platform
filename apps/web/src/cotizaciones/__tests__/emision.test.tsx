@@ -27,6 +27,8 @@ const falla = <T,>(fallo: FalloApi): Promise<ResultadoApi<T>> => Promise.resolve
 function servicios(s: Partial<ServiciosCotizaciones>): ServiciosCotizaciones {
   const noUsar = () => Promise.reject(new Error("no se esperaba esta llamada"));
   return {
+    // Módulo 11: verificación vigente de la última versión (sin cambios de catálogo por omisión).
+    verificarVersion: () => ok({ fechaReferencia: "2026-10-01", bloqueos: [], avisos: [] }),
     listarClientes: noUsar,
     detalleCliente: noUsar,
     crearCliente: noUsar,

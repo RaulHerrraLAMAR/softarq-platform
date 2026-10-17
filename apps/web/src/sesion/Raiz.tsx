@@ -13,7 +13,7 @@ export const MOTIVO_REVISOR =
   "Su función (Revisor) no incluye calcular; en el libro de la fase 1 el cálculo lo hace el Preparador. Puede consultar los catálogos y la captura.";
 
 export function Raiz() {
-  const { estado, servicios, cotizaciones, iniciar, cerrar, reintentarVerificacion } = useSesion();
+  const { estado, servicios, cotizaciones, catalogoAdmin, iniciar, cerrar, reintentarVerificacion } = useSesion();
 
   if (estado.fase === "autenticado") {
     const puedeCalcular = estado.sesion.capacidades.includes("calculo.ejecutar");
@@ -23,6 +23,7 @@ export function Raiz() {
         sesion={estado.sesion}
         servicios={servicios}
         cotizaciones={cotizaciones}
+        catalogoAdmin={catalogoAdmin}
         barraSesion={<BarraSesion sesion={estado.sesion} alCerrar={cerrar} />}
         motivoSinCalculo={puedeCalcular ? null : estado.sesion.funciones.includes("REVISOR") ? MOTIVO_REVISOR : "Su función no incluye calcular."}
       />

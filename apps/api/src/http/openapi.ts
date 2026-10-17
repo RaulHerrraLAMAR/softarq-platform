@@ -59,6 +59,41 @@ import {
   EsquemaRespuestaTiposAdicional,
   EsquemaSolicitudAcceso,
   EsquemaSolicitudCalculoDemo,
+  EsquemaVerificacionRevision,
+  // Módulo 11 (ADR-0015): administración de catálogos (contratos internos).
+  EsquemaAnulacionPrecio,
+  EsquemaAsignacionTarifa,
+  EsquemaCierreVigenciaPrecio,
+  EsquemaConceptoTarifaAdmin,
+  EsquemaConsultaConceptosAdmin,
+  EsquemaConsultaInsumosAdmin,
+  EsquemaConsultaPreciosAdmin,
+  EsquemaConsultaProductosAdmin,
+  EsquemaConsultaProveedoresAdmin,
+  EsquemaConsultaTarifasAdmin,
+  EsquemaDetallePrecioAdmin,
+  EsquemaDetalleProductoAdmin,
+  EsquemaDetalleProveedorAdmin,
+  EsquemaDetalleTarifaAdmin,
+  EsquemaEdicionProducto,
+  EsquemaEdicionProveedor,
+  EsquemaEdicionTarifa,
+  EsquemaPrecioAdmin,
+  EsquemaProductoAdmin,
+  EsquemaProveedorAdmin,
+  EsquemaRespuestaCierreVigencia,
+  EsquemaRespuestaConceptosAdmin,
+  EsquemaRespuestaInsumosAdmin,
+  EsquemaRespuestaPreciosAdmin,
+  EsquemaRespuestaProductosAdmin,
+  EsquemaRespuestaProveedoresAdmin,
+  EsquemaRespuestaTarifasAdmin,
+  EsquemaRespuestaUnidades,
+  EsquemaSolicitudPrecio,
+  EsquemaSolicitudProducto,
+  EsquemaSolicitudProveedor,
+  EsquemaSolicitudTarifa,
+  EsquemaTarifaAdmin,
 } from "@softarq/contracts";
 import { z } from "zod";
 
@@ -86,8 +121,10 @@ const DESCRIPCION_ERROR: Record<number, string> = {
     "CONFLICTO_REVISION (la revisión cambió o ya se decidió; `revisionVigente` trae su estado), " +
     "VERSION_EMITIDA (la versión ya se emitió), APROBACION_NO_VIGENTE (la aprobación se anuló o cambió), " +
     "CONFLICTO_EMISION (la versión o la aprobación vistas ya no son las vigentes), FOLIO_NO_ACTIVO (cotización descartada), " +
-    "CONFLICTO_RESPUESTA (cabeza comercial cambió; seguimientoVigente trae el estado actual), EMISION_SUSTITUIDA (sin primera respuesta sobre documento sustituido) " +
-    "o CONFLICTO_EXCEPCION (otra persona ya decidió la excepción; `excepcionesVigentes` trae las decisiones vigentes).",
+    "CONFLICTO_RESPUESTA (cabeza comercial cambió; seguimientoVigente trae el estado actual), EMISION_SUSTITUIDA (sin primera respuesta sobre documento sustituido), " +
+    "CONFLICTO_EXCEPCION (otra persona ya decidió la excepción; `excepcionesVigentes` trae las decisiones vigentes), " +
+    "DUPLICADO (proveedor o producto ya existente; `registroVigente`), SOLAPE_VIGENCIA (precio del mismo producto y proveedor en el periodo; `registroVigente`), " +
+    "CONFLICTO_TARIFA (otra persona cambió la tarifa del concepto) o PRECIO_ANULADO (la anulación es definitiva).",
   413: "CUERPO_DEMASIADO_GRANDE.",
   415: "TIPO_DE_CONTENIDO_NO_ADMITIDO: el cuerpo debe ser application/json.",
   422:
@@ -96,6 +133,7 @@ const DESCRIPCION_ERROR: Record<number, string> = {
     "EMISION_BLOQUEADA (BL-01 a BL-20 a la fecha de emisión; nada cambió), DESCARTE_BLOQUEADO (estado que no permite descartar), " +
     "FECHA_RESPUESTA_INVALIDA (anterior a emisión o futura), RESPUESTA_FUERA_VIGENCIA (recepción después del último día), " +
     "EXCEPCION_INVALIDA (excepción que no corresponde a la captura, al catálogo o fuera de rango; nada se guardó), " +
+    "PRODUCTO_CON_PRECIOS (campos técnicos bloqueados), UNIDAD_INCOMPATIBLE (BL-06), VIGENCIA_INVALIDA, VALOR_INVALIDO, " +
     "IDEMPOTENCIA_CONFLICTO o IDEMPOTENCIA_CADUCADA.",
   429: "DEMASIADAS_SOLICITUDES (cabecera Retry-After).",
   503: "SERVICIO_NO_DISPONIBLE: PostgreSQL no disponible.",
@@ -125,6 +163,8 @@ const cuerpo = (ref: string) => ({
 });
 
 const PARAMETRO_ID = { name: "id", in: "path", required: true, schema: { type: "string", format: "uuid" } };
+const PARAMETRO_CODIGO = { name: "codigo", in: "path", required: true, schema: { type: "string", pattern: "^[A-Z0-9][A-Z0-9_-]{0,39}$" } };
+const ADMIN = "Contrato INTERNO con importes de proveedor y tarifas; capacidad catalogos.administrar (Administrador del catálogo). Nunca forma parte de la proyección comercial ni del PDF.";
 const PARAMETRO_NUMERO = { name: "numero", in: "path", required: true, schema: { type: "integer", minimum: 1 } };
 const CABECERA_IDEMPOTENCIA = {
   name: "Idempotency-Key",
@@ -538,6 +578,187 @@ export function construirDocumentoOpenApi(): Record<string, unknown> {
           },
         },
       },
+      "/api/v1/cotizaciones/{id}/versiones/{numero}/verificacion": {
+        get: {
+          summary: "Verificación vigente de una versión: si el catálogo cambió después de calcularla (capacidad cotizaciones.consultar)",
+          description: "La misma comprobación que al enviar (BL-16 detecta cualquier cambio de catálogo frente a la instantánea; BL-08, BL-09, BL-10…). No recalcula importes ni escribe nada; la versión no cambia.",
+          parameters: [PARAMETRO_ID, PARAMETRO_NUMERO],
+          responses: { "200": ok("VerificacionRevision", "Bloqueos y avisos vigentes."), ...errores(401, 403, 404, 429, 503, 500) },
+        },
+      },
+      "/api/v1/admin/proveedores": {
+        get: {
+          summary: "Proveedores (03 PROVEEDORES), por código con paginación keyset",
+          description: ADMIN,
+          parameters: parametrosQuery(EsquemaConsultaProveedoresAdmin),
+          responses: { "200": ok("RespuestaProveedoresAdmin", "Página de proveedores."), ...errores(400, 401, 403, 429, 503, 500) },
+        },
+        post: {
+          summary: "Nuevo proveedor (PRV-NNNNN); rechaza el nombre duplicado normalizado (Val_Proveedor)",
+          description: ADMIN,
+          security: CON_EFECTOS,
+          parameters: [CABECERA_IDEMPOTENCIA],
+          requestBody: cuerpo("SolicitudProveedor"),
+          responses: { "201": ok("ProveedorAdmin", "Proveedor creado (o reproducido)."), ...errores(400, 401, 403, 409, 413, 415, 422, 429, 503, 500) },
+        },
+      },
+      "/api/v1/admin/proveedores/{codigo}": {
+        get: {
+          summary: "Detalle del proveedor con el impacto de desactivarlo y su historial",
+          description: ADMIN,
+          parameters: [PARAMETRO_CODIGO],
+          responses: { "200": ok("DetalleProveedorAdmin", "Proveedor."), ...errores(401, 403, 404, 429, 503, 500) },
+        },
+        patch: {
+          summary: "Edita datos del proveedor o lo desactiva o reactiva (revisión obligatoria; sin borrado)",
+          description: ADMIN,
+          security: CON_EFECTOS,
+          parameters: [PARAMETRO_CODIGO],
+          requestBody: cuerpo("EdicionProveedor"),
+          responses: { "200": ok("ProveedorAdmin", "Proveedor guardado."), ...errores(400, 401, 403, 404, 409, 413, 415, 429, 503, 500) },
+        },
+      },
+      "/api/v1/admin/productos": {
+        get: {
+          summary: "Productos comerciales (05 PRODUCTOS) con su presentación y contenido",
+          description: ADMIN,
+          parameters: parametrosQuery(EsquemaConsultaProductosAdmin),
+          responses: { "200": ok("RespuestaProductosAdmin", "Página de productos."), ...errores(400, 401, 403, 429, 503, 500) },
+        },
+        post: {
+          summary: "Nuevo producto (PCM-NNNNN) de un insumo activo (Val_Producto)",
+          description: ADMIN,
+          security: CON_EFECTOS,
+          parameters: [CABECERA_IDEMPOTENCIA],
+          requestBody: cuerpo("SolicitudProducto"),
+          responses: { "201": ok("ProductoAdmin", "Producto creado (o reproducido)."), ...errores(400, 401, 403, 404, 409, 413, 415, 422, 429, 503, 500) },
+        },
+      },
+      "/api/v1/admin/productos/{codigo}": {
+        get: {
+          summary: "Detalle del producto con el impacto de desactivarlo y su historial",
+          description: ADMIN,
+          parameters: [PARAMETRO_CODIGO],
+          responses: { "200": ok("DetalleProductoAdmin", "Producto."), ...errores(401, 403, 404, 429, 503, 500) },
+        },
+        patch: {
+          summary: "Edita el producto; con algún precio registrado solo cambian la descripción comercial y el estado activo",
+          description: `${ADMIN} Adaptación autorizada (ADR-0015 §2.1): con precios, insumo, presentación, unidad, contenido y venta fraccionada no cambian (422 PRODUCTO_CON_PRECIOS).`,
+          security: CON_EFECTOS,
+          parameters: [PARAMETRO_CODIGO],
+          requestBody: cuerpo("EdicionProducto"),
+          responses: { "200": ok("ProductoAdmin", "Producto guardado."), ...errores(400, 401, 403, 404, 409, 413, 415, 422, 429, 503, 500) },
+        },
+      },
+      "/api/v1/admin/precios": {
+        get: {
+          summary: "Precios (06 PRECIOS) con su estado a la fecha del servidor",
+          description: ADMIN,
+          parameters: parametrosQuery(EsquemaConsultaPreciosAdmin),
+          responses: { "200": ok("RespuestaPreciosAdmin", "Página de precios."), ...errores(400, 401, 403, 429, 503, 500) },
+        },
+        post: {
+          summary: "Registrar precio (PRE-NNNNNN) sin solape con otro no anulado del mismo producto y proveedor (Val_Precio)",
+          description: `${ADMIN} Los precios no se editan (RF-06).`,
+          security: CON_EFECTOS,
+          parameters: [CABECERA_IDEMPOTENCIA],
+          requestBody: cuerpo("SolicitudPrecio"),
+          responses: { "201": ok("PrecioAdmin", "Precio registrado (o reproducido)."), ...errores(400, 401, 403, 404, 409, 413, 415, 422, 429, 503, 500) },
+        },
+      },
+      "/api/v1/admin/precios/{codigo}": {
+        get: {
+          summary: "Detalle del precio con los borradores que lo usan y su historial",
+          description: ADMIN,
+          parameters: [PARAMETRO_CODIGO],
+          responses: { "200": ok("DetallePrecioAdmin", "Precio."), ...errores(401, 403, 404, 429, 503, 500) },
+        },
+      },
+      "/api/v1/admin/precios/{codigo}/anulacion": {
+        post: {
+          summary: "Anular precio erróneo, con motivo (Precio_Anular): definitivo; el registro se conserva",
+          description: ADMIN,
+          security: CON_EFECTOS,
+          parameters: [PARAMETRO_CODIGO, CABECERA_IDEMPOTENCIA],
+          requestBody: cuerpo("AnulacionPrecio"),
+          responses: { "200": ok("PrecioAdmin", "Precio anulado (o reproducido)."), ...errores(400, 401, 403, 404, 409, 413, 415, 422, 429, 503, 500) },
+        },
+      },
+      "/api/v1/admin/precios/{codigo}/cierre-vigencia": {
+        post: {
+          summary: "Cerrar vigencia y registrar sucesor en una sola operación (adaptación autorizada; P3 pendiente con el cliente)",
+          description: `${ADMIN} La nueva fecha final es igual o posterior a hoy y al inicio y anterior a la actual; el sucesor empieza después. Si el sucesor falla, la vigencia no se acorta.`,
+          security: CON_EFECTOS,
+          parameters: [PARAMETRO_CODIGO, CABECERA_IDEMPOTENCIA],
+          requestBody: cuerpo("CierreVigenciaPrecio"),
+          responses: { "201": ok("RespuestaCierreVigencia", "Vigencia cerrada y sucesor registrado (o reproducido)."), ...errores(400, 401, 403, 404, 409, 413, 415, 422, 429, 503, 500) },
+        },
+      },
+      "/api/v1/admin/tarifas": {
+        get: {
+          summary: "Tarifas de mano de obra (07 MANO_OBRA)",
+          description: ADMIN,
+          parameters: parametrosQuery(EsquemaConsultaTarifasAdmin),
+          responses: { "200": ok("RespuestaTarifasAdmin", "Página de tarifas."), ...errores(400, 401, 403, 429, 503, 500) },
+        },
+        post: {
+          summary: "Registrar tarifa (TMO-NNNNN) UNIDAD, JORNADA o SUBCONTRATO (Val_Tarifa)",
+          description: `${ADMIN} Las tarifas no se editan: se registra una nueva y se asigna al concepto (Word §3.5).`,
+          security: CON_EFECTOS,
+          parameters: [CABECERA_IDEMPOTENCIA],
+          requestBody: cuerpo("SolicitudTarifa"),
+          responses: { "201": ok("TarifaAdmin", "Tarifa registrada (o reproducida)."), ...errores(400, 401, 403, 404, 409, 413, 415, 422, 429, 503, 500) },
+        },
+      },
+      "/api/v1/admin/tarifas/{codigo}": {
+        get: {
+          summary: "Detalle de la tarifa con los conceptos que la usan y su historial",
+          description: ADMIN,
+          parameters: [PARAMETRO_CODIGO],
+          responses: { "200": ok("DetalleTarifaAdmin", "Tarifa."), ...errores(401, 403, 404, 429, 503, 500) },
+        },
+        patch: {
+          summary: "Desactiva o reactiva la tarifa (revisión obligatoria)",
+          description: ADMIN,
+          security: CON_EFECTOS,
+          parameters: [PARAMETRO_CODIGO],
+          requestBody: cuerpo("EdicionTarifa"),
+          responses: { "200": ok("TarifaAdmin", "Tarifa guardada."), ...errores(400, 401, 403, 404, 409, 413, 415, 429, 503, 500) },
+        },
+      },
+      "/api/v1/admin/conceptos": {
+        get: {
+          summary: "Conceptos con su tarifa asignada (solo para asignar tarifas; la edición de conceptos es de otro módulo)",
+          description: ADMIN,
+          parameters: parametrosQuery(EsquemaConsultaConceptosAdmin),
+          responses: { "200": ok("RespuestaConceptosAdmin", "Página de conceptos."), ...errores(400, 401, 403, 429, 503, 500) },
+        },
+      },
+      "/api/v1/admin/conceptos/{codigo}/tarifa": {
+        post: {
+          summary: "Asignar tarifa al concepto (Word §3.5): solo cambia la tarifa y conserva la aprobación del concepto",
+          description: `${ADMIN} \`tarifaActual\` es la que mostraba la pantalla: si cambió, 409 CONFLICTO_TARIFA sin sobrescribir. La tarifa debe estar activa y en la unidad del concepto (BL-06). Las versiones conservan su tarifa congelada.`,
+          security: CON_EFECTOS,
+          parameters: [PARAMETRO_CODIGO, CABECERA_IDEMPOTENCIA],
+          requestBody: cuerpo("AsignacionTarifa"),
+          responses: { "200": ok("ConceptoTarifaAdmin", "Tarifa asignada (o reproducida)."), ...errores(400, 401, 403, 404, 409, 413, 415, 422, 429, 503, 500) },
+        },
+      },
+      "/api/v1/admin/insumos": {
+        get: {
+          summary: "Insumos (solo lectura) para elegir el insumo de un producto",
+          description: ADMIN,
+          parameters: parametrosQuery(EsquemaConsultaInsumosAdmin),
+          responses: { "200": ok("RespuestaInsumosAdmin", "Página de insumos."), ...errores(400, 401, 403, 429, 503, 500) },
+        },
+      },
+      "/api/v1/admin/unidades": {
+        get: {
+          summary: "Referencia común de unidades (solo lectura)",
+          description: ADMIN,
+          responses: { "200": ok("RespuestaUnidades", "Unidades."), ...errores(401, 403, 429, 503, 500) },
+        },
+      },
       "/api/v1/openapi.json": {
         get: { summary: "Esta especificación", security: [], responses: { "200": { description: "Documento OpenAPI 3.1." } } },
       },
@@ -605,6 +826,34 @@ export function construirDocumentoOpenApi(): Record<string, unknown> {
         DetalleEmision: json(EsquemaDetalleEmision, "output"),
         Emisor: json(EsquemaEmisor, "output"),
         EdicionEmisor: json(EsquemaEdicionEmisor, "input"),
+        VerificacionRevision: json(EsquemaVerificacionRevision, "output"),
+        SolicitudProveedor: json(EsquemaSolicitudProveedor, "input"),
+        EdicionProveedor: json(EsquemaEdicionProveedor, "input"),
+        ProveedorAdmin: json(EsquemaProveedorAdmin, "output"),
+        RespuestaProveedoresAdmin: json(EsquemaRespuestaProveedoresAdmin, "output"),
+        DetalleProveedorAdmin: json(EsquemaDetalleProveedorAdmin, "output"),
+        SolicitudProducto: json(EsquemaSolicitudProducto, "input"),
+        EdicionProducto: json(EsquemaEdicionProducto, "input"),
+        ProductoAdmin: json(EsquemaProductoAdmin, "output"),
+        RespuestaProductosAdmin: json(EsquemaRespuestaProductosAdmin, "output"),
+        DetalleProductoAdmin: json(EsquemaDetalleProductoAdmin, "output"),
+        SolicitudPrecio: json(EsquemaSolicitudPrecio, "input"),
+        AnulacionPrecio: json(EsquemaAnulacionPrecio, "input"),
+        CierreVigenciaPrecio: json(EsquemaCierreVigenciaPrecio, "input"),
+        PrecioAdmin: json(EsquemaPrecioAdmin, "output"),
+        RespuestaPreciosAdmin: json(EsquemaRespuestaPreciosAdmin, "output"),
+        DetallePrecioAdmin: json(EsquemaDetallePrecioAdmin, "output"),
+        RespuestaCierreVigencia: json(EsquemaRespuestaCierreVigencia, "output"),
+        SolicitudTarifa: json(EsquemaSolicitudTarifa, "input"),
+        EdicionTarifa: json(EsquemaEdicionTarifa, "input"),
+        TarifaAdmin: json(EsquemaTarifaAdmin, "output"),
+        RespuestaTarifasAdmin: json(EsquemaRespuestaTarifasAdmin, "output"),
+        DetalleTarifaAdmin: json(EsquemaDetalleTarifaAdmin, "output"),
+        AsignacionTarifa: json(EsquemaAsignacionTarifa, "input"),
+        ConceptoTarifaAdmin: json(EsquemaConceptoTarifaAdmin, "output"),
+        RespuestaConceptosAdmin: json(EsquemaRespuestaConceptosAdmin, "output"),
+        RespuestaInsumosAdmin: json(EsquemaRespuestaInsumosAdmin, "output"),
+        RespuestaUnidades: json(EsquemaRespuestaUnidades, "output"),
       },
     },
   };

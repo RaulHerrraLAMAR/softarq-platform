@@ -22,12 +22,20 @@ describe("la web no contiene fórmulas ni costos internos", () => {
   const PROHIBIDO_EN_EXCEPCIONES = /costo|consumo|margen|recargo|tarifa|traslape|sobrante[A-Z]|precioProveedor|@softarq\/api|prisma|apps\/api|fixtures/i;
   const enExcepciones = (archivo: string) => relative(SRC, archivo).split(/[\\/]/)[0] === "excepciones";
 
+  // Excepción explícita y acotada (módulo 11, ADR-0015): la carpeta `catalogo-admin/` es la pantalla
+  // del Administrador del catálogo, con contrato interno y capacidad propia (`catalogos.administrar`):
+  // muestra tarifas, su rendimiento por jornada y precios de proveedor. Siguen prohibidos costos,
+  // consumos, márgenes, recargos, desperdicios, traslapes y sobrantes, y nada de esto pasa a la
+  // cotización comercial ni al PDF.
+  const PROHIBIDO_EN_CATALOGO = /costo|consumo|margen|recargo|desperdicio|traslape|sobrante[A-Z]|precioProveedor|@softarq\/api|prisma|apps\/api|fixtures/i;
+  const enCatalogo = (archivo: string) => relative(SRC, archivo).split(/[\\/]/)[0] === "catalogo-admin";
+
   it.each(archivos(SRC).map((a) => [relative(SRC, a), a]))("%s", (_nombre, archivo) => {
     const lineas = readFileSync(archivo, "utf-8")
       .split("\n")
       // Los textos de interfaz pueden mencionar «costos adicionales» (partidas ADICIONAL del contrato).
       .filter((l) => !/costos? adicional|Costo adicional|costo que usted captura/i.test(l));
-    const patron = enExcepciones(archivo) ? PROHIBIDO_EN_EXCEPCIONES : PROHIBIDO;
+    const patron = enExcepciones(archivo) ? PROHIBIDO_EN_EXCEPCIONES : enCatalogo(archivo) ? PROHIBIDO_EN_CATALOGO : PROHIBIDO;
     expect(lineas.filter((l) => patron.test(l))).toEqual([]);
   });
 
@@ -36,6 +44,19 @@ describe("la web no contiene fórmulas ni costos internos", () => {
       .filter(enExcepciones)
       .map((a) => relative(SRC, a).split(/[\\/]/).join("/"));
     expect(cubiertos.sort()).toEqual(["excepciones/PanelExcepcionesVersion.tsx", "excepciones/SeccionExcepciones.tsx", "excepciones/modelo.ts"]);
+  });
+
+  it("la excepción del módulo 11 cubre solo la carpeta catalogo-admin/ y sus archivos", () => {
+    const cubiertos = archivos(SRC)
+      .filter(enCatalogo)
+      .map((a) => relative(SRC, a).split(/[\\/]/).join("/"));
+    expect(cubiertos.sort()).toEqual([
+      "catalogo-admin/PantallasCatalogo.tsx",
+      "catalogo-admin/campos.tsx",
+      "catalogo-admin/fallos.ts",
+      "catalogo-admin/fechas.ts",
+      "catalogo-admin/servicios.ts",
+    ]);
   });
 
   it("no hay HTML interpretado", () => {

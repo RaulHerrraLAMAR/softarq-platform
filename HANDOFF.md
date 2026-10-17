@@ -2,9 +2,18 @@
 
 > Léelo al empezar. Actualízalo al terminar cada tarea (sección por sección, sin borrar el historial de la tabla 4). Reglas de trabajo: [`AGENTS.md`](AGENTS.md).
 
-**Última actualización:** 05/10/2026 · Claude Code (Claude Opus 5.5), relevo de Codex · módulo 10, excepciones B-22 integradas a cálculo, revisión y emisión (§19), sobre `1c9722b`. Graphify recuperado y VIGENTE (§19). Corrección del módulo 9 (403 en lugar de 500; deriva de `schema.prisma`).
+**Última actualización:** 17/10/2026 · Claude Code (Claude Opus 5.5) · módulo 11, administración de proveedores, productos, precios y tarifas (§20), sobre `a454053`. Anterior: módulo 10, excepciones B-22 (§19).
 
 ## 1. Estado actual
+
+- **Módulo 11:** implementado (ADR-0015). El Administrador del catálogo (`catalogos.administrar`) gestiona en la web «Catálogo» y en `/api/v1/admin` proveedores, productos (presentación y contenido), precios con vigencia y tarifas de mano de obra.
+  - **Reglas comunes:** sin borrado; desactivación con impacto previo; historial en bitácora; concurrencia por revisión; idempotencia.
+  - **Adaptaciones autorizadas:**
+    - bloqueo técnico del producto con precios;
+    - «Cerrar vigencia y registrar sucesor» (**P3 sigue pendiente con el cliente**);
+    - «Asignar tarifa» a un concepto, como dependencia mínima.
+  - **Efecto en las cotizaciones:** versiones, emisiones y PDF intactos. Un cambio posterior al cálculo bloquea por BL-16 y el editor lo avisa.
+  - Detalle y pruebas en §20.
 
 - **Módulo 10:** implementado (ADR-0014): el Preparador registra excepciones B-22 (rendimiento o desperdicio de un componente, precio vencido, concepto personalizado) con motivo en el borrador; se congelan en la versión calculada y el cálculo del servidor aplica las de rendimiento. Un Revisor distinto del preparador autoriza o rechaza cada una durante la revisión; aprobar y emitir exigen todas autorizadas (BL-04/05/09), una rechazada bloquea esa versión y AV-04 informa las autorizadas. PDF y contenido comercial sin excepciones. Cobertura del DEMO y estimación: [`docs/cobertura-demo.md`](docs/cobertura-demo.md). Detalle en §19.
 
@@ -99,7 +108,7 @@
   - restauración solo en `softarq_restauracion`;
   - prueba completa 30/30, con descarga del PDF por una API temporal;
   - detalle en §17.
-- **Todavía no existen:** registro o CRUD de usuarios, recuperación de contraseña, MFA, administración de catálogos (salvo clientes y proyectos) y de parámetros, duplicar cotizaciones, modo de precios en versiones nuevas, vista previa PDF BORRADOR, salidas internas (compras calculadas y detalle), correo, anulación de documentos emitidos ni móvil (lista completa en [`docs/cobertura-demo.md`](docs/cobertura-demo.md)).
+- **Todavía no existen:** registro o CRUD de usuarios, recuperación de contraseña, MFA, administración de insumos, conversiones, conceptos y componentes (proveedores, productos, precios y tarifas sí: módulo 11) y de parámetros, duplicar cotizaciones, modo de precios en versiones nuevas, vista previa PDF BORRADOR, salidas internas (compras calculadas y detalle), correo, anulación de documentos emitidos ni móvil (lista completa en [`docs/cobertura-demo.md`](docs/cobertura-demo.md)).
 
 ## 2. Decisiones vigentes
 
@@ -118,6 +127,7 @@
 | ADR-0011 | Grafo de código local con Graphify (solo AST), reconstrucción limpia, vigencia verificable y hooks | [`docs/adr/0011-grafo-de-codigo-graphify.md`](docs/adr/0011-grafo-de-codigo-graphify.md) |
 | ADR-0012 | Respaldo coherente de `softarq_dev` y PDF, rol de solo lectura, restauración solo en `softarq_restauracion` | [`docs/adr/0012-respaldo-y-restauracion-local.md`](docs/adr/0012-respaldo-y-restauracion-local.md) |
 | ADR-0013 | Respuesta interna por emisión exacta, vigencia inclusiva derivada, captura tardía si se recibió en plazo, correcciones como eventos nuevos con motivo | [`docs/adr/0013-seguimiento-respuestas-vigencia.md`](docs/adr/0013-seguimiento-respuestas-vigencia.md) |
+| ADR-0015 | Administración de proveedores, productos, precios y tarifas por el Administrador del catálogo: funciones de una sentencia con bitácora, revisión e idempotencia; disparadores (producto con precios, precio inmutable salvo anular o acortar, tarifa inmutable); cierre de vigencia con sucesor (P3 pendiente); asignar tarifa conservando la aprobación; contrato `/admin` interno; capacidad `catalogos.administrar` | [`docs/adr/0015-administracion-catalogos.md`](docs/adr/0015-administracion-catalogos.md) |
 | ADR-0014 | Excepciones B-22 en el borrador, congeladas en la versión; decisión inmutable del Revisor ≠ preparador ligada a la versión; enviar con registradas, aprobar y emitir con autorizadas; rechazada bloquea esa versión (vN+1); AV-04; contrato interno con capacidad `excepciones.consultar`; sin flujo de autorización paralelo | [`docs/adr/0014-excepciones.md`](docs/adr/0014-excepciones.md) |
 | Propietario | Libro oficial `entrega\Cotizador_Estructuras_F1.xlsm`; COT-2026-00016/00017 y la persona en turno se conservan; evidencias citadas por archivo, escenario y caso | [`docs/fase1-estado-verificado.md`](docs/fase1-estado-verificado.md) §4 |
 | Entorno | Trabajo en `D:\Proyecto_SoftArq`; temporales y cachés en `_work`; sin remoto ni push | `AGENTS.md` §1 |
@@ -187,6 +197,15 @@ Aplicada en `softarq_dev` el 03/10/2026 con `db:migrar`. `db:cargar-demo` creó 
 
 Aplicada en `softarq_test` (cada corrida) y en `softarq_dev` el 05/10/2026 con `db:migrar`, después de un respaldo verificado.
 
+**Migración `20261017120000_administracion_catalogos` (módulo 11, ADR-0015):**
+- **Columnas:** contacto, revisión y autoría del proveedor; revisión y autoría del producto; registro, anulación y revisión del precio; subcontratista, revisión y autoría de la tarifa. Las FK son compuestas, con `map:`.
+- **Restricciones e índices:** índices únicos normalizados (`softarq_normalizar`, copia de `Normalizar`); CHECK de textos, correo y anulación; `contador_entidad_ck`, `bitacora_entidad_ck` e `idempotencia_recurso_ck` ampliados.
+- **Disparadores:** `producto_proteger_trg`, `precio_bloquear_producto_trg`, `precio_proteger_trg` y `tarifa_proteger_trg`.
+- **Funciones:** once `softarq_*` de administración y `softarq_codigo_catalogo`, todas SECURITY INVOKER; cada una exige `ADMIN_CATALOGO`.
+- **`softarq_app`:** UPDATE solo de columnas editables y EXECUTE de las funciones (bloque condicional en `permisos-app.sql`). Sin DELETE ni DDL.
+
+Aplicada en `softarq_test` (cada corrida) y en `softarq_dev` el 17/10/2026, después del respaldo verificado `softarq_dev-20261017T142723Z-2d938d`.
+
 **Recursos de PostgreSQL creados (02/10/2026):**
 
 | Recurso | Características |
@@ -221,6 +240,7 @@ Credenciales: `apps/api/.env` y `.env.test` (locales, excluidos de Git). La cred
 | 05/10/2026 | Graphify recuperado (diagnóstico de PATH del entorno restringido) | Commit `abe655d`; grafo VIGENTE |
 | 05/10/2026 | Corrección del módulo 9: 403 en lugar de 500 cuando la base rechaza la función | Commit `3412f0b` (regresión en integración) |
 | 05/10/2026 | Módulo 10: excepciones B-22, ADR-0014, deriva de `schema.prisma` corregida, matriz de cobertura | 604 unitarias, 252 integración, 53 E2E, 38 restauración, 17 concurrencia; ver §19 |
+| 17/10/2026 | Módulo 11: administración de proveedores, productos, precios y tarifas; ADR-0015 | 641 unitarias, 271 integración, 56 E2E, 43 restauración; ver §20 |
 
 ## 5. Comandos y resultados reales (02/10/2026)
 
@@ -520,10 +540,20 @@ En los cuatro, el resultado completo es idéntico al calculado con los fixtures 
 
 ## 7. Siguiente tarea
 
-1. **Recompilar y reiniciar** la API y la web del propietario si están en marcha con código anterior: `softarq_dev` ya tiene la migración del módulo 10, y el código anterior no conoce `excepcion_decision` ni la capacidad `excepciones.consultar` (§19, «Abrir»).
-2. **Siguiente módulo recomendado:** administración de catálogos (1): proveedores, productos, precios con vigencia (anular en lugar de borrar) y tarifas. Habilita la carga de datos reales (capítulo 8 del Word; PR-41 a PR-44). Matriz y estimación: [`docs/cobertura-demo.md`](docs/cobertura-demo.md). Después: catálogos (2) (conceptos, componentes con trazabilidad BL-05, personalizados), salidas internas de solo lectura, parámetros y personas, duplicar/modo de precios/vista previa BORRADOR, Expo (alcance por decidir) y cierre integral.
-3. **Ejecución formal de la guía manual** [`docs/web/guia-prueba-manual.md`](docs/web/guia-prueba-manual.md) (A1–A9, 1–14, C1–C15, R1–R10, E1–E12, S1–S10 y X1–X8), con el registro de la §5. Complementa la revisión personal ya declarada. No cuenta como PR-41 ni PR-44.
-4. **Operación:** repetir el aprovisionamiento administrativo de respaldo cuando haya una credencial local autorizada (no había archivo DPAPI en `_work\secrets`; no se ejecutó). Copia externa periódica de `D:\Proyecto_SoftArq\respaldos` sigue siendo una decisión pendiente.
+1. **Recompilar y reiniciar** la API y la web del propietario si están en marcha con código anterior. `softarq_dev` ya tiene la migración del módulo 11, y el código anterior no conoce sus columnas, funciones ni la capacidad `catalogos.administrar` (§20, «Abrir»).
+2. **Siguiente módulo recomendado:** catálogos (2).
+   - **Alcance:** insumos y conversiones, conceptos y componentes con trazabilidad BL-05 (fuente, fecha y responsable), aprobación de conceptos y conceptos personalizados.
+   - **Pendiente heredado:** restringir las columnas de `concepto` que `softarq_app` puede actualizar (hoy, UPDATE de tabla; ADR-0015 §7).
+   - **Después:** salidas internas de solo lectura; parámetros y personas; duplicar, modo de precios y vista previa BORRADOR; Expo (alcance por decidir); cierre integral.
+   - Matriz y estimación en [`docs/cobertura-demo.md`](docs/cobertura-demo.md).
+3. **Pendiente del cliente:**
+   - definir P3, la política de vigencias; la adaptación del DEMO está en ADR-0015 §2.2;
+   - entregar los datos reales del capítulo 8 (precios, proveedores y tarifas), que ya se podrán capturar en la web.
+4. **Ejecución formal de la guía manual** [`docs/web/guia-prueba-manual.md`](docs/web/guia-prueba-manual.md), con el registro de la §5:
+   - bloques A1–A9, 1–14, C1–C15, R1–R10, E1–E12, S1–S10, X1–X8 y K1–K10;
+   - complementa la revisión personal ya declarada;
+   - no cuenta como PR-41 ni PR-44.
+5. **Operación:** repetir el aprovisionamiento administrativo de respaldo cuando haya una credencial local autorizada (no había archivo DPAPI en `_work\secrets`; no se ejecutó). Copia externa periódica de `D:\Proyecto_SoftArq\respaldos` sigue siendo una decisión pendiente.
 
 Alternativas más cortas:
 - **web DEMO:** coma decimal, conservar el borrador durante la sesión y más de 20 conceptos por consulta;
@@ -547,6 +577,8 @@ Alternativas más cortas:
 - `3412f0b`: Módulo 9, 403 cuando la base rechaza la función al registrar respuestas.
 - Módulo 10: commit «Módulo 10: excepciones B-22 integradas a cálculo, revisión y emisión» (§19); consultar `git log -1 --oneline` para su hash.
 - MD5 del libro oficial al cerrar el módulo 10: `b60debc121957b8d8e3f2c2edd9a5b4f` (sin cambios).
+- `a454053`: Módulo 10.
+- Módulo 11: commit «Módulo 11: administración de proveedores, productos, precios y tarifas» (§20); consultar `git log -1 --oneline` para su hash. MD5 del libro al cerrar: `b60debc121957b8d8e3f2c2edd9a5b4f` (sin cambios).
 
 Rama `main`. Sin remoto ni push.
 
@@ -991,3 +1023,130 @@ Recorrido: Preparador → Calculadora → Ejemplo 3 → «Guardar como cotizaci�
 - el aviso de Vite por un chunk de unos 530 kB sigue.
 
 **Cobertura y estimación:** [`docs/cobertura-demo.md`](docs/cobertura-demo.md): de 8 a 9 módulos para el DEMO local completo y de 1 a 2 para preparar Railway. Siguiente recomendado: catálogos (1), precios y proveedores (§7).
+
+## 20. Administración de proveedores, productos, precios y tarifas (módulo 11)
+
+**Sesión:** 17/10/2026, Claude Code (Claude Opus 5.5).
+- **Inicio verificado:**
+  - `D:\Proyecto_SoftArq\softarq-platform`, rama `main`, árbol limpio, HEAD `a454053` (antes `3412f0b` y `abe655d`); no se tocó nada ajeno;
+  - Graphify VIGENTE al empezar (232 archivos), sin necesidad de reconstruir.
+- **Resultados anteriores:** se conservan como reportados (604, 252, 53, 38 y 17; §19) y no se repitieron al iniciar.
+- **Fuentes, en solo lectura:**
+  - copia de texto del Word v1.3 y `modCatalogos.bas` en `_work\tmp\m11`;
+  - `modApp.bas` (`Normalizar`).
+- **MD5 del libro:** `b60debc121957b8d8e3f2c2edd9a5b4f` antes y después.
+- **Plan aprobado por el propietario**, con tres adaptaciones que él mismo decidió (ADR-0015 §2):
+  1. bloqueo técnico del producto con precios (vigentes, vencidos o anulados);
+  2. «Cerrar vigencia y registrar sucesor» en una operación, nunca retroactiva ni ampliable; **P3 sigue pendiente con el cliente**;
+  3. «Asignar tarifa» a un concepto como única dependencia del bloque de conceptos; conserva su aprobación.
+
+**Qué puede hacer el usuario** (cuenta `[DEMO] Administrador`, función Administrador del catálogo; sección «Catálogo»):
+- **Proveedores:** alta, edición de datos, desactivar y reactivar (con impacto previo), historial. Duplicado normalizado como en el libro (TI-004).
+- **Productos:** alta sobre un insumo activo con presentación, unidad de compra, contenido en la unidad base y venta fraccionada. Edición técnica solo sin precios; con precios, solo la descripción. Desactivar y reactivar.
+- **Precios:**
+  - registro sin solape (TI-060) y búsqueda por estado (vigente, futuro, vencido o anulado) a la fecha del servidor;
+  - «Cerrar vigencia y registrar sucesor», con fechas inclusivas propuestas (hoy y mañana);
+  - «Anular precio erróneo» con motivo.
+- **Mano de obra:** registro de tarifas UNIDAD, JORNADA o SUBCONTRATO (subcontratista opcional), desactivar y reactivar.
+- **Tarifa de conceptos:** asignar otra tarifa activa de la misma unidad, con motivo y aviso del efecto.
+- **Preparador:** ve las opciones nuevas sin que se elijan solas. El editor avisa «El catálogo cambió después de calcular la vN» cuando la verificación da BL-16, BL-08, BL-09 o BL-10.
+
+**Implementación:**
+
+| Parte | Ubicación |
+|---|---|
+| Contratos | `packages/contracts/src/api/catalogos-admin.ts` (interno: decimales con escala de columna, fechas reales, `null` ≠ 0); `catalogos.administrar`; 8 códigos de error nuevos y `registroVigente` en el sobre |
+| API | `modules/catalogos/dominio/administracion.ts` (puro); `aplicacion/servicio-administracion.ts`; `persistencia/repositorio-administracion.ts`; `http/controladores-catalogos-admin.ts` (`/api/v1/admin`); `GET /cotizaciones/{id}/versiones/{n}/verificacion` (`servicio-revisiones.verificacionDeVersion`) |
+| Base | Migración `20261017120000_administracion_catalogos` (§3); bloque condicional en `permisos-app.sql`; `repositorio-catalogos.anularPrecio` (solo pruebas) ahora exige motivo |
+| Web | `src/catalogo-admin/` (servicios, campos, fechas, fallos, pantallas); ruta `#/catalogo/{vista}`; navegación «Catálogo» solo con la capacidad; `AvisoCatalogoCambiado` en `EditorCotizacion.tsx`; tipo de fallo `catalogo` en `api/cliente.ts` |
+| Respaldo | `probar-restauracion.mjs`: coherencia, permisos, disparadores e índices, y registros administrativos e historial idénticos tras restaurar |
+
+**Pruebas de ESTA sesión** (registros en `D:\Proyecto_SoftArq\_work\registros\modulo11`):
+
+| Comando o comprobación | Resultado |
+|---|---|
+| `pnpm verificar` (final) | **641/641** (API 427, web 214); compilación y tipos correctos, código 0 |
+| `pnpm verificar:integracion` | **271/271**, 15 archivos, un worker, `softarq_test` (252 anteriores, 18 del módulo y 1 de privilegios). La primera corrida dio 268/270: el inventario de funciones SQL (expectativa cambiada a propósito) y el ayudante `anularPrecio`, que dejó de ser repetible con el CHECK nuevo (corregido) |
+| `pnpm verificar:e2e` (después de la integración) | **56/56**, Edge, un worker, código 0: 53 anteriores y 3 nuevas (recorrido del Administrador con el Preparador; asignación de tarifa con aviso BL-16 en el editor y restauración de TMO-00005; 390 px con teclado) |
+| Incidencia E2E | **Intermitente, no reproducida:** una corrida completa anterior dio 55/56 con `excepciones.spec.ts:74` («No se puede aprobar» aún visible a los 10 s). Repetida dos veces con `catalogo` + `excepciones` en el mismo orden: 5/5 y 5/5; la corrida completa siguiente, 56/56. Las otras corridas fallidas fueron selectores ambiguos de la prueba nueva (corregidos) |
+| Cuatro referencias | 54,190.68; 43,312.16; 22,405.28 y 4,911.79 sin cambios. 22,405.28 también se recalcula con un precio sucesor administrado (integración) |
+| `respaldo:crear` + `respaldo:verificar` antes de migrar | `softarq_dev-20261017T142723Z-2d938d`, COMPLETO y VÁLIDO, 5/5 PDF |
+| `db:migrar` (desarrollo) | Código 0 |
+| Humo con la API real (127.0.0.1:3200, `softarq_dev`, detenida al terminar; `_work\tmp\m11\humo-catalogo.mjs`) | 17 pasos correctos (`humo-dev.log`): 403 del Preparador; alta idempotente; duplicado 409; solape 409; contenido bloqueado 422; cierre con sucesor; opción visible sin importe interno; desactivación que la retira; historial con autor |
+| `db:cargar-demo` repetida | Creados `{}`; «Los valores DEMO coinciden»; los registros nuevos se conservan; conceptos con TMO-00001…005 |
+| `respaldo:probar-restauracion` | **43/43** (incluye 3 nuevas del catálogo). Respaldo `softarq_dev-20261017T142914Z-48be0b`; 5 PDF con los mismos bytes; `softarq_dev` intacto |
+| `respaldo:probar-concurrencia` | **No ejecutado** en esta sesión: el módulo no cambia la emisión ni las respuestas. La restauración cubre las tablas modificadas |
+| Revisión visual | Capturas en `_work\evidencias\modulo11`, revisadas (escritorio 01–04, móvil 05–06) |
+| `migrate diff --exit-code` | Sin diferencias (prueba de integración) |
+
+**Defectos hallados por las pruebas y corregidos:**
+- **Conflicto en el formulario de edición:**
+  - **antes:** el formulario no ofrecía «Recargar el registro vigente»;
+  - **corrección:** ahora lo ofrece y conserva lo escrito;
+  - **regresión:** prueba web.
+- **Detalle de los conflictos:** los 409 traducidos por `ejecutarIdempotente` perdían `registroVigente`. Ahora se añade (prueba de integración `CONFLICTO_TARIFA`).
+- **Cambios de la revisión visual:**
+  - importes internos con al menos 2 decimales, sin pasar por `number`;
+  - el botón principal ya no ocupa todo el ancho;
+  - el foco va al primer campo al abrir un formulario.
+
+**Expectativas cambiadas a propósito:**
+- **Inventario OpenAPI:** 14 rutas `/admin` y la verificación de versión, con sus esquemas.
+- **Capacidades:** Preparador y Revisor juntos ya no suman todas las capacidades, porque `catalogos.administrar` es del Administrador del catálogo.
+- **Inventario de funciones SQL:** 12 nuevas.
+- **Prueba web `sin-datos-internos`:** excepción acotada a `src/catalogo-admin/`, fijada por prueba.
+- **Simulaciones web:** con `verificarVersion`.
+
+No se cambiaron expectativas de reglas ni de importes.
+
+**Datos DEMO creados en `softarq_dev`** (solo registros nuevos marcados «[DEMO] … comprobación M11»):
+- `PRV-00003`: proveedor, **inactivo** al final;
+- `PCM-00012`: producto de block sobre INS-00010;
+- `PRE-000018`: cerrado el 17/10/2026;
+- `PRE-000019`: sucesor desde el 18/10/2026;
+- `TMO-00006`: subcontrato m², **sin asignar**.
+
+No se tocaron los proveedores, precios ni tarifas de los ejemplos, ni se asignaron tarifas a sus conceptos. No se borró ni reparó nada.
+
+**Abrir:**
+
+```powershell
+Set-Location D:\Proyecto_SoftArq\softarq-platform
+pnpm --filter @softarq/contracts build
+pnpm --filter @softarq/api build
+pnpm --filter @softarq/api start   # terminal 1: http://localhost:3000 (127.0.0.1)
+pnpm --filter @softarq/web dev     # terminal 2: http://localhost:5173
+```
+
+**Recorrido:**
+1. `[DEMO] Administrador` → «Catálogo» → Proveedores, Productos, Precios, Mano de obra o Tarifa de conceptos.
+2. Preparador → Calculadora → Ejemplo 3 (opciones de INS-00010).
+
+Guía K1–K10 (`docs/web/guia-prueba-manual.md`). Credenciales en `_work\secrets`; no copiarlas al chat.
+
+**Graphify:**
+- `pnpm grafo:actualizar` al cerrar: **VIGENTE**, 246 archivos, 3008 nodos y 6396 aristas.
+- Consultas contrastadas con los `import`:
+  - `explain ServicioAdministracionCatalogos` (importado por `crear-aplicacion`, el controlador y la integración);
+  - `path AdministracionCatalogosController → RepositorioAdministracion` (controlador → servicio → repositorio);
+  - `explain PantallaCatalogo` (importado por `Aplicacion.tsx` y su prueba).
+- SQL, `schema.prisma` y `tokens.ts`, revisados con `rg`.
+
+**Entorno:**
+- **C: casi lleno:** 0,88 GB libres al empezar y unos 60 MB al terminar.
+  - Mis procesos se ejecutaron con `TMP`/`TEMP` en `_work\tmp`.
+  - Lo reciente en `%TEMP%` es sobre todo una descarga de actualización de VS Code (`vscode-stable-user-x64`, unos 230 MB), que no es de este trabajo y no se borró.
+  - Conviene liberar espacio en C: antes de la siguiente sesión con E2E.
+- **Herramientas:** sin dependencias nuevas, sin Expo, sin remoto ni push.
+- **UI UX Pro Max:** se leyó `.claude/skills/ui-ux-pro-max/SKILL.md` del repositorio, no el comando personal, y se aplicó su lista de comprobación (etiquetas visibles, error junto al campo, objetivos de 44 px, sin desborde).
+
+**Pendientes:**
+- P3 con el cliente;
+- restringir las columnas de `concepto` en el bloque 2;
+- selector con búsqueda en «Registrar precio» si el catálogo pasa de 50 productos o proveedores;
+- ejecución formal de la guía (K1–K10 y bloques anteriores; no atribuida al propietario);
+- PR-41 a PR-44 del Excel;
+- aprovisionamiento administrativo de respaldo;
+- aviso de Vite por el chunk de unos 530 kB.
+
+**Siguiente módulo recomendado:** catálogos (2) (§7 y `docs/cobertura-demo.md`).

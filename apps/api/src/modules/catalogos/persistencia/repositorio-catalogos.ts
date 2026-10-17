@@ -334,13 +334,19 @@ export class RepositorioCatalogos {
     return { id: n.id, creado: true };
   }
 
-  /** Anula un precio (nunca se borra). */
-  async anularPrecio(ctx: ContextoOrganizacion, codigo: string): Promise<void> {
+  /**
+   * Anula un precio (nunca se borra). Uso de pruebas y preparación; la administración usa
+   * `softarq_anular_precio` con autor e idempotencia (módulo 11). El motivo es obligatorio (CHECK).
+   */
+  async anularPrecio(ctx: ContextoOrganizacion, codigo: string, motivo = "[DEMO] Anulación de prueba"): Promise<void> {
     const r = await this.db.precio.updateMany({
-      where: { organizacionId: ctx.organizacionId, codigo },
-      data: { anulado: true },
+      where: { organizacionId: ctx.organizacionId, codigo, anulado: false },
+      data: { anulado: true, motivoAnulacion: motivo, anuladoEn: new Date() },
     });
-    if (r.count !== 1) throw new ErrorReferenciaCatalogo("el precio", codigo);
+    if (r.count === 1) return;
+    // Ya anulado: la anulación es definitiva (disparador) y repetirla no cambia nada.
+    const existente = await this.db.precio.findFirst({ where: { organizacionId: ctx.organizacionId, codigo }, select: { anulado: true } });
+    if (!existente?.anulado) throw new ErrorReferenciaCatalogo("el precio", codigo);
   }
 
   async cambiarActivoProveedor(ctx: ContextoOrganizacion, codigo: string, activo: boolean): Promise<void> {

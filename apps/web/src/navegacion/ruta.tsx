@@ -21,7 +21,12 @@ export type Ruta =
   | { pantalla: "revisiones" }
   | { pantalla: "revision"; id: string }
   | { pantalla: "emisor" }
+  | { pantalla: "catalogo"; vista: VistaCatalogo }
   | { pantalla: "no-encontrada" };
+
+/** Vistas de la administración de catálogos (módulo 11). */
+export const VISTAS_CATALOGO_RUTA = ["proveedores", "productos", "precios", "mano-de-obra", "conceptos"] as const;
+export type VistaCatalogo = (typeof VISTAS_CATALOGO_RUTA)[number];
 
 const UUID = "[0-9a-fA-F-]{36}";
 
@@ -49,6 +54,10 @@ export function interpretarHash(hash: string): Ruta | null {
   if (camino === "/revisiones") return { pantalla: "revisiones" };
   if ((m = new RegExp(`^/revisiones/(${UUID})$`).exec(camino))) return { pantalla: "revision", id: m[1]! };
   if (camino === "/emisor") return { pantalla: "emisor" };
+  if (camino === "/catalogo") return { pantalla: "catalogo", vista: "proveedores" };
+  if ((m = /^\/catalogo\/([a-z-]+)$/.exec(camino)) && (VISTAS_CATALOGO_RUTA as readonly string[]).includes(m[1]!)) {
+    return { pantalla: "catalogo", vista: m[1] as VistaCatalogo };
+  }
   return { pantalla: "no-encontrada" };
 }
 
@@ -76,13 +85,15 @@ export function hashDe(r: Ruta): string {
       return `#/revisiones/${r.id}`;
     case "emisor":
       return "#/emisor";
+    case "catalogo":
+      return `#/catalogo/${r.vista}`;
     case "no-encontrada":
       return "#/no-encontrada";
   }
 }
 
 /** Sección de la navegación principal a la que pertenece una ruta. */
-export function seccionDe(r: Ruta): "calculadora" | "cotizaciones" | "revisiones" | "clientes" | "proyectos" | "emisor" | null {
+export function seccionDe(r: Ruta): "calculadora" | "cotizaciones" | "revisiones" | "clientes" | "proyectos" | "emisor" | "catalogo" | null {
   switch (r.pantalla) {
     case "calculadora":
       return "calculadora";
@@ -101,6 +112,8 @@ export function seccionDe(r: Ruta): "calculadora" | "cotizaciones" | "revisiones
       return "revisiones";
     case "emisor":
       return "emisor";
+    case "catalogo":
+      return "catalogo";
     default:
       return null;
   }

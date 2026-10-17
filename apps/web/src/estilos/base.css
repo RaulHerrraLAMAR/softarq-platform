@@ -1913,3 +1913,47 @@ textarea[aria-invalid="true"] {
   background: var(--color-correcto-fondo);
   border-radius: var(--radio);
 }
+
+/* Administración de catálogos (módulo 11): subnavegación, panel de registro e historial. */
+.navegacion-catalogo {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--esp-1);
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  border-bottom: 1px solid var(--color-borde);
+}
+
+.panel-registro {
+  display: grid;
+  gap: var(--esp-3);
+  padding: var(--esp-3);
+  background: var(--color-superficie-suave, var(--color-fondo));
+  border: 1px solid var(--color-borde);
+  border-radius: var(--radio);
+}
+
+.lista-historial {
+  margin: 0;
+  padding-left: var(--esp-4);
+  display: grid;
+  gap: var(--esp-1);
+}
+
+.lista-historial .bloque,
+.ayuda.bloque {
+  display: block;
+}
+
+@media (max-width: 720px) {
+  .navegacion-catalogo .navegacion-enlace {
+    padding: 0 var(--esp-2);
+  }
+  .panel-registro {
+    padding: var(--esp-2);
+  }
+  .panel-registro .confirmacion .boton {
+    width: 100%;
+  }
+}

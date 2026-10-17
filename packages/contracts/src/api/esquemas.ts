@@ -340,6 +340,9 @@ export const CAPACIDADES = [
   "respuestas.corregir",
   // Módulo 10 (ADR-0014): datos técnicos de las excepciones (Preparador y Revisor).
   "excepciones.consultar",
+  // Módulo 11 (ADR-0015): administrar proveedores, productos, precios y tarifas, y asignar
+  // tarifas a conceptos (Administrador del catálogo). Incluye la lectura de importes internos.
+  "catalogos.administrar",
 ] as const;
 export type Capacidad = (typeof CAPACIDADES)[number];
 
@@ -428,6 +431,15 @@ export const CODIGOS_ERROR_API = [
   // Módulo 10 (ADR-0014): excepciones B-22.
   "EXCEPCION_INVALIDA",
   "CONFLICTO_EXCEPCION",
+  // Módulo 11 (ADR-0015): administración de catálogos.
+  "DUPLICADO",
+  "SOLAPE_VIGENCIA",
+  "PRODUCTO_CON_PRECIOS",
+  "UNIDAD_INCOMPATIBLE",
+  "CONFLICTO_TARIFA",
+  "VIGENCIA_INVALIDA",
+  "PRECIO_ANULADO",
+  "VALOR_INVALIDO",
 ] as const;
 export type CodigoErrorApi = (typeof CODIGOS_ERROR_API)[number];
 
@@ -465,6 +477,11 @@ export const EsquemaRespuestaError = z.strictObject({
     seguimientoVigente: z.unknown().optional(),
     /** 409 CONFLICTO_EXCEPCION: excepciones de la versión con sus decisiones vigentes. */
     excepcionesVigentes: z.unknown().optional(),
+    /**
+     * Módulo 11: registro de catálogo vigente en un conflicto (CONFLICTO_EDICION, CONFLICTO_TARIFA),
+     * el registro existente en DUPLICADO o el precio que se solapa en SOLAPE_VIGENCIA.
+     */
+    registroVigente: z.unknown().optional(),
   }),
 });
 export type RespuestaError = z.infer<typeof EsquemaRespuestaError>;

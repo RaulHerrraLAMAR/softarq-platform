@@ -36,7 +36,16 @@ export type CodigoNegocio =
   | "RESPUESTA_FUERA_VIGENCIA"
   // Módulo 10 (ADR-0014): excepciones B-22.
   | "EXCEPCION_INVALIDA"
-  | "CONFLICTO_EXCEPCION";
+  | "CONFLICTO_EXCEPCION"
+  // Módulo 11 (ADR-0015): administración de catálogos.
+  | "DUPLICADO"
+  | "SOLAPE_VIGENCIA"
+  | "PRODUCTO_CON_PRECIOS"
+  | "UNIDAD_INCOMPATIBLE"
+  | "CONFLICTO_TARIFA"
+  | "VIGENCIA_INVALIDA"
+  | "PRECIO_ANULADO"
+  | "VALOR_INVALIDO";
 
 export interface DetalleError {
   campos?: { ruta: string; mensaje: string }[];
@@ -47,6 +56,8 @@ export interface DetalleError {
   seguimientoVigente?: unknown;
   /** Excepciones de la versión con sus decisiones vigentes (409 CONFLICTO_EXCEPCION). */
   excepcionesVigentes?: unknown;
+  /** Registro de catálogo vigente, existente (DUPLICADO) o que se solapa (SOLAPE_VIGENCIA). */
+  registroVigente?: unknown;
 }
 
 export class ErrorNegocio extends Error {
@@ -110,6 +121,28 @@ const MENSAJES: Record<string, [CodigoNegocio, string]> = {
   // Módulo 8: un folio descartado no admite cambios (el trigger y las funciones lo impiden).
   FOLIO_NO_ACTIVO: ["FOLIO_NO_ACTIVO", "La cotización está descartada: su folio, versiones e historial solo se consultan."],
   CLIENTE_INACTIVO: ["REGISTRO_INACTIVO", "El cliente está inactivo: no se ofrece para registros nuevos."],
+  // Módulo 11 (ADR-0015): administración de catálogos.
+  PRODUCTO_CON_PRECIOS: [
+    "PRODUCTO_CON_PRECIOS",
+    "El producto ya tiene precios registrados: su insumo, presentación, unidad, contenido y venta fraccionada no cambian. Registre un producto nuevo para otra presentación.",
+  ],
+  PRODUCTO_INACTIVO: ["REGISTRO_INACTIVO", "El producto está inactivo: no admite precios nuevos."],
+  PROVEEDOR_INACTIVO: ["REGISTRO_INACTIVO", "El proveedor está inactivo: no admite precios ni tarifas nuevos."],
+  INSUMO_INACTIVO: ["REGISTRO_INACTIVO", "Seleccione un insumo activo."],
+  TARIFA_INACTIVA: ["REGISTRO_INACTIVO", "La tarifa está inactiva: no se puede asignar."],
+  UNIDAD_INVALIDA: ["VALOR_INVALIDO", "La unidad no existe o no corresponde a este registro."],
+  UNIDAD_INCOMPATIBLE: [
+    "UNIDAD_INCOMPATIBLE",
+    "La tarifa está en una unidad distinta a la del concepto (BL-06). Elija una tarifa de la misma unidad.",
+  ],
+  CONFLICTO_TARIFA: ["CONFLICTO_TARIFA", "Otra persona cambió la tarifa del concepto antes; revise la asignación vigente."],
+  VIGENCIA_INVALIDA: [
+    "VIGENCIA_INVALIDA",
+    "Fechas no válidas: la nueva fecha final debe ser igual o posterior a hoy y al inicio, y anterior a la actual; el sucesor empieza después.",
+  ],
+  PRECIO_ANULADO: ["PRECIO_ANULADO", "El precio está anulado: la anulación es definitiva y ya no admite cambios."],
+  VALOR_INVALIDO: ["VALOR_INVALIDO", "Algún valor no es válido para este registro."],
+  REGISTRO_INMUTABLE: ["VALOR_INVALIDO", "Ese dato no se edita: registre uno nuevo."],
   PROYECTO_INACTIVO: ["REGISTRO_INACTIVO", "El proyecto está inactivo: no se ofrece para cotizaciones nuevas."],
 };
 

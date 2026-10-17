@@ -1,4 +1,4 @@
--- Permisos del rol de la aplicación tras cada `prisma migrate deploy` (ADR-0004, ADR-0007, ADR-0008, ADR-0009, ADR-0010).
+-- Permisos del rol de la aplicación tras cada `prisma migrate deploy` (ADR-0004, ADR-0007 a ADR-0010, ADR-0013 a ADR-0015).
 -- Lo ejecuta el rol migrador con `prisma db execute`. Solo sentencias constantes.
 -- La aplicación lee y escribe catálogos, pero no borra (los registros se desactivan o anulan),
 -- no ejecuta DDL y no puede leer ni alterar el historial de migraciones.
@@ -97,5 +97,33 @@ DO $$ BEGIN
     REVOKE ALL ON FUNCTION public.excepcion_decision_inmutable(), public.excepcion_decision_validar() FROM PUBLIC;
     REVOKE ALL ON FUNCTION public.softarq_decidir_excepcion(UUID,UUID,UUID,UUID,INTEGER,TEXT,TEXT,UUID,TEXT,BYTEA,TIMESTAMPTZ) FROM PUBLIC;
     GRANT EXECUTE ON FUNCTION public.softarq_decidir_excepcion(UUID,UUID,UUID,UUID,INTEGER,TEXT,TEXT,UUID,TEXT,BYTEA,TIMESTAMPTZ) TO softarq_app;
+  END IF;
+END $$;
+
+-- ADR-0015 (módulo 11): administración de proveedores, productos, precios y tarifas. UPDATE solo de
+-- las columnas editables (nunca código, organización, importe, inicio de vigencia, fuente ni datos
+-- de alta); los disparadores limitan además qué cambio es válido. Sin DELETE ni DDL. Condicional
+-- para poder restaurar también respaldos de módulos anteriores.
+DO $$ BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.columns
+              WHERE table_schema = 'public' AND table_name = 'proveedor' AND column_name = 'revision') THEN
+    REVOKE UPDATE ON TABLE public.proveedor, public.producto, public.precio, public.tarifa_mano_obra FROM softarq_app;
+    GRANT UPDATE (nombre, contacto, telefono, correo, activo, revision, modificado_por, modificado_en) ON TABLE public.proveedor TO softarq_app;
+    GRANT UPDATE (insumo_id, descripcion, presentacion, unidad_compra, contenido, fraccionable, incremento_minimo, activo,
+                  revision, modificado_por, modificado_en) ON TABLE public.producto TO softarq_app;
+    GRANT UPDATE (vigente_hasta, anulado, motivo_anulacion, anulado_por, anulado_en, revision) ON TABLE public.precio TO softarq_app;
+    GRANT UPDATE (activa, revision, modificado_por, modificado_en) ON TABLE public.tarifa_mano_obra TO softarq_app;
+    GRANT EXECUTE ON FUNCTION public.softarq_normalizar(TEXT) TO softarq_app;
+    GRANT EXECUTE ON FUNCTION public.softarq_codigo_catalogo(UUID, TEXT) TO softarq_app;
+    GRANT EXECUTE ON FUNCTION public.softarq_crear_proveedor(UUID, UUID, JSONB, UUID, TEXT, BYTEA, TIMESTAMPTZ) TO softarq_app;
+    GRANT EXECUTE ON FUNCTION public.softarq_editar_proveedor(UUID, UUID, TEXT, INTEGER, JSONB) TO softarq_app;
+    GRANT EXECUTE ON FUNCTION public.softarq_crear_producto(UUID, UUID, JSONB, UUID, TEXT, BYTEA, TIMESTAMPTZ) TO softarq_app;
+    GRANT EXECUTE ON FUNCTION public.softarq_editar_producto(UUID, UUID, TEXT, INTEGER, JSONB) TO softarq_app;
+    GRANT EXECUTE ON FUNCTION public.softarq_registrar_precio(UUID, UUID, JSONB, UUID, TEXT, BYTEA, TIMESTAMPTZ) TO softarq_app;
+    GRANT EXECUTE ON FUNCTION public.softarq_anular_precio(UUID, UUID, TEXT, INTEGER, TEXT, UUID, TEXT, BYTEA, TIMESTAMPTZ) TO softarq_app;
+    GRANT EXECUTE ON FUNCTION public.softarq_cerrar_vigencia_precio(UUID, UUID, TEXT, INTEGER, DATE, DATE, TEXT, JSONB, UUID, TEXT, BYTEA, TIMESTAMPTZ) TO softarq_app;
+    GRANT EXECUTE ON FUNCTION public.softarq_registrar_tarifa(UUID, UUID, JSONB, UUID, TEXT, BYTEA, TIMESTAMPTZ) TO softarq_app;
+    GRANT EXECUTE ON FUNCTION public.softarq_cambiar_activa_tarifa(UUID, UUID, TEXT, INTEGER, BOOLEAN) TO softarq_app;
+    GRANT EXECUTE ON FUNCTION public.softarq_asignar_tarifa_concepto(UUID, UUID, TEXT, TEXT, TEXT, TEXT, UUID, TEXT, BYTEA, TIMESTAMPTZ) TO softarq_app;
   END IF;
 END $$;

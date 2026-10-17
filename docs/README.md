@@ -19,6 +19,7 @@
 | [`adr/0012-respaldo-y-restauracion-local.md`](adr/0012-respaldo-y-restauracion-local.md) | Respaldo coherente de softarq_dev y sus PDF (instantánea compartida), rol de solo lectura, restauración solo en un destino aislado y prueba de recuperación real. |
 | [`adr/0013-seguimiento-respuestas-vigencia.md`](adr/0013-seguimiento-respuestas-vigencia.md) | Seguimiento interno por emisión: respuesta recibida, vigencia derivada y correcciones con historial. |
 | [`adr/0014-excepciones.md`](adr/0014-excepciones.md) | Excepciones B-22: registro en el borrador, congeladas en la versión, autorización del Revisor, AV-04, BL-04/05/09 con excepción y contrato interno. |
+| [`adr/0015-administracion-catalogos.md`](adr/0015-administracion-catalogos.md) | Administración de proveedores, productos, precios y tarifas: bloqueo técnico del producto con precios, cierre de vigencia con sucesor (P3 pendiente), asignación de tarifa, historial, permisos y efecto en el cotizador. |
 | [`cobertura-demo.md`](cobertura-demo.md) | Matriz de cobertura del DEMO frente al Excel y al alcance documentado, bloques restantes y estimación. |
 | [`operacion/respaldo-y-restauracion.md`](operacion/respaldo-y-restauracion.md) | Comandos de respaldo, verificación y restauración; manifiesto; tratamiento de roles, permisos y sesiones; conservación; resultados verificados. |
 | [`api/README.md`](api/README.md) | Endpoints, errores, límites y ejemplos `curl` de la API v1 ([`openapi.json`](api/openapi.json)). |

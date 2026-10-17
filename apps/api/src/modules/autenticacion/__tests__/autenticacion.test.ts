@@ -28,9 +28,12 @@ describe("matriz de permisos (contrastada con el libro)", () => {
   });
 
   it("varias funciones suman capacidades sin duplicarlas y en orden estable", () => {
-    // Módulo 8: `emisor.configurar` es del Administrador del sistema (17 CONFIG); las cuatro
-    // funciones juntas suman todas las capacidades.
-    expect(capacidadesDe(["REVISOR", "PREPARADOR"])).toEqual(CAPACIDADES.filter((c) => c !== "emisor.configurar"));
+    // Módulo 8: `emisor.configurar` es del Administrador del sistema (17 CONFIG); módulo 11:
+    // `catalogos.administrar` es del Administrador del catálogo. Las cuatro funciones juntas suman
+    // todas las capacidades.
+    expect(capacidadesDe(["REVISOR", "PREPARADOR"])).toEqual(
+      CAPACIDADES.filter((c) => c !== "emisor.configurar" && c !== "catalogos.administrar"),
+    );
     expect(capacidadesDe([...FUNCIONES_USUARIO])).toEqual([...CAPACIDADES]);
     expect(capacidadesDe([])).toEqual([]);
   });
@@ -44,6 +47,14 @@ describe("matriz de permisos (contrastada con el libro)", () => {
     for (const f of ["PREPARADOR", "REVISOR", "ADMIN_CATALOGO"] as const) expect(capacidadesDe([f])).not.toContain("emisor.configurar");
     // Poder emitir no concede aprobar.
     expect(capacidadesDe(["PREPARADOR"])).not.toContain("revisiones.decidir");
+  });
+
+  it("administrar catálogos: solo el Administrador del catálogo (Req_Funcion FN_ADMCAT, ADR-0015)", () => {
+    expect(capacidadesDe(["ADMIN_CATALOGO"])).toContain("catalogos.administrar");
+    // Consultar datos técnicos o decidir excepciones no concede administrar el catálogo.
+    for (const f of ["PREPARADOR", "REVISOR", "ADMIN_SISTEMA"] as const) {
+      expect(capacidadesDe([f])).not.toContain("catalogos.administrar");
+    }
   });
 
   it("la matriz solo usa capacidades del contrato", () => {

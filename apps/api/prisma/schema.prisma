@@ -123,15 +123,30 @@ model Conversion {
   @@map("conversion")
 }
 
+/// Proveedor (tblProveedores). Módulo 11 (ADR-0015): contacto, revisión y autoría; nombre único
+/// por organización según `Normalizar` del libro (índice de expresión en la migración).
 model Proveedor {
-  id             String  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  organizacionId String  @map("organizacion_id") @db.Uuid
-  codigo         String  @db.VarChar(40)
-  nombre         String  @db.VarChar(200)
-  activo         Boolean @default(true)
+  id             String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organizacionId String   @map("organizacion_id") @db.Uuid
+  codigo         String   @db.VarChar(40)
+  nombre         String   @db.VarChar(200)
+  activo         Boolean  @default(true)
+  contacto       String?  @db.VarChar(200)
+  telefono       String?  @db.VarChar(40)
+  correo         String?  @db.VarChar(254)
+  /// Control de concurrencia optimista de la edición.
+  revision       Int      @default(0)
+  /// NULL solo en los registros de la carga DEMO (sin persona).
+  creadoPor      String?  @map("creado_por") @db.Uuid
+  creadoEn       DateTime @default(now()) @map("creado_en") @db.Timestamptz(3)
+  modificadoPor  String?  @map("modificado_por") @db.Uuid
+  modificadoEn   DateTime @default(now()) @map("modificado_en") @db.Timestamptz(3)
 
-  organizacion Organizacion @relation(fields: [organizacionId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  organizacion Organizacion     @relation(fields: [organizacionId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  autor        Membresia?       @relation("ProveedorCreadoPor", fields: [organizacionId, creadoPor], references: [organizacionId, usuarioId], onDelete: Restrict, onUpdate: Restrict, map: "proveedor_creado_por_fk")
+  modificador  Membresia?       @relation("ProveedorModificadoPor", fields: [organizacionId, modificadoPor], references: [organizacionId, usuarioId], onDelete: Restrict, onUpdate: Restrict, map: "proveedor_modificado_por_fk")
   precios      Precio[]
+  tarifas      TarifaManoObra[]
 
   @@unique([organizacionId, id])
   @@unique([organizacionId, codigo])
@@ -152,10 +167,18 @@ model Producto {
   /// Obligatorio (> 0) si es fraccionable; NULL si no.
   incrementoMinimo Decimal? @map("incremento_minimo") @db.Decimal(20, 6)
   activo           Boolean  @default(true)
+  /// Módulo 11 (ADR-0015). Con algún precio registrado, los campos técnicos ya no cambian (disparador).
+  revision         Int      @default(0)
+  creadoPor        String?  @map("creado_por") @db.Uuid
+  creadoEn         DateTime @default(now()) @map("creado_en") @db.Timestamptz(3)
+  modificadoPor    String?  @map("modificado_por") @db.Uuid
+  modificadoEn     DateTime @default(now()) @map("modificado_en") @db.Timestamptz(3)
 
   organizacion Organizacion @relation(fields: [organizacionId], references: [id], onDelete: Restrict, onUpdate: Restrict)
   insumo       Insumo       @relation(fields: [organizacionId, insumoId], references: [organizacionId, id], onDelete: Restrict, onUpdate: Restrict)
   unidad       Unidad       @relation(fields: [unidadCompra], references: [clave], onDelete: Restrict, onUpdate: Restrict)
+  autor        Membresia?   @relation("ProductoCreadoPor", fields: [organizacionId, creadoPor], references: [organizacionId, usuarioId], onDelete: Restrict, onUpdate: Restrict, map: "producto_creado_por_fk")
+  modificador  Membresia?   @relation("ProductoModificadoPor", fields: [organizacionId, modificadoPor], references: [organizacionId, usuarioId], onDelete: Restrict, onUpdate: Restrict, map: "producto_modificado_por_fk")
   precios      Precio[]
 
   @@unique([organizacionId, id])
@@ -164,6 +187,8 @@ model Producto {
 }
 
 /// Precio de un producto por proveedor. No se edita: se registra uno nuevo o se anula (Val_Precio).
+/// Módulo 11 (ADR-0015): la única modificación de un precio vigente es acortar su vigencia al
+/// registrar un sucesor (adaptación autorizada; P3 pendiente) y la anulación con motivo.
 model Precio {
   id             String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   organizacionId String   @map("organizacion_id") @db.Uuid
@@ -175,10 +200,19 @@ model Precio {
   vigenteHasta   DateTime @map("vigente_hasta") @db.Date
   anulado        Boolean  @default(false)
   fuente         String   @db.VarChar(500)
+  motivoAnulacion String?   @map("motivo_anulacion") @db.VarChar(500)
+  anuladoPor      String?   @map("anulado_por") @db.Uuid
+  anuladoEn       DateTime? @map("anulado_en") @db.Timestamptz(3)
+  revision        Int       @default(0)
+  /// NULL solo en los registros de la carga DEMO (sin persona).
+  registradoPor   String?   @map("registrado_por") @db.Uuid
+  registradoEn    DateTime  @default(now()) @map("registrado_en") @db.Timestamptz(3)
 
   organizacion Organizacion @relation(fields: [organizacionId], references: [id], onDelete: Restrict, onUpdate: Restrict)
   producto     Producto     @relation(fields: [organizacionId, productoId], references: [organizacionId, id], onDelete: Restrict, onUpdate: Restrict)
   proveedor    Proveedor    @relation(fields: [organizacionId, proveedorId], references: [organizacionId, id], onDelete: Restrict, onUpdate: Restrict)
+  registrador  Membresia?   @relation("PrecioRegistradoPor", fields: [organizacionId, registradoPor], references: [organizacionId, usuarioId], onDelete: Restrict, onUpdate: Restrict, map: "precio_registrado_por_fk")
+  anulador     Membresia?   @relation("PrecioAnuladoPor", fields: [organizacionId, anuladoPor], references: [organizacionId, usuarioId], onDelete: Restrict, onUpdate: Restrict, map: "precio_anulado_por_fk")
 
   @@unique([organizacionId, codigo])
   @@map("precio")
@@ -198,9 +232,19 @@ model TarifaManoObra {
   vigenteHasta       DateTime @map("vigente_hasta") @db.Date
   activa             Boolean  @default(true)
   fuente             String   @db.VarChar(500)
+  /// Subcontratista opcional (`id_proveedor` de tblTarifasMO). Módulo 11 (ADR-0015).
+  proveedorId        String?  @map("proveedor_id") @db.Uuid
+  revision           Int      @default(0)
+  registradoPor      String?  @map("registrado_por") @db.Uuid
+  registradoEn       DateTime @default(now()) @map("registrado_en") @db.Timestamptz(3)
+  modificadoPor      String?  @map("modificado_por") @db.Uuid
+  modificadoEn       DateTime @default(now()) @map("modificado_en") @db.Timestamptz(3)
 
   organizacion Organizacion @relation(fields: [organizacionId], references: [id], onDelete: Restrict, onUpdate: Restrict)
   unidadRef    Unidad       @relation(fields: [unidad], references: [clave], onDelete: Restrict, onUpdate: Restrict)
+  proveedor    Proveedor?   @relation(fields: [organizacionId, proveedorId], references: [organizacionId, id], onDelete: Restrict, onUpdate: Restrict, map: "tarifa_mano_obra_proveedor_fk")
+  registrador  Membresia?   @relation("TarifaRegistradaPor", fields: [organizacionId, registradoPor], references: [organizacionId, usuarioId], onDelete: Restrict, onUpdate: Restrict, map: "tarifa_mano_obra_registrado_por_fk")
+  modificador  Membresia?   @relation("TarifaModificadaPor", fields: [organizacionId, modificadoPor], references: [organizacionId, usuarioId], onDelete: Restrict, onUpdate: Restrict, map: "tarifa_mano_obra_modificado_por_fk")
   conceptos    Concepto[]
 
   @@unique([organizacionId, id])
@@ -336,6 +380,15 @@ model Membresia {
   idempotencia         Idempotencia[]
   respuestasCliente    RespuestaClienteEvento[]
   excepcionesDecididas ExcepcionDecision[]
+  // Administración de catálogos (módulo 11, ADR-0015).
+  proveedoresCreados     Proveedor[]      @relation("ProveedorCreadoPor")
+  proveedoresModificados Proveedor[]      @relation("ProveedorModificadoPor")
+  productosCreados       Producto[]       @relation("ProductoCreadoPor")
+  productosModificados   Producto[]       @relation("ProductoModificadoPor")
+  preciosRegistrados     Precio[]         @relation("PrecioRegistradoPor")
+  preciosAnulados        Precio[]         @relation("PrecioAnuladoPor")
+  tarifasRegistradas     TarifaManoObra[] @relation("TarifaRegistradaPor")
+  tarifasModificadas     TarifaManoObra[] @relation("TarifaModificadaPor")
 
   @@unique([organizacionId, usuarioId])
   @@index([usuarioId])
@@ -703,7 +756,8 @@ model RespuestaClienteEvento {
   @@map("respuesta_cliente_evento")
 }
 
-/// Contadores de identificadores (tblContadores): CLI, PRY y COT-AAAA, por organización.
+/// Contadores de identificadores (tblContadores): CLI, PRY, COT-AAAA y, desde el módulo 11, PRV,
+/// PCM, PRE y TMO, por organización.
 model Contador {
   organizacionId String @map("organizacion_id") @db.Uuid
   entidad        String @db.VarChar(20)
@@ -719,7 +773,8 @@ model Contador {
 model Bitacora {
   id             String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   organizacionId String   @map("organizacion_id") @db.Uuid
-  /// cliente | proyecto | cotizacion | emisor (referencia polimórfica: sin FK).
+  /// cliente | proyecto | cotizacion | emisor | proveedor | producto | precio | tarifa | concepto
+  /// (referencia polimórfica: sin FK).
   entidad        String   @db.VarChar(20)
   entidadId      String   @map("entidad_id") @db.Uuid
   tipo           String   @db.VarChar(40)

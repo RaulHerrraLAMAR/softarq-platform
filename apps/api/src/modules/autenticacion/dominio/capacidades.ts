@@ -20,6 +20,11 @@
  *   la base exigen además, por identidad, que un Revisor no emita su propia versión y que exista una
  *   aprobación vigente de otra persona (poder emitir no concede aprobar). Los parámetros del emisor
  *   (17 CONFIG) los cambia el Administrador del sistema → `emisor.configurar`.
+ * - Módulo 11 (ADR-0015): altas, ediciones, anulación, cierre de vigencia y activación de
+ *   proveedores, productos, precios y tarifas, y asignar la tarifa de un concepto, exigen
+ *   `Req_Funcion FN_ADMCAT` (`Cat_RequiereFuncion`, `BTN_PrecioAnular`) → `catalogos.administrar`,
+ *   solo para el Administrador del catálogo. Consultar datos técnicos no la concede a Preparador
+ *   ni a Revisor. La base lo vuelve a exigir (`softarq_exigir_funcion`).
  */
 import { CAPACIDADES, type Capacidad, type FuncionUsuario } from "@softarq/contracts";
 
@@ -50,7 +55,14 @@ export const CAPACIDADES_POR_FUNCION: Readonly<Record<FuncionUsuario, readonly C
     // Módulo 10 (ADR-0014): ver las excepciones que autoriza o rechaza (B-29).
     "excepciones.consultar",
   ],
-  ADMIN_CATALOGO: ["sesion.propia", "catalogos.consultar", "clientes.consultar", "clientes.gestionar", "cotizaciones.consultar"],
+  ADMIN_CATALOGO: [
+    "sesion.propia",
+    "catalogos.consultar",
+    "clientes.consultar",
+    "clientes.gestionar",
+    "cotizaciones.consultar",
+    "catalogos.administrar",
+  ],
   ADMIN_SISTEMA: ["sesion.propia", "catalogos.consultar", "clientes.consultar", "cotizaciones.consultar", "emisor.configurar"],
 };
 

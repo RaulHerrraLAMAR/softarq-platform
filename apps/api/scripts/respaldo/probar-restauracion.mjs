@@ -170,6 +170,52 @@ async function comprobarDestino(manifiesto) {
         registrar("excepciones: decisiones íntegras tras restaurar", JSON.stringify(filasOrigen) === JSON.stringify(filasDestino), `${filasDestino.length} decisiones comparadas con origen (solo lectura)`);
       } finally { await origen.end(); }
     }
+    // Módulo 11 (ADR-0015): catálogos administrados. Condicional: respaldos anteriores no tienen la columna.
+    const conAdministracion = (await c.query(`SELECT count(*)::int n FROM information_schema.columns
+        WHERE table_schema='public' AND table_name='precio' AND column_name='registrado_por'`)).rows[0].n === 1;
+    if (conAdministracion) {
+      const inconsistencias = (await c.query(`SELECT
+          (SELECT count(*) FROM precio x JOIN producto p ON p.id=x.producto_id JOIN proveedor r ON r.id=x.proveedor_id
+            WHERE p.organizacion_id<>x.organizacion_id OR r.organizacion_id<>x.organizacion_id)
+        + (SELECT count(*) FROM tarifa_mano_obra t JOIN proveedor r ON r.id=t.proveedor_id WHERE r.organizacion_id<>t.organizacion_id)
+        + (SELECT count(*) FROM precio x LEFT JOIN membresia m ON m.usuario_id=x.registrado_por AND m.organizacion_id=x.organizacion_id
+            WHERE x.registrado_por IS NOT NULL AND m.usuario_id IS NULL)
+        + (SELECT count(*) FROM precio x WHERE x.anulado AND (x.motivo_anulacion IS NULL OR x.anulado_en IS NULL))
+        + (SELECT count(*) FROM bitacora b WHERE b.entidad='precio' AND NOT EXISTS (SELECT 1 FROM precio x WHERE x.id=b.entidad_id AND x.organizacion_id=b.organizacion_id))
+        + (SELECT count(*) FROM bitacora b WHERE b.entidad='proveedor' AND NOT EXISTS (SELECT 1 FROM proveedor x WHERE x.id=b.entidad_id AND x.organizacion_id=b.organizacion_id))
+        + (SELECT count(*) FROM bitacora b WHERE b.entidad='producto' AND NOT EXISTS (SELECT 1 FROM producto x WHERE x.id=b.entidad_id AND x.organizacion_id=b.organizacion_id))
+        + (SELECT count(*) FROM bitacora b WHERE b.entidad='tarifa' AND NOT EXISTS (SELECT 1 FROM tarifa_mano_obra x WHERE x.id=b.entidad_id AND x.organizacion_id=b.organizacion_id))
+        AS n`)).rows[0].n;
+      registrar("catálogo administrado: organización, autoría, anulación y bitácora coherentes", Number(inconsistencias) === 0, `${inconsistencias} incoherencias`);
+      const permisos = (await c.query(`SELECT
+          has_column_privilege('softarq_app','public.precio','vigente_hasta','UPDATE') cierre,
+          has_column_privilege('softarq_app','public.precio','precio_unitario','UPDATE') importe,
+          has_column_privilege('softarq_app','public.tarifa_mano_obra','importe','UPDATE') tarifa,
+          has_table_privilege('softarq_app','public.precio','DELETE') borrado,
+          has_function_privilege('softarq_app','public.softarq_cerrar_vigencia_precio(uuid,uuid,text,integer,date,date,text,jsonb,uuid,text,bytea,timestamptz)','EXECUTE') funcion,
+          (SELECT count(*)::int FROM pg_trigger t JOIN pg_class k ON k.oid=t.tgrelid
+            WHERE k.relname IN ('producto','precio','tarifa_mano_obra') AND NOT t.tgisinternal) disparadores,
+          (SELECT count(*)::int FROM pg_indexes WHERE indexname IN ('proveedor_nombre_normalizado_key','producto_descripcion_presentacion_key')) unicos`)).rows[0];
+      registrar(
+        "catálogo administrado: permisos mínimos, funciones, disparadores e índices restaurados",
+        permisos.cierre && !permisos.importe && !permisos.tarifa && !permisos.borrado && permisos.funcion && permisos.disparadores === 4 && permisos.unicos === 2,
+        JSON.stringify(permisos),
+      );
+      const origen = new pg.Client({ connectionString: urlRespaldo().cadena }); await origen.connect();
+      try {
+        const sql = `SELECT json_build_array(
+            (SELECT coalesce(json_agg(to_jsonb(x) ORDER BY x.organizacion_id, x.codigo), '[]') FROM proveedor x),
+            (SELECT coalesce(json_agg(to_jsonb(x) ORDER BY x.organizacion_id, x.codigo), '[]') FROM producto x),
+            (SELECT coalesce(json_agg(to_jsonb(x) ORDER BY x.organizacion_id, x.codigo), '[]') FROM precio x),
+            (SELECT coalesce(json_agg(to_jsonb(x) ORDER BY x.organizacion_id, x.codigo), '[]') FROM tarifa_mano_obra x),
+            (SELECT coalesce(json_agg(json_build_array(x.codigo, x.tarifa_id, x.estado) ORDER BY x.organizacion_id, x.codigo), '[]') FROM concepto x),
+            (SELECT coalesce(json_agg(to_jsonb(b) ORDER BY b.id), '[]') FROM bitacora b WHERE b.entidad IN ('proveedor','producto','precio','tarifa','concepto'))
+          )::text AS f`;
+        const a = (await origen.query(sql)).rows[0].f, b = (await c.query(sql)).rows[0].f;
+        const eventos = (await c.query("SELECT count(*)::int n FROM bitacora WHERE entidad IN ('proveedor','producto','precio','tarifa','concepto')")).rows[0].n;
+        registrar("catálogo administrado: registros, vigencias, asignaciones e historial íntegros tras restaurar", a === b, `${eventos} eventos de catálogo comparados con origen (solo lectura)`);
+      } finally { await origen.end(); }
+    }
     const resumen = (await c.query(`SELECT
         (SELECT count(*) FROM organizacion)::int organizaciones, (SELECT count(*) FROM usuario)::int usuarios,
         (SELECT count(*) FROM cotizacion)::int cotizaciones, (SELECT count(*) FROM cotizacion_version)::int versiones,

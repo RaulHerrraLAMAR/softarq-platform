@@ -113,6 +113,8 @@ const ok = <T,>(datos: T): Promise<ResultadoApi<T>> => Promise.resolve({ ok: tru
 function cotizacionesFalsas(s: Partial<ServiciosCotizaciones> = {}): ServiciosCotizaciones {
   const noUsar = () => Promise.reject(new Error("no se esperaba esta llamada"));
   return {
+    // Módulo 11: verificación vigente de la última versión (sin cambios de catálogo por omisión).
+    verificarVersion: () => ok({ fechaReferencia: "2026-10-01", bloqueos: [], avisos: [] }),
     listarClientes: noUsar,
     detalleCliente: noUsar,
     crearCliente: noUsar,
@@ -382,5 +384,38 @@ describe("editor de cotización", () => {
     expect(screen.queryByRole("button", { name: /Calcular/ })).toBeNull();
     expect(screen.queryByLabelText(/Largo del renglón 1/)).toBeNull();
     expect(screen.getByRole("link", { name: "COT-2026-00001-v1" })).toBeTruthy();
+  });
+});
+
+describe("catálogo cambiado después de calcular (módulo 11)", () => {
+  it("si la verificación del servidor informa BL-16, el editor avisa que la versión ya no es vigente y no la recalcula", async () => {
+    const verificarVersion = vi.fn<ServiciosCotizaciones["verificarVersion"]>(() =>
+      Promise.resolve({
+        ok: true as const,
+        datos: {
+          fechaReferencia: "2026-10-17",
+          bloqueos: [
+            { codigo: "BL-16", referencia: "v1", mensaje: "La entrada de cálculo cambió: genere una versión nueva." },
+            { codigo: "BL-20", referencia: "v1", mensaje: "Faltan textos." },
+          ],
+          avisos: [],
+        },
+      }),
+    );
+    const crearVersion = vi.fn();
+    abrir(cotizacionesFalsas({ detalleCotizacion: () => ok(detalle(4, [VERSION.version])), verificarVersion, crearVersion }));
+    const aviso = await screen.findByText(/El catálogo cambió después de calcular la v1/);
+    const caja = aviso.closest(".aviso")! as HTMLElement;
+    expect(within(caja).getByText(/genere una versión nueva/)).toBeTruthy();
+    // Solo los bloqueos de catálogo: BL-20 (textos) no se presenta como cambio de catálogo.
+    expect(within(caja).queryByText(/Faltan textos/)).toBeNull();
+    expect(verificarVersion).toHaveBeenCalledWith(ID, 1, expect.anything());
+    expect(crearVersion).not.toHaveBeenCalled();
+  });
+
+  it("sin cambios de catálogo no muestra el aviso", async () => {
+    abrir(cotizacionesFalsas({ detalleCotizacion: () => ok(detalle(4, [VERSION.version])) }));
+    await screen.findByText(/corresponde a la captura guardada/);
+    expect(screen.queryByText(/El catálogo cambió/)).toBeNull();
   });
 });
