@@ -25,6 +25,9 @@
  *   `Req_Funcion FN_ADMCAT` (`Cat_RequiereFuncion`, `BTN_PrecioAnular`) → `catalogos.administrar`,
  *   solo para el Administrador del catálogo. Consultar datos técnicos no la concede a Preparador
  *   ni a Revisor. La base lo vuelve a exigir (`softarq_exigir_funcion`).
+ * - Módulo 13 (ADR-0017): parámetros (`BTN_Parametros`, B-38) y personas y funciones
+ *   (`BTN_Personas`, B-39) exigen `Req_Funcion FN_ADMSIS` → `parametros.administrar` y
+ *   `personas.administrar`, solo para el Administrador del sistema.
  */
 import { CAPACIDADES, type Capacidad, type FuncionUsuario } from "@softarq/contracts";
 
@@ -63,7 +66,17 @@ export const CAPACIDADES_POR_FUNCION: Readonly<Record<FuncionUsuario, readonly C
     "cotizaciones.consultar",
     "catalogos.administrar",
   ],
-  ADMIN_SISTEMA: ["sesion.propia", "catalogos.consultar", "clientes.consultar", "cotizaciones.consultar", "emisor.configurar"],
+  ADMIN_SISTEMA: [
+    "sesion.propia",
+    "catalogos.consultar",
+    "clientes.consultar",
+    "cotizaciones.consultar",
+    "emisor.configurar",
+    // Módulo 13 (ADR-0017): B-38 y B-39 (`Req_Funcion FN_ADMSIS`). El Administrador del catálogo no
+    // las recibe: administrar productos no concede administrar personas.
+    "parametros.administrar",
+    "personas.administrar",
+  ],
 };
 
 /** Unión de las capacidades de las funciones, en el orden de `CAPACIDADES`. */

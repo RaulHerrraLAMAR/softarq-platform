@@ -137,7 +137,7 @@ export class ServicioCotizaciones {
       borrador: {
         ...d.borrador,
         captura: verExcepciones ? d.borrador.captura : sinExcepciones(d.borrador.captura),
-        textosPredeterminados: textosPredeterminados(await this.emisiones.ambiente(ctx)),
+        textosPredeterminados: textosPredeterminados(await this.emisiones.plantillaTextos(ctx)),
         completitud: evaluarCompletitud(d.borrador.captura, conceptos),
         referencias: await this.referencias(ctx, d.borrador.captura),
       },
@@ -245,9 +245,9 @@ export class ServicioCotizaciones {
           );
         }
       }
-      // Textos de la versión (BL-20): se COPIAN los predeterminados del ambiente si la captura no
-      // trae los suyos; después son del borrador y el Preparador los edita.
-      const inicial = conTextosIniciales(s.captura ?? CAPTURA_BORRADOR_VACIA, textosPredeterminados(await this.emisiones.ambiente(ctx)));
+      // Textos de la versión (BL-20): se COPIAN las plantillas de la organización si la captura no
+      // trae los suyos; después son del borrador (copias independientes) y el Preparador los edita.
+      const inicial = conTextosIniciales(s.captura ?? CAPTURA_BORRADOR_VACIA, textosPredeterminados(await this.emisiones.plantillaTextos(ctx)));
       return this.repo.crearCotizacion(ctx, autor, s.proyectoId, anio, inicial, idem);
     });
     return { detalle: await this.detalle(ctx, r.id, true), reproducida: r.reproducida };

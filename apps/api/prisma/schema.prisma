@@ -80,8 +80,19 @@ model ParametrosCalculo {
   impuestoTratamiento String?  @map("impuesto_tratamiento") @db.VarChar(500)
   impuestoNombre      String?  @map("impuesto_nombre") @db.VarChar(100)
   vigenciaDias        Int?     @map("vigencia_dias")
+  /// Plantillas de alcance, condiciones y exclusiones (TEXTO_* de 17 CONFIG; módulo 13, ADR-0017):
+  /// se COPIAN al borrador al crear una cotización; los tres o ninguno.
+  textoAlcance        String?  @map("texto_alcance") @db.VarChar(2000)
+  textoCondiciones    String?  @map("texto_condiciones") @db.VarChar(2000)
+  textoExclusiones    String?  @map("texto_exclusiones") @db.VarChar(2000)
+  /// Concurrencia optimista de la edición (B-38).
+  revision            Int      @default(0)
+  /// `null` = carga DEMO o migración (sin persona).
+  modificadoPor       String?  @map("modificado_por") @db.Uuid
+  modificadoEn        DateTime @default(now()) @map("modificado_en") @db.Timestamptz(3)
 
   organizacion Organizacion @relation(fields: [organizacionId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  modificador  Membresia?   @relation("ParametrosModificadosPor", fields: [organizacionId, modificadoPor], references: [organizacionId, usuarioId], onDelete: Restrict, onUpdate: Restrict, map: "parametros_modificado_por_fk")
 
   @@map("parametros_calculo")
 }
@@ -412,16 +423,19 @@ model TipoAdicional {
 
 /// Persona con acceso. Es global: la organización la aporta la pertenencia (membresia).
 model Usuario {
-  id                   String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  id                         String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   /// Normalizado (minúsculas, sin espacios en los extremos; CHECK en la migración).
-  correo               String   @unique @db.VarChar(254)
-  nombre               String   @db.VarChar(200)
+  correo                     String    @unique @db.VarChar(254)
+  nombre                     String    @db.VarChar(200)
   /// Cadena PHC de Argon2id (CHECK en la migración). Nunca sale de la API.
-  hashContrasena       String   @map("hash_contrasena") @db.Text
-  activo               Boolean  @default(true)
-  esDemo               Boolean  @map("es_demo")
-  creadoEn             DateTime @default(now()) @map("creado_en") @db.Timestamptz(3)
-  contrasenaCambiadaEn DateTime @default(now()) @map("contrasena_cambiada_en") @db.Timestamptz(3)
+  hashContrasena             String    @map("hash_contrasena") @db.Text
+  activo                     Boolean   @default(true)
+  esDemo                     Boolean   @map("es_demo")
+  creadoEn                   DateTime  @default(now()) @map("creado_en") @db.Timestamptz(3)
+  contrasenaCambiadaEn       DateTime  @default(now()) @map("contrasena_cambiada_en") @db.Timestamptz(3)
+  /// Módulo 13 (ADR-0017): la contraseña vigente es temporal (alta o restablecimiento) y caduca en este
+  /// instante; `null` = contraseña definitiva. Con temporal, la sesión solo permite cambiarla.
+  contrasenaTemporalExpiraEn DateTime? @map("contrasena_temporal_expira_en") @db.Timestamptz(3)
 
   membresias Membresia[]
 
@@ -437,6 +451,10 @@ model Membresia {
   funciones      String[] @db.VarChar(20)
   activa         Boolean  @default(true)
   creadaEn       DateTime @default(now()) @map("creada_en") @db.Timestamptz(3)
+  /// Módulo 13 (ADR-0017): concurrencia optimista y autoría de la administración de personas.
+  revision       Int      @default(0)
+  modificadaPor  String?  @map("modificada_por") @db.Uuid
+  modificadaEn   DateTime @default(now()) @map("modificada_en") @db.Timestamptz(3)
 
   organizacion Organizacion @relation(fields: [organizacionId], references: [id], onDelete: Restrict, onUpdate: Restrict)
   usuario      Usuario      @relation(fields: [usuarioId], references: [id], onDelete: Restrict, onUpdate: Restrict)
@@ -487,6 +505,10 @@ model Membresia {
   componentesModificados     Componente[]             @relation("ComponenteModificadoPor")
   tiposEstructuraCreados     TipoEstructura[]         @relation("TipoEstructuraCreadoPor")
   tiposEstructuraModificados TipoEstructura[]         @relation("TipoEstructuraModificadoPor")
+  // Parámetros y personas (módulo 13, ADR-0017).
+  parametrosModificados      ParametrosCalculo[]      @relation("ParametrosModificadosPor")
+  modificador                Membresia?               @relation("MembresiaModificadaPor", fields: [organizacionId, modificadaPor], references: [organizacionId, usuarioId], onDelete: Restrict, onUpdate: Restrict, map: "membresia_modificada_por_fk")
+  membresiasModificadas      Membresia[]              @relation("MembresiaModificadaPor")
 
   @@unique([organizacionId, usuarioId])
   @@index([usuarioId])

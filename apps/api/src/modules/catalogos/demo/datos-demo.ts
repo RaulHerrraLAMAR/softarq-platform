@@ -23,12 +23,18 @@
  * verificados del motor (__tests__/fixtures/catalogo-demo.ts) para detectar desviaciones.
  */
 
+import { TEXTOS_DEMO } from "../../cotizaciones/dominio/textos.js";
+
 export const ORGANIZACION_DEMO = {
   codigo: "DEMO",
   nombre: "[DEMO] Organización de demostración (ficticia)",
 } as const;
 
-/** tblParametros con AMBIENTE = DEMO (DEMO_RECARGO_PCT, DEMO_IMP_*), Word §3.6. */
+/**
+ * tblParametros con AMBIENTE = DEMO (DEMO_RECARGO_PCT, DEMO_IMP_*, DEMO_TEXTO_*), Word §3.6. Los
+ * textos son las plantillas que la carga guarda al CREAR una organización (módulo 13); nunca
+ * sobrescriben las editadas.
+ */
 export const PARAMETROS_DEMO = {
   ambiente: "DEMO",
   moneda: "MXN",
@@ -38,6 +44,7 @@ export const PARAMETROS_DEMO = {
   impuestoTratamiento: "Ilustrativo: impuesto sobre el subtotal de venta",
   impuestoNombre: "Impuesto (tasa ilustrativa)",
   vigenciaDias: 15,
+  textos: TEXTOS_DEMO,
 } as const;
 
 /**

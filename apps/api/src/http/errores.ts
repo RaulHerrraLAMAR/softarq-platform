@@ -156,6 +156,10 @@ const ESTADO_NEGOCIO: Record<CodigoNegocio, number> = {
   CONCEPTO_INCOMPLETO: 422,
   REQUISITOS_INCOMPLETOS: 422,
   CONFLICTO_APROBACION: 409,
+  // Módulo 13 (ADR-0017).
+  CORREO_EXISTENTE: 409,
+  ULTIMO_ADMINISTRADOR: 422,
+  AUTOPROTECCION: 422,
 };
 
 export function traducirError(error: unknown): ErrorApi {

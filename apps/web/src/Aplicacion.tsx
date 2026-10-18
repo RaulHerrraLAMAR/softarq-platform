@@ -13,6 +13,8 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Calculadora } from "./App.tsx";
 import type { ServiciosApi } from "./api/servicios.ts";
 import type { ServiciosCotizaciones } from "./api/servicios-cotizaciones.ts";
+import { PantallaAdministracion, PantallaPersona } from "./administracion/PantallasAdministracion.tsx";
+import type { ServiciosAdministracion } from "./administracion/servicios.ts";
 import { PantallaCatalogo } from "./catalogo-admin/PantallasCatalogo.tsx";
 import type { ServiciosCatalogoAdmin } from "./catalogo-admin/servicios.ts";
 import { Aviso, Boton } from "./comunes/componentes.tsx";
@@ -33,6 +35,8 @@ export interface PropsAplicacion {
   cotizaciones: ServiciosCotizaciones;
   /** Administración de catálogos (módulo 11): solo se usa con `catalogos.administrar`. */
   catalogoAdmin: ServiciosCatalogoAdmin;
+  /** Parámetros y personas (módulo 13): solo con `parametros.administrar` / `personas.administrar`. */
+  administracion: ServiciosAdministracion;
   barraSesion: ReactNode;
   motivoSinCalculo: string | null;
 }
@@ -57,12 +61,15 @@ const SECCIONES: { ruta: Ruta; texto: string; seccion: NonNullable<ReturnType<ty
 /** Solo con `catalogos.administrar` (Administrador del catálogo); la API lo exige de todos modos. */
 const SECCION_CATALOGO = { ruta: { pantalla: "catalogo", vista: "proveedores" } as Ruta, texto: "Catálogo", seccion: "catalogo" as const };
 
-function Navegacion({ ruta, puedeAdministrarCatalogo }: { ruta: Ruta; puedeAdministrarCatalogo: boolean }) {
+/** Solo con `parametros.administrar` o `personas.administrar` (Administrador del sistema, módulo 13). */
+const SECCION_ADMINISTRACION = { ruta: { pantalla: "administracion", vista: "parametros" } as Ruta, texto: "Administración", seccion: "administracion" as const };
+
+function Navegacion({ ruta, puedeAdministrarCatalogo, puedeAdministrarSistema }: { ruta: Ruta; puedeAdministrarCatalogo: boolean; puedeAdministrarSistema: boolean }) {
   const actual = seccionDe(ruta);
   return (
     <nav className="navegacion" aria-label="Secciones">
       <ul>
-        {[...SECCIONES, ...(puedeAdministrarCatalogo ? [SECCION_CATALOGO] : [])].map((s) => (
+        {[...SECCIONES, ...(puedeAdministrarCatalogo ? [SECCION_CATALOGO] : []), ...(puedeAdministrarSistema ? [SECCION_ADMINISTRACION] : [])].map((s) => (
           <li key={s.seccion}>
             <Enlace a={s.ruta} className="navegacion-enlace" actual={actual === s.seccion}>
               {s.texto}
@@ -74,7 +81,7 @@ function Navegacion({ ruta, puedeAdministrarCatalogo }: { ruta: Ruta; puedeAdmin
   );
 }
 
-function Contenido({ sesion, servicios, cotizaciones, catalogoAdmin, barraSesion, motivoSinCalculo }: PropsAplicacion) {
+function Contenido({ sesion, servicios, cotizaciones, catalogoAdmin, administracion, barraSesion, motivoSinCalculo }: PropsAplicacion) {
   const { ruta, pendiente, confirmarSalida, cancelarSalida, navegar } = useRuta();
   const puede = (c: Capacidad) => sesion.capacidades.includes(c);
   const puedePreparar = puede("cotizaciones.preparar");
@@ -83,6 +90,8 @@ function Contenido({ sesion, servicios, cotizaciones, catalogoAdmin, barraSesion
   const puedeEmitir = puede("emisiones.emitir");
   const puedeVerExcepciones = puede("excepciones.consultar");
   const puedeAdministrarCatalogo = puede("catalogos.administrar");
+  const puedeParametros = puede("parametros.administrar");
+  const puedePersonas = puede("personas.administrar");
   const [capturaPendiente, setCapturaPendiente] = useState<CapturaBorrador | null>(null);
   const editorCalculadora = useCaptura(servicios);
 
@@ -147,6 +156,14 @@ function Contenido({ sesion, servicios, cotizaciones, catalogoAdmin, barraSesion
             </Aviso>
           </Pagina>
         );
+      case "administracion":
+        return (ruta.vista === "parametros" ? puedeParametros : puedePersonas) ? (
+          <PantallaAdministracion servicios={administracion} vista={ruta.vista} />
+        ) : (
+          <SinPermisoAdministracion />
+        );
+      case "persona":
+        return puedePersonas ? <PantallaPersona servicios={administracion} id={ruta.id} correoPropio={sesion.usuario.correo} /> : <SinPermisoAdministracion />;
       case "revisiones":
         return <BandejaRevisiones servicios={cotizaciones} />;
       case "revision":
@@ -171,7 +188,7 @@ function Contenido({ sesion, servicios, cotizaciones, catalogoAdmin, barraSesion
   })();
 
   return (
-    <Marco barraSesion={barraSesion} navegacion={<Navegacion ruta={ruta} puedeAdministrarCatalogo={puedeAdministrarCatalogo} />} pie="SoftArq · entorno DEMO local. Datos ilustrativos, sin validez comercial.">
+    <Marco barraSesion={barraSesion} navegacion={<Navegacion ruta={ruta} puedeAdministrarCatalogo={puedeAdministrarCatalogo} puedeAdministrarSistema={puedeParametros || puedePersonas} />} pie="SoftArq · entorno DEMO local. Datos ilustrativos, sin validez comercial.">
       {pendiente ? (
         <div className="aviso-salida">
           <Aviso tono="aviso" titulo="Hay cambios sin guardar" rol="alert">
@@ -216,6 +233,16 @@ function SinPermiso() {
     <Pagina titulo="Sin permiso">
       <Aviso tono="info" titulo="Su función no permite crear cotizaciones">
         <p>En el libro de la fase 1, la cotización la prepara el Preparador. Puede consultar las cotizaciones existentes.</p>
+      </Aviso>
+    </Pagina>
+  );
+}
+
+function SinPermisoAdministracion() {
+  return (
+    <Pagina titulo="Sin permiso">
+      <Aviso tono="info" titulo="Su función no administra parámetros ni personas">
+        <p>En el libro de la fase 1, los parámetros y las personas los administra el Administrador del sistema.</p>
       </Aviso>
     </Pagina>
   );

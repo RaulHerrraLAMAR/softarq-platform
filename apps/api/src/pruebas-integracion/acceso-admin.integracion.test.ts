@@ -2,7 +2,9 @@
  * Acceso real a la administración del catálogo por función y ruta (pendiente del módulo 11).
  *
  * Recorre TODAS las rutas `/api/v1/admin/...` que documenta OpenAPI (así cubre también las de módulos
- * posteriores) con Preparador, Revisor y Administrador del sistema: siempre 403 y ninguna escritura.
+ * posteriores). Preparador y Revisor: siempre 403 y ninguna escritura. Desde el módulo 13 (ADR-0017)
+ * las rutas se reparten: las del catálogo son del Administrador del catálogo y las de parámetros y
+ * personas, del Administrador del sistema; cada uno recibe 403 en las del otro.
  * Con un Administrador de otra organización, un código ajeno responde 404. Además comprueba en
  * respuestas REALES (no solo en los esquemas) que los contratos comerciales no traen datos técnicos
  * ni importes internos del catálogo.
@@ -41,7 +43,11 @@ const CODIGO_POR_SEGMENTO: Record<string, string> = {
   "tipos-estructura": "TES-00001",
   componentes: "CMP-00001",
   conversiones: "m",
+  personas: "00000000-0000-4000-8000-000000000000",
 };
+
+/** Rutas del Administrador del sistema (módulo 13); el resto de `/admin` es del catálogo. */
+const esDelSistema = (ruta: string) => /^\/api\/v1\/admin\/(parametros|personas)(\/|$)/.test(ruta);
 
 function rutasAdmin(): { metodo: string; ruta: string }[] {
   const doc = construirDocumentoOpenApi() as { paths: Record<string, Record<string, unknown>> };
@@ -62,7 +68,9 @@ async function huellaCatalogo(): Promise<string> {
       (SELECT count(*) FROM proveedor), (SELECT count(*) FROM producto), (SELECT count(*) FROM precio),
       (SELECT count(*) FROM tarifa_mano_obra), (SELECT count(*) FROM insumo), (SELECT count(*) FROM concepto),
       (SELECT count(*) FROM componente), (SELECT count(*) FROM bitacora),
-      (SELECT coalesce(sum(revision), 0) FROM proveedor), (SELECT string_agg(estado || coalesce(tarifa_id::text, ''), ',' ORDER BY id) FROM concepto)
+      (SELECT coalesce(sum(revision), 0) FROM proveedor), (SELECT string_agg(estado || coalesce(tarifa_id::text, ''), ',' ORDER BY id) FROM concepto),
+      (SELECT count(*) FROM usuario), (SELECT coalesce(sum(revision), 0) FROM membresia), (SELECT coalesce(sum(revision), 0) FROM parametros_calculo),
+      (SELECT count(*) FROM sesion WHERE motivo_revocacion IN ('DESACTIVADA', 'RESTABLECIMIENTO', 'CAMBIO_CONTRASENA'))
     )::text AS f`;
   return f!.f;
 }
@@ -131,11 +139,30 @@ describe("acceso real a /admin por función y ruta", () => {
     expect(rutas.some((r) => r.metodo === "PATCH")).toBe(true);
   });
 
-  it("Preparador, Revisor y Administrador del sistema reciben 403 en TODAS las rutas /admin y no escriben nada", async () => {
+  it("OpenAPI incluye las rutas del Administrador del sistema (parámetros y personas)", () => {
+    const sistema = rutasAdmin().filter((r) => esDelSistema(r.ruta));
+    expect(sistema.map((r) => `${r.metodo} ${r.ruta.replace(CODIGO_POR_SEGMENTO.personas!, "{id}")}`).sort()).toEqual([
+      "GET /api/v1/admin/parametros",
+      "GET /api/v1/admin/personas",
+      "GET /api/v1/admin/personas/{id}",
+      "PATCH /api/v1/admin/parametros",
+      "PATCH /api/v1/admin/personas/{id}",
+      "POST /api/v1/admin/personas",
+      "POST /api/v1/admin/personas/{id}/restablecimiento",
+    ]);
+  });
+
+  it("Preparador y Revisor reciben 403 en TODAS las rutas /admin; cada Administrador, en las del otro; nadie escribe nada", async () => {
     const antes = await huellaCatalogo();
-    for (const correo of ["prep.acc@softarq.test", "rev.acc@softarq.test", "sis.acc@softarq.test"]) {
+    const casos: [string, (ruta: string) => boolean][] = [
+      ["prep.acc@softarq.test", () => true],
+      ["rev.acc@softarq.test", () => true],
+      ["sis.acc@softarq.test", (ruta) => !esDelSistema(ruta)],
+      ["admin.acc@softarq.test", esDelSistema],
+    ];
+    for (const [correo, prohibida] of casos) {
       const c = await entrar(correo);
-      for (const { metodo, ruta } of rutasAdmin()) {
+      for (const { metodo, ruta } of rutasAdmin().filter((r) => prohibida(r.ruta))) {
         const r = await c.solicitar(metodo, ruta, metodo === "GET" ? {} : { cuerpo: {}, cabeceras: { "Idempotency-Key": randomUUID() } });
         expect(r.status, `${correo} ${metodo} ${ruta}: ${r.texto}`).toBe(403);
         expect(r.cuerpo.error.codigo).toBe("SIN_PERMISO");
@@ -146,10 +173,19 @@ describe("acceso real a /admin por función y ruta", () => {
     expect(await huellaCatalogo()).toBe(antes);
   });
 
+  it("el Administrador del sistema accede a parámetros y personas; una persona inexistente responde 404", async () => {
+    const s = await entrar("sis.acc@softarq.test");
+    for (const { ruta } of rutasAdmin().filter((r) => r.metodo === "GET" && esDelSistema(r.ruta))) {
+      const r = await s.get(ruta);
+      expect(r.status, `GET ${ruta}: ${r.texto}`).toBe(ruta.includes(CODIGO_POR_SEGMENTO.personas!) ? 404 : 200);
+      expect(r.texto).not.toMatch(/hash|argon2/i);
+    }
+  });
+
   it("el Administrador del catálogo accede; el de otra organización recibe 404 en los detalles con código", async () => {
     const a = await entrar("admin.acc@softarq.test");
     const b = await entrar("admin.accb@softarq.test");
-    for (const { metodo, ruta } of rutasAdmin().filter((r) => r.metodo === "GET")) {
+    for (const { metodo, ruta } of rutasAdmin().filter((r) => r.metodo === "GET" && !esDelSistema(r.ruta))) {
       const r = await a.get(ruta);
       expect(r.status, `${metodo} ${ruta}: ${r.texto}`).toBe(200);
     }

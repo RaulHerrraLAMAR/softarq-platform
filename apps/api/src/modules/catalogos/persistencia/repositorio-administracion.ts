@@ -43,7 +43,9 @@ export type EntidadBitacoraCatalogo =
   | "tipo_estructura"
   | "insumo"
   | "conversion"
-  | "componente";
+  | "componente"
+  | "parametros"
+  | "persona";
 
 interface Pagina {
   despuesDe?: string;

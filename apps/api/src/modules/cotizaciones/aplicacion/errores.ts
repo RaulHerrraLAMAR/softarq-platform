@@ -51,7 +51,11 @@ export type CodigoNegocio =
   | "INSUMO_CON_REFERENCIAS"
   | "CONCEPTO_INCOMPLETO"
   | "REQUISITOS_INCOMPLETOS"
-  | "CONFLICTO_APROBACION";
+  | "CONFLICTO_APROBACION"
+  // Módulo 13 (ADR-0017): parámetros y personas.
+  | "CORREO_EXISTENTE"
+  | "ULTIMO_ADMINISTRADOR"
+  | "AUTOPROTECCION";
 
 export interface DetalleError {
   campos?: { ruta: string; mensaje: string }[];
@@ -172,6 +176,16 @@ const MENSAJES: Record<string, [CodigoNegocio, string]> = {
     "El contenido técnico del concepto cambió mientras lo revisaba: revise la versión vigente antes de aprobar.",
   ],
   YA_APROBADO: ["CONFLICTO_APROBACION", "El concepto ya está aprobado."],
+  // Módulo 13 (ADR-0017): parámetros y personas.
+  CORREO_EXISTENTE: ["CORREO_EXISTENTE", "Ese correo ya está registrado. Use otro correo."],
+  ULTIMO_ADMINISTRADOR: [
+    "ULTIMO_ADMINISTRADOR",
+    "La organización debe conservar al menos un Administrador del sistema activo: asigne la función a otra persona antes.",
+  ],
+  AUTOPROTECCION: [
+    "AUTOPROTECCION",
+    "No puede retirarse su propia función de Administrador del sistema, desactivarse ni restablecer su propia contraseña: pídalo a otro Administrador o use «Cambiar mi contraseña».",
+  ],
   APROBACION_DIRECTA: ["VALOR_INVALIDO", "El concepto se aprueba con la operación Aprobar."],
 };
 

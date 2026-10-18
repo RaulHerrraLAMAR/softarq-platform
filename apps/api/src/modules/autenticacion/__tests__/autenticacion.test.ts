@@ -29,11 +29,10 @@ describe("matriz de permisos (contrastada con el libro)", () => {
 
   it("varias funciones suman capacidades sin duplicarlas y en orden estable", () => {
     // Módulo 8: `emisor.configurar` es del Administrador del sistema (17 CONFIG); módulo 11:
-    // `catalogos.administrar` es del Administrador del catálogo. Las cuatro funciones juntas suman
-    // todas las capacidades.
-    expect(capacidadesDe(["REVISOR", "PREPARADOR"])).toEqual(
-      CAPACIDADES.filter((c) => c !== "emisor.configurar" && c !== "catalogos.administrar"),
-    );
+    // `catalogos.administrar` es del Administrador del catálogo; módulo 13: parámetros y personas son
+    // del Administrador del sistema. Las cuatro funciones juntas suman todas las capacidades.
+    const deAdministradores = ["emisor.configurar", "catalogos.administrar", "parametros.administrar", "personas.administrar"];
+    expect(capacidadesDe(["REVISOR", "PREPARADOR"])).toEqual(CAPACIDADES.filter((c) => !deAdministradores.includes(c)));
     expect(capacidadesDe([...FUNCIONES_USUARIO])).toEqual([...CAPACIDADES]);
     expect(capacidadesDe([])).toEqual([]);
   });
@@ -54,6 +53,14 @@ describe("matriz de permisos (contrastada con el libro)", () => {
     // Consultar datos técnicos o decidir excepciones no concede administrar el catálogo.
     for (const f of ["PREPARADOR", "REVISOR", "ADMIN_SISTEMA"] as const) {
       expect(capacidadesDe([f])).not.toContain("catalogos.administrar");
+    }
+  });
+
+  it("parámetros y personas: solo el Administrador del sistema (BTN_Parametros y BTN_Personas exigen FN_ADMSIS, ADR-0017)", () => {
+    for (const c of ["parametros.administrar", "personas.administrar"] as const) {
+      expect(capacidadesDe(["ADMIN_SISTEMA"])).toContain(c);
+      // El Administrador del catálogo no recibe la administración de personas ni de parámetros.
+      for (const f of ["PREPARADOR", "REVISOR", "ADMIN_CATALOGO"] as const) expect(capacidadesDe([f])).not.toContain(c);
     }
   });
 

@@ -236,6 +236,16 @@ export class RepositorioEmisiones {
     });
   }
 
+  /** Plantillas TEXTO_* de la organización (módulo 13); `null` si no están definidas. */
+  async plantillaTextos(ctx: ContextoOrganizacion): Promise<{ alcance: string; condiciones: string; exclusiones: string } | null> {
+    const p = await this.db.parametrosCalculo.findUnique({
+      where: { organizacionId: ctx.organizacionId },
+      select: { textoAlcance: true, textoCondiciones: true, textoExclusiones: true },
+    });
+    if (!p || p.textoAlcance === null || p.textoCondiciones === null || p.textoExclusiones === null) return null;
+    return { alcance: p.textoAlcance, condiciones: p.textoCondiciones, exclusiones: p.textoExclusiones };
+  }
+
   async ambiente(ctx: ContextoOrganizacion): Promise<"DEMO" | "PRODUCCION" | null> {
     const p = await this.db.parametrosCalculo.findUnique({ where: { organizacionId: ctx.organizacionId }, select: { ambiente: true } });
     return p ? (p.ambiente === "DEMO" ? "DEMO" : "PRODUCCION") : null;

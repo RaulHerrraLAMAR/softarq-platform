@@ -96,7 +96,7 @@ Toda relación entre datos propios es una FK compuesta con `organizacion_id`, de
 
 | Capacidad | Endpoints | Preparador | Revisor | Adm. catálogo | Adm. sistema | Fuente en el libro |
 |---|---|---|---|---|---|---|
-| `sesion.propia` | `GET` y `DELETE /api/v1/auth/sesion` | ✓ | ✓ | ✓ | ✓ | — |
+| `sesion.propia` | `GET` y `DELETE /api/v1/auth/sesion`; módulo 13: `POST /api/v1/auth/contrasena` (cambio propio) | ✓ | ✓ | ✓ | ✓ | — ⁴ |
 | `catalogos.consultar` | `GET /api/v1/catalogos/*` | ✓ | ✓ | ✓ | ✓ | Las hojas de catálogo se abren sin función |
 | `calculo.ejecutar` | `POST /api/v1/calculos/demo` | ✓ | ✗ | ✗ | ✗ | `BTN_Calcular` exige `Req_Funcion FN_PREP` (`modMotor.bas`) |
 | `clientes.consultar` | `GET /clientes`, `/clientes/{id}`, `/proyectos`, `/proyectos/{id}` | ✓ | ✓ | ✓ | ✓ | Las hojas 01 CLIENTES y 02 PROYECTOS se abren sin función |
@@ -122,6 +122,9 @@ Toda relación entre datos propios es una FK compuesta con `organizacion_id`, de
 | `cotizaciones.consultar` | `GET /cotizaciones/{id}/versiones/{n}/verificacion` (si el catálogo cambió después del cálculo; sin importes) | ✓ | ✓ | ✓ | ✓ | Módulo 11: misma verificación que al enviar (`Validar`), de solo lectura |
 | `catalogos.administrar` | `GET`, `POST` y `PATCH /api/v1/admin/{proveedores,productos,precios,tarifas}`; `POST /admin/precios/{c}/anulacion` y `/cierre-vigencia`; `GET /admin/unidades`; módulo 12: `GET`, `POST` y `PATCH /admin/{tipos-estructura,insumos,conceptos}`, `POST /admin/insumos/{c}/conversiones`, `PATCH /admin/insumos/{c}/conversiones/{u}`, `POST /admin/conceptos/{c}/{tarifa,aprobacion,componentes}`, `PATCH /admin/conceptos/{c}/componentes/{k}` | ✗ | ✗ | ✓ ³ | ✗ | `Cat_RequiereFuncion` y `BTN_PrecioAnular`: `Req_Funcion FN_ADMCAT` (módulo 11, ADR-0015) |
 
+| `parametros.administrar` | `GET` y `PATCH /api/v1/admin/parametros` | ✗ | ✗ | ✗ | ✓ | `BTN_Parametros`, `Param_Guardar`: `Req_Funcion FN_ADMSIS` (módulo 13, ADR-0017) |
+| `personas.administrar` | `GET` y `POST /admin/personas`; `GET` y `PATCH /admin/personas/{id}`; `POST /admin/personas/{id}/restablecimiento` | ✗ | ✗ | ✗ | ✓ | `BTN_Personas`, `Persona_Guardar`: `Req_Funcion FN_ADMSIS` (módulo 13, ADR-0017) |
+
 ¹ Por identidad, además de la capacidad: un Revisor no emite una versión que él preparó. Y siempre hace falta una aprobación vigente de esa versión, hecha por una persona distinta de su autor. Poder emitir no concede aprobar.
 
 **BL-17 no es una capacidad:** quien aprueba no puede ser el autor de la versión (identidad), aunque tenga o reciba después la función Revisor. Lo comprueban la API, la función de la base y un CHECK (ADR-0009 §5).
@@ -130,7 +133,9 @@ Toda relación entre datos propios es una FK compuesta con `organizacion_id`, de
 
 ³ Además, cada función de la base vuelve a exigir la función Administrador del catálogo en la pertenencia vigente (`softarq_exigir_funcion`): si se pierde durante la sesión, 403 sin escribir. Consultar datos técnicos o decidir excepciones no concede administrar el catálogo.
 
-**Previsto para módulos posteriores** (no implementado): insumos y conversiones, conceptos y componentes y aprobar conceptos (Administrador del catálogo); parámetros distintos del emisor y personas (Administrador del sistema).
+⁴ Con una contraseña temporal vigente, la sesión solo tiene `sesion.propia`, y la guardia solo admite consultar la sesión, cambiar la contraseña y cerrar la sesión (403 `CAMBIO_CONTRASENA_REQUERIDO` en todo lo demás; ADR-0017 §2.1).
+
+Desde el módulo 13, cada función queda con su propia administración: el Administrador del catálogo no administra parámetros ni personas, y el Administrador del sistema no administra el catálogo. Una persona puede tener ambas funciones.
 
 ## 7. Clientes, proyectos y cotizaciones (módulo 6, ADR-0008)
 
@@ -231,3 +236,17 @@ Las versiones, aprobaciones, emisiones y PDF no cambian por la administración. 
 | `Concepto_Problemas` | La misma lista, más la convertibilidad de cada componente (la exige el motor) |
 | `Concepto_Aprobar` (cualquier `FN_ADMCAT`) | Igual, ligado a la revisión técnica revisada (409 si cambió) |
 | Conceptos cargados sin tipo ni regla | No existen en el libro: marca `heredado` transitoria para los cinco conceptos de la carga anterior |
+
+## 14. Parámetros, personas y permisos efectivos (módulo 13, ADR-0017)
+
+| Tabla | Cambio | Notas |
+|---|---|---|
+| `parametros_calculo` | `texto_alcance`, `texto_condiciones`, `texto_exclusiones` (los tres o ninguno), `revision`, `modificado_por/en` | Plantillas: se COPIAN a cada cotización nueva; el borrador las edita y la versión las congela. Ambiente y moneda no se editan. Se edita con `softarq_editar_parametros` (bitácora `PARAMETROS_EDITADOS` con anterior y nuevo) |
+| `usuario` | `contrasena_temporal_expira_en` (`null` = sin temporal) | Correo global, único y no editable. Solo hash Argon2id; la temporal nunca se guarda en claro |
+| `membresia` | `revision`, `modificada_por/en`; disparador del último Administrador del sistema | Funciones y `activa` por organización. Altas y cambios solo con funciones SECURITY DEFINER; la aplicación no tiene INSERT ni UPDATE |
+| `bitacora` | Entidades `parametros` y `persona` | `PERSONA_CREADA`, `_EDITADA`, `_FUNCIONES` (anteriores y nuevas), `_DESACTIVADA`, `_REACTIVADA`, `_CONTRASENA_RESTABLECIDA`, `_CONTRASENA_CAMBIADA`; nunca credenciales |
+| `idempotencia` | Recurso `persona` | El reintento del alta o del restablecimiento no genera otra contraseña ni la devuelve |
+
+**Revocación de sesiones:** desactivar revoca las de la persona en esa organización; restablecer y el cambio propio revocan todas; retirar funciones no revoca, pero surte efecto en la petición siguiente.
+
+**Permisos efectivos del rol de la aplicación:** matriz de garantías y capacidad residual en ADR-0017 §4. Sin UPDATE en `organizacion` ni `tipo_adicional`; en `parametros_calculo` solo las columnas editables; aprobar conceptos solo dentro de funciones DEFINER. Límite no resuelto: las funciones confían en el usuario que reciben.

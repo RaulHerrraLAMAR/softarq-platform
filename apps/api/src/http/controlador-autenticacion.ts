@@ -4,13 +4,17 @@
  * - `POST /api/v1/auth/sesion` (sesión previa + CSRF): inicio de sesión con correo y contraseña.
  * - `GET  /api/v1/auth/sesion`: identidad, organización, funciones, capacidades y token CSRF.
  * - `DELETE /api/v1/auth/sesion` (CSRF): cierre de sesión (revocación en la base).
+ * - `POST /api/v1/auth/contrasena` (CSRF): cambio propio (obligatorio con una contraseña temporal;
+ *   módulo 13, ADR-0017). Revoca todas las sesiones de la persona: hay que volver a entrar.
  *
  * Nunca se registran el cuerpo, el correo, la contraseña, la cookie ni los tokens.
  */
 import { Body, Controller, Delete, Get, HttpCode, Inject, Logger, Post, Req, Res } from "@nestjs/common";
 import { SkipThrottle } from "@nestjs/throttler";
 import {
+  EsquemaCambioContrasena,
   EsquemaSolicitudAcceso,
+  type CambioContrasena,
   type RespuestaCsrf,
   type RespuestaSesion,
   type SolicitudAcceso,
@@ -26,7 +30,7 @@ import type {
 import { sesionDe } from "./contexto.js";
 import { borrarCookieSesion, escribirCookieSesion, leerCookieSesion } from "./cookies.js";
 import { ErrorApi, solicitudIdDe } from "./errores.js";
-import { ConSesionPrevia, Publico, Requiere, sesionPreviaDe } from "./guardia-sesion.js";
+import { ConSesionPrevia, PermitidaConCambioPendiente, Publico, Requiere, sesionPreviaDe } from "./guardia-sesion.js";
 import { CONFIGURACION, RELOJ_SESIONES, SERVICIO_AUTENTICACION } from "./tokens.js";
 
 export function presentarSesion(s: ContextoSesion, csrfToken: string): RespuestaSesion {
@@ -38,6 +42,7 @@ export function presentarSesion(s: ContextoSesion, csrfToken: string): Respuesta
     expiraEn: s.expiraEn.toISOString(),
     inactividadMinutos: POLITICA_SESION.inactividadMs / 60_000,
     csrfToken,
+    cambioContrasenaRequerido: s.cambioContrasenaRequerido,
   };
 }
 
@@ -85,6 +90,9 @@ export class AutenticacionController {
       case "CREDENCIALES_INVALIDAS":
         this.registro?.log(`[${id}] ACCESO_FALLO`);
         throw new ErrorApi(401, "CREDENCIALES_INVALIDAS", "Correo o contraseña incorrectos.");
+      case "TEMPORAL_CADUCADA":
+        this.registro?.log(`[${id}] ACCESO_TEMPORAL_CADUCADA`);
+        throw new ErrorApi(401, "CONTRASENA_TEMPORAL_CADUCADA", "La contraseña temporal caducó. Pida al Administrador del sistema un restablecimiento.");
       case "CORRECTO":
         escribirCookieSesion(res, r.tokens.tokenSesion, r.tokens.expiraEn, this.reloj.ahora());
         this.registro?.log(`[${id}] ACCESO_OK`);
@@ -94,6 +102,7 @@ export class AutenticacionController {
 
   @Get("sesion")
   @Requiere("sesion.propia")
+  @PermitidaConCambioPendiente()
   consultar(@Req() req: Request): RespuestaSesion {
     const s = sesionDe(req);
     return presentarSesion(s, this.servicio.csrfDe(s.sesionId));
@@ -102,9 +111,42 @@ export class AutenticacionController {
   @Delete("sesion")
   @HttpCode(204)
   @Requiere("sesion.propia")
+  @PermitidaConCambioPendiente()
   async cerrar(@Req() req: Request, @Res({ passthrough: true }) res: Response): Promise<void> {
     await this.servicio.cerrarSesion(sesionDe(req).sesionId);
     borrarCookieSesion(res);
     this.registro?.log(`[${solicitudIdDe(res)}] CIERRE`);
+  }
+
+  /**
+   * Cambio propio de contraseña. Nunca se registran las contraseñas. La respuesta borra la cookie: la
+   * base ya revocó todas las sesiones de la persona y hay que entrar con la contraseña nueva.
+   */
+  @Post("contrasena")
+  @HttpCode(204)
+  @Requiere("sesion.propia")
+  @PermitidaConCambioPendiente()
+  async cambiarContrasena(
+    @Req() req: Request,
+    @Res({ passthrough: true }) res: Response,
+    @Body({ schema: EsquemaCambioContrasena }) c: CambioContrasena,
+  ): Promise<void> {
+    const r = await this.servicio.cambiarContrasena(sesionDe(req), c.actual, c.nueva, ipDe(req));
+    const id = solicitudIdDe(res);
+    switch (r.estado) {
+      case "LIMITE":
+        res.setHeader("Retry-After", String(r.reintentarEnSegundos));
+        throw new ErrorApi(429, "DEMASIADAS_SOLICITUDES", "Demasiados intentos; espere antes de volver a intentarlo.");
+      case "ACTUAL_INCORRECTA":
+        this.registro?.log(`[${id}] CAMBIO_CONTRASENA_FALLO`);
+        throw new ErrorApi(422, "CONTRASENA_ACTUAL_INCORRECTA", "La contraseña actual no es correcta.", {
+          campos: [{ ruta: "actual", mensaje: "La contraseña actual no es correcta." }],
+        });
+      case "TEMPORAL_CADUCADA":
+        throw new ErrorApi(401, "CONTRASENA_TEMPORAL_CADUCADA", "La contraseña temporal caducó. Pida al Administrador del sistema un restablecimiento.");
+      case "CAMBIADA":
+        borrarCookieSesion(res);
+        this.registro?.log(`[${id}] CAMBIO_CONTRASENA`);
+    }
   }
 }

@@ -7,7 +7,9 @@
  *   en la base; nada de esto procede del cliente;
  * - un acceso fallido no revela si la cuenta existe, está inactiva o la contraseña es incorrecta;
  * - al autenticar se emite siempre un token nuevo y se revoca la sesión previa;
- * - la desactivación del usuario o de su pertenencia afecta a la siguiente solicitud.
+ * - la desactivación del usuario o de su pertenencia afecta a la siguiente solicitud;
+ * - módulo 13 (ADR-0017): con una contraseña temporal la sesión queda restringida (solo consultar la
+ *   sesión, cambiar la contraseña y cerrar); una temporal caducada no permite entrar.
  */
 import type { Capacidad, FuncionUsuario } from "@softarq/contracts";
 import { capacidadesDe } from "../dominio/capacidades.js";
@@ -33,6 +35,8 @@ export interface ContextoSesion {
   readonly funciones: readonly FuncionUsuario[];
   readonly capacidades: readonly Capacidad[];
   readonly expiraEn: Date;
+  /** Contraseña temporal pendiente de cambio: la guardia solo deja las rutas del cambio. */
+  readonly cambioContrasenaRequerido: boolean;
 }
 
 export interface SesionPrevia {
@@ -55,6 +59,13 @@ export type ResultadoResolucion<T> =
 export type ResultadoAcceso =
   | { estado: "CORRECTO"; tokens: TokensEmitidos; contexto: ContextoSesion }
   | { estado: "CREDENCIALES_INVALIDAS" }
+  | { estado: "TEMPORAL_CADUCADA" }
+  | { estado: "LIMITE"; reintentarEnSegundos: number };
+
+export type ResultadoCambioContrasena =
+  | { estado: "CAMBIADA" }
+  | { estado: "ACTUAL_INCORRECTA" }
+  | { estado: "TEMPORAL_CADUCADA" }
   | { estado: "LIMITE"; reintentarEnSegundos: number };
 
 export class ServicioAutenticacion {
@@ -117,6 +128,11 @@ export class ServicioAutenticacion {
     }
 
     const ahora = this.reloj.ahora();
+    // La contraseña era correcta, así que informar la caducidad no revela si la cuenta existe.
+    if (datos.temporalExpiraEn !== null && datos.temporalExpiraEn.getTime() <= ahora.getTime()) {
+      this.limitador.registrarExito(cuenta, ip);
+      return { estado: "TEMPORAL_CADUCADA" };
+    }
     const sesion = generarToken();
     const expiraEn = new Date(ahora.getTime() + POLITICA_SESION.absolutaMs);
     const id = await this.repo.reemplazar(
@@ -166,6 +182,7 @@ export class ServicioAutenticacion {
     }
 
     if (debeActualizarActividad(s.ultimaActividadEn, ahora)) await this.repo.registrarActividad(s.id, ahora);
+    const restringida = t.temporalExpiraEn !== null;
     return {
       estado: "VIGENTE",
       sesion: {
@@ -173,8 +190,11 @@ export class ServicioAutenticacion {
         usuario: { id: t.usuarioId, nombre: t.nombre, correo: t.correo },
         organizacion: t.organizacion,
         funciones: t.funciones,
-        capacidades: capacidadesDe(t.funciones),
+        // Con la temporal pendiente no se concede ninguna capacidad de trabajo, aunque la guardia
+        // ya limite las rutas: el cliente no puede deducir permisos de las funciones.
+        capacidades: restringida ? ["sesion.propia"] : capacidadesDe(t.funciones),
         expiraEn: s.expiraEn,
+        cambioContrasenaRequerido: restringida,
       },
     };
   }
@@ -187,6 +207,31 @@ export class ServicioAutenticacion {
   /** `true` si el token CSRF recibido corresponde a la sesión. */
   csrfValido(recibido: unknown, sesionId: string): boolean {
     return this.csrf.esValido(recibido, sesionId);
+  }
+
+  /**
+   * Cambio propio de contraseña (módulo 13, ADR-0017): exige la actual (también la temporal vigente),
+   * con el mismo limitador que el acceso. Al terminar, la base revoca TODAS las sesiones de la persona
+   * (incluida la actual): hay que volver a entrar con la contraseña nueva.
+   */
+  async cambiarContrasena(s: ContextoSesion, actual: string, nueva: string, ip: string): Promise<ResultadoCambioContrasena> {
+    const cuenta = normalizarCorreo(s.usuario.correo);
+    const limite = this.limitador.comprobar(cuenta, ip);
+    if (!limite.permitido) return { estado: "LIMITE", reintentarEnSegundos: limite.reintentarEnSegundos };
+    this.limitador.registrarIntento(ip);
+    const vigente = await this.repo.hashDe(s.usuario.id);
+    const coincide = vigente ? await this.contrasenas.verificar(vigente.hash, actual) : await this.contrasenas.verificarFicticio(actual);
+    if (!vigente || !coincide) {
+      this.limitador.registrarFallo(cuenta, ip);
+      return { estado: "ACTUAL_INCORRECTA" };
+    }
+    if (vigente.temporalExpiraEn !== null && vigente.temporalExpiraEn.getTime() <= this.reloj.ahora().getTime()) {
+      return { estado: "TEMPORAL_CADUCADA" };
+    }
+    const hash = await this.contrasenas.crearHash(nueva);
+    await this.repo.cambiarContrasenaPropia(s.organizacion.id, s.usuario.id, hash);
+    this.limitador.registrarExito(cuenta, ip);
+    return { estado: "CAMBIADA" };
   }
 
   async cerrarSesion(sesionId: string): Promise<void> {

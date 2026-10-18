@@ -12,6 +12,8 @@ function mensajeAcceso(fallo: FalloApi): { titulo: string; texto: string } {
   switch (fallo.tipo) {
     case "credenciales":
       return { titulo: "No se pudo iniciar sesión", texto: "Correo o contraseña incorrectos. Revise los datos e inténtelo de nuevo." };
+    case "temporal_caducada":
+      return { titulo: "La contraseña temporal caducó", texto: "Pida al Administrador del sistema un restablecimiento; le entregará una contraseña temporal nueva." };
     case "limite": {
       const min = fallo.reintentarEnSegundos !== null ? Math.max(1, Math.ceil(fallo.reintentarEnSegundos / 60)) : null;
       return {
@@ -80,6 +82,10 @@ export function PantallaAcceso({
         {motivo === "vencida" ? (
           <Aviso tono="aviso" titulo="Su sesión terminó" rol="status">
             <p>Venció por inactividad o tiempo máximo, o se cerró en el servidor. Inicie sesión de nuevo; la captura anterior no se conservó.</p>
+          </Aviso>
+        ) : motivo === "contrasena_cambiada" ? (
+          <Aviso tono="correcto" titulo="Contraseña cambiada" rol="status">
+            <p>Se cerraron todas sus sesiones. Inicie sesión con su contraseña nueva.</p>
           </Aviso>
         ) : motivo === "cerrada" ? (
           <Aviso tono="correcto" titulo="Sesión cerrada" rol="status">

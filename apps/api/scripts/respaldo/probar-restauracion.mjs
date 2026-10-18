@@ -263,6 +263,62 @@ async function comprobarDestino(manifiesto) {
         registrar("catálogo técnico: registros, marcas de heredado y aprobaciones íntegros tras restaurar", a === b, `${heredados} concepto(s) heredado(s) comparados con origen (solo lectura)`);
       } finally { await origen.end(); }
     }
+    // Módulo 13 (ADR-0017): parámetros y personas. Condicional: respaldos anteriores no tienen las columnas.
+    const conPersonas = (await c.query(`SELECT count(*)::int n FROM information_schema.columns
+        WHERE table_schema='public' AND table_name='parametros_calculo' AND column_name='texto_alcance'`)).rows[0].n === 1;
+    if (conPersonas) {
+      const inconsistencias = (await c.query(`SELECT
+          (SELECT count(*) FROM parametros_calculo x WHERE (x.texto_alcance IS NULL) <> (x.texto_condiciones IS NULL) OR (x.texto_alcance IS NULL) <> (x.texto_exclusiones IS NULL))
+        + (SELECT count(*) FROM parametros_calculo x LEFT JOIN membresia m ON m.usuario_id=x.modificado_por AND m.organizacion_id=x.organizacion_id
+            WHERE x.modificado_por IS NOT NULL AND m.usuario_id IS NULL)
+        + (SELECT count(*) FROM membresia x LEFT JOIN membresia m ON m.usuario_id=x.modificada_por AND m.organizacion_id=x.organizacion_id
+            WHERE x.modificada_por IS NOT NULL AND m.usuario_id IS NULL)
+        + (SELECT count(*) FROM bitacora b WHERE b.entidad='persona' AND NOT EXISTS (SELECT 1 FROM membresia m WHERE m.usuario_id=b.entidad_id AND m.organizacion_id=b.organizacion_id))
+        + (SELECT count(*) FROM bitacora b WHERE b.entidad='parametros' AND b.entidad_id<>b.organizacion_id)
+        AS n`)).rows[0].n;
+      registrar("parámetros y personas: textos, autoría y bitácora coherentes", Number(inconsistencias) === 0, `${inconsistencias} incoherencias`);
+      const permisos = (await c.query(`SELECT
+          has_any_column_privilege('softarq_app','public.organizacion','UPDATE') organizacion,
+          has_any_column_privilege('softarq_app','public.usuario','UPDATE') usuario,
+          has_table_privilege('softarq_app','public.usuario','INSERT') alta_usuario,
+          has_any_column_privilege('softarq_app','public.membresia','UPDATE') membresia,
+          has_table_privilege('softarq_app','public.membresia','INSERT') alta_membresia,
+          has_column_privilege('softarq_app','public.parametros_calculo','ambiente','UPDATE') ambiente,
+          has_column_privilege('softarq_app','public.parametros_calculo','moneda','UPDATE') moneda,
+          has_column_privilege('softarq_app','public.parametros_calculo','texto_alcance','UPDATE') textos,
+          has_function_privilege('softarq_app','public.softarq_editar_parametros(uuid,uuid,integer,jsonb,text)','EXECUTE') parametros,
+          has_function_privilege('softarq_app','public.softarq_editar_persona(uuid,uuid,uuid,integer,jsonb,text)','EXECUTE') personas,
+          (SELECT count(*)::int FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace
+            WHERE n.nspname='public' AND p.prosecdef AND p.proname LIKE 'softarq\\_%') definer,
+          (SELECT count(*)::int FROM pg_trigger t JOIN pg_class k ON k.oid=t.tgrelid WHERE k.relname='membresia' AND NOT t.tgisinternal) disparadores`)).rows[0];
+      registrar(
+        "parámetros y personas: sin escritura directa de identidad, columnas editables mínimas, funciones y disparador restaurados",
+        !permisos.organizacion && !permisos.usuario && !permisos.alta_usuario && !permisos.membresia && !permisos.alta_membresia && !permisos.ambiente && !permisos.moneda
+          && permisos.textos && permisos.parametros && permisos.personas && permisos.definer === 6 && permisos.disparadores === 1,
+        JSON.stringify(permisos),
+      );
+      const origen = new pg.Client({ connectionString: urlRespaldo().cadena }); await origen.connect();
+      try {
+        // Comparación completa (también hashes y caducidades); solo se informa si coincide, nunca los valores.
+        const sql = `SELECT json_build_array(
+            (SELECT coalesce(json_agg(to_jsonb(x) ORDER BY x.organizacion_id), '[]') FROM parametros_calculo x),
+            (SELECT coalesce(json_agg(to_jsonb(x) ORDER BY x.id), '[]') FROM usuario x),
+            (SELECT coalesce(json_agg(to_jsonb(x) ORDER BY x.organizacion_id, x.usuario_id), '[]') FROM membresia x),
+            (SELECT coalesce(json_agg(to_jsonb(b) ORDER BY b.id), '[]') FROM bitacora b WHERE b.entidad IN ('parametros','persona'))
+          )::text AS f`;
+        const a = (await origen.query(sql)).rows[0].f, b = (await c.query(sql)).rows[0].f;
+        const r = (await c.query(`SELECT (SELECT count(*) FROM membresia)::int pertenencias,
+            (SELECT count(*) FROM usuario WHERE contrasena_temporal_expira_en IS NOT NULL)::int temporales`)).rows[0];
+        registrar("parámetros, textos, personas, funciones e historial íntegros tras restaurar", a === b, `${r.pertenencias} pertenencias comparadas con origen (solo lectura)`);
+        // Una contraseña temporal restaurada no reactiva ningún acceso: no hay sesiones activas y la
+        // temporal solo existe como hash con su caducidad (la columna nunca guarda el valor).
+        const columnas = (await c.query(`SELECT string_agg(column_name, ',' ORDER BY column_name) c FROM information_schema.columns
+            WHERE table_schema='public' AND table_name='usuario' AND column_name LIKE '%contrasena%'`)).rows[0].c;
+        const activas = (await c.query("SELECT count(*)::int n FROM sesion WHERE revocada_en IS NULL")).rows[0].n;
+        registrar("contraseñas temporales: solo hash y caducidad, sin sesiones activas", columnas === "contrasena_cambiada_en,contrasena_temporal_expira_en,hash_contrasena" && activas === 0,
+          `${r.temporales} temporal(es) pendiente(s); ${activas} sesiones activas`);
+      } finally { await origen.end(); }
+    }
     const resumen = (await c.query(`SELECT
         (SELECT count(*) FROM organizacion)::int organizaciones, (SELECT count(*) FROM usuario)::int usuarios,
         (SELECT count(*) FROM cotizacion)::int cotizaciones, (SELECT count(*) FROM cotizacion_version)::int versiones,

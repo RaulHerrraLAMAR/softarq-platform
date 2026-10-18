@@ -132,9 +132,11 @@ describe("BL-15, BL-17, BL-19 y quién emite", () => {
 describe("textos de la versión (BL-20) y vigencias con la fecha de emisión", () => {
   const vacia: CapturaBorrador = { consolidarCompras: null, partidas: [], seleccion: [] };
 
-  it("predeterminados DEMO copiados solo si la captura no trae textos; nunca en PRODUCCION", () => {
-    expect(textosPredeterminados("PRODUCCION")).toBeNull();
-    const conDemo = conTextosIniciales(vacia, textosPredeterminados("DEMO"));
+  // Módulo 13 (ADR-0017, cambio intencionado): las plantillas son de la configuración de la
+  // organización (las DEMO son su valor inicial), no del ambiente.
+  it("plantillas copiadas solo si la captura no trae textos; sin plantillas no hay predeterminados", () => {
+    expect(textosPredeterminados(null)).toBeNull();
+    const conDemo = conTextosIniciales(vacia, textosPredeterminados(TEXTOS_DEMO));
     expect(conDemo.textos).toEqual(TEXTOS_DEMO);
     expect(conDemo.textos).not.toBe(TEXTOS_DEMO); // copia, no referencia
     const propios = { alcance: "A", condiciones: "C", exclusiones: "E" };

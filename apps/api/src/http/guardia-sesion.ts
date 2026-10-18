@@ -6,6 +6,9 @@
  * - `@ConSesionPrevia()`: exige la sesión previa de la cookie y su token CSRF (inicio de sesión).
  * - Cualquier otra: exige una sesión de usuario vigente y las capacidades de `@Requiere(...)`. Una ruta
  *   sin `@Requiere` se rechaza.
+ * - Módulo 13 (ADR-0017): con una contraseña temporal pendiente de cambio solo pasan las rutas marcadas
+ *   con `@PermitidaConCambioPendiente()` (consultar la sesión, cambiar la contraseña y cerrar); el resto
+ *   responde 403 CAMBIO_CONTRASENA_REQUERIDO aunque el cliente lo intente.
  *
  * En todo método con efectos (POST, PUT, PATCH, DELETE), incluidas las rutas públicas:
  * - la cabecera `Origin` debe estar en la lista permitida (defensa además de SameSite y CORS);
@@ -22,6 +25,7 @@ import { ErrorApi, solicitudIdDe } from "./errores.js";
 
 const META_ACCESO = "softarq:acceso";
 const META_CAPACIDAD = "softarq:capacidad";
+const META_CAMBIO_PENDIENTE = "softarq:cambio-pendiente";
 const METODOS_CON_EFECTOS = new Set(["POST", "PUT", "PATCH", "DELETE"]);
 const CABECERA_CSRF_MINUSCULAS = CABECERA_CSRF.toLowerCase();
 
@@ -36,6 +40,9 @@ export const ConSesionPrevia = () => SetMetadata(META_ACCESO, "previa" satisfies
  * La del método sustituye a la del controlador.
  */
 export const Requiere = (...capacidades: [Capacidad, ...Capacidad[]]) => SetMetadata(META_CAPACIDAD, capacidades);
+
+/** Ruta que una sesión con contraseña temporal pendiente sí puede usar (módulo 13). */
+export const PermitidaConCambioPendiente = () => SetMetadata(META_CAMBIO_PENDIENTE, true);
 
 const CLAVE_PREVIA = "sesionPrevia";
 
@@ -96,6 +103,9 @@ export class GuardiaSesion implements CanActivate {
     }
     if (conEfectos && !this.servicio.csrfValido(csrf, r.sesion.sesionId)) {
       throw new ErrorApi(403, "CSRF_NO_VALIDO", "La solicitud no lleva un token CSRF válido para esta sesión.");
+    }
+    if (r.sesion.cambioContrasenaRequerido && this.reflector.getAllAndOverride<boolean | undefined>(META_CAMBIO_PENDIENTE, objetivos) !== true) {
+      throw new ErrorApi(403, "CAMBIO_CONTRASENA_REQUERIDO", "Cambie su contraseña temporal antes de continuar.");
     }
     const exigidas = this.reflector.getAllAndOverride<readonly Capacidad[] | undefined>(META_CAPACIDAD, objetivos);
     if (exigidas === undefined || exigidas.length === 0 || !exigidas.every((c) => r.sesion.capacidades.includes(c))) {

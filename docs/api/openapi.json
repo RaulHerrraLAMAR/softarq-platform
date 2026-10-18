@@ -103,6 +103,123 @@
         }
       }
     },
+    "/api/v1/auth/contrasena": {
+      "post": {
+        "summary": "Cambio propio de contraseña (obligatorio con una temporal; ADR-0017)",
+        "description": "Exige la contraseña actual, una nueva de al menos 12 caracteres distinta de la actual y su confirmación; CSRF y el limitador de accesos. Revoca TODAS las sesiones de la persona (incluida la actual) y borra la cookie: hay que volver a entrar. Con una temporal pendiente, el resto de las rutas responde 403 CAMBIO_CONTRASENA_REQUERIDO.",
+        "security": [
+          {
+            "cookieSesion": [],
+            "tokenCsrf": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CambioContrasena"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "Contraseña cambiada; sesión cerrada."
+          },
+          "400": {
+            "description": "SOLICITUD_INVALIDA: no cumple el contrato (campos con su ruta) o JSON mal formado.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "NO_AUTENTICADO (sin cookie de sesión) o SESION_NO_VALIDA (vencida, revocada o desconocida; se borra la cookie).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "SIN_PERMISO (la función no concede la capacidad), CSRF_NO_VALIDO u ORIGEN_NO_PERMITIDO.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "CUERPO_DEMASIADO_GRANDE.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "TIPO_DE_CONTENIDO_NO_ADMITIDO: el cuerpo debe ser application/json.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "CALCULO_BLOQUEADO (códigos BL, sin importes), CAPTURA_INCOMPLETA (campos pendientes), REGISTRO_INACTIVO, REFERENCIA_NO_DISPONIBLE, ENVIO_BLOQUEADO / APROBACION_BLOQUEADA (bloqueos vigentes; el estado no cambió), DECISION_BLOQUEADA (BL-17: quien aprueba no puede ser el autor), EMISION_BLOQUEADA (BL-01 a BL-20 a la fecha de emisión; nada cambió), DESCARTE_BLOQUEADO (estado que no permite descartar), FECHA_RESPUESTA_INVALIDA (anterior a emisión o futura), RESPUESTA_FUERA_VIGENCIA (recepción después del último día), EXCEPCION_INVALIDA (excepción que no corresponde a la captura, al catálogo o fuera de rango; nada se guardó), PRODUCTO_CON_PRECIOS (campos técnicos bloqueados), UNIDAD_INCOMPATIBLE (BL-06), VIGENCIA_INVALIDA, VALOR_INVALIDO, TIPO_CON_CONCEPTOS (la familia no cambia), INSUMO_CON_REFERENCIAS (la unidad base no cambia), CONCEPTO_INCOMPLETO (concepto heredado: complete tipo y regla), REQUISITOS_INCOMPLETOS (`problemas` de aprobación), IDEMPOTENCIA_CONFLICTO o IDEMPOTENCIA_CADUCADA.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "DEMASIADAS_SOLICITUDES (cabecera Retry-After).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "ERROR_INTERNO, DOCUMENTO_NO_GENERADO (no se generó o guardó el PDF; no hay emisión y se puede reintentar) o DOCUMENTO_NO_DISPONIBLE (el archivo emitido falta o no coincide con su registro; nunca se regenera).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "SERVICIO_NO_DISPONIBLE: PostgreSQL no disponible.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/auth/sesion": {
       "post": {
         "summary": "Inicia sesión con correo y contraseña (exige la sesión previa y su token CSRF)",
@@ -9812,6 +9929,868 @@
         }
       }
     },
+    "/api/v1/admin/parametros": {
+      "get": {
+        "summary": "Parámetros de venta y plantillas de textos, con el impacto en cotizaciones abiertas e historial (B-38)",
+        "description": "Contrato INTERNO del Administrador del sistema (ADR-0017): parámetros (B-38) o personas y funciones (B-39). La organización y el autor salen de la sesión. Ambiente y moneda se muestran, no se editan.",
+        "responses": {
+          "200": {
+            "description": "Parámetros.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DetalleParametros"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "NO_AUTENTICADO (sin cookie de sesión) o SESION_NO_VALIDA (vencida, revocada o desconocida; se borra la cookie).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "SIN_PERMISO (la función no concede la capacidad), CSRF_NO_VALIDO u ORIGEN_NO_PERMITIDO.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "DEMASIADAS_SOLICITUDES (cabecera Retry-After).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "ERROR_INTERNO, DOCUMENTO_NO_GENERADO (no se generó o guardó el PDF; no hay emisión y se puede reintentar) o DOCUMENTO_NO_DISPONIBLE (el archivo emitido falta o no coincide con su registro; nunca se regenera).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "SERVICIO_NO_DISPONIBLE: PostgreSQL no disponible.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "summary": "Editar recargo, impuesto, vigencia o plantillas, con motivo y revisión",
+        "description": "Contrato INTERNO del Administrador del sistema (ADR-0017): parámetros (B-38) o personas y funciones (B-39). La organización y el autor salen de la sesión. Fracciones en texto (0.2 = 20 %); null = no definido (BL-12/BL-13). Solo cálculos y cotizaciones nuevos; las versiones no cambian (BL-16 al enviar, aprobar o emitir).",
+        "security": [
+          {
+            "cookieSesion": [],
+            "tokenCsrf": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EdicionParametros"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Parámetros guardados.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DetalleParametros"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "SOLICITUD_INVALIDA: no cumple el contrato (campos con su ruta) o JSON mal formado.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "NO_AUTENTICADO (sin cookie de sesión) o SESION_NO_VALIDA (vencida, revocada o desconocida; se borra la cookie).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "SIN_PERMISO (la función no concede la capacidad), CSRF_NO_VALIDO u ORIGEN_NO_PERMITIDO.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "CONFLICTO_EDICION (revisión obsoleta; `actual` trae el estado vigente), BORRADOR_DESACTUALIZADO (el borrador cambió; no se guardó ni se envió nada), REVISION_PENDIENTE (hay una versión en revisión: no se edita ni se calcula), VERSION_NO_VIGENTE (solo se envía la última versión) CONFLICTO_REVISION (la revisión cambió o ya se decidió; `revisionVigente` trae su estado), VERSION_EMITIDA (la versión ya se emitió), APROBACION_NO_VIGENTE (la aprobación se anuló o cambió), CONFLICTO_EMISION (la versión o la aprobación vistas ya no son las vigentes), FOLIO_NO_ACTIVO (cotización descartada), CONFLICTO_RESPUESTA (cabeza comercial cambió; seguimientoVigente trae el estado actual), EMISION_SUSTITUIDA (sin primera respuesta sobre documento sustituido), CONFLICTO_EXCEPCION (otra persona ya decidió la excepción; `excepcionesVigentes` trae las decisiones vigentes), DUPLICADO (proveedor o producto ya existente; `registroVigente`), SOLAPE_VIGENCIA (precio del mismo producto y proveedor en el periodo; `registroVigente`), CONFLICTO_TARIFA (otra persona cambió la tarifa del concepto), PRECIO_ANULADO (la anulación es definitiva) o CONFLICTO_APROBACION (el contenido técnico del concepto cambió o ya se aprobó; `registroVigente`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "CUERPO_DEMASIADO_GRANDE.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "TIPO_DE_CONTENIDO_NO_ADMITIDO: el cuerpo debe ser application/json.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "CALCULO_BLOQUEADO (códigos BL, sin importes), CAPTURA_INCOMPLETA (campos pendientes), REGISTRO_INACTIVO, REFERENCIA_NO_DISPONIBLE, ENVIO_BLOQUEADO / APROBACION_BLOQUEADA (bloqueos vigentes; el estado no cambió), DECISION_BLOQUEADA (BL-17: quien aprueba no puede ser el autor), EMISION_BLOQUEADA (BL-01 a BL-20 a la fecha de emisión; nada cambió), DESCARTE_BLOQUEADO (estado que no permite descartar), FECHA_RESPUESTA_INVALIDA (anterior a emisión o futura), RESPUESTA_FUERA_VIGENCIA (recepción después del último día), EXCEPCION_INVALIDA (excepción que no corresponde a la captura, al catálogo o fuera de rango; nada se guardó), PRODUCTO_CON_PRECIOS (campos técnicos bloqueados), UNIDAD_INCOMPATIBLE (BL-06), VIGENCIA_INVALIDA, VALOR_INVALIDO, TIPO_CON_CONCEPTOS (la familia no cambia), INSUMO_CON_REFERENCIAS (la unidad base no cambia), CONCEPTO_INCOMPLETO (concepto heredado: complete tipo y regla), REQUISITOS_INCOMPLETOS (`problemas` de aprobación), IDEMPOTENCIA_CONFLICTO o IDEMPOTENCIA_CADUCADA.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "DEMASIADAS_SOLICITUDES (cabecera Retry-After).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "ERROR_INTERNO, DOCUMENTO_NO_GENERADO (no se generó o guardó el PDF; no hay emisión y se puede reintentar) o DOCUMENTO_NO_DISPONIBLE (el archivo emitido falta o no coincide con su registro; nunca se regenera).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "SERVICIO_NO_DISPONIBLE: PostgreSQL no disponible.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/admin/personas": {
+      "get": {
+        "summary": "Personas de la organización (pertenencias), con búsqueda y cursor por correo",
+        "description": "Contrato INTERNO del Administrador del sistema (ADR-0017): parámetros (B-38) o personas y funciones (B-39). La organización y el autor salen de la sesión. Nunca incluye contraseñas ni hashes.",
+        "parameters": [
+          {
+            "name": "buscar",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 60
+            }
+          },
+          {
+            "name": "incluirInactivas",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "true",
+                "false"
+              ]
+            }
+          },
+          {
+            "name": "despuesDe",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "email",
+              "pattern": "^(?:[A-Za-z0-9_'+\\-]+\\.)*[A-Za-z0-9_'+\\-]*[A-Za-z0-9_+-]@(?:[A-Za-z0-9][A-Za-z0-9\\-]*\\.)+[A-Za-z]{2,}$"
+            }
+          },
+          {
+            "name": "limite",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d{1,3}$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Página de personas.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaPersonas"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "SOLICITUD_INVALIDA: no cumple el contrato (campos con su ruta) o JSON mal formado.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "NO_AUTENTICADO (sin cookie de sesión) o SESION_NO_VALIDA (vencida, revocada o desconocida; se borra la cookie).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "SIN_PERMISO (la función no concede la capacidad), CSRF_NO_VALIDO u ORIGEN_NO_PERMITIDO.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "DEMASIADAS_SOLICITUDES (cabecera Retry-After).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "ERROR_INTERNO, DOCUMENTO_NO_GENERADO (no se generó o guardó el PDF; no hay emisión y se puede reintentar) o DOCUMENTO_NO_DISPONIBLE (el archivo emitido falta o no coincide con su registro; nunca se regenera).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "SERVICIO_NO_DISPONIBLE: PostgreSQL no disponible.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "summary": "Alta de una persona con funciones y contraseña temporal mostrada UNA vez",
+        "description": "Contrato INTERNO del Administrador del sistema (ADR-0017): parámetros (B-38) o personas y funciones (B-39). La organización y el autor salen de la sesión. Repetir la Idempotency-Key devuelve la persona sin contraseña (contrasenaEntregada: true); si se perdió, restablezca. Correo ya registrado: 409 CORREO_EXISTENTE.",
+        "security": [
+          {
+            "cookieSesion": [],
+            "tokenCsrf": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "description": "UUID de la intención (obligatorio en las altas). Repetirlo con el mismo contenido reproduce el resultado (cabecera de respuesta Idempotent-Replayed: true); con otra operación u otro contenido responde 422. Vigencia: 24 h.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SolicitudPersona"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Persona creada.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaCredencialTemporal"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "SOLICITUD_INVALIDA: no cumple el contrato (campos con su ruta) o JSON mal formado.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "NO_AUTENTICADO (sin cookie de sesión) o SESION_NO_VALIDA (vencida, revocada o desconocida; se borra la cookie).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "SIN_PERMISO (la función no concede la capacidad), CSRF_NO_VALIDO u ORIGEN_NO_PERMITIDO.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "CONFLICTO_EDICION (revisión obsoleta; `actual` trae el estado vigente), BORRADOR_DESACTUALIZADO (el borrador cambió; no se guardó ni se envió nada), REVISION_PENDIENTE (hay una versión en revisión: no se edita ni se calcula), VERSION_NO_VIGENTE (solo se envía la última versión) CONFLICTO_REVISION (la revisión cambió o ya se decidió; `revisionVigente` trae su estado), VERSION_EMITIDA (la versión ya se emitió), APROBACION_NO_VIGENTE (la aprobación se anuló o cambió), CONFLICTO_EMISION (la versión o la aprobación vistas ya no son las vigentes), FOLIO_NO_ACTIVO (cotización descartada), CONFLICTO_RESPUESTA (cabeza comercial cambió; seguimientoVigente trae el estado actual), EMISION_SUSTITUIDA (sin primera respuesta sobre documento sustituido), CONFLICTO_EXCEPCION (otra persona ya decidió la excepción; `excepcionesVigentes` trae las decisiones vigentes), DUPLICADO (proveedor o producto ya existente; `registroVigente`), SOLAPE_VIGENCIA (precio del mismo producto y proveedor en el periodo; `registroVigente`), CONFLICTO_TARIFA (otra persona cambió la tarifa del concepto), PRECIO_ANULADO (la anulación es definitiva) o CONFLICTO_APROBACION (el contenido técnico del concepto cambió o ya se aprobó; `registroVigente`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "CUERPO_DEMASIADO_GRANDE.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "TIPO_DE_CONTENIDO_NO_ADMITIDO: el cuerpo debe ser application/json.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "CALCULO_BLOQUEADO (códigos BL, sin importes), CAPTURA_INCOMPLETA (campos pendientes), REGISTRO_INACTIVO, REFERENCIA_NO_DISPONIBLE, ENVIO_BLOQUEADO / APROBACION_BLOQUEADA (bloqueos vigentes; el estado no cambió), DECISION_BLOQUEADA (BL-17: quien aprueba no puede ser el autor), EMISION_BLOQUEADA (BL-01 a BL-20 a la fecha de emisión; nada cambió), DESCARTE_BLOQUEADO (estado que no permite descartar), FECHA_RESPUESTA_INVALIDA (anterior a emisión o futura), RESPUESTA_FUERA_VIGENCIA (recepción después del último día), EXCEPCION_INVALIDA (excepción que no corresponde a la captura, al catálogo o fuera de rango; nada se guardó), PRODUCTO_CON_PRECIOS (campos técnicos bloqueados), UNIDAD_INCOMPATIBLE (BL-06), VIGENCIA_INVALIDA, VALOR_INVALIDO, TIPO_CON_CONCEPTOS (la familia no cambia), INSUMO_CON_REFERENCIAS (la unidad base no cambia), CONCEPTO_INCOMPLETO (concepto heredado: complete tipo y regla), REQUISITOS_INCOMPLETOS (`problemas` de aprobación), IDEMPOTENCIA_CONFLICTO o IDEMPOTENCIA_CADUCADA.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "DEMASIADAS_SOLICITUDES (cabecera Retry-After).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "ERROR_INTERNO, DOCUMENTO_NO_GENERADO (no se generó o guardó el PDF; no hay emisión y se puede reintentar) o DOCUMENTO_NO_DISPONIBLE (el archivo emitido falta o no coincide con su registro; nunca se regenera).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "SERVICIO_NO_DISPONIBLE: PostgreSQL no disponible.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/admin/personas/{id}": {
+      "get": {
+        "summary": "Detalle de una persona con su historial",
+        "description": "Contrato INTERNO del Administrador del sistema (ADR-0017): parámetros (B-38) o personas y funciones (B-39). La organización y el autor salen de la sesión.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Persona.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DetallePersona"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "NO_AUTENTICADO (sin cookie de sesión) o SESION_NO_VALIDA (vencida, revocada o desconocida; se borra la cookie).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "SIN_PERMISO (la función no concede la capacidad), CSRF_NO_VALIDO u ORIGEN_NO_PERMITIDO.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "NO_ENCONTRADO: ruta, id o códigos inexistentes en la organización (un id de otra organización responde igual).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "DEMASIADAS_SOLICITUDES (cabecera Retry-After).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "ERROR_INTERNO, DOCUMENTO_NO_GENERADO (no se generó o guardó el PDF; no hay emisión y se puede reintentar) o DOCUMENTO_NO_DISPONIBLE (el archivo emitido falta o no coincide con su registro; nunca se regenera).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "SERVICIO_NO_DISPONIBLE: PostgreSQL no disponible.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "summary": "Editar nombre, funciones o activación (desactivar revoca sus sesiones en la organización)",
+        "description": "Contrato INTERNO del Administrador del sistema (ADR-0017): parámetros (B-38) o personas y funciones (B-39). La organización y el autor salen de la sesión. La organización conserva un Administrador del sistema activo (422 ULTIMO_ADMINISTRADOR); nadie se retira esa función ni se desactiva (422 AUTOPROTECCION).",
+        "security": [
+          {
+            "cookieSesion": [],
+            "tokenCsrf": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EdicionPersona"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Persona guardada.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PersonaAdmin"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "SOLICITUD_INVALIDA: no cumple el contrato (campos con su ruta) o JSON mal formado.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "NO_AUTENTICADO (sin cookie de sesión) o SESION_NO_VALIDA (vencida, revocada o desconocida; se borra la cookie).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "SIN_PERMISO (la función no concede la capacidad), CSRF_NO_VALIDO u ORIGEN_NO_PERMITIDO.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "NO_ENCONTRADO: ruta, id o códigos inexistentes en la organización (un id de otra organización responde igual).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "CONFLICTO_EDICION (revisión obsoleta; `actual` trae el estado vigente), BORRADOR_DESACTUALIZADO (el borrador cambió; no se guardó ni se envió nada), REVISION_PENDIENTE (hay una versión en revisión: no se edita ni se calcula), VERSION_NO_VIGENTE (solo se envía la última versión) CONFLICTO_REVISION (la revisión cambió o ya se decidió; `revisionVigente` trae su estado), VERSION_EMITIDA (la versión ya se emitió), APROBACION_NO_VIGENTE (la aprobación se anuló o cambió), CONFLICTO_EMISION (la versión o la aprobación vistas ya no son las vigentes), FOLIO_NO_ACTIVO (cotización descartada), CONFLICTO_RESPUESTA (cabeza comercial cambió; seguimientoVigente trae el estado actual), EMISION_SUSTITUIDA (sin primera respuesta sobre documento sustituido), CONFLICTO_EXCEPCION (otra persona ya decidió la excepción; `excepcionesVigentes` trae las decisiones vigentes), DUPLICADO (proveedor o producto ya existente; `registroVigente`), SOLAPE_VIGENCIA (precio del mismo producto y proveedor en el periodo; `registroVigente`), CONFLICTO_TARIFA (otra persona cambió la tarifa del concepto), PRECIO_ANULADO (la anulación es definitiva) o CONFLICTO_APROBACION (el contenido técnico del concepto cambió o ya se aprobó; `registroVigente`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "CUERPO_DEMASIADO_GRANDE.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "TIPO_DE_CONTENIDO_NO_ADMITIDO: el cuerpo debe ser application/json.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "CALCULO_BLOQUEADO (códigos BL, sin importes), CAPTURA_INCOMPLETA (campos pendientes), REGISTRO_INACTIVO, REFERENCIA_NO_DISPONIBLE, ENVIO_BLOQUEADO / APROBACION_BLOQUEADA (bloqueos vigentes; el estado no cambió), DECISION_BLOQUEADA (BL-17: quien aprueba no puede ser el autor), EMISION_BLOQUEADA (BL-01 a BL-20 a la fecha de emisión; nada cambió), DESCARTE_BLOQUEADO (estado que no permite descartar), FECHA_RESPUESTA_INVALIDA (anterior a emisión o futura), RESPUESTA_FUERA_VIGENCIA (recepción después del último día), EXCEPCION_INVALIDA (excepción que no corresponde a la captura, al catálogo o fuera de rango; nada se guardó), PRODUCTO_CON_PRECIOS (campos técnicos bloqueados), UNIDAD_INCOMPATIBLE (BL-06), VIGENCIA_INVALIDA, VALOR_INVALIDO, TIPO_CON_CONCEPTOS (la familia no cambia), INSUMO_CON_REFERENCIAS (la unidad base no cambia), CONCEPTO_INCOMPLETO (concepto heredado: complete tipo y regla), REQUISITOS_INCOMPLETOS (`problemas` de aprobación), IDEMPOTENCIA_CONFLICTO o IDEMPOTENCIA_CADUCADA.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "DEMASIADAS_SOLICITUDES (cabecera Retry-After).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "ERROR_INTERNO, DOCUMENTO_NO_GENERADO (no se generó o guardó el PDF; no hay emisión y se puede reintentar) o DOCUMENTO_NO_DISPONIBLE (el archivo emitido falta o no coincide con su registro; nunca se regenera).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "SERVICIO_NO_DISPONIBLE: PostgreSQL no disponible.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/admin/personas/{id}/restablecimiento": {
+      "post": {
+        "summary": "Restablecer la contraseña: temporal nueva mostrada una vez; la anterior deja de valer y se revocan todas sus sesiones",
+        "description": "Contrato INTERNO del Administrador del sistema (ADR-0017): parámetros (B-38) o personas y funciones (B-39). La organización y el autor salen de la sesión.",
+        "security": [
+          {
+            "cookieSesion": [],
+            "tokenCsrf": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "description": "UUID de la intención (obligatorio en las altas). Repetirlo con el mismo contenido reproduce el resultado (cabecera de respuesta Idempotent-Replayed: true); con otra operación u otro contenido responde 422. Vigencia: 24 h.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RestablecimientoContrasena"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Contraseña restablecida.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaCredencialTemporal"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "SOLICITUD_INVALIDA: no cumple el contrato (campos con su ruta) o JSON mal formado.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "NO_AUTENTICADO (sin cookie de sesión) o SESION_NO_VALIDA (vencida, revocada o desconocida; se borra la cookie).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "SIN_PERMISO (la función no concede la capacidad), CSRF_NO_VALIDO u ORIGEN_NO_PERMITIDO.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "NO_ENCONTRADO: ruta, id o códigos inexistentes en la organización (un id de otra organización responde igual).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "CUERPO_DEMASIADO_GRANDE.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "TIPO_DE_CONTENIDO_NO_ADMITIDO: el cuerpo debe ser application/json.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "CALCULO_BLOQUEADO (códigos BL, sin importes), CAPTURA_INCOMPLETA (campos pendientes), REGISTRO_INACTIVO, REFERENCIA_NO_DISPONIBLE, ENVIO_BLOQUEADO / APROBACION_BLOQUEADA (bloqueos vigentes; el estado no cambió), DECISION_BLOQUEADA (BL-17: quien aprueba no puede ser el autor), EMISION_BLOQUEADA (BL-01 a BL-20 a la fecha de emisión; nada cambió), DESCARTE_BLOQUEADO (estado que no permite descartar), FECHA_RESPUESTA_INVALIDA (anterior a emisión o futura), RESPUESTA_FUERA_VIGENCIA (recepción después del último día), EXCEPCION_INVALIDA (excepción que no corresponde a la captura, al catálogo o fuera de rango; nada se guardó), PRODUCTO_CON_PRECIOS (campos técnicos bloqueados), UNIDAD_INCOMPATIBLE (BL-06), VIGENCIA_INVALIDA, VALOR_INVALIDO, TIPO_CON_CONCEPTOS (la familia no cambia), INSUMO_CON_REFERENCIAS (la unidad base no cambia), CONCEPTO_INCOMPLETO (concepto heredado: complete tipo y regla), REQUISITOS_INCOMPLETOS (`problemas` de aprobación), IDEMPOTENCIA_CONFLICTO o IDEMPOTENCIA_CADUCADA.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "DEMASIADAS_SOLICITUDES (cabecera Retry-After).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "ERROR_INTERNO, DOCUMENTO_NO_GENERADO (no se generó o guardó el PDF; no hay emisión y se puede reintentar) o DOCUMENTO_NO_DISPONIBLE (el archivo emitido falta o no coincide con su registro; nunca se regenera).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "SERVICIO_NO_DISPONIBLE: PostgreSQL no disponible.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/admin/unidades": {
       "get": {
         "summary": "Referencia común de unidades (solo lectura)",
@@ -10764,7 +11743,9 @@
                 "respuestas.registrar",
                 "respuestas.corregir",
                 "excepciones.consultar",
-                "catalogos.administrar"
+                "catalogos.administrar",
+                "parametros.administrar",
+                "personas.administrar"
               ]
             }
           },
@@ -10779,6 +11760,9 @@
           "csrfToken": {
             "type": "string",
             "pattern": "^[A-Za-z0-9_-]{43}$"
+          },
+          "cambioContrasenaRequerido": {
+            "type": "boolean"
           }
         },
         "required": [
@@ -10788,7 +11772,808 @@
           "capacidades",
           "expiraEn",
           "inactividadMinutos",
-          "csrfToken"
+          "csrfToken",
+          "cambioContrasenaRequerido"
+        ],
+        "additionalProperties": false
+      },
+      "CambioContrasena": {
+        "type": "object",
+        "properties": {
+          "actual": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "nueva": {
+            "type": "string",
+            "minLength": 12,
+            "maxLength": 128
+          },
+          "confirmacion": {
+            "type": "string",
+            "maxLength": 128
+          }
+        },
+        "required": [
+          "actual",
+          "nueva",
+          "confirmacion"
+        ],
+        "additionalProperties": false
+      },
+      "DetalleParametros": {
+        "type": "object",
+        "properties": {
+          "parametros": {
+            "type": "object",
+            "properties": {
+              "ambiente": {
+                "type": "string",
+                "enum": [
+                  "DEMO",
+                  "PRODUCCION"
+                ]
+              },
+              "moneda": {
+                "type": "string",
+                "const": "MXN"
+              },
+              "recargoSobreCosto": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "impuesto": {
+                "anyOf": [
+                  {
+                    "type": "object",
+                    "properties": {
+                      "tasa": {
+                        "type": "string"
+                      },
+                      "base": {
+                        "type": "string"
+                      },
+                      "tratamiento": {
+                        "type": "string"
+                      },
+                      "nombre": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "tasa",
+                      "base",
+                      "tratamiento",
+                      "nombre"
+                    ],
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "vigenciaDias": {
+                "anyOf": [
+                  {
+                    "type": "integer",
+                    "minimum": -9007199254740991,
+                    "maximum": 9007199254740991
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "textos": {
+                "anyOf": [
+                  {
+                    "type": "object",
+                    "properties": {
+                      "alcance": {
+                        "type": "string"
+                      },
+                      "condiciones": {
+                        "type": "string"
+                      },
+                      "exclusiones": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "alcance",
+                      "condiciones",
+                      "exclusiones"
+                    ],
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "revision": {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              "modificadoEn": {
+                "type": "string"
+              },
+              "modificadoPor": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "required": [
+              "ambiente",
+              "moneda",
+              "recargoSobreCosto",
+              "impuesto",
+              "vigenciaDias",
+              "textos",
+              "revision",
+              "modificadoEn",
+              "modificadoPor"
+            ],
+            "additionalProperties": false
+          },
+          "impacto": {
+            "type": "object",
+            "properties": {
+              "cotizaciones": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              },
+              "borradores": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              },
+              "sinEnviar": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              },
+              "enRevision": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              },
+              "aprobadasSinEmitir": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              }
+            },
+            "required": [
+              "cotizaciones",
+              "borradores",
+              "sinEnviar",
+              "enRevision",
+              "aprobadasSinEmitir"
+            ],
+            "additionalProperties": false
+          },
+          "historial": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "tipo": {
+                  "type": "string"
+                },
+                "ocurridoEn": {
+                  "type": "string"
+                },
+                "usuario": {
+                  "type": "string"
+                },
+                "detalle": {
+                  "type": "object",
+                  "propertyNames": {
+                    "type": "string"
+                  },
+                  "additionalProperties": {}
+                }
+              },
+              "required": [
+                "tipo",
+                "ocurridoEn",
+                "usuario",
+                "detalle"
+              ],
+              "additionalProperties": false
+            }
+          }
+        },
+        "required": [
+          "parametros",
+          "impacto",
+          "historial"
+        ],
+        "additionalProperties": false
+      },
+      "EdicionParametros": {
+        "type": "object",
+        "properties": {
+          "revision": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "motivo": {
+            "type": "string",
+            "maxLength": 500
+          },
+          "recargoSobreCosto": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^-?(0|[1-9]\\d{0,14})(\\.\\d{1,10})?$"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "impuesto": {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "tasa": {
+                    "type": "string",
+                    "pattern": "^-?(0|[1-9]\\d{0,14})(\\.\\d{1,10})?$"
+                  },
+                  "base": {
+                    "type": "string",
+                    "enum": [
+                      "SUBTOTAL_VENTA"
+                    ]
+                  },
+                  "tratamiento": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 500
+                  },
+                  "nombre": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 100
+                  }
+                },
+                "required": [
+                  "tasa",
+                  "base",
+                  "tratamiento",
+                  "nombre"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "vigenciaDias": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 3650
+          },
+          "textos": {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "alcance": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 2000
+                  },
+                  "condiciones": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 2000
+                  },
+                  "exclusiones": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 2000
+                  }
+                },
+                "required": [
+                  "alcance",
+                  "condiciones",
+                  "exclusiones"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "revision",
+          "motivo"
+        ],
+        "additionalProperties": false
+      },
+      "RespuestaPersonas": {
+        "type": "object",
+        "properties": {
+          "personas": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "format": "uuid",
+                  "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                },
+                "correo": {
+                  "type": "string"
+                },
+                "nombre": {
+                  "type": "string"
+                },
+                "funciones": {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "enum": [
+                      "PREPARADOR",
+                      "REVISOR",
+                      "ADMIN_CATALOGO",
+                      "ADMIN_SISTEMA"
+                    ]
+                  }
+                },
+                "activa": {
+                  "type": "boolean"
+                },
+                "cambioContrasenaPendiente": {
+                  "type": "boolean"
+                },
+                "temporalExpiraEn": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "revision": {
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991
+                },
+                "creadaEn": {
+                  "type": "string"
+                },
+                "modificadaEn": {
+                  "type": "string"
+                },
+                "modificadaPor": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                }
+              },
+              "required": [
+                "id",
+                "correo",
+                "nombre",
+                "funciones",
+                "activa",
+                "cambioContrasenaPendiente",
+                "temporalExpiraEn",
+                "revision",
+                "creadaEn",
+                "modificadaEn",
+                "modificadaPor"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "limite": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "siguiente": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "personas",
+          "limite",
+          "siguiente"
+        ],
+        "additionalProperties": false
+      },
+      "DetallePersona": {
+        "type": "object",
+        "properties": {
+          "persona": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "format": "uuid",
+                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+              },
+              "correo": {
+                "type": "string"
+              },
+              "nombre": {
+                "type": "string"
+              },
+              "funciones": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "enum": [
+                    "PREPARADOR",
+                    "REVISOR",
+                    "ADMIN_CATALOGO",
+                    "ADMIN_SISTEMA"
+                  ]
+                }
+              },
+              "activa": {
+                "type": "boolean"
+              },
+              "cambioContrasenaPendiente": {
+                "type": "boolean"
+              },
+              "temporalExpiraEn": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "revision": {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              "creadaEn": {
+                "type": "string"
+              },
+              "modificadaEn": {
+                "type": "string"
+              },
+              "modificadaPor": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "required": [
+              "id",
+              "correo",
+              "nombre",
+              "funciones",
+              "activa",
+              "cambioContrasenaPendiente",
+              "temporalExpiraEn",
+              "revision",
+              "creadaEn",
+              "modificadaEn",
+              "modificadaPor"
+            ],
+            "additionalProperties": false
+          },
+          "historial": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "tipo": {
+                  "type": "string"
+                },
+                "ocurridoEn": {
+                  "type": "string"
+                },
+                "usuario": {
+                  "type": "string"
+                },
+                "detalle": {
+                  "type": "object",
+                  "propertyNames": {
+                    "type": "string"
+                  },
+                  "additionalProperties": {}
+                }
+              },
+              "required": [
+                "tipo",
+                "ocurridoEn",
+                "usuario",
+                "detalle"
+              ],
+              "additionalProperties": false
+            }
+          }
+        },
+        "required": [
+          "persona",
+          "historial"
+        ],
+        "additionalProperties": false
+      },
+      "PersonaAdmin": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          },
+          "correo": {
+            "type": "string"
+          },
+          "nombre": {
+            "type": "string"
+          },
+          "funciones": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "PREPARADOR",
+                "REVISOR",
+                "ADMIN_CATALOGO",
+                "ADMIN_SISTEMA"
+              ]
+            }
+          },
+          "activa": {
+            "type": "boolean"
+          },
+          "cambioContrasenaPendiente": {
+            "type": "boolean"
+          },
+          "temporalExpiraEn": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "revision": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "creadaEn": {
+            "type": "string"
+          },
+          "modificadaEn": {
+            "type": "string"
+          },
+          "modificadaPor": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "correo",
+          "nombre",
+          "funciones",
+          "activa",
+          "cambioContrasenaPendiente",
+          "temporalExpiraEn",
+          "revision",
+          "creadaEn",
+          "modificadaEn",
+          "modificadaPor"
+        ],
+        "additionalProperties": false
+      },
+      "SolicitudPersona": {
+        "type": "object",
+        "properties": {
+          "correo": {
+            "type": "string",
+            "maxLength": 254
+          },
+          "nombre": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200
+          },
+          "funciones": {
+            "minItems": 1,
+            "maxItems": 4,
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "PREPARADOR",
+                "REVISOR",
+                "ADMIN_CATALOGO",
+                "ADMIN_SISTEMA"
+              ]
+            }
+          },
+          "motivo": {
+            "type": "string",
+            "maxLength": 500
+          }
+        },
+        "required": [
+          "correo",
+          "nombre",
+          "funciones",
+          "motivo"
+        ],
+        "additionalProperties": false
+      },
+      "EdicionPersona": {
+        "type": "object",
+        "properties": {
+          "revision": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "motivo": {
+            "type": "string",
+            "maxLength": 500
+          },
+          "nombre": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200
+          },
+          "funciones": {
+            "minItems": 1,
+            "maxItems": 4,
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "PREPARADOR",
+                "REVISOR",
+                "ADMIN_CATALOGO",
+                "ADMIN_SISTEMA"
+              ]
+            }
+          },
+          "activa": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "revision",
+          "motivo"
+        ],
+        "additionalProperties": false
+      },
+      "RestablecimientoContrasena": {
+        "type": "object",
+        "properties": {
+          "motivo": {
+            "type": "string",
+            "maxLength": 500
+          }
+        },
+        "required": [
+          "motivo"
+        ],
+        "additionalProperties": false
+      },
+      "RespuestaCredencialTemporal": {
+        "type": "object",
+        "properties": {
+          "persona": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "format": "uuid",
+                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+              },
+              "correo": {
+                "type": "string"
+              },
+              "nombre": {
+                "type": "string"
+              },
+              "funciones": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "enum": [
+                    "PREPARADOR",
+                    "REVISOR",
+                    "ADMIN_CATALOGO",
+                    "ADMIN_SISTEMA"
+                  ]
+                }
+              },
+              "activa": {
+                "type": "boolean"
+              },
+              "cambioContrasenaPendiente": {
+                "type": "boolean"
+              },
+              "temporalExpiraEn": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "revision": {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              "creadaEn": {
+                "type": "string"
+              },
+              "modificadaEn": {
+                "type": "string"
+              },
+              "modificadaPor": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "required": [
+              "id",
+              "correo",
+              "nombre",
+              "funciones",
+              "activa",
+              "cambioContrasenaPendiente",
+              "temporalExpiraEn",
+              "revision",
+              "creadaEn",
+              "modificadaEn",
+              "modificadaPor"
+            ],
+            "additionalProperties": false
+          },
+          "contrasenaTemporal": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "contrasenaEntregada": {
+            "type": "boolean"
+          },
+          "temporalExpiraEn": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "persona",
+          "contrasenaTemporal",
+          "contrasenaEntregada",
+          "temporalExpiraEn"
         ],
         "additionalProperties": false
       },
@@ -11468,6 +13253,12 @@
                   "VIGENCIA_INVALIDA",
                   "PRECIO_ANULADO",
                   "VALOR_INVALIDO",
+                  "CORREO_EXISTENTE",
+                  "ULTIMO_ADMINISTRADOR",
+                  "AUTOPROTECCION",
+                  "CAMBIO_CONTRASENA_REQUERIDO",
+                  "CONTRASENA_TEMPORAL_CADUCADA",
+                  "CONTRASENA_ACTUAL_INCORRECTA",
                   "TIPO_CON_CONCEPTOS",
                   "INSUMO_CON_REFERENCIAS",
                   "CONCEPTO_INCOMPLETO",

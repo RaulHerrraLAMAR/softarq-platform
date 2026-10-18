@@ -2,9 +2,15 @@
 
 > Léelo al empezar. Actualízalo al terminar cada tarea (sección por sección, sin borrar el historial de la tabla 4). Reglas de trabajo: [`AGENTS.md`](AGENTS.md).
 
-**Última actualización:** 17/10/2026 · Claude Code (Claude Opus 5.5) · módulo 12, catálogo técnico y aprobación de conceptos (§21), sobre `3599ece` (correcciones del módulo 11). Anterior: módulo 11 (§20).
+**Última actualización:** 17/10/2026 · Claude Code (Claude Opus 5.5) · módulo 13, parámetros y personas (§22), sobre `b3b785d` (correcciones previas: migración protegida, permisos efectivos e impacto en versiones). Anterior: módulo 12 (§21).
 
 ## 1. Estado actual
+
+- **Módulo 13:** implementado (ADR-0017). El Administrador del sistema gestiona en «Administración» y en `/api/v1/admin/{parametros,personas}`:
+  - **parámetros:** recargo, impuesto, vigencia y plantillas de textos, con motivo, revisión e impacto previo; ambiente y moneda solo lectura; solo afectan a cálculos y cotizaciones nuevos;
+  - **personas:** alta con contraseña temporal mostrada una vez (72 h, cambio obligatorio que la API impone), funciones, desactivación que cierra sus sesiones, restablecimiento y regla del último Administrador del sistema.
+  - **Antes, en `b3b785d`:** `db:migrar` solo tras un respaldo verificado; permisos del rol de la aplicación reducidos (sin UPDATE en organización, tipos de costo adicional ni estado de concepto; aprobar solo en funciones DEFINER); impacto que distingue borradores, versiones sin enviar, en revisión y aprobadas sin emitir.
+  - Detalle y pruebas en §22.
 
 - **Módulo 12:** implementado (ADR-0016). El Administrador del catálogo gestiona en «Catálogo» y en `/api/v1/admin` tipos de estructura, insumos, conversiones, conceptos y componentes, y aprueba conceptos (también el que los creó, como en el libro), ligado a la revisión técnica revisada.
   - **Decisiones del propietario:** conversión editable que devuelve a Borrador los conceptos aprobados; seis tipos genéricos del libro como datos base; conceptos heredados sin tipo ni regla (CON-00001, 00002, 00007–00009 en `softarq_dev`) marcados, sin rellenar y funcionando; aprobación por cualquier Administrador del catálogo.
@@ -135,6 +141,8 @@
 | ADR-0012 | Respaldo coherente de `softarq_dev` y PDF, rol de solo lectura, restauración solo en `softarq_restauracion` | [`docs/adr/0012-respaldo-y-restauracion-local.md`](docs/adr/0012-respaldo-y-restauracion-local.md) |
 | ADR-0013 | Respuesta interna por emisión exacta, vigencia inclusiva derivada, captura tardía si se recibió en plazo, correcciones como eventos nuevos con motivo | [`docs/adr/0013-seguimiento-respuestas-vigencia.md`](docs/adr/0013-seguimiento-respuestas-vigencia.md) |
 | ADR-0015 | Administración de proveedores, productos, precios y tarifas por el Administrador del catálogo: funciones de una sentencia con bitácora, revisión e idempotencia; disparadores (producto con precios, precio inmutable salvo anular o acortar, tarifa inmutable); cierre de vigencia con sucesor (P3 pendiente); asignar tarifa conservando la aprobación; contrato `/admin` interno; capacidad `catalogos.administrar` | [`docs/adr/0015-administracion-catalogos.md`](docs/adr/0015-administracion-catalogos.md) |
+| ADR-0016 | Catálogo técnico: tipos de estructura, insumos, conversiones, conceptos y componentes; aprobación de conceptos por cualquier Administrador del catálogo; BL-05 de trazabilidad; conceptos heredados | [`docs/adr/0016-catalogo-tecnico-aprobacion-conceptos.md`](docs/adr/0016-catalogo-tecnico-aprobacion-conceptos.md) |
+| ADR-0017 | Parámetros y personas por el Administrador del sistema; contraseña temporal (72 h) con cambio obligatorio en la API; plantillas TEXTO_* copiadas a cotizaciones nuevas; migración protegida; matriz de permisos efectivos con su capacidad residual | [`docs/adr/0017-parametros-personas-permisos.md`](docs/adr/0017-parametros-personas-permisos.md) |
 | ADR-0014 | Excepciones B-22 en el borrador, congeladas en la versión; decisión inmutable del Revisor ≠ preparador ligada a la versión; enviar con registradas, aprobar y emitir con autorizadas; rechazada bloquea esa versión (vN+1); AV-04; contrato interno con capacidad `excepciones.consultar`; sin flujo de autorización paralelo | [`docs/adr/0014-excepciones.md`](docs/adr/0014-excepciones.md) |
 | Propietario | Libro oficial `entrega\Cotizador_Estructuras_F1.xlsm`; COT-2026-00016/00017 y la persona en turno se conservan; evidencias citadas por archivo, escenario y caso | [`docs/fase1-estado-verificado.md`](docs/fase1-estado-verificado.md) §4 |
 | Entorno | Trabajo en `D:\Proyecto_SoftArq`; temporales y cachés en `_work`; sin remoto ni push | `AGENTS.md` §1 |
@@ -248,6 +256,8 @@ Credenciales: `apps/api/.env` y `.env.test` (locales, excluidos de Git). La cred
 | 05/10/2026 | Corrección del módulo 9: 403 en lugar de 500 cuando la base rechaza la función | Commit `3412f0b` (regresión en integración) |
 | 05/10/2026 | Módulo 10: excepciones B-22, ADR-0014, deriva de `schema.prisma` corregida, matriz de cobertura | 604 unitarias, 252 integración, 53 E2E, 38 restauración, 17 concurrencia; ver §19 |
 | 17/10/2026 | Módulo 11: administración de proveedores, productos, precios y tarifas; ADR-0015 | 641 unitarias, 271 integración, 56 E2E, 43 restauración; ver §20 |
+| 17/10/2026 | Módulo 12: catálogo técnico y aprobación de conceptos; ADR-0016 | 667 unitarias, 292 integración, 59 E2E, 47 restauración; ver §21 |
+| 17/10/2026 | Correcciones previas al módulo 13 (commit `b3b785d`) y módulo 13: parámetros y personas; ADR-0017 | Ver §22 |
 
 ## 5. Comandos y resultados reales (02/10/2026)
 
@@ -547,22 +557,22 @@ En los cuatro, el resultado completo es idéntico al calculado con los fixtures 
 
 ## 7. Siguiente tarea
 
-1. **Recompilar y reiniciar** la API y la web del propietario si están en marcha con código anterior: `softarq_dev` ya tiene la migración del módulo 12 (§21).
+1. **Recompilar y reiniciar** la API y la web del propietario si están en marcha con código anterior: `softarq_dev` ya tiene la migración del módulo 13 (§22).
 2. **Regularizar los conceptos heredados** de `softarq_dev` cuando el propietario lo decida, con el mapeo documentado (ADR-0016 §2.3): completar tipo y regla vuelve el concepto a Borrador y exige una nueva aprobación. No se ejecuta automáticamente.
-3. **Siguiente módulo recomendado:** salidas internas de solo lectura, o parámetros y personas. Después: duplicar, modo de precios y vista previa BORRADOR; Expo (alcance por decidir); cierre integral.
+3. **Siguiente módulo recomendado:** salidas internas de solo lectura (compras calculadas, detalle e indicadores, con permiso propio). Después: duplicar, modo de precios y vista previa BORRADOR; Expo (alcance por decidir); cierre integral. Tarea de seguridad propuesta (no hecha): que las funciones resuelvan la identidad desde la sesión en lugar de `p_usuario` (ADR-0017 §4).
    - Matriz y estimación en [`docs/cobertura-demo.md`](docs/cobertura-demo.md).
 4. **Pendiente del cliente:**
    - definir P3, la política de vigencias; la adaptación del DEMO está en ADR-0015 §2.2;
    - entregar los datos reales del capítulo 8 (precios, proveedores y tarifas), que ya se podrán capturar en la web.
 5. **Ejecución formal de la guía manual** [`docs/web/guia-prueba-manual.md`](docs/web/guia-prueba-manual.md), con el registro de la §5:
-   - bloques A1–A9, 1–14, C1–C15, R1–R10, E1–E12, S1–S10, X1–X8, K1–K10 y T1–T10;
+   - bloques A1–A9, 1–14, C1–C15, R1–R10, E1–E12, S1–S10, X1–X8, K1–K10, T1–T10, P1–P6 y U1–U8;
    - complementa la revisión personal ya declarada;
    - no cuenta como PR-41 ni PR-44.
 6. **Operación:** repetir el aprovisionamiento administrativo de respaldo cuando haya una credencial local autorizada (no había archivo DPAPI en `_work\secrets`; no se ejecutó). Copia externa periódica de `D:\Proyecto_SoftArq\respaldos` sigue siendo una decisión pendiente.
 
 Alternativas más cortas:
 - **web DEMO:** coma decimal, conservar el borrador durante la sesión y más de 20 conceptos por consulta;
-- **administración de usuarios:** alta, baja y restablecimiento por un Administrador del sistema.
+- **identidad desde la sesión** en las funciones de la base (ADR-0017 §4).
 
 ## 8. Último commit
 
@@ -587,6 +597,9 @@ Alternativas más cortas:
 
 - `3599ece`: correcciones pendientes del módulo 11 (fallo intermitente, selectores, acceso por ruta).
 - Módulo 12: commit «Módulo 12: catálogo técnico y aprobación de conceptos» (§21); consultar `git log -1 --oneline` para su hash. MD5 del libro al cerrar: `b60debc121957b8d8e3f2c2edd9a5b4f` (sin cambios).
+
+- `b3b785d`: correcciones previas al módulo 13 (migración protegida, permisos efectivos, impacto en versiones).
+- Módulo 13: commit «Módulo 13: parámetros y personas del Administrador del sistema» (§22); consultar `git log -1 --oneline` para su hash. MD5 del libro al cerrar: `b60debc121957b8d8e3f2c2edd9a5b4f` (sin cambios).
 
 Rama `main`. Sin remoto ni push.
 
@@ -1204,3 +1217,51 @@ Decisiones y reglas: [ADR-0016](docs/adr/0016-catalogo-tecnico-aprobacion-concep
 - Tipos de costo adicional siguen solo con la carga DEMO.
 
 **Datos DEMO creados en `softarq_dev`:** TES-00007, INS-00012, CON-00003 (Borrador tras el cambio técnico), CON-00004 (personalizado, Borrador), `COT-2026-00010` emitida. Ninguno altera los ejemplos de referencia.
+
+## 22. Parámetros y personas (módulo 13)
+
+Decisiones y reglas: [ADR-0017](docs/adr/0017-parametros-personas-permisos.md). Antes del módulo, commit `b3b785d` con tres correcciones previas.
+
+**Correcciones previas (`b3b785d`):**
+- **Migración protegida:** `db:migrar` en `softarq_dev` crea un respaldo, lo verifica y solo entonces migra (`secuencia-migracion.mjs`). Si cualquiera de los dos pasos falla, se detiene sin migrar. La prueba con datos reales usa una copia alterada del último respaldo en `_work\tmp`. **Límite:** no impide `prisma migrate deploy` manual ni SQL administrativo.
+- **Permisos efectivos:** sin UPDATE en `organizacion` ni `tipo_adicional`; en `parametros_calculo`, solo las columnas editables. Sin UPDATE de `estado` ni `aprobado_*` de `concepto`; la marca GUC desaparece. Aprobar solo en `softarq_aprobar_concepto` y `softarq_aprobar_carga_base` (DEFINER). Los ayudantes de prueba que forzaban estados pasan al rol migrador (cambio intencionado). Matriz y capacidad residual en ADR-0017 §4.
+- **Impacto en versiones:** borradores, últimas versiones sin enviar, en revisión y aprobadas sin emitir, más el número de cotizaciones distintas; las emitidas no cuentan. Consulta de solo lectura.
+
+**Qué se hizo en el módulo:**
+
+| Capa | Cambio |
+|---|---|
+| Base | Migración `20261019120000_parametros_personas`: plantillas `texto_*` (textos DEMO exactos), revisión y autoría en parámetros y pertenencias, `contrasena_temporal_expira_en`, disparador del último Administrador del sistema, `softarq_editar_parametros` (INVOKER) y cuatro funciones DEFINER de identidad; bloque de permisos en `permisos-app.sql` |
+| API | `controladores-administracion.ts`, `servicio-administracion-sistema.ts`, `repositorio-administracion-sistema.ts`; `POST /auth/contrasena`; sesión restringida en `GuardiaSesion` (`@PermitidaConCambioPendiente`); `TEMPORAL_CADUCADA` al entrar; textos predeterminados leídos de la configuración |
+| Contratos | `administracion.ts` (fracciones en texto, `null` distinto de 0, personas, credencial, cambio de contraseña); capacidades `parametros.administrar` y `personas.administrar`; 6 códigos de error |
+| Web | Sección «Administración» (`administracion/`): Parámetros y Personas y funciones; `PantallaCambioContrasena`; excepción acotada nueva en `sin-datos-internos` (solo recargo y costo, en esa carpeta) |
+| Respaldo | `probar-restauracion.mjs`: 4 comprobaciones nuevas (coherencia, permisos y funciones, datos idénticos, sin sesiones activas y temporal solo como hash) |
+
+**Qué puede hacer cada función:**
+- **Preparador, Revisor:** sin cambios; no ven «Administración» (403 en `/admin`).
+- **Administrador del catálogo:** catálogo (módulos 11 y 12); 403 en parámetros y personas.
+- **Administrador del sistema:** emisor, parámetros y personas; 403 en el catálogo. La cuenta DEMO `[DEMO] Administrador` tiene ambas funciones.
+
+**Pruebas de ESTA sesión** (registros en `D:\Proyecto_SoftArq\_work\tmp\m13`):
+
+| Comando o comprobación | Resultado |
+|---|---|
+| `pnpm verificar` (final) | **708/708** (API 452, web 256); código 0 |
+| Integración completa (un worker, `softarq_test`) | **307/307**, 19 archivos. Antes de actualizar expectativas: 303/304 (inventario de funciones SQL) y, tras añadir las rutas a OpenAPI, la huella de `acceso-admin` (contaba revocaciones por inicio de sesión; ahora solo las administrativas) |
+| E2E completa (Edge, un worker) | **63/63** (4 nuevas: parámetros en % con impacto y vuelta a la referencia; alta con temporal, acceso restringido por la API y cambio; desactivación con sesión abierta en otro navegador; 390 px) |
+| Cuatro referencias | 54,190.68; 43,312.16; 22,405.28; 4,911.79 sin cambios (integración y humo) |
+| `db:migrar` protegido en `softarq_dev` | Respaldo `softarq_dev-20261018T035605Z-5c0134` creado y **verificado antes** de aplicar `20261019120000_parametros_personas`; código 0 |
+| `db:cargar-demo` y `db:cargar-usuarios-demo` repetidos | Creados `{}`; «Los valores DEMO coinciden»; cuentas conservadas sin cambios (ni contraseñas ni funciones) |
+| Humo con la API real (127.0.0.1:3200, detenida al terminar; `_work\tmp\m13\humo-m13.mjs`) | **32 pasos correctos**: 403 del Preparador; cuatro totales; recargo 18 % (22,032.08) y vuelta a 20 % (22,405.28) con historial de ambos cambios; 409 por revisión obsoleta; alta con temporal, reintento sin otra contraseña, correo repetido 409; acceso restringido (403), cambio propio (204), sesión revocada, temporal inválida, acceso con la nueva; función Revisor visible en la petición siguiente; desactivación que invalida la sesión abierta; autoprotección 422 |
+| `respaldo:probar-restauracion` | **51/51** (4 nuevas) |
+| Revisión visual | Capturas en `_work\evidencias\modulo13` revisadas (escritorio: parámetros, confirmación, temporal, cambio obligatorio; móvil: parámetros, personas, alta). Corregido: un correo largo se recortaba a 390 px |
+| Graphify | `pnpm grafo:actualizar`: VIGENTE (276 archivos). `explain ServicioAdministracionSistema`, `explain migrarConRespaldo`, `explain impactoVersiones` y `path` del controlador al repositorio correctos; la consulta libre devolvió nodos poco pertinentes |
+| MD5 del libro | `b60debc121957b8d8e3f2c2edd9a5b4f` antes y después |
+
+**Datos DEMO creados en `softarq_dev`:** la persona `humo.m13.cdf0d6@softarq.test` («[DEMO] Persona humo M13 …», desactivada) y dos eventos `PARAMETROS_EDITADOS` (20 % → 18 % → 20 %). La configuración de referencia quedó igual.
+
+**Límites y pendientes:**
+- Las funciones de la base confían en el `p_usuario` que reciben; una credencial de aplicación comprometida puede suplantar a cualquier miembro. Es un límite de arquitectura, documentado y no resuelto (ADR-0017 §4); sin RLS.
+- Si se pierde la contraseña temporal no hay recuperación: hace falta un restablecimiento. Entrega manual, sin correo.
+- La guía manual (P1–P6, U1–U8) no se ha ejecutado formalmente; la revisión personal sigue registrada solo como declaración (no cuenta como PR-41 ni PR-44).
+- Los cinco conceptos heredados siguen sin regularizar; P3 sigue pendiente con el cliente.

@@ -1,4 +1,4 @@
--- Permisos del rol de la aplicación tras cada `prisma migrate deploy` (ADR-0004, ADR-0007 a ADR-0010, ADR-0013 a ADR-0016).
+-- Permisos del rol de la aplicación tras cada `prisma migrate deploy` (ADR-0004, ADR-0007 a ADR-0010, ADR-0013 a ADR-0017).
 -- Lo ejecuta el rol migrador con `prisma db execute`. Solo sentencias constantes.
 -- La aplicación lee y escribe catálogos, pero no borra (los registros se desactivan o anulan),
 -- no ejecuta DDL y no puede leer ni alterar el historial de migraciones.
@@ -167,5 +167,24 @@ REVOKE UPDATE ON TABLE public.organizacion, public.tipo_adicional, public.parame
 DO $$ BEGIN
   IF to_regprocedure('public.softarq_aprobar_carga_base(uuid,text)') IS NOT NULL THEN
     GRANT EXECUTE ON FUNCTION public.softarq_aprobar_carga_base(UUID, TEXT) TO softarq_app;
+  END IF;
+END $$;
+
+-- ADR-0017 (módulo 13): parámetros y personas. `parametros_calculo`: UPDATE solo de los campos que
+-- edita softarq_editar_parametros (nunca organización, ambiente ni moneda). Identidad: la aplicación
+-- sigue sin INSERT ni UPDATE en `usuario` y `membresia`; escribe con las funciones SECURITY DEFINER.
+-- Condicional para restaurar respaldos anteriores.
+DO $$ BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.columns
+              WHERE table_schema = 'public' AND table_name = 'parametros_calculo' AND column_name = 'texto_alcance') THEN
+    GRANT UPDATE (recargo_sobre_costo, impuesto_tasa, impuesto_base, impuesto_tratamiento, impuesto_nombre, vigencia_dias,
+                  texto_alcance, texto_condiciones, texto_exclusiones, revision, modificado_por, modificado_en)
+      ON TABLE public.parametros_calculo TO softarq_app;
+    REVOKE INSERT, UPDATE ON TABLE public.usuario, public.membresia FROM softarq_app;
+    GRANT EXECUTE ON FUNCTION public.softarq_editar_parametros(UUID, UUID, INTEGER, JSONB, TEXT) TO softarq_app;
+    GRANT EXECUTE ON FUNCTION public.softarq_crear_persona(UUID, UUID, JSONB, TEXT, TIMESTAMPTZ, UUID, TEXT, BYTEA, TIMESTAMPTZ) TO softarq_app;
+    GRANT EXECUTE ON FUNCTION public.softarq_editar_persona(UUID, UUID, UUID, INTEGER, JSONB, TEXT) TO softarq_app;
+    GRANT EXECUTE ON FUNCTION public.softarq_restablecer_contrasena(UUID, UUID, UUID, TEXT, TIMESTAMPTZ, TEXT, UUID, TEXT, BYTEA, TIMESTAMPTZ) TO softarq_app;
+    GRANT EXECUTE ON FUNCTION public.softarq_cambiar_contrasena_propia(UUID, UUID, TEXT) TO softarq_app;
   END IF;
 END $$;

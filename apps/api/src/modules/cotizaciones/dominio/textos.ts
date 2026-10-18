@@ -5,8 +5,9 @@
  * Fuente: en el libro son campos de cada versión (`Ver_Crear` copia `TEXTO_ALCANCE`,
  * `TEXTO_CONDICIONES` y `TEXTO_EXCLUSIONES` de 17 CONFIG; con AMBIENTE = DEMO, los `DEMO_TEXTO_*` de
  * `modBuild.bas`). Aquí se COPIAN a la captura al crear la cotización; nunca son una referencia
- * dinámica. Los valores DEMO son los del libro con los acentos restaurados (el código VBA los
- * guarda sin acentos); siguen siendo ilustrativos y llevan la marca [DEMO].
+ * dinámica. Desde el módulo 13 (ADR-0017) son plantillas editables de la configuración de cada
+ * organización (`parametros_calculo.texto_*`); `TEXTOS_DEMO` es su valor inicial en DEMO (los del
+ * libro con los acentos restaurados; ilustrativos y con la marca [DEMO]).
  */
 import type { CapturaBorrador, TextosCotizacion } from "@softarq/contracts";
 import type { Problema } from "./verificacion.js";
@@ -19,9 +20,9 @@ export const TEXTOS_DEMO: TextosCotizacion = Object.freeze({
   exclusiones: "[DEMO] Exclusiones ilustrativas: cálculo estructural, planos, permisos y cualquier concepto no listado.",
 });
 
-/** Predeterminados del ambiente: solo DEMO los tiene (en PRODUCCION, TEXTO_* sigue PENDIENTE). */
-export function textosPredeterminados(ambiente: "DEMO" | "PRODUCCION" | null): TextosCotizacion | null {
-  return ambiente === "DEMO" ? { ...TEXTOS_DEMO } : null;
+/** Plantillas de la organización (copia); `null` si no hay (en PRODUCCION, TEXTO_* sigue PENDIENTE). */
+export function textosPredeterminados(plantilla: TextosCotizacion | null): TextosCotizacion | null {
+  return plantilla ? { ...plantilla } : null;
 }
 
 /** Captura con los textos predeterminados copiados, solo si aún no trae textos. */

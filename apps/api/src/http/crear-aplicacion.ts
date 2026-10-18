@@ -47,8 +47,10 @@ import { ServicioRespuestas } from "../modules/cotizaciones/aplicacion/servicio-
 import { ServicioExcepciones } from "../modules/cotizaciones/aplicacion/servicio-excepciones.js";
 import { ServicioAdministracionCatalogos } from "../modules/catalogos/aplicacion/servicio-administracion.js";
 import { ServicioCatalogoTecnico } from "../modules/catalogos/aplicacion/servicio-catalogo-tecnico.js";
+import { ServicioAdministracionSistema } from "../modules/administracion/aplicacion/servicio-administracion-sistema.js";
 import { AdministracionCatalogosController } from "./controladores-catalogos-admin.js";
 import { CatalogoTecnicoController } from "./controladores-catalogo-tecnico.js";
+import { AdministracionSistemaController } from "./controladores-administracion.js";
 import { generarPdf, type GeneradorPdf } from "../modules/cotizaciones/dominio/pdf/generador-pdf.js";
 import {
   AlmacenArchivos,
@@ -93,6 +95,7 @@ import {
   SERVICIO_EXCEPCIONES,
   SERVICIO_ADMIN_CATALOGOS,
   SERVICIO_CATALOGO_TECNICO,
+  SERVICIO_ADMINISTRACION_SISTEMA,
 } from "./tokens.js";
 
 const VENTANA_LIMITADOR_MS = 60_000;
@@ -159,6 +162,7 @@ function moduloRaiz(config: ConfiguracionApi, opciones: OpcionesAplicacion): Dyn
       VerificacionVersionController,
       AdministracionCatalogosController,
       CatalogoTecnicoController,
+      AdministracionSistemaController,
       EmisorController,
       OpenApiController,
     ],
@@ -251,6 +255,11 @@ function moduloRaiz(config: ConfiguracionApi, opciones: OpcionesAplicacion): Dyn
         provide: SERVICIO_CATALOGO_TECNICO,
         useFactory: (bd: ServicioBaseDeDatos, reloj: Reloj, instante: RelojSesiones) => new ServicioCatalogoTecnico(bd.cliente, reloj, instante),
         inject: [BASE_DE_DATOS, RELOJ, RELOJ_SESIONES],
+      },
+      {
+        provide: SERVICIO_ADMINISTRACION_SISTEMA,
+        useFactory: (bd: ServicioBaseDeDatos, instante: RelojSesiones) => new ServicioAdministracionSistema(bd.cliente, new ServicioContrasenas(), instante),
+        inject: [BASE_DE_DATOS, RELOJ_SESIONES],
       },
       {
         provide: SERVICIO_EXCEPCIONES,

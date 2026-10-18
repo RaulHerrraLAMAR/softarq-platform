@@ -98,15 +98,30 @@ describe("permisos efectivos de softarq_app (ADR-0017 §1.2)", () => {
     await expect(prisma.$executeRaw`UPDATE tipo_adicional SET regla = 'MONTO_CAPTURADO' WHERE organizacion_id = ${org}::uuid`).rejects.toThrow(DENEGADO);
     await expect(prisma.$executeRaw`UPDATE parametros_calculo SET ambiente = 'PRODUCCION' WHERE organizacion_id = ${org}::uuid`).rejects.toThrow(DENEGADO);
     await expect(prisma.$executeRaw`UPDATE membresia SET funciones = ARRAY['ADMIN_SISTEMA']::varchar[] WHERE organizacion_id = ${org}::uuid`).rejects.toThrow(DENEGADO);
+    await expect(prisma.$executeRaw`UPDATE usuario SET contrasena_temporal_expira_en = NULL`).rejects.toThrow(DENEGADO);
+    // Módulo 13: los parámetros solo admiten UPDATE de las columnas editables (lo usa softarq_editar_parametros).
+    const [c] = await migrador.$queryRaw<Record<string, boolean>[]>`SELECT
+        has_column_privilege('softarq_app', 'public.parametros_calculo', 'texto_alcance', 'UPDATE') texto,
+        has_column_privilege('softarq_app', 'public.parametros_calculo', 'moneda', 'UPDATE') moneda,
+        has_column_privilege('softarq_app', 'public.parametros_calculo', 'revision', 'UPDATE') revision`;
+    expect(c).toEqual({ texto: true, moneda: false, revision: true });
   });
 
-  it("las funciones de aprobación son SECURITY DEFINER del migrador, con search_path fijo y sin PUBLIC", async () => {
+  it("las funciones de aprobación y de identidad son SECURITY DEFINER del migrador, con search_path fijo y sin PUBLIC", async () => {
     const filas = await migrador.$queryRaw<{ nombre: string; definer: boolean; propietario: string; config: string[] | null; publico: boolean; app: boolean }[]>`
       SELECT p.proname AS nombre, p.prosecdef AS definer, pg_get_userbyid(p.proowner) AS propietario, p.proconfig AS config,
              has_function_privilege('public', p.oid, 'EXECUTE') AS publico, has_function_privilege('softarq_app', p.oid, 'EXECUTE') AS app
         FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
-       WHERE n.nspname = 'public' AND p.proname IN ('softarq_aprobar_concepto', 'softarq_aprobar_carga_base') ORDER BY 1`;
-    expect(filas.map((f) => f.nombre)).toEqual(["softarq_aprobar_carga_base", "softarq_aprobar_concepto"]);
+       WHERE n.nspname = 'public' AND p.proname IN ('softarq_aprobar_concepto', 'softarq_aprobar_carga_base', 'softarq_crear_persona',
+             'softarq_editar_persona', 'softarq_restablecer_contrasena', 'softarq_cambiar_contrasena_propia') ORDER BY 1`;
+    expect(filas.map((f) => f.nombre)).toEqual([
+      "softarq_aprobar_carga_base",
+      "softarq_aprobar_concepto",
+      "softarq_cambiar_contrasena_propia",
+      "softarq_crear_persona",
+      "softarq_editar_persona",
+      "softarq_restablecer_contrasena",
+    ]);
     for (const f of filas) {
       expect(f, f.nombre).toMatchObject({ definer: true, publico: false, app: true });
       expect(f.propietario).not.toBe("softarq_app");

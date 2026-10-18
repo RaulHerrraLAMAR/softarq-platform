@@ -84,6 +84,17 @@ import {
   EsquemaRespuestaCierreVigencia,
   EsquemaRespuestaConceptosAdmin,
   EsquemaRespuestaInsumosAdmin,
+  EsquemaCambioContrasena,
+  EsquemaDetalleParametros,
+  EsquemaEdicionParametros,
+  EsquemaRespuestaPersonas,
+  EsquemaDetallePersona,
+  EsquemaPersonaAdmin,
+  EsquemaSolicitudPersona,
+  EsquemaEdicionPersona,
+  EsquemaRestablecimientoContrasena,
+  EsquemaRespuestaCredencialTemporal,
+  EsquemaConsultaPersonas,
   EsquemaInsumoAdmin,
   EsquemaSolicitudInsumo,
   EsquemaEdicionInsumo,
@@ -188,6 +199,9 @@ const PARAMETRO_CODIGO = { name: "codigo", in: "path", required: true, schema: {
 const ADMIN = "Contrato INTERNO con importes de proveedor y tarifas; capacidad catalogos.administrar (Administrador del catálogo). Nunca forma parte de la proyección comercial ni del PDF.";
 const TECNICO =
   "Contrato INTERNO con rendimientos, desperdicios, factores, reglas de medición y trazabilidad (ADR-0016); capacidad catalogos.administrar. Nunca forma parte de la proyección comercial ni del PDF.";
+const SISTEMA =
+  "Contrato INTERNO del Administrador del sistema (ADR-0017): parámetros (B-38) o personas y funciones (B-39). La organización y el autor salen de la sesión.";
+const PARAMETRO_PERSONA = { name: "id", in: "path", required: true, schema: { type: "string", format: "uuid" } };
 const PARAMETRO_UNIDAD = { name: "unidad", in: "path", required: true, schema: { type: "string", pattern: "^[a-z0-9]{1,10}$" } };
 const PARAMETRO_COMPONENTE = { name: "componente", in: "path", required: true, schema: { type: "string", pattern: "^[A-Z0-9][A-Z0-9_-]{0,39}$" } };
 const PARAMETRO_NUMERO = { name: "numero", in: "path", required: true, schema: { type: "integer", minimum: 1 } };
@@ -237,6 +251,16 @@ export function construirDocumentoOpenApi(): Record<string, unknown> {
           summary: "Crea la sesión previa al acceso (cookie) y devuelve su token CSRF",
           security: [],
           responses: { "200": ok("RespuestaCsrf", "Token CSRF para iniciar sesión."), ...errores(429, 503, 500) },
+        },
+      },
+      "/api/v1/auth/contrasena": {
+        post: {
+          summary: "Cambio propio de contraseña (obligatorio con una temporal; ADR-0017)",
+          description:
+            "Exige la contraseña actual, una nueva de al menos 12 caracteres distinta de la actual y su confirmación; CSRF y el limitador de accesos. Revoca TODAS las sesiones de la persona (incluida la actual) y borra la cookie: hay que volver a entrar. Con una temporal pendiente, el resto de las rutas responde 403 CAMBIO_CONTRASENA_REQUERIDO.",
+          security: CON_EFECTOS,
+          requestBody: cuerpo("CambioContrasena"),
+          responses: { "204": { description: "Contraseña cambiada; sesión cerrada." }, ...errores(400, 401, 403, 413, 415, 422, 429, 503, 500) },
         },
       },
       "/api/v1/auth/sesion": {
@@ -907,6 +931,62 @@ export function construirDocumentoOpenApi(): Record<string, unknown> {
           responses: { "200": ok("DetalleInsumoAdmin", "Conversión guardada."), ...errores(400, 401, 403, 404, 409, 413, 415, 422, 429, 503, 500) },
         },
       },
+      "/api/v1/admin/parametros": {
+        get: {
+          summary: "Parámetros de venta y plantillas de textos, con el impacto en cotizaciones abiertas e historial (B-38)",
+          description: `${SISTEMA} Ambiente y moneda se muestran, no se editan.`,
+          responses: { "200": ok("DetalleParametros", "Parámetros."), ...errores(401, 403, 429, 503, 500) },
+        },
+        patch: {
+          summary: "Editar recargo, impuesto, vigencia o plantillas, con motivo y revisión",
+          description: `${SISTEMA} Fracciones en texto (0.2 = 20 %); null = no definido (BL-12/BL-13). Solo cálculos y cotizaciones nuevos; las versiones no cambian (BL-16 al enviar, aprobar o emitir).`,
+          security: CON_EFECTOS,
+          requestBody: cuerpo("EdicionParametros"),
+          responses: { "200": ok("DetalleParametros", "Parámetros guardados."), ...errores(400, 401, 403, 409, 413, 415, 422, 429, 503, 500) },
+        },
+      },
+      "/api/v1/admin/personas": {
+        get: {
+          summary: "Personas de la organización (pertenencias), con búsqueda y cursor por correo",
+          description: `${SISTEMA} Nunca incluye contraseñas ni hashes.`,
+          parameters: parametrosQuery(EsquemaConsultaPersonas),
+          responses: { "200": ok("RespuestaPersonas", "Página de personas."), ...errores(400, 401, 403, 429, 503, 500) },
+        },
+        post: {
+          summary: "Alta de una persona con funciones y contraseña temporal mostrada UNA vez",
+          description: `${SISTEMA} Repetir la Idempotency-Key devuelve la persona sin contraseña (contrasenaEntregada: true); si se perdió, restablezca. Correo ya registrado: 409 CORREO_EXISTENTE.`,
+          security: CON_EFECTOS,
+          parameters: [CABECERA_IDEMPOTENCIA],
+          requestBody: cuerpo("SolicitudPersona"),
+          responses: { "201": ok("RespuestaCredencialTemporal", "Persona creada."), ...errores(400, 401, 403, 409, 413, 415, 422, 429, 503, 500) },
+        },
+      },
+      "/api/v1/admin/personas/{id}": {
+        get: {
+          summary: "Detalle de una persona con su historial",
+          description: SISTEMA,
+          parameters: [PARAMETRO_PERSONA],
+          responses: { "200": ok("DetallePersona", "Persona."), ...errores(401, 403, 404, 429, 503, 500) },
+        },
+        patch: {
+          summary: "Editar nombre, funciones o activación (desactivar revoca sus sesiones en la organización)",
+          description: `${SISTEMA} La organización conserva un Administrador del sistema activo (422 ULTIMO_ADMINISTRADOR); nadie se retira esa función ni se desactiva (422 AUTOPROTECCION).`,
+          security: CON_EFECTOS,
+          parameters: [PARAMETRO_PERSONA],
+          requestBody: cuerpo("EdicionPersona"),
+          responses: { "200": ok("PersonaAdmin", "Persona guardada."), ...errores(400, 401, 403, 404, 409, 413, 415, 422, 429, 503, 500) },
+        },
+      },
+      "/api/v1/admin/personas/{id}/restablecimiento": {
+        post: {
+          summary: "Restablecer la contraseña: temporal nueva mostrada una vez; la anterior deja de valer y se revocan todas sus sesiones",
+          description: SISTEMA,
+          security: CON_EFECTOS,
+          parameters: [PARAMETRO_PERSONA, CABECERA_IDEMPOTENCIA],
+          requestBody: cuerpo("RestablecimientoContrasena"),
+          responses: { "200": ok("RespuestaCredencialTemporal", "Contraseña restablecida."), ...errores(400, 401, 403, 404, 413, 415, 422, 429, 503, 500) },
+        },
+      },
       "/api/v1/admin/unidades": {
         get: {
           summary: "Referencia común de unidades (solo lectura)",
@@ -944,6 +1024,16 @@ export function construirDocumentoOpenApi(): Record<string, unknown> {
         SolicitudAcceso: json(EsquemaSolicitudAcceso, "input"),
         RespuestaCsrf: json(EsquemaRespuestaCsrf, "output"),
         RespuestaSesion: json(EsquemaRespuestaSesion, "output"),
+        CambioContrasena: json(EsquemaCambioContrasena, "input"),
+        DetalleParametros: json(EsquemaDetalleParametros, "output"),
+        EdicionParametros: json(EsquemaEdicionParametros, "input"),
+        RespuestaPersonas: json(EsquemaRespuestaPersonas, "output"),
+        DetallePersona: json(EsquemaDetallePersona, "output"),
+        PersonaAdmin: json(EsquemaPersonaAdmin, "output"),
+        SolicitudPersona: json(EsquemaSolicitudPersona, "input"),
+        EdicionPersona: json(EsquemaEdicionPersona, "input"),
+        RestablecimientoContrasena: json(EsquemaRestablecimientoContrasena, "input"),
+        RespuestaCredencialTemporal: json(EsquemaRespuestaCredencialTemporal, "output"),
         SolicitudCalculoDemo: json(EsquemaSolicitudCalculoDemo, "input"),
         RespuestaSalud: json(EsquemaRespuestaSalud, "output"),
         RespuestaConceptos: json(EsquemaRespuestaConceptos, "output"),

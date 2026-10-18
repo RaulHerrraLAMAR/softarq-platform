@@ -46,7 +46,10 @@ export type OperacionIdempotente =
   | "crear_conversion"
   | "crear_concepto"
   | "crear_componente"
-  | "aprobar_concepto";
+  | "aprobar_concepto"
+  // Módulo 13 (ADR-0017): alta de personas y restablecimiento de contraseñas.
+  | "crear_persona"
+  | "restablecer_contrasena";
 
 export interface Idempotencia {
   readonly clave: string;

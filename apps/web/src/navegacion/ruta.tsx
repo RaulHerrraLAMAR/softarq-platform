@@ -22,7 +22,13 @@ export type Ruta =
   | { pantalla: "revision"; id: string }
   | { pantalla: "emisor" }
   | { pantalla: "catalogo"; vista: VistaCatalogo }
+  | { pantalla: "administracion"; vista: VistaAdministracion }
+  | { pantalla: "persona"; id: string }
   | { pantalla: "no-encontrada" };
+
+/** Vistas del Administrador del sistema (módulo 13). */
+export const VISTAS_ADMINISTRACION_RUTA = ["parametros", "personas"] as const;
+export type VistaAdministracion = (typeof VISTAS_ADMINISTRACION_RUTA)[number];
 
 /** Vistas de la administración de catálogos (módulo 11). */
 export const VISTAS_CATALOGO_RUTA = ["proveedores", "productos", "precios", "mano-de-obra", "insumos", "tipos-estructura", "conceptos"] as const;
@@ -58,6 +64,11 @@ export function interpretarHash(hash: string): Ruta | null {
   if ((m = /^\/catalogo\/([a-z-]+)$/.exec(camino)) && (VISTAS_CATALOGO_RUTA as readonly string[]).includes(m[1]!)) {
     return { pantalla: "catalogo", vista: m[1] as VistaCatalogo };
   }
+  if (camino === "/administracion") return { pantalla: "administracion", vista: "parametros" };
+  if ((m = /^\/administracion\/([a-z-]+)$/.exec(camino)) && (VISTAS_ADMINISTRACION_RUTA as readonly string[]).includes(m[1]!)) {
+    return { pantalla: "administracion", vista: m[1] as VistaAdministracion };
+  }
+  if ((m = new RegExp(`^/administracion/personas/(${UUID})$`).exec(camino))) return { pantalla: "persona", id: m[1]! };
   return { pantalla: "no-encontrada" };
 }
 
@@ -87,13 +98,17 @@ export function hashDe(r: Ruta): string {
       return "#/emisor";
     case "catalogo":
       return `#/catalogo/${r.vista}`;
+    case "administracion":
+      return `#/administracion/${r.vista}`;
+    case "persona":
+      return `#/administracion/personas/${r.id}`;
     case "no-encontrada":
       return "#/no-encontrada";
   }
 }
 
 /** Sección de la navegación principal a la que pertenece una ruta. */
-export function seccionDe(r: Ruta): "calculadora" | "cotizaciones" | "revisiones" | "clientes" | "proyectos" | "emisor" | "catalogo" | null {
+export function seccionDe(r: Ruta): "calculadora" | "cotizaciones" | "revisiones" | "clientes" | "proyectos" | "emisor" | "catalogo" | "administracion" | null {
   switch (r.pantalla) {
     case "calculadora":
       return "calculadora";
@@ -114,6 +129,9 @@ export function seccionDe(r: Ruta): "calculadora" | "cotizaciones" | "revisiones
       return "emisor";
     case "catalogo":
       return "catalogo";
+    case "administracion":
+    case "persona":
+      return "administracion";
     default:
       return null;
   }

@@ -343,6 +343,9 @@ export const CAPACIDADES = [
   // Módulo 11 (ADR-0015): administrar proveedores, productos, precios y tarifas, y asignar
   // tarifas a conceptos (Administrador del catálogo). Incluye la lectura de importes internos.
   "catalogos.administrar",
+  // Módulo 13 (ADR-0017): parámetros (B-38) y personas y funciones (B-39), Administrador del sistema.
+  "parametros.administrar",
+  "personas.administrar",
 ] as const;
 export type Capacidad = (typeof CAPACIDADES)[number];
 
@@ -381,6 +384,11 @@ export const EsquemaRespuestaSesion = z.strictObject({
   inactividadMinutos: z.number().int().positive(),
   /** Token CSRF de esta sesión, para POST y DELETE (cabecera X-CSRF-Token). */
   csrfToken: EsquemaTokenOpaco,
+  /**
+   * Módulo 13 (ADR-0017): la contraseña vigente es temporal. La API solo permite consultar la sesión,
+   * cambiar la contraseña y cerrar la sesión hasta que se cambie.
+   */
+  cambioContrasenaRequerido: z.boolean(),
 });
 export type RespuestaSesion = z.infer<typeof EsquemaRespuestaSesion>;
 
@@ -440,6 +448,13 @@ export const CODIGOS_ERROR_API = [
   "VIGENCIA_INVALIDA",
   "PRECIO_ANULADO",
   "VALOR_INVALIDO",
+  // Módulo 13 (ADR-0017): parámetros y personas.
+  "CORREO_EXISTENTE",
+  "ULTIMO_ADMINISTRADOR",
+  "AUTOPROTECCION",
+  "CAMBIO_CONTRASENA_REQUERIDO",
+  "CONTRASENA_TEMPORAL_CADUCADA",
+  "CONTRASENA_ACTUAL_INCORRECTA",
   // Módulo 12 (ADR-0016): catálogo técnico y aprobación de conceptos.
   "TIPO_CON_CONCEPTOS",
   "INSUMO_CON_REFERENCIAS",

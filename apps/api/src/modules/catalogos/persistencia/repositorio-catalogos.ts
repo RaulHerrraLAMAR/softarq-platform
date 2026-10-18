@@ -165,6 +165,8 @@ export interface DatosParametros {
   impuestoTratamiento: string | null;
   impuestoNombre: string | null;
   vigenciaDias: number | null;
+  /** Plantillas TEXTO_* (módulo 13). Ausente = no se tocan; `null` = sin plantillas. */
+  textos?: { alcance: string; condiciones: string; exclusiones: string } | null;
 }
 
 export class RepositorioCatalogos {
@@ -884,6 +886,9 @@ function datosParametros(d: DatosParametros) {
     impuestoTratamiento: d.impuestoTratamiento,
     impuestoNombre: d.impuestoNombre,
     vigenciaDias: d.vigenciaDias,
+    ...(d.textos === undefined
+      ? {}
+      : { textoAlcance: d.textos?.alcance ?? null, textoCondiciones: d.textos?.condiciones ?? null, textoExclusiones: d.textos?.exclusiones ?? null }),
   };
 }
 

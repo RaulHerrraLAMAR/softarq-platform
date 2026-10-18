@@ -61,6 +61,15 @@ export type FalloApi =
       /** 422 REQUISITOS_INCOMPLETOS (módulo 12): requisitos de aprobación pendientes del servidor. */
       problemas?: { codigo: string; referencia: string; mensaje: string }[];
     }
+  /**
+   * Personas y contraseñas (módulo 13, ADR-0017): 409 CORREO_EXISTENTE; 422 ULTIMO_ADMINISTRADOR,
+   * AUTOPROTECCION o CONTRASENA_ACTUAL_INCORRECTA. Nada cambió.
+   */
+  | { tipo: "administracion"; codigo: "CORREO_EXISTENTE" | "ULTIMO_ADMINISTRADOR" | "AUTOPROTECCION" | "CONTRASENA_ACTUAL_INCORRECTA"; mensaje: string; campos: { ruta: string; mensaje: string }[] }
+  /** 401 al entrar o al cambiar: la contraseña temporal caducó (hace falta un restablecimiento). */
+  | { tipo: "temporal_caducada" }
+  /** 403: la sesión solo permite cambiar la contraseña temporal (la API lo exige en cada ruta). */
+  | { tipo: "cambio_requerido" }
   /** 422 CAPTURA_INCOMPLETA: la captura no está lista; no se guardó ninguna versión. */
   | { tipo: "incompleta"; campos: { ruta: string; mensaje: string }[] }
   /** 422 REGISTRO_INACTIVO: el cliente o el proyecto no se ofrece para registros nuevos. */
@@ -268,9 +277,11 @@ function falloPorEstado(respuesta: Response, error: RespuestaError | null): Fall
       return e ? { tipo: "invalida", campos: e.campos ?? [] } : { tipo: "incompatible" };
     case 401:
       if (e?.codigo === "CREDENCIALES_INVALIDAS") return { tipo: "credenciales" };
+      if (e?.codigo === "CONTRASENA_TEMPORAL_CADUCADA") return { tipo: "temporal_caducada" };
       return e?.codigo === "NO_AUTENTICADO" || e?.codigo === "SESION_NO_VALIDA" ? { tipo: "no_autenticado" } : { tipo: "incompatible" };
     case 403:
       if (e?.codigo === "CSRF_NO_VALIDO") return { tipo: "csrf" };
+      if (e?.codigo === "CAMBIO_CONTRASENA_REQUERIDO") return { tipo: "cambio_requerido" };
       return e?.codigo === "SIN_PERMISO" || e?.codigo === "ORIGEN_NO_PERMITIDO" ? { tipo: "sin_permiso" } : { tipo: "incompatible" };
     case 404:
       return e ? { tipo: "no_encontrado", faltantes: e.faltantes ?? [] } : { tipo: "incompatible" };
@@ -293,6 +304,7 @@ function falloPorEstado(respuesta: Response, error: RespuestaError | null): Fall
       if (e && FALLOS_CATALOGO_409.has(e.codigo) && esCodigoFalloCatalogo(e.codigo)) {
         return { tipo: "catalogo", codigo: e.codigo, mensaje: e.mensaje, registroVigente: e.registroVigente ?? null };
       }
+      if (e?.codigo === "CORREO_EXISTENTE") return { tipo: "administracion", codigo: e.codigo, mensaje: e.mensaje, campos: e.campos ?? [] };
       if (e?.codigo === "REVISION_PENDIENTE" || e?.codigo === "VERSION_NO_VIGENTE" || e?.codigo === "CONFLICTO_REVISION") {
         return { tipo: "revision", codigo: e.codigo, mensaje: e.mensaje, revisionVigente: e.revisionVigente ?? null };
       }
@@ -329,6 +341,10 @@ function falloPorEstado(respuesta: Response, error: RespuestaError | null): Fall
         case "IDEMPOTENCIA_CONFLICTO":
         case "IDEMPOTENCIA_CADUCADA":
           return { tipo: "idempotencia", mensaje: e.mensaje };
+        case "ULTIMO_ADMINISTRADOR":
+        case "AUTOPROTECCION":
+        case "CONTRASENA_ACTUAL_INCORRECTA":
+          return { tipo: "administracion", codigo: e.codigo, mensaje: e.mensaje, campos: e.campos ?? [] };
         default:
           if (e && FALLOS_CATALOGO_422.has(e.codigo) && esCodigoFalloCatalogo(e.codigo)) {
             return {
@@ -376,7 +392,12 @@ export function mensajeDeFallo(fallo: FalloApi): string {
       return "Hay referencias nuevas que no existen o no están disponibles hoy. Revise los campos marcados.";
     case "excepcion":
     case "catalogo":
+    case "administracion":
       return fallo.mensaje;
+    case "temporal_caducada":
+      return "La contraseña temporal caducó. Pida al Administrador del sistema un restablecimiento.";
+    case "cambio_requerido":
+      return "Antes de continuar debe cambiar su contraseña temporal.";
     case "revision":
     case "respuesta":
     case "estado":

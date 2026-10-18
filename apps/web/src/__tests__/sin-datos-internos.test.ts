@@ -40,6 +40,15 @@ describe("la web no contiene fórmulas ni costos internos", () => {
   const PROHIBIDO_EN_TECNICO = /costo|consumo|margen|recargo|sobrante[A-Z]|precioProveedor|@softarq\/api|prisma|apps\/api|fixtures/i;
   const enTecnico = (archivo: string) => relative(SRC, archivo).split(/[\\/]/)[0] === "catalogo-tecnico";
 
+  // Excepción explícita y acotada (módulo 13, ADR-0017): la carpeta `administracion/` es la pantalla
+  // del Administrador del sistema, con contrato interno y capacidades propias (`parametros.administrar`):
+  // edita el recargo (RECARGO_PCT, que se suma al costo directo) como en 17 CONFIG. Siguen prohibidos
+  // consumos, rendimientos, desperdicios, márgenes, tarifas, traslapes y sobrantes; ningún importe
+  // interno llega a la pantalla. El acceso real lo comprueba la API (`acceso-admin.integracion.test.ts`
+  // separa las rutas del sistema de las del catálogo).
+  const PROHIBIDO_EN_ADMINISTRACION = /consumo|rendimiento|desperdicio|margen|tarifa|traslape|sobrante[A-Z]|precioProveedor|@softarq\/api|prisma|apps\/api|fixtures/i;
+  const enAdministracion = (archivo: string) => relative(SRC, archivo).split(/[\\/]/)[0] === "administracion";
+
   it.each(archivos(SRC).map((a) => [relative(SRC, a), a]))("%s", (_nombre, archivo) => {
     const lineas = readFileSync(archivo, "utf-8")
       .split("\n")
@@ -51,7 +60,9 @@ describe("la web no contiene fórmulas ni costos internos", () => {
         ? PROHIBIDO_EN_CATALOGO
         : enTecnico(archivo)
           ? PROHIBIDO_EN_TECNICO
-          : PROHIBIDO;
+          : enAdministracion(archivo)
+            ? PROHIBIDO_EN_ADMINISTRACION
+            : PROHIBIDO;
     expect(lineas.filter((l) => patron.test(l))).toEqual([]);
   });
 
@@ -83,6 +94,13 @@ describe("la web no contiene fórmulas ni costos internos", () => {
       .filter(enTecnico)
       .map((a) => relative(SRC, a).split(/[\\/]/).join("/"));
     expect(cubiertos.sort()).toEqual(["catalogo-tecnico/PantallasTecnicas.tsx"]);
+  });
+
+  it("la excepción del módulo 13 cubre solo la carpeta administracion/ y sus archivos", () => {
+    const cubiertos = archivos(SRC)
+      .filter(enAdministracion)
+      .map((a) => relative(SRC, a).split(/[\\/]/).join("/"));
+    expect(cubiertos.sort()).toEqual(["administracion/PantallasAdministracion.tsx", "administracion/porcentaje.ts", "administracion/servicios.ts"]);
   });
 
   it("no hay HTML interpretado", () => {

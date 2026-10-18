@@ -8,15 +8,16 @@
  *   montar desde cero (sin captura, resultados ni consultas) y el cliente cancela y descarta todo
  *   lo pendiente de la identidad anterior.
  */
-import type { RespuestaSesion } from "@softarq/contracts";
+import type { CambioContrasena, RespuestaSesion } from "@softarq/contracts";
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { crearClienteApi, type FalloApi } from "../api/cliente.ts";
 import { crearServicios, type ServiciosApi } from "../api/servicios.ts";
 import { crearServiciosCotizaciones, type ServiciosCotizaciones } from "../api/servicios-cotizaciones.ts";
+import { crearServiciosAdministracion, type ServiciosAdministracion } from "../administracion/servicios.ts";
 import { crearServiciosCatalogoAdmin, type ServiciosCatalogoAdmin } from "../catalogo-admin/servicios.ts";
 import { crearServiciosSesion, type ServiciosSesion } from "./servicios.ts";
 
-export type MotivoAcceso = null | "cerrada" | "vencida";
+export type MotivoAcceso = null | "cerrada" | "vencida" | "contrasena_cambiada";
 
 export type EstadoSesion =
   | { fase: "verificando" }
@@ -34,7 +35,11 @@ export interface ValorSesion {
   cotizaciones: ServiciosCotizaciones;
   /** Administración de catálogos (módulo 11, mismo cliente). */
   catalogoAdmin: ServiciosCatalogoAdmin;
+  /** Parámetros y personas (módulo 13, mismo cliente). */
+  administracion: ServiciosAdministracion;
   iniciar(correo: string, contrasena: string): Promise<ResultadoInicio>;
+  /** Cambio de la contraseña propia: al terminar, la sesión se cierra y hay que volver a entrar. */
+  cambiarContrasena(datos: CambioContrasena): Promise<ResultadoInicio>;
   cerrar(): Promise<ResultadoInicio>;
   reintentarVerificacion(): void;
 }
@@ -61,7 +66,7 @@ export function ProveedorSesion({ urlApi, children, hacerFetch }: PropsProveedor
   const vencer = useRef<() => void>(() => {});
   const renovarCsrf = useRef<() => Promise<boolean>>(async () => false);
 
-  const { cliente, servicios, cotizaciones, catalogoAdmin, sesion } = useMemo(() => {
+  const { cliente, servicios, cotizaciones, catalogoAdmin, administracion, sesion } = useMemo(() => {
     const cliente = crearClienteApi(urlApi, hacerFetch, {
       csrf: () => csrf.current,
       alNoAutenticado: () => vencer.current(),
@@ -72,6 +77,7 @@ export function ProveedorSesion({ urlApi, children, hacerFetch }: PropsProveedor
       servicios: crearServicios(cliente),
       cotizaciones: crearServiciosCotizaciones(cliente),
       catalogoAdmin: crearServiciosCatalogoAdmin(cliente),
+      administracion: crearServiciosAdministracion(cliente),
       sesion: crearServiciosSesion(cliente) as ServiciosSesion,
     };
   }, [urlApi, hacerFetch]);
@@ -145,9 +151,28 @@ export function ProveedorSesion({ urlApi, children, hacerFetch }: PropsProveedor
     return { ok: true };
   }, [cliente, sesion, olvidar]);
 
+  const cambiarContrasena = useCallback(
+    async (datos: CambioContrasena): Promise<ResultadoInicio> => {
+      const r = await sesion.cambiarContrasena(datos);
+      if (!r.ok) {
+        // Caducada o sesión revocada mientras tanto: vuelve al acceso con el motivo.
+        if (r.fallo.tipo === "no_autenticado") {
+          olvidar();
+          setEstado({ fase: "anonimo", motivo: "vencida" });
+        }
+        return { ok: false, fallo: r.fallo };
+      }
+      // El servidor revocó todas las sesiones (también esta): se olvida todo y se pide entrar de nuevo.
+      olvidar();
+      setEstado({ fase: "anonimo", motivo: "contrasena_cambiada" });
+      return { ok: true };
+    },
+    [sesion, olvidar],
+  );
+
   const valor = useMemo<ValorSesion>(
-    () => ({ estado, servicios, cotizaciones, catalogoAdmin, iniciar, cerrar, reintentarVerificacion: () => setIntento((n) => n + 1) }),
-    [estado, servicios, cotizaciones, catalogoAdmin, iniciar, cerrar],
+    () => ({ estado, servicios, cotizaciones, catalogoAdmin, administracion, iniciar, cerrar, cambiarContrasena, reintentarVerificacion: () => setIntento((n) => n + 1) }),
+    [estado, servicios, cotizaciones, catalogoAdmin, administracion, iniciar, cerrar, cambiarContrasena],
   );
   return <ContextoSesion.Provider value={valor}>{children}</ContextoSesion.Provider>;
 }

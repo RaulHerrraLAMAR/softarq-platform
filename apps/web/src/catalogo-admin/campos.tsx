@@ -10,7 +10,7 @@ import { Aviso, Boton } from "../comunes/componentes.tsx";
 /** Mensaje del servidor para un campo (400 del contrato o 422 con campos). */
 export function errorDe(fallo: FalloApi | null, ruta: string): string | null {
   if (!fallo) return null;
-  const campos = fallo.tipo === "invalida" || fallo.tipo === "catalogo" ? (fallo.campos ?? []) : [];
+  const campos = fallo.tipo === "invalida" || fallo.tipo === "catalogo" || fallo.tipo === "administracion" ? (fallo.campos ?? []) : [];
   return campos.find((c) => c.ruta === ruta || c.ruta.startsWith(`${ruta}.`))?.mensaje ?? null;
 }
 

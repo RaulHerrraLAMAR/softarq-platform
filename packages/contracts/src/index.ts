@@ -9,3 +9,4 @@ export * from "./api/respuestas.js";
 export * from "./api/excepciones.js";
 export * from "./api/catalogos-admin.js";
 export * from "./api/catalogos-tecnicos.js";
+export * from "./api/administracion.js";

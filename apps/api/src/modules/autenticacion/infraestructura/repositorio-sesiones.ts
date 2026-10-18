@@ -2,7 +2,8 @@
  * Acceso a usuarios, pertenencias y sesiones (ADR-0007). Solo consultas de Prisma (parametrizadas).
  *
  * Con el rol de la aplicación:
- * - `usuario` y `membresia` solo se leen;
+ * - `usuario` y `membresia` solo se leen; el cambio propio de contraseña usa la función SECURITY
+ *   DEFINER `softarq_cambiar_contrasena_propia` (módulo 13, ADR-0017);
  * - en `sesion` se inserta y se actualizan únicamente la actividad y la revocación (permisos por
  *   columna en PostgreSQL). No hay DELETE.
  */
@@ -13,6 +14,8 @@ export interface CuentaParaAcceso {
   readonly usuarioId: string;
   readonly hashContrasena: string;
   readonly activo: boolean;
+  /** Caducidad de la contraseña temporal vigente (`null` = definitiva). Módulo 13. */
+  readonly temporalExpiraEn: Date | null;
   /** Pertenencias activas (en esta etapa el acceso exige exactamente una). */
   readonly membresiasActivas: readonly { organizacionId: string }[];
 }
@@ -31,6 +34,8 @@ export interface SesionCompleta {
     readonly correo: string;
     readonly usuarioActivo: boolean;
     readonly membresiaActiva: boolean;
+    /** La contraseña vigente es temporal: la sesión queda restringida al cambio (módulo 13). */
+    readonly temporalExpiraEn: Date | null;
     readonly funciones: readonly FuncionUsuario[];
     readonly organizacion: { readonly id: string; readonly codigo: string; readonly nombre: string; readonly esDemo: boolean };
   } | null;
@@ -50,7 +55,10 @@ export type MotivoRevocacion =
   | "REEMPLAZADA"
   | "USUARIO_INACTIVO"
   | "MEMBRESIA_INACTIVA"
-  | "RESTABLECIMIENTO";
+  | "RESTABLECIMIENTO"
+  // Módulo 13 (ADR-0017): los escriben las funciones de personas en la base.
+  | "DESACTIVADA"
+  | "CAMBIO_CONTRASENA";
 
 const FUNCIONES_VALIDAS = new Set<string>(FUNCIONES_USUARIO);
 
@@ -64,11 +72,18 @@ export class RepositorioSesiones {
         id: true,
         hashContrasena: true,
         activo: true,
+        contrasenaTemporalExpiraEn: true,
         membresias: { where: { activa: true }, select: { organizacionId: true } },
       },
     });
     if (!u) return null;
-    return { usuarioId: u.id, hashContrasena: u.hashContrasena, activo: u.activo, membresiasActivas: u.membresias };
+    return {
+      usuarioId: u.id,
+      hashContrasena: u.hashContrasena,
+      activo: u.activo,
+      temporalExpiraEn: u.contrasenaTemporalExpiraEn,
+      membresiasActivas: u.membresias,
+    };
   }
 
   /** Sesión por hash de token, con su titular y pertenencia leídos en la misma consulta. */
@@ -86,7 +101,7 @@ export class RepositorioSesiones {
           select: {
             activa: true,
             funciones: true,
-            usuario: { select: { id: true, nombre: true, correo: true, activo: true } },
+            usuario: { select: { id: true, nombre: true, correo: true, activo: true, contrasenaTemporalExpiraEn: true } },
             organizacion: { select: { id: true, codigo: true, nombre: true, esDemo: true } },
           },
         },
@@ -108,11 +123,23 @@ export class RepositorioSesiones {
             correo: m.usuario.correo,
             usuarioActivo: m.usuario.activo,
             membresiaActiva: m.activa,
+            temporalExpiraEn: m.usuario.contrasenaTemporalExpiraEn,
             funciones: m.funciones.filter((f): f is FuncionUsuario => FUNCIONES_VALIDAS.has(f)),
             organizacion: m.organizacion,
           }
         : null,
     };
+  }
+
+  /** Hash vigente de la contraseña de un usuario activo (para verificar la actual en el cambio propio). */
+  async hashDe(usuarioId: string): Promise<{ hash: string; temporalExpiraEn: Date | null } | null> {
+    const u = await this.prisma.usuario.findUnique({ where: { id: usuarioId }, select: { hashContrasena: true, contrasenaTemporalExpiraEn: true, activo: true } });
+    return u && u.activo ? { hash: u.hashContrasena, temporalExpiraEn: u.contrasenaTemporalExpiraEn } : null;
+  }
+
+  /** Cambio propio (función SECURITY DEFINER): contraseña definitiva y TODAS sus sesiones revocadas. */
+  async cambiarContrasenaPropia(organizacionId: string, usuarioId: string, hash: string): Promise<void> {
+    await this.prisma.$queryRaw`SELECT softarq_cambiar_contrasena_propia(${organizacionId}::uuid, ${usuarioId}::uuid, ${hash})::text AS r`;
   }
 
   async crear(n: NuevaSesion): Promise<string> {

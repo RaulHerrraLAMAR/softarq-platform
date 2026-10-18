@@ -10,7 +10,17 @@ const app = prismaApp();
 afterAll(() => app.$disconnect());
 
 /** Funciones SECURITY DEFINER previstas (ADR-0017): propietario migrador y `search_path` fijo. */
-const DEFINER = ["softarq_aprobar_carga_base", "softarq_aprobar_concepto"];
+const DEFINER = [
+  "softarq_aprobar_carga_base",
+  "softarq_aprobar_concepto",
+  // Módulo 13: identidad (la aplicación no escribe `usuario` ni `membresia`).
+  "softarq_cambiar_contrasena_propia",
+  "softarq_crear_persona",
+  "softarq_editar_persona",
+  "softarq_restablecer_contrasena",
+];
+/** Ayudantes internos de las funciones de identidad: la aplicación no los ejecuta (módulo 13). */
+const INTERNAS = ["softarq_hay_administrador", "softarq_validar_funciones"];
 
 describe("migraciones (globalSetup: esquema vaciado y migrate deploy)", () => {
   it("la conexión de la aplicación está en softarq_test", async () => {
@@ -228,6 +238,8 @@ describe("permisos del rol de la aplicación (softarq_app)", () => {
         "softarq_aprobar_concepto",
         "softarq_asignar_tarifa_concepto",
         "softarq_cambiar_activa_tarifa",
+        // Módulo 13 (ADR-0017): parámetros y personas.
+        "softarq_cambiar_contrasena_propia",
         "softarq_cerrar_vigencia_precio",
         "softarq_codigo_catalogo",
         "softarq_crear_cliente",
@@ -236,6 +248,7 @@ describe("permisos del rol de la aplicación (softarq_app)", () => {
         "softarq_crear_conversion",
         "softarq_crear_cotizacion",
         "softarq_crear_insumo",
+        "softarq_crear_persona",
         "softarq_crear_producto",
         "softarq_crear_proveedor",
         "softarq_crear_proyecto",
@@ -250,6 +263,8 @@ describe("permisos del rol de la aplicación (softarq_app)", () => {
         "softarq_editar_concepto",
         "softarq_editar_conversion",
         "softarq_editar_insumo",
+        "softarq_editar_parametros",
+        "softarq_editar_persona",
         "softarq_editar_producto",
         "softarq_editar_proveedor",
         "softarq_editar_proyecto",
@@ -260,19 +275,22 @@ describe("permisos del rol de la aplicación (softarq_app)", () => {
         "softarq_exigir_funcion",
         "softarq_guardar_borrador",
         "softarq_guardar_emisor",
+        "softarq_hay_administrador",
         "softarq_normalizar",
         "softarq_problemas_concepto",
         "softarq_registrar_idempotencia",
         "softarq_registrar_precio",
         "softarq_registrar_respuesta",
         "softarq_registrar_tarifa",
+        "softarq_restablecer_contrasena",
         "softarq_retirar_revision",
         "softarq_siguiente",
+        "softarq_validar_funciones",
       ]);
       // ADR-0017 §1.2: solo las funciones de aprobación (y, desde el módulo 13, las de identidad) son
       // SECURITY DEFINER; el resto actúa con los permisos del rol de la aplicación.
       const definer = new Set(DEFINER);
-      for (const f of filas) expect(f, f.nombre).toMatchObject({ definer: definer.has(f.nombre), publico: false, app: true });
+      for (const f of filas) expect(f, f.nombre).toMatchObject({ definer: definer.has(f.nombre), publico: false, app: !INTERNAS.includes(f.nombre) });
     });
   });
 

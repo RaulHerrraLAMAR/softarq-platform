@@ -199,13 +199,44 @@ En `softarq_dev` no hay otra forma de reproducir un precio vencido sin manipular
 | T9 | «Editar datos» del concepto aprobado y cambiar la regla | Aviso «Al guardar, el concepto aprobado vuelve a Borrador»; tras confirmar queda en Borrador |
 | T10 | 390 px y teclado en «Conceptos y componentes» | Una columna, foco en el primer campo del formulario y sin desplazamiento horizontal |
 
+### Parámetros (P1–P6, módulo 13; pendiente de ejecución formal)
+
+- **Sesión:** cuenta `[DEMO] Administrador` (también Administrador del sistema).
+- **Configuración de referencia:** recargo 20 %, IVA DEMO 16 %, vigencia 15 días y los textos [DEMO]. Sostiene los totales de referencia: si la cambia, **devuélvala** al terminar con un motivo («Volver a la configuración de referencia»); el historial conserva ambos cambios.
+- **Fuentes y decisiones:** [ADR-0017](../adr/0017-parametros-personas-permisos.md).
+
+| Caso | Acción | Resultado esperado |
+|---|---|---|
+| P1 | Preparador y Revisor: barra de secciones; abrir `#/administracion/parametros` | No ven «Administración»; la dirección muestra «Sin permiso» |
+| P2 | Administrador → «Administración» → «Parámetros» | «20 % (fracción guardada: 0.2)», impuesto, vigencia; ambiente DEMO y moneda MXN sin edición; enlace a «Emisor»; impacto en cotizaciones abiertas |
+| P3 | «Editar parámetros»: recargo 18.5 | La ayuda muestra «Se guardará la fracción 0.185 (18.5 %)»; 120 o «1,5» se rechazan junto al campo; sin motivo no avanza |
+| P4 | Con motivo, «Revisar y guardar» y confirmar | La confirmación describe borradores, versiones sin enviar, en revisión y aprobadas sin emitir afectadas; tras guardar, el historial muestra «recargo: 20 % → 18.5 %». Una versión calculada antes sigue igual y al enviarla aparece BL-16 |
+| P5 | Vuelve a 20 % con motivo | Total del Ejemplo 1 otra vez $54,190.68 en una versión nueva |
+| P6 | Cambia la plantilla de alcance, crea una cotización nueva y abre una anterior | La nueva trae el texto nuevo; la anterior y sus versiones conservan el suyo. Devuelva la plantilla al texto [DEMO] original |
+
+### Personas y funciones (U1–U8, módulo 13; pendiente de ejecución formal)
+
+- **Sesión:** cuenta `[DEMO] Administrador`. Registre solo personas `[DEMO] …` con correos `…@softarq.test`.
+- **Entrega manual:** la contraseña temporal aparece una sola vez en pantalla. Entréguela en persona; no la envíe por correo ni chat, no la guarde en archivos. Si se pierde, use «Restablecer contraseña…» (la anterior deja de valer). Caduca a las 72 horas.
+
+| Caso | Acción | Resultado esperado |
+|---|---|---|
+| U1 | «Personas y funciones» → «Nueva persona» `[DEMO] …` como Preparador, con motivo | Aviso con la contraseña temporal y la caducidad; «Ya la entregué: ocultar» la retira. El listado marca «Contraseña temporal pendiente». Un correo ya registrado se rechaza junto al campo |
+| U2 | En otro navegador (o ventana privada), entra con el correo y la temporal | Solo aparece «Cambie su contraseña temporal»: sin secciones ni cotizador |
+| U3 | Cambia la contraseña: corta, sin coincidir y luego válida (12 caracteres o más) | Los errores aparecen junto a cada campo; al cambiar, «Contraseña cambiada» y se vuelve a entrar con la nueva; la temporal ya no sirve |
+| U4 | Administrador: «Gestionar» la persona → agrega la función Revisor con motivo | El historial muestra «Preparador → Preparador, Revisor»; en el otro navegador, al recargar, aparece lo de Revisor sin volver a entrar |
+| U5 | Con la persona dentro en el otro navegador, «Desactivar…» con motivo y confirmar | En el otro navegador, la siguiente acción lleva a «Su sesión terminó»; no puede volver a entrar. «Reactivar…» lo permite de nuevo |
+| U6 | «Restablecer contraseña…» con motivo | Contraseña temporal nueva (una vez); todas las sesiones de la persona se cierran |
+| U7 | Abre tu propia cuenta | «Es su propia cuenta»: no puede retirarse Administrador del sistema, desactivarse ni restablecerse |
+| U8 | 390 px y teclado en «Personas y funciones» | Tarjetas de una columna, correos largos partidos, foco visible y sin desplazamiento horizontal |
+
 ## 4. Qué no hace todavía
 
 - La calculadora DEMO no guarda su captura (para conservarla, «Guardar como cotización»).
 - La aprobación **no es una emisión** ni una entrega al cliente. La emisión (módulo 8) genera un PDF **DEMO**: no se envía por correo ni al cliente y no es una cotización comercial real.
 - Sin duplicar cotizaciones, correo ni app móvil. Respuesta y vigencia: módulo 9; excepciones: módulo 10.
 - Los tipos de costo adicional siguen solo con la carga DEMO. Los cinco conceptos heredados de `softarq_dev` muestran «Datos incompletos de la carga anterior» hasta que el Administrador los complete (ADR-0016 §2.3).
-- Sin registro de usuarios ni recuperación de contraseña.
+- Sin registro público de usuarios, correo ni recuperación de contraseña por la propia persona: el Administrador del sistema da de alta y restablece (módulo 13).
 - Solo punto decimal (por ejemplo, `0.12`).
 
 ## 5. Registro de la prueba en persona

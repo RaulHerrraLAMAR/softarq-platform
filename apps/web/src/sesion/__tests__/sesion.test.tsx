@@ -15,6 +15,10 @@ import { Raiz } from "../Raiz.tsx";
 const CSRF_PREVIO = "p".repeat(43);
 const CSRF_SESION = "s".repeat(43);
 const CLAVE = "clave-de-prueba";
+/** Módulo 13: contraseña temporal vigente y caducada del «servidor» simulado. */
+const TEMPORAL = "temporal-de-prueba";
+const CADUCADA = "temporal-caducada";
+const NUEVA = "una frase nueva y larga";
 
 function sesion(funciones: RespuestaSesion["funciones"]): RespuestaSesion {
   const preparador = funciones.includes("PREPARADOR");
@@ -26,6 +30,7 @@ function sesion(funciones: RespuestaSesion["funciones"]): RespuestaSesion {
     expiraEn: "2026-10-03T00:00:00.000Z",
     inactividadMinutos: 30,
     csrfToken: CSRF_SESION,
+    cambioContrasenaRequerido: false,
   };
 }
 
@@ -51,10 +56,24 @@ function apiFalsa(inicial: RespuestaSesion | null = null) {
       case "POST /api/v1/auth/sesion": {
         if (csrf !== CSRF_PREVIO) return error(403, "CSRF_NO_VALIDO");
         const { correo, contrasena } = JSON.parse(String(init?.body)) as { correo: string; contrasena: string };
-        if (contrasena !== CLAVE) return error(401, "CREDENCIALES_INVALIDAS");
+        if (contrasena === CADUCADA) return error(401, "CONTRASENA_TEMPORAL_CADUCADA");
+        if (contrasena !== CLAVE && contrasena !== TEMPORAL) return error(401, "CREDENCIALES_INVALIDAS");
         estado.vencida = false;
         estado.sesion = sesion(correo.startsWith("revisor") ? ["REVISOR"] : ["PREPARADOR"]);
+        // Sesión restringida: solo sesión propia; la API real rechaza el resto (403 CAMBIO_CONTRASENA_REQUERIDO).
+        if (contrasena === TEMPORAL) estado.sesion = { ...estado.sesion, capacidades: ["sesion.propia"], cambioContrasenaRequerido: true };
         return json(200, estado.sesion);
+      }
+      case "POST /api/v1/auth/contrasena": {
+        if (!autenticada) return error(401, "SESION_NO_VALIDA");
+        if (csrf !== CSRF_SESION) return error(403, "CSRF_NO_VALIDO");
+        const c = JSON.parse(String(init?.body)) as { actual: string; nueva: string; confirmacion: string };
+        if (c.actual !== TEMPORAL) {
+          return json(422, { error: { codigo: "CONTRASENA_ACTUAL_INCORRECTA", mensaje: "m", solicitudId: "id", campos: [{ ruta: "actual", mensaje: "La contraseña actual no es correcta." }] } });
+        }
+        // El servidor revoca todas las sesiones, también esta.
+        estado.sesion = null;
+        return new Response(null, { status: 204 });
       }
       case "DELETE /api/v1/auth/sesion":
         if (!autenticada) return error(401, "SESION_NO_VALIDA");
@@ -63,6 +82,7 @@ function apiFalsa(inicial: RespuestaSesion | null = null) {
         return new Response(null, { status: 204 });
     }
     if (!autenticada) return error(401, estado.sesion ? "SESION_NO_VALIDA" : "NO_AUTENTICADO");
+    if (estado.sesion?.cambioContrasenaRequerido) return error(403, "CAMBIO_CONTRASENA_REQUERIDO");
     if (u.pathname === "/api/v1/catalogos/conceptos") {
       if (estado.retenerConceptos) return estado.retenerConceptos.promesa;
       return json(200, { conceptos: [CON_AREA, CON_VOLUMEN], limite: 20 });
@@ -206,5 +226,60 @@ describe("sesión en la web", () => {
     await new Promise((r) => setTimeout(r, 50));
     expect(document.body.textContent).not.toContain("[ANTERIOR]");
     expect(screen.queryByRole("heading", { name: "Captura propia", level: 1 })).toBeNull();
+  });
+
+  it("con contraseña temporal solo se puede cambiarla o cerrar: el cotizador no se monta ni pide datos", async () => {
+    const api = apiFalsa();
+    const usuario = userEvent.setup();
+    montar(api);
+    await entrar(usuario, "preparador.demo@softarq.test", TEMPORAL);
+    expect(await screen.findByRole("heading", { name: "Cambie su contraseña temporal" })).toBeTruthy();
+    expect(screen.queryByRole("navigation", { name: "Secciones" })).toBeNull();
+    expect(screen.queryByRole("button", { name: /Cargar ejemplo/ })).toBeNull();
+    expect(api.llamadas.some((l) => l.ruta.startsWith("/api/v1/catalogos"))).toBe(false);
+    expect(screen.getByLabelText("Contraseña nueva").getAttribute("autocomplete")).toBe("new-password");
+  });
+
+  it("cambio propio: valida antes de enviar, muestra el error del servidor y, al cambiar, vuelve al acceso", async () => {
+    const api = apiFalsa();
+    const usuario = userEvent.setup();
+    montar(api);
+    await entrar(usuario, "preparador.demo@softarq.test", TEMPORAL);
+    await screen.findByRole("heading", { name: "Cambie su contraseña temporal" });
+    await usuario.type(screen.getByLabelText("Contraseña temporal"), TEMPORAL);
+    await usuario.type(screen.getByLabelText("Contraseña nueva"), "corta");
+    await usuario.type(screen.getByLabelText("Confirmación"), "otra");
+    await usuario.click(screen.getByRole("button", { name: "Cambiar contraseña" }));
+    expect(screen.getByText(/al menos 12 caracteres/)).toBeTruthy();
+    expect(screen.getByText("La confirmación no coincide con la contraseña nueva.")).toBeTruthy();
+    expect(api.llamadas.some((l) => l.ruta === "/api/v1/auth/contrasena")).toBe(false);
+
+    await usuario.clear(screen.getByLabelText("Contraseña temporal"));
+    await usuario.type(screen.getByLabelText("Contraseña temporal"), "equivocada");
+    await usuario.clear(screen.getByLabelText("Contraseña nueva"));
+    await usuario.type(screen.getByLabelText("Contraseña nueva"), NUEVA);
+    await usuario.clear(screen.getByLabelText("Confirmación"));
+    await usuario.type(screen.getByLabelText("Confirmación"), NUEVA);
+    await usuario.click(screen.getByRole("button", { name: "Cambiar contraseña" }));
+    expect(await screen.findByText("La contraseña actual no es correcta.")).toBeTruthy();
+
+    await usuario.clear(screen.getByLabelText("Contraseña temporal"));
+    await usuario.type(screen.getByLabelText("Contraseña temporal"), TEMPORAL);
+    await usuario.click(screen.getByRole("button", { name: "Cambiar contraseña" }));
+    expect(await screen.findByText("Contraseña cambiada")).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "Iniciar sesión" })).toBeTruthy();
+    const cambio = api.llamadas.filter((l) => l.ruta === "/api/v1/auth/contrasena");
+    expect(cambio).toHaveLength(2);
+    expect(cambio.every((l) => l.csrf === CSRF_SESION)).toBe(true);
+    // Ninguna contraseña queda en el DOM tras volver al acceso.
+    expect(document.body.innerHTML).not.toContain(TEMPORAL);
+    expect(document.body.innerHTML).not.toContain(NUEVA);
+  });
+
+  it("temporal caducada: el acceso lo explica y pide un restablecimiento", async () => {
+    const usuario = userEvent.setup();
+    montar(apiFalsa());
+    await entrar(usuario, "preparador.demo@softarq.test", CADUCADA);
+    expect((await screen.findByRole("alert")).textContent).toContain("Pida al Administrador del sistema un restablecimiento");
   });
 });
