@@ -467,6 +467,7 @@ model Membresia {
   proyectosModificados       Proyecto[]               @relation("ProyectoModificadoPor")
   cotizacionesCreadas        Cotizacion[]
   borradoresGuardados        CotizacionBorrador[]
+  ciclosPreparados           CotizacionBorrador[]     @relation("CicloPreparadoPor")
   versionesCreadas           CotizacionVersion[]
   // Revisión (módulo 7, ADR-0009).
   revisionesPreparadas       Revision[]               @relation("RevisionPreparador")
@@ -608,27 +609,34 @@ model Proyecto {
 
 /// Cotización con folio (tblCotizaciones). El folio fija cliente y proyecto.
 model Cotizacion {
-  id             String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  organizacionId String    @map("organizacion_id") @db.Uuid
+  id                  String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organizacionId      String    @map("organizacion_id") @db.Uuid
   /// COT-AAAA-NNNNN (formato del libro); contador propio de la web por organización y año.
-  folio          String    @db.VarChar(20)
-  anioFolio      Int       @map("anio_folio")
+  folio               String    @db.VarChar(20)
+  anioFolio           Int       @map("anio_folio")
   /// WEB_DEMO: historial independiente de la fase Excel (CHECK).
-  origen         String    @db.VarChar(20)
+  origen              String    @db.VarChar(20)
   /// ACTIVO | DESCARTADO (CHECK). El descarte (módulo 8) es definitivo y no reutiliza el folio.
-  estadoFolio    String    @default("ACTIVO") @map("estado_folio") @db.VarChar(20)
+  estadoFolio         String    @default("ACTIVO") @map("estado_folio") @db.VarChar(20)
   /// Descarte (B-37): quién, cuándo y por qué. Solo los fija `softarq_descartar_cotizacion`.
-  descartadaPor  String?   @map("descartada_por") @db.Uuid
-  descartadaEn   DateTime? @map("descartada_en") @db.Timestamptz(3)
-  motivoDescarte String?   @map("motivo_descarte") @db.VarChar(500)
-  clienteId      String    @map("cliente_id") @db.Uuid
-  proyectoId     String    @map("proyecto_id") @db.Uuid
+  descartadaPor       String?   @map("descartada_por") @db.Uuid
+  descartadaEn        DateTime? @map("descartada_en") @db.Timestamptz(3)
+  motivoDescarte      String?   @map("motivo_descarte") @db.VarChar(500)
+  clienteId           String    @map("cliente_id") @db.Uuid
+  proyectoId          String    @map("proyecto_id") @db.Uuid
   /// Último número de versión asignado (0 = sin versiones). Se incrementa atómicamente.
-  ultimaVersion  Int       @default(0) @map("ultima_version")
-  creadoPor      String    @map("creado_por") @db.Uuid
-  creadoEn       DateTime  @default(now()) @map("creado_en") @db.Timestamptz(3)
+  ultimaVersion       Int       @default(0) @map("ultima_version")
+  creadoPor           String    @map("creado_por") @db.Uuid
+  creadoEn            DateTime  @default(now()) @map("creado_en") @db.Timestamptz(3)
+  /// Módulo 15 (ADR-0019, B-35): origen de una cotización duplicada: versión concreta o revisión
+  /// del borrador guardado (exactamente uno; CHECK `cotizacion_duplicada_de_ck`).
+  duplicadaDeId       String?   @map("duplicada_de_id") @db.Uuid
+  duplicadaDeVersion  Int?      @map("duplicada_de_version")
+  duplicadaDeRevision Int?      @map("duplicada_de_revision")
 
   proyecto    Proyecto            @relation(fields: [organizacionId, clienteId, proyectoId], references: [organizacionId, clienteId, id], onDelete: Restrict, onUpdate: Restrict)
+  duplicadaDe Cotizacion?         @relation("CotizacionDuplicada", fields: [organizacionId, duplicadaDeId], references: [organizacionId, id], onDelete: Restrict, onUpdate: Restrict, map: "cotizacion_duplicada_de_fk")
+  duplicados  Cotizacion[]        @relation("CotizacionDuplicada")
   autor       Membresia           @relation(fields: [organizacionId, creadoPor], references: [organizacionId, usuarioId], onDelete: Restrict, onUpdate: Restrict)
   descartador Membresia?          @relation("CotizacionDescartadaPor", fields: [organizacionId, descartadaPor], references: [organizacionId, usuarioId], onDelete: Restrict, onUpdate: Restrict)
   borrador    CotizacionBorrador?
@@ -646,16 +654,23 @@ model Cotizacion {
 
 /// Captura editable (1:1). `revision` es el control de concurrencia optimista.
 model CotizacionBorrador {
-  cotizacionId   String   @id @map("cotizacion_id") @db.Uuid
-  organizacionId String   @map("organizacion_id") @db.Uuid
+  cotizacionId       String    @id @map("cotizacion_id") @db.Uuid
+  organizacionId     String    @map("organizacion_id") @db.Uuid
   /// EsquemaCapturaBorrador (contracts): códigos y textos; null = sin capturar.
-  captura        Json
-  revision       Int      @default(0)
-  actualizadoPor String   @map("actualizado_por") @db.Uuid
-  actualizadoEn  DateTime @default(now()) @map("actualizado_en") @db.Timestamptz(3)
+  captura            Json
+  revision           Int       @default(0)
+  actualizadoPor     String    @map("actualizado_por") @db.Uuid
+  actualizadoEn      DateTime  @default(now()) @map("actualizado_en") @db.Timestamptz(3)
+  /// Módulo 15 (ADR-0019, B-34): ciclo de la versión nueva tras una emisión (todo o nada).
+  cicloVersionOrigen Int?      @map("ciclo_version_origen")
+  cicloModoPrecios   String?   @map("ciclo_modo_precios") @db.VarChar(20)
+  cicloMotivo        String?   @map("ciclo_motivo") @db.VarChar(500)
+  cicloPreparadoPor  String?   @map("ciclo_preparado_por") @db.Uuid
+  cicloPreparadoEn   DateTime? @map("ciclo_preparado_en") @db.Timestamptz(3)
 
-  cotizacion Cotizacion @relation(fields: [organizacionId, cotizacionId], references: [organizacionId, id], onDelete: Restrict, onUpdate: Restrict)
-  autor      Membresia  @relation(fields: [organizacionId, actualizadoPor], references: [organizacionId, usuarioId], onDelete: Restrict, onUpdate: Restrict)
+  cotizacion      Cotizacion @relation(fields: [organizacionId, cotizacionId], references: [organizacionId, id], onDelete: Restrict, onUpdate: Restrict)
+  autor           Membresia  @relation(fields: [organizacionId, actualizadoPor], references: [organizacionId, usuarioId], onDelete: Restrict, onUpdate: Restrict)
+  preparadorCiclo Membresia? @relation("CicloPreparadoPor", fields: [organizacionId, cicloPreparadoPor], references: [organizacionId, usuarioId], onDelete: Restrict, onUpdate: Restrict, map: "cotizacion_borrador_ciclo_preparado_por_fk")
 
   @@unique([organizacionId, cotizacionId])
   @@map("cotizacion_borrador")
@@ -696,6 +711,9 @@ model CotizacionVersion {
   /// Módulo 14 (ADR-0018): nombres y vigencias del catálogo leídos en la misma instantánea del
   /// cálculo. NULL en las versiones anteriores al módulo (no se rellenan). Dato interno.
   referenciasInternas Json?    @map("referencias_internas")
+  /// Módulo 15 (ADR-0019, B-34): modo de precios y versión emitida de origen del ciclo; NULL si no aplica.
+  modoPrecios         String?  @map("modo_precios") @db.VarChar(20)
+  versionOrigen       Int?     @map("version_origen")
   creadoEn            DateTime @default(now()) @map("creado_en") @db.Timestamptz(3)
 
   cotizacion Cotizacion @relation(fields: [organizacionId, cotizacionId], references: [organizacionId, id], onDelete: Restrict, onUpdate: Restrict)

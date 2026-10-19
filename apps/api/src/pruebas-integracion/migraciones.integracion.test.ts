@@ -172,7 +172,18 @@ describe("permisos del rol de la aplicación (softarq_app)", () => {
       // Módulo 8: el descarte escribe estado_folio y sus tres datos (un trigger limita la transición).
       expect(porTabla("cotizacion")).toEqual(["descartada_en", "descartada_por", "estado_folio", "motivo_descarte", "ultima_version"]);
       expect(porTabla("contador")).toEqual(["ultimo"]);
-      expect(porTabla("cotizacion_borrador")).toEqual(["actualizado_en", "actualizado_por", "captura", "revision"]);
+      // Módulo 15 (ADR-0019): además, las columnas del ciclo de la versión nueva (B-34).
+      expect(porTabla("cotizacion_borrador")).toEqual([
+        "actualizado_en",
+        "actualizado_por",
+        "captura",
+        "ciclo_modo_precios",
+        "ciclo_motivo",
+        "ciclo_preparado_en",
+        "ciclo_preparado_por",
+        "ciclo_version_origen",
+        "revision",
+      ]);
       // Módulo 8: contacto del cliente (BL-01).
       expect(porTabla("cliente")).toEqual([
         "activo",
@@ -258,6 +269,8 @@ describe("permisos del rol de la aplicación (softarq_app)", () => {
         "softarq_decidir_excepcion",
         "softarq_decidir_revision",
         "softarq_descartar_cotizacion",
+        // Módulo 15 (ADR-0019): duplicar, preparar la versión nueva y auditoría de la vista previa.
+        "softarq_duplicar_cotizacion",
         "softarq_editar_cliente",
         "softarq_editar_componente",
         "softarq_editar_concepto",
@@ -277,14 +290,18 @@ describe("permisos del rol de la aplicación (softarq_app)", () => {
         "softarq_guardar_emisor",
         "softarq_hay_administrador",
         "softarq_normalizar",
+        "softarq_preparar_nueva_version",
         "softarq_problemas_concepto",
         "softarq_registrar_idempotencia",
         "softarq_registrar_precio",
         "softarq_registrar_respuesta",
         "softarq_registrar_tarifa",
+        "softarq_registrar_vista_previa",
+        "softarq_requiere_nueva_version",
         "softarq_restablecer_contrasena",
         "softarq_retirar_revision",
         "softarq_siguiente",
+        "softarq_ultima_emitida",
         "softarq_validar_funciones",
       ]);
       // ADR-0017 §1.2: solo las funciones de aprobación (y, desde el módulo 13, las de identidad) son

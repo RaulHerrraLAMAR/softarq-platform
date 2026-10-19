@@ -2,9 +2,21 @@
 
 > Léelo al empezar. Actualízalo al terminar cada tarea (sección por sección, sin borrar el historial de la tabla 4). Reglas de trabajo: [`AGENTS.md`](AGENTS.md).
 
-**Última actualización:** 18/10/2026 · Claude Code (Claude Opus 5.5) · módulo 14, salidas internas de solo lectura (§23), sobre `7072d13` (módulo 13). Anterior: módulo 13 (§22).
+**Última actualización:** 19/10/2026 · Claude Code (Claude Opus 5.5) · módulo 15, duplicar, modo de precios y vista previa BORRADOR (§24), sobre `edf4cd8` (módulo 14). Anterior: módulo 14 (§23).
 
 ## 1. Estado actual
+
+- **Módulo 15:** implementado (ADR-0019).
+  - **Duplicar** (B-35, Preparador): desde una versión concreta o desde el borrador guardado, a un proyecto activo. Folio nuevo, sin precios elegidos ni excepciones, con el origen registrado.
+  - **Preparar la versión nueva** (B-34, Preparador): tras una emisión, editar o calcular exige elegir el modo de precios y el motivo.
+    - CONSERVAR toma las selecciones de la versión emitida; ELEGIR_DE_NUEVO las vacía.
+    - Los parámetros, el impuesto y la mano de obra vigentes se aplican al calcular.
+    - La versión guarda modo y origen.
+  - **Vista previa PDF BORRADOR** (B-25, las cuatro funciones): versiones Borrador, En revisión o Aprobada con cálculo vigente (BL-16, BL-19).
+    - Combina datos congelados con los actuales del emisor, el cliente y el proyecto.
+    - No se guarda; se audita como VISTA_PREVIA.
+    - El PDF EMITIDO no cambia (huella SHA-256 en prueba).
+  - Detalle y pruebas en §24.
 
 - **Módulo 14:** implementado (ADR-0018). Preparador y Revisor (capacidad nueva `salidas.consultar`) consultan, de una versión concreta y en solo lectura, en «Salidas internas» y en `GET /api/v1/cotizaciones/{id}/versiones/{n}/salidas-internas`:
   - **compras calculadas** (12 COMPRAS): presentación, regla, unidades, sobrante informativo, precio y costo, consolidadas o por partida, con su prorrateo;
@@ -523,7 +535,7 @@ En los cuatro, el resultado completo es idéntico al calculado con los fixtures 
     - hay que **recompilar y reiniciar** con `SOFTARQ_DIR_DOCUMENTOS` en `apps/api/.env`, que ya está configurada: `pnpm --filter @softarq/contracts build && pnpm --filter @softarq/api build && pnpm --filter @softarq/api start`, y reiniciar la web.
 18. **Disco y PostgreSQL:** se observaron `COMMIT` de más de 1 s (`WalWrite`) durante las pruebas de navegador del módulo 5. Por eso el código de sesiones evita las transacciones interactivas de Prisma; la única del módulo 6 es de solo lectura (sin escritura de WAL al confirmar) y su máximo medido fue 182 ms frente a un límite de 15 s.
 19. **Cotizaciones (ADR-0008):**
-    - sin duplicar cotizaciones ni «precios anteriores» (B-34/B-35 del libro); el descarte y el contacto llegaron con el módulo 8;
+    - ~~sin duplicar cotizaciones ni «precios anteriores» (B-34/B-35 del libro)~~: incorporados en el módulo 15 (§24); el descarte y el contacto llegaron con el módulo 8;
     - la purga de idempotencia es manual (`db:purgar-idempotencia`);
     - listados limitados a 100 resultados, sin paginación;
     - ~~la selección de un concepto que desaparece del catálogo se perdía al volver a guardar~~: corregido (ADR-0008, «Corrección posterior»);
@@ -569,12 +581,17 @@ En los cuatro, el resultado completo es idéntico al calculado con los fixtures 
     - la respuesta no se pagina (la acota una versión: hasta 100 partidas por `LIMITES_API.partidas`, con sus consumos y compras);
     - dentro de una transacción interactiva, Prisma resuelve en paralelo las relaciones anidadas (aviso de `pg`): la lectura del módulo usa consultas planas y en serie. Quien añada lecturas anidadas dentro de `$transaction` debe evitarlo igual;
     - el límite de identidad de las funciones SQL (ADR-0017 §4) sigue sin resolver; el módulo no lo amplía (ADR-0018 §7).
+25. **Duplicar, modo de precios y vista previa (ADR-0019):**
+    - los borradores con la última versión emitida (seis históricos en `softarq_dev`) piden «Preparar la versión nueva» antes de editar o calcular;
+    - la vista previa se entrega sin guardarse, con el limitador de cálculo (30 por minuto por defecto);
+    - en `softarq_dev` quedan 40 cotizaciones DEMO del humo (`COT-2026-00015` a `00054`) y una carpeta de respaldo incompleta `….en-curso` (§24);
+    - las funciones nuevas confían en `p_usuario` como las demás (ADR-0019 §7).
 
 ## 7. Siguiente tarea
 
-1. **Recompilar y reiniciar** la API y la web del propietario si están en marcha con código anterior: `softarq_dev` ya tiene la migración del módulo 14 (§23).
+1. **Recompilar y reiniciar** la API y la web del propietario si están en marcha con código anterior: `softarq_dev` ya tiene la migración del módulo 15 (§24).
 2. **Regularizar los conceptos heredados** de `softarq_dev` cuando el propietario lo decida, con el mapeo documentado (ADR-0016 §2.3): completar tipo y regla vuelve el concepto a Borrador y exige una nueva aprobación. No se ejecuta automáticamente.
-3. **Siguiente módulo recomendado:** duplicar cotización, modo de precios en versiones nuevas y vista previa del PDF marcada BORRADOR (bloque 5 de `docs/cobertura-demo.md`). Después: Expo (alcance por decidir) y cierre integral. Pendientes aparte:
+3. **Siguiente módulo:** fijar con el propietario el alcance de la app Expo (bloque 6 de `docs/cobertura-demo.md`: consulta, revisión y decisión, o también captura) antes de instalar nada; si se pospone, el cierre integral (bloque 7). Pendientes aparte:
    - **tarea de seguridad propuesta (no hecha): identidad de las funciones SQL**, con objetivo, límites de confianza y pruebas en ADR-0018 §7 (un id de sesión o una variable que fije la misma credencial no la resuelve);
    - contadores operativos de 00 INICIO (fuente y reglas por definir; ADR-0018 §2.2);
    - exportación de informes internos: mejora opcional, solo si el propietario la pide.
@@ -583,7 +600,7 @@ En los cuatro, el resultado completo es idéntico al calculado con los fixtures 
    - definir P3, la política de vigencias; la adaptación del DEMO está en ADR-0015 §2.2;
    - entregar los datos reales del capítulo 8 (precios, proveedores y tarifas), que ya se podrán capturar en la web.
 5. **Ejecución formal de la guía manual** [`docs/web/guia-prueba-manual.md`](docs/web/guia-prueba-manual.md), con el registro de la §5:
-   - bloques A1–A9, 1–14, C1–C15, R1–R10, E1–E12, S1–S10, X1–X8, K1–K10, T1–T10, P1–P6 y U1–U8;
+   - bloques A1–A9, 1–14, C1–C15, R1–R10, E1–E12, S1–S10, X1–X8, K1–K10, T1–T10, P1–P6, U1–U8, I1–I8 y D1–D10;
    - complementa la revisión personal ya declarada;
    - no cuenta como PR-41 ni PR-44.
 6. **Operación:** repetir el aprovisionamiento administrativo de respaldo cuando haya una credencial local autorizada (no había archivo DPAPI en `_work\secrets`; no se ejecutó). Copia externa periódica de `D:\Proyecto_SoftArq\respaldos` sigue siendo una decisión pendiente.
@@ -620,6 +637,8 @@ Alternativas más cortas:
 - Módulo 13: commit «Módulo 13: parámetros y personas del Administrador del sistema» (§22); consultar `git log -1 --oneline` para su hash. MD5 del libro al cerrar: `b60debc121957b8d8e3f2c2edd9a5b4f` (sin cambios).
 - `7072d13`: Módulo 13.
 - Módulo 14: commit «Módulo 14: salidas internas de solo lectura (compras, detalle e indicadores)» (§23); consultar `git log -1 --oneline` para su hash. MD5 del libro al cerrar: `b60debc121957b8d8e3f2c2edd9a5b4f` (sin cambios).
+- `edf4cd8`: Módulo 14.
+- Módulo 15: commit «Módulo 15: duplicar cotización, modo de precios y vista previa PDF BORRADOR» (§24); consultar `git log -1 --oneline` para su hash. MD5 del libro al cerrar: `b60debc121957b8d8e3f2c2edd9a5b4f` (sin cambios).
 
 Rama `main`. Sin remoto ni push.
 
@@ -1335,3 +1354,56 @@ Decisiones y reglas: [ADR-0018](docs/adr/0018-salidas-internas.md). Sobre `7072d
 - La guía manual (I1–I8) no se ha ejecutado formalmente. La revisión personal sigue registrada solo como declaración y no cuenta como PR-41 ni PR-44, que siguen pendientes.
 - Los cinco conceptos heredados siguen sin regularizar; P3 sigue pendiente con el cliente.
 - Si el propietario tiene una API o una web en marcha con código anterior, debe recompilar y reiniciar: `softarq_dev` ya tiene la migración del módulo 14. La función `softarq_crear_version` nueva acepta la llamada anterior, que deja `referencias_internas` en NULL.
+
+## 24. Duplicar, modo de precios y vista previa BORRADOR (módulo 15)
+
+Decisiones y reglas: [ADR-0019](docs/adr/0019-duplicar-modo-precios-vista-previa.md). Sobre `edf4cd8` (módulo 14). Plan aprobado por el propietario con cuatro decisiones (ADR-0019 §2):
+- **duplicar** desde una versión concreta (cualquier estado) o desde el borrador guardado (ampliación frente al libro);
+- **modo de precios** obligatorio para la versión nueva tras una emisión;
+- **vista previa** con `cotizaciones.consultar`, solo de versiones Borrador, En revisión o Aprobada con cálculo vigente;
+- **datos** congelados de la versión y actuales del emisor, el cliente y el proyecto, con auditoría VISTA_PREVIA.
+
+**Fuentes leídas (solo lectura):** `modHistorial.bas` (`His_Duplicar`, `His_NuevaVersion`, `Ver_CopiarContenido`), `modPdf.bas` (`BTN_VistaPrevia`, `Pdf_Generar`), `modCompras.bas` (`Sel_Estado`), `modValidacion.bas`; Word §1.6, §3.8, §3.9, §3.11–3.13, D-17, RF-20/21/22; TI-130 a TI-137, TI-155, TI-058 y TI-324.
+
+**Corrección de la cobertura:** `docs/cobertura-demo.md` llamaba B-33 a «Duplicar». En el libro, B-33 es «Abrir», B-34 «Nueva versión», B-35 «Duplicar» y B-25 «Vista previa PDF».
+
+**Qué se hizo:**
+
+| Capa | Cambio |
+|---|---|
+| Base | Migración `20261021120000_duplicar_modo_vista_previa`:<br>• columnas de origen en `cotizacion`, de ciclo en `cotizacion_borrador` y de modo y origen en `cotizacion_version`, con tres CHECK;<br>• `idempotencia_recurso_ck` ampliado;<br>• funciones INVOKER `softarq_ultima_emitida`, `softarq_requiere_nueva_version`, `softarq_duplicar_cotizacion`, `softarq_preparar_nueva_version` y `softarq_registrar_vista_previa`;<br>• `softarq_guardar_borrador` y `softarq_crear_version` reemplazadas con la misma firma.<br>Bloque condicional en `permisos-app.sql`: UPDATE de las columnas `ciclo_*` y EXECUTE de las funciones nuevas |
+| Contratos | `EsquemaDocumentoBorrador`; solicitudes de duplicado y versión nueva; `duplicadaDe` y `nuevaVersion` en el detalle; `modoPrecios` y `versionOrigen` en la versión; códigos `NUEVA_VERSION_SIN_PREPARAR`, `NUEVA_VERSION_NO_APLICA`, `SELECCIONES_DIVERGENTES` y `VISTA_PREVIA_BLOQUEADA` |
+| PDF | Generador con variante BORRADOR:<br>• franja, marca de agua y pie en cada página;<br>• «[EMISOR PENDIENTE]» y «Sin emitir».<br>**El EMITIDO es byte a byte igual:** `pdf.test.ts` compara su SHA-256 con el calculado antes del cambio (`6bbe7811…24c3a6`) |
+| API | `dominio/duplicacion.ts`, `dominio/vista-previa.ts`, `servicio-vista-previa.ts` (estado fuera de la transacción; lectura READ ONLY con `bl16`; auditoría después de generar). Rutas:<br>• `POST /cotizaciones/{id}/duplicados`;<br>• `POST /cotizaciones/{id}/nueva-version`;<br>• `POST /cotizaciones/{id}/versiones/{n}/vista-previa`.<br>Comprobación previa del ciclo al guardar y calcular; OpenAPI |
+| Web | `cotizaciones/duplicar-modo-vista-previa.tsx`: panel para duplicar, aviso de duplicada, panel «Preparar la versión nueva» con diferencias, aviso del ciclo y vista previa (descargar y abrir). Integrado en el editor y en la versión. `enviarDescarga` en `cliente.ts` |
+| Respaldo | `probar-restauracion.mjs`: 2 comprobaciones nuevas (origen coherente, CHECK, funciones y permisos mínimos; datos íntegros) |
+
+**Pruebas de ESTA sesión** (registros en `D:\Proyecto_SoftArq\_work\tmp\m15`):
+
+| Comando o comprobación | Resultado |
+|---|---|
+| `pnpm verificar` (final) | **768/768** (API 487, web 281); código 0 |
+| Integración completa (un worker, `softarq_test`) | **350/350**, 21 archivos (23 nuevas del módulo). La primera corrida, sin el archivo del módulo, dio 324/327 por tres cambios intencionados: el inventario de columnas y funciones de `migraciones.integracion.test.ts`, y `respuestas.integracion.test.ts`, que calculaba una v2 tras emitir sin preparar la versión nueva. Ahora la prepara |
+| E2E completa (Edge, un worker) | **71/71** (4 nuevas). Tras corregir el aviso del panel (ver revisión visual), el spec del módulo se repitió: 4/4 |
+| Unitarias del módulo | 4 de PDF: huella del EMITIDO, BORRADOR multipágina, datos ausentes y sin datos internos. 13 de dominio. 8 de pantalla |
+| Cuatro referencias | 54,190.68; 43,312.16; 22,405.28; 4,911.79, leídas del texto del PDF BORRADOR en la integración y en el humo |
+| `db:migrar` protegido en `softarq_dev` | Respaldo `softarq_dev-20261019T071836Z-70dbfc` creado y **verificado antes** de aplicar la migración; código 0 |
+| `db:cargar-demo` (dos veces) | Creados `{}`; «Los valores DEMO coinciden» |
+| `respaldo:probar-restauracion` | **55/55** antes del humo. Después, con datos del módulo, **57/57**: 12 duplicadas, 1 versión con modo y 2 PDF más. Una corrida intermedia falló por `EPERM` al renombrar la carpeta del respaldo, por un bloqueo transitorio de Windows; la repetición pasó. Queda la carpeta incompleta `respaldos\softarq_dev\softarq_dev-20261019T072724Z-2fbd68.en-curso`, que no se borró |
+| Humo con la API real (127.0.0.1:3200, detenida al terminar; `humo-m15.mjs`) | **108 pasos correctos**:<br>• PDF originales `COT-2026-00004`…`00010` con su SHA-256 antes y después;<br>• huella de las cotizaciones previas sin cambios;<br>• vista previa de las cuatro referencias: cabeceras, importes, marca en cada página, sin datos internos ni metadatos de autor, un evento por clave;<br>• Administrador: vista previa sí, duplicar 403;<br>• duplicar el borrador y la versión: la copia exige elegir precios (`CAPTURA_INCOMPLETA`);<br>• aprobada: nombra a quien aprobó; emitida: BL-19;<br>• `NUEVA_VERSION_SIN_PREPARAR`; CONSERVAR → v2 con 54,190.68, modo y origen; el PDF de v1 no cambió;<br>• ELEGIR_DE_NUEVO deja las selecciones vacías; el paso no se repite en el ciclo.<br>Los seis históricos emitidos piden ahora preparar la versión nueva |
+| Revisión visual | Capturas en `_work\evidencias\modulo15` (escritorio 01–05, móvil 06–07) y página del PDF BORRADOR convertida a PNG con pdfjs. **Corregido:** el aviso «Elija el modo de precios» seguía visible después de elegir el modo; ahora se borra al corregir, con una prueba añadida |
+| MD5 del libro | `b60debc121957b8d8e3f2c2edd9a5b4f` antes y después |
+
+**Incidencias del humo, sin fallo del producto:**
+- La primera corrida arrancó la API con `PORT=3200`, pero la variable correcta es `API_PORT`: escuchó en 3000 unos segundos y se detuvo sin usarse. No había otro servidor en 3000.
+- Cinco corridas se interrumpieron por errores del propio script: el campo del proyecto, el código esperado, el límite de 30 cálculos por minuto (después se usó `API_LIMITE_CALCULO_POR_MINUTO=200` solo en la API temporal), la lectura del PDF y la descripción del proyecto exigida por BL-02.
+
+**Datos DEMO creados en `softarq_dev`:** 40 cotizaciones `[DEMO] … humo M15` (`COT-2026-00015` a `00054`), por las seis corridas. De ellas, 12 son duplicadas y 2 tienen la v1 emitida; `COT-2026-00049` tiene la v2 con CONSERVAR. Catálogo y parámetros sin cambios; los ejemplos históricos no se tocaron.
+
+**Límites y pendientes:**
+- Identidad de las funciones SQL (ADR-0017 §4): sigue sin resolver. Las tres funciones nuevas confían en `p_usuario` como las demás y no amplían la capacidad residual (ADR-0019 §7).
+- **Borradores emitidos antes del módulo:** piden preparar la versión nueva al abrirlos. Si sus selecciones ya difieren de las emitidas, la API muestra las diferencias y no cambia nada sin confirmación.
+- La vista previa no se guarda ni se lista; la bitácora registra que se generó, no que alguien la leyera.
+- La guía manual (D1–D10) no se ha ejecutado formalmente. La revisión personal sigue registrada solo como declaración y no cuenta como PR-41 ni PR-44, que siguen pendientes.
+- Los cinco conceptos heredados siguen sin regularizar; P3 sigue pendiente con el cliente. Contadores de 00 INICIO, RF-26 y exportación de informes: sin cambios (la exportación es una mejora opcional fuera del alcance).
+- Si el propietario tiene una API o una web en marcha con código anterior, debe recompilar y reiniciar: `softarq_dev` ya tiene la migración, y la API anterior no puede guardar borradores emitidos sin el ciclo.

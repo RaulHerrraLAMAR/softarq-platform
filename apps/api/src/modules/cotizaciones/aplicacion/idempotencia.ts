@@ -49,7 +49,11 @@ export type OperacionIdempotente =
   | "aprobar_concepto"
   // Módulo 13 (ADR-0017): alta de personas y restablecimiento de contraseñas.
   | "crear_persona"
-  | "restablecer_contrasena";
+  | "restablecer_contrasena"
+  // Módulo 15 (ADR-0019): duplicar, preparar la versión nueva y vista previa BORRADOR.
+  | "duplicar_cotizacion"
+  | "preparar_nueva_version"
+  | "vista_previa";
 
 export interface Idempotencia {
   readonly clave: string;

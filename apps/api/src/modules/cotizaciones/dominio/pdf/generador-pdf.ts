@@ -10,13 +10,19 @@
  * (registro operativo); «DEMOSTRACIÓN» y marca de agua en cada página; folio y «Página X de Y» en
  * el pie. Sin autor ni título en los metadatos (como el libro) y sin adjuntos.
  *
+ * Módulo 15 (ADR-0019): también genera la VISTA PREVIA marcada BORRADOR (`DocumentoBorrador`; B-25,
+ * `Pdf_Generar` con «BORRADOR»): franja «BORRADOR — NO VÁLIDO COMO COTIZACIÓN» y marca de agua
+ * «BORRADOR» en cada página, «Sin emitir» en lugar de la fecha de emisión y lo que falte indicado
+ * tal cual. Ambos tipos pasan por la misma `Presentacion`; el documento EMITIDO dibuja exactamente
+ * lo mismo que antes (su SHA-256 con una entrada fija se comprueba en `pdf.test.ts`).
+ *
  * Diseño: carta vertical, jerarquía por peso (400/600/700), cifras tabulares en importes, paleta
  * de `docs/web/sistema-visual.md`. Las filas no se cortan: si no caben, pasan a la página
  * siguiente con el encabezado de la tabla repetido; el bloque de totales no se divide.
  */
 import { join } from "node:path";
 import PDFDocument from "pdfkit";
-import { LEYENDA_DEMO, type DocumentoCotizacion } from "@softarq/contracts";
+import { LEYENDA_DEMO, type DocumentoBorrador, type DocumentoCotizacion } from "@softarq/contracts";
 import { cantidad, dinero, fecha, porcentaje, unidad } from "./formato.js";
 
 /** Raíz de `apps/api` (igual desde `src/` y desde `dist/`). */
@@ -31,7 +37,12 @@ const FUENTES = {
   negrita: join(DIR_RECURSOS_PDF, "fuentes", "fira-sans-latin-700-normal.woff"),
 } as const;
 
-export type GeneradorPdf = (documento: DocumentoCotizacion) => Promise<Buffer>;
+export type GeneradorPdf = (documento: DocumentoCotizacion | DocumentoBorrador) => Promise<Buffer>;
+
+/** Marcas y textos fijos de la vista previa (B-25, `modPdf.bas`). */
+export const MARCA_BORRADOR = "BORRADOR — NO VÁLIDO COMO COTIZACIÓN";
+export const EMISOR_PENDIENTE = "[EMISOR PENDIENTE]";
+export const SIN_EMITIR = "Sin emitir";
 
 export class ErrorGeneracionPdf extends Error {
   constructor(mensaje: string) {
@@ -70,33 +81,131 @@ const COLUMNAS = [
 const RELLENO_CELDA = 4;
 
 type Doc = InstanceType<typeof PDFDocument>;
+type Partida = DocumentoCotizacion["partidas"][number];
+
+/** Lo que se dibuja, igual para el documento emitido y para la vista previa BORRADOR. */
+interface Presentacion {
+  borrador: boolean;
+  ambiente: DocumentoCotizacion["ambiente"];
+  origen: string;
+  folio: string;
+  idVersion: string;
+  logo: string | null;
+  emisorNombre: string;
+  emisorLineas: string[];
+  subtitulo: string;
+  filasMeta: [string, string][];
+  cliente: string;
+  contacto: string;
+  proyecto: { nombre: string; ubicacion: string; descripcion: string };
+  partidas: Partida[];
+  subtotal: string;
+  impuesto: DocumentoCotizacion["impuesto"];
+  total: string;
+  secciones: [string, string][];
+  registro: string;
+  fechaCreacion: Date;
+}
+
+const esBorrador = (d: DocumentoCotizacion | DocumentoBorrador): d is DocumentoBorrador => "tipo" in d && d.tipo === "BORRADOR";
+const unir = (xs: (string | null)[]) => xs.filter((x): x is string => !!x).join("  ·  ");
+
+function presentar(d: DocumentoCotizacion | DocumentoBorrador): Presentacion {
+  if (!esBorrador(d)) {
+    return {
+      borrador: false,
+      ambiente: d.ambiente,
+      origen: d.origen,
+      folio: d.folio,
+      idVersion: d.idVersion,
+      logo: d.emisor.logo,
+      emisorNombre: d.emisor.nombre,
+      emisorLineas: [d.emisor.domicilio, `Tel. ${d.emisor.telefono}  ·  ${d.emisor.correo}`],
+      subtitulo: "Documento comercial emitido desde la web de demostración.",
+      filasMeta: [
+        ["Folio", d.folio],
+        ["Versión", `v${d.versionNumero}`],
+        ["Origen", "WEB DEMO"],
+        ["Fecha de emisión", fecha(d.fechaEmision)],
+        ["Vigente hasta", `${fecha(d.vigenteHasta)} (${d.vigenciaDias} días naturales)`],
+      ],
+      cliente: d.cliente.nombre,
+      contacto: unir([d.contacto.nombre, d.contacto.telefono, d.contacto.correo]),
+      proyecto: { nombre: d.proyecto.nombre, ubicacion: d.proyecto.ubicacion, descripcion: d.proyecto.descripcion },
+      partidas: d.partidas,
+      subtotal: d.subtotal,
+      impuesto: d.impuesto,
+      total: d.total,
+      secciones: [
+        ["Alcance", d.textos.alcance],
+        ["Condiciones", d.textos.condiciones],
+        ["Exclusiones", d.textos.exclusiones],
+        ["Aviso", d.leyendaTecnica],
+      ],
+      registro: `Registro operativo — Preparó: ${d.personas.preparo} · Aprobó: ${d.personas.aprobo} · Emitió: ${d.personas.emitio}. Precios en pesos mexicanos (MXN).`,
+      fechaCreacion: new Date(`${d.fechaEmision}T12:00:00.000Z`),
+    };
+  }
+  const e = d.emisor;
+  const tel = e.telefono ? `Tel. ${e.telefono}` : null;
+  const textos: [string, string][] = d.textos
+    ? [
+        ["Alcance", d.textos.alcance],
+        ["Condiciones", d.textos.condiciones],
+        ["Exclusiones", d.textos.exclusiones],
+      ]
+    : [["Alcance, condiciones y exclusiones", "No registrados en esta versión."]];
+  return {
+    borrador: true,
+    ambiente: d.ambiente,
+    origen: d.origen,
+    folio: d.folio,
+    idVersion: d.idVersion,
+    logo: e.logo,
+    emisorNombre: e.nombre ?? EMISOR_PENDIENTE,
+    emisorLineas: [e.domicilio, unir([tel, e.correo]) || null].filter((x): x is string => !!x),
+    subtitulo: "Vista previa sin emitir: no es una cotización emitida ni válida como cotización.",
+    filasMeta: [
+      ["Folio", d.folio],
+      ["Versión", `v${d.versionNumero} (BORRADOR)`],
+      ["Origen", "WEB DEMO"],
+      ["Calculada el", fecha(d.fechaCalculo)],
+      ["Fecha de emisión", SIN_EMITIR],
+      ["Vigencia", d.vigenciaDias === null ? "No definida" : `${d.vigenciaDias} días naturales desde la emisión`],
+    ],
+    cliente: d.cliente.nombre,
+    contacto: unir([d.contacto.nombre, d.contacto.telefono, d.contacto.correo]) || "—",
+    proyecto: { nombre: d.proyecto.nombre, ubicacion: d.proyecto.ubicacion ?? "—", descripcion: d.proyecto.descripcion ?? "—" },
+    partidas: d.partidas,
+    subtotal: d.subtotal,
+    impuesto: d.impuesto,
+    total: d.total,
+    secciones: [...textos, ["Aviso", d.leyendaTecnica]],
+    registro: `Registro operativo — Preparó: ${d.personas.preparo} · Aprobó: ${d.personas.aprobo ?? "(pendiente)"} · Emitió: (sin emitir). Precios en pesos mexicanos (MXN). Vista previa generada el ${fecha(d.fechaGeneracion)} con los datos actuales del emisor, el cliente y el proyecto.`,
+    fechaCreacion: new Date(`${d.fechaGeneracion}T12:00:00.000Z`),
+  };
+}
 
 /** Todos los textos del documento (para comprobar glifos antes de dibujar). */
-function textosDe(d: DocumentoCotizacion): string[] {
+function textosDe(v: Presentacion): string[] {
   return [
     LEYENDA_DEMO,
-    d.folio,
-    d.idVersion,
-    d.emisor.nombre,
-    d.emisor.domicilio,
-    d.emisor.telefono,
-    d.emisor.correo,
-    d.cliente.nombre,
-    d.contacto.nombre,
-    d.contacto.telefono ?? "",
-    d.contacto.correo ?? "",
-    d.proyecto.nombre,
-    d.proyecto.ubicacion,
-    d.proyecto.descripcion,
-    d.impuesto.nombre,
-    d.textos.alcance,
-    d.textos.condiciones,
-    d.textos.exclusiones,
-    d.leyendaTecnica,
-    d.personas.preparo,
-    d.personas.aprobo,
-    d.personas.emitio,
-    ...d.partidas.flatMap((p) => [p.descripcion, unidad(p.unidad)]),
+    MARCA_BORRADOR,
+    v.folio,
+    v.idVersion,
+    v.emisorNombre,
+    ...v.emisorLineas,
+    v.subtitulo,
+    ...v.filasMeta.flat(),
+    v.cliente,
+    v.contacto,
+    v.proyecto.nombre,
+    v.proyecto.ubicacion,
+    v.proyecto.descripcion,
+    v.impuesto.nombre,
+    ...v.secciones.flat(),
+    v.registro,
+    ...v.partidas.flatMap((p) => [p.descripcion, unidad(p.unidad)]),
     "COTIZACIÓN Página de · — áéíóúñÁÉÍÓÚÑ ¿¡ ² ³ $ % /",
   ];
 }
@@ -106,7 +215,7 @@ interface FuenteConGlifos {
 }
 
 /** Falla (sin generar) si algún carácter no tiene glifo en las fuentes: nunca «tofu». */
-function comprobarGlifos(doc: Doc, d: DocumentoCotizacion): void {
+function comprobarGlifos(doc: Doc, d: Presentacion): void {
   const faltan = new Set<string>();
   for (const nombre of ["normal", "seminegrita", "negrita"] as const) {
     doc.font(nombre);
@@ -143,20 +252,22 @@ function alto(doc: Doc, texto: string, ancho: number, fuente: string, tam: numbe
 }
 
 /** Encabezado del documento (solo en la primera página). Devuelve la `y` siguiente. */
-function encabezado(doc: Doc, d: DocumentoCotizacion): number {
+function encabezado(doc: Doc, d: Presentacion): number {
   let y = MARGEN.superior;
-  const logo = LOGOS[d.emisor.logo];
-  if (!logo) throw new ErrorGeneracionPdf("Logotipo del emisor no disponible.");
-  doc.image(logo, X0, y, { fit: [150, 43] });
+  // El documento emitido exige logotipo (BL-15); la vista previa lo omite si el emisor no lo tiene.
+  if (d.logo !== null || !d.borrador) {
+    const logo = d.logo === null ? undefined : LOGOS[d.logo];
+    if (!logo) throw new ErrorGeneracionPdf("Logotipo del emisor no disponible.");
+    doc.image(logo, X0, y, { fit: [150, 43] });
+  }
 
   // Emisor a la derecha.
   const xEmisor = X0 + 190;
   const anchoEmisor = ANCHO - 190;
   doc.font("negrita").fontSize(11.5).fillColor(COLOR.texto);
-  doc.text(d.emisor.nombre, xEmisor, y, { width: anchoEmisor, align: "right" });
+  doc.text(d.emisorNombre, xEmisor, y, { width: anchoEmisor, align: "right" });
   doc.font("normal").fontSize(8.5).fillColor(COLOR.secundario);
-  doc.text(d.emisor.domicilio, xEmisor, doc.y + 1, { width: anchoEmisor, align: "right" });
-  doc.text(`Tel. ${d.emisor.telefono}  ·  ${d.emisor.correo}`, xEmisor, doc.y + 1, { width: anchoEmisor, align: "right" });
+  for (const linea of d.emisorLineas) doc.text(linea, xEmisor, doc.y + 1, { width: anchoEmisor, align: "right" });
   y = Math.max(doc.y, y + 43) + 10;
 
   doc.moveTo(X0, y).lineTo(X0 + ANCHO, y).lineWidth(1.4).strokeColor(COLOR.marca).stroke();
@@ -165,17 +276,10 @@ function encabezado(doc: Doc, d: DocumentoCotizacion): number {
   // Título y datos de identificación.
   doc.font("negrita").fontSize(20).fillColor(COLOR.marca).text("COTIZACIÓN", X0, y, { width: 240 });
   doc.font("normal").fontSize(8.5).fillColor(COLOR.atenuado);
-  doc.text("Documento comercial emitido desde la web de demostración.", X0, doc.y + 2, { width: 240 });
-  const filas: [string, string][] = [
-    ["Folio", d.folio],
-    ["Versión", `v${d.versionNumero}`],
-    ["Origen", "WEB DEMO"],
-    ["Fecha de emisión", fecha(d.fechaEmision)],
-    ["Vigente hasta", `${fecha(d.vigenteHasta)} (${d.vigenciaDias} días naturales)`],
-  ];
+  doc.text(d.subtitulo, X0, doc.y + 2, { width: 240 });
   let yMeta = y;
   const xEtiqueta = X0 + 250;
-  for (const [k, v] of filas) {
+  for (const [k, v] of d.filasMeta) {
     doc.font("normal").fontSize(8.5).fillColor(COLOR.atenuado).text(k, xEtiqueta, yMeta + 1, { width: 90, align: "right" });
     doc.font("seminegrita").fontSize(9.5).fillColor(COLOR.texto).text(v, xEtiqueta + 98, yMeta, { width: ANCHO - 348, align: "right" });
     yMeta = doc.y + 2;
@@ -186,12 +290,11 @@ function encabezado(doc: Doc, d: DocumentoCotizacion): number {
   const anchoCol = (ANCHO - 3 * 12) / 2;
   const xIzq = X0 + 12;
   const xDer = xIzq + anchoCol + 12;
-  const contacto = [d.contacto.nombre, d.contacto.telefono, d.contacto.correo].filter((x): x is string => !!x).join("  ·  ");
   const medirColumna = (pares: [string, string, boolean][]) =>
     pares.reduce((h, [, t, fuerte]) => h + 11 + alto(doc, t, anchoCol, fuerte ? "seminegrita" : "normal", 9.5) + 6, 0);
   const izquierda: [string, string, boolean][] = [
-    ["Cliente", d.cliente.nombre, true],
-    ["Contacto", contacto, false],
+    ["Cliente", d.cliente, true],
+    ["Contacto", d.contacto, false],
   ];
   const derecha: [string, string, boolean][] = [
     ["Proyecto", d.proyecto.nombre, true],
@@ -224,7 +327,7 @@ function encabezadoTabla(doc: Doc, y: number): number {
   return y + altoFila;
 }
 
-function textoCelda(p: DocumentoCotizacion["partidas"][number], clave: (typeof COLUMNAS)[number]["clave"]): string {
+function textoCelda(p: Partida, clave: (typeof COLUMNAS)[number]["clave"]): string {
   switch (clave) {
     case "numero":
       return String(p.numero);
@@ -241,7 +344,7 @@ function textoCelda(p: DocumentoCotizacion["partidas"][number], clave: (typeof C
   }
 }
 
-function tabla(doc: Doc, d: DocumentoCotizacion, yInicial: number): number {
+function tabla(doc: Doc, d: Presentacion, yInicial: number): number {
   let y = encabezadoTabla(doc, yInicial);
   d.partidas.forEach((p, i) => {
     const altoTexto = Math.max(
@@ -272,7 +375,7 @@ function tabla(doc: Doc, d: DocumentoCotizacion, yInicial: number): number {
   return y + 8;
 }
 
-function totales(doc: Doc, d: DocumentoCotizacion, yInicial: number): number {
+function totales(doc: Doc, d: Presentacion, yInicial: number): number {
   const filas: [string, string, boolean][] = [
     ["Subtotal", dinero(d.subtotal), false],
     [`${d.impuesto.nombre} ${porcentaje(d.impuesto.tasa)}`, dinero(d.impuesto.importe), false],
@@ -309,7 +412,7 @@ function seccion(doc: Doc, titulo: string, texto: string, y: number): number {
   return doc.y + 10;
 }
 
-function pieYMarcas(doc: Doc, d: DocumentoCotizacion): void {
+function pieYMarcas(doc: Doc, d: Presentacion): void {
   const rango = doc.bufferedPageRange();
   const demo = d.ambiente === "DEMO";
   for (let i = 0; i < rango.count; i++) {
@@ -317,7 +420,22 @@ function pieYMarcas(doc: Doc, d: DocumentoCotizacion): void {
     // Escribir en los márgenes sin que PDFKit agregue páginas.
     const margenes = { ...doc.page.margins };
     doc.page.margins = { top: 0, bottom: 0, left: 0, right: 0 };
-    if (demo) {
+    if (d.borrador) {
+      // Vista previa (B-25): marca de agua «BORRADOR» de baja opacidad (no tapa importes) y franja
+      // en cada página; en DEMO, también la leyenda de demostración.
+      doc.save();
+      doc.rotate(-32, { origin: [PAGINA.ancho / 2, PAGINA.alto / 2] });
+      doc.font("negrita").fontSize(96).fillColor(COLOR.demo).fillOpacity(0.06);
+      doc.text("BORRADOR", 0, PAGINA.alto / 2 - 56, { width: PAGINA.ancho, align: "center", lineBreak: false });
+      doc.restore();
+      doc.font("negrita").fontSize(9).fillColor(COLOR.demo).fillOpacity(1);
+      doc.text(MARCA_BORRADOR, X0, 20, { width: ANCHO, align: "center", lineBreak: false });
+      if (demo) {
+        doc.font("seminegrita").fontSize(8).fillColor(COLOR.demo);
+        doc.text(LEYENDA_DEMO, X0, 33, { width: ANCHO, align: "center", lineBreak: false });
+      }
+      doc.moveTo(X0, 46).lineTo(X0 + ANCHO, 46).lineWidth(0.6).strokeColor(COLOR.demo).stroke();
+    } else if (demo) {
       doc.save();
       doc.rotate(-32, { origin: [PAGINA.ancho / 2, PAGINA.alto / 2] });
       doc.font("negrita").fontSize(70).fillColor(COLOR.demo).fillOpacity(0.07);
@@ -330,17 +448,19 @@ function pieYMarcas(doc: Doc, d: DocumentoCotizacion): void {
     const yPie = PAGINA.alto - 46;
     doc.moveTo(X0, yPie - 6).lineTo(X0 + ANCHO, yPie - 6).lineWidth(0.5).strokeColor(COLOR.borde).stroke();
     doc.font("normal").fontSize(8).fillColor(COLOR.atenuado).fillOpacity(1);
-    doc.text(`${d.idVersion}  ·  ${d.origen === "WEB_DEMO" ? "WEB DEMO" : d.origen}`, X0, yPie, { width: ANCHO / 2, lineBreak: false });
+    const origen = d.origen === "WEB_DEMO" ? "WEB DEMO" : d.origen;
+    doc.text(d.borrador ? `${d.idVersion}  ·  ${origen}  ·  BORRADOR` : `${d.idVersion}  ·  ${origen}`, X0, yPie, { width: ANCHO / 2, lineBreak: false });
     doc.text(`Página ${i + 1} de ${rango.count}`, X0 + ANCHO / 2, yPie, { width: ANCHO / 2, align: "right", lineBreak: false });
     doc.page.margins = margenes;
   }
 }
 
 /** Genera el PDF en memoria (no escribe en disco). Determinista para un mismo documento. */
-export const generarPdf: GeneradorPdf = (d) =>
+export const generarPdf: GeneradorPdf = (documento) =>
   new Promise<Buffer>((resolve, reject) => {
     try {
-      const fechaCreacion = new Date(`${d.fechaEmision}T12:00:00.000Z`);
+      const d = presentar(documento);
+      const fechaCreacion = d.fechaCreacion;
       const doc = new PDFDocument({
         size: "LETTER",
         margins: { top: MARGEN.superior, bottom: MARGEN.inferior, left: MARGEN.izquierdo, right: MARGEN.derecho },
@@ -348,7 +468,7 @@ export const generarPdf: GeneradorPdf = (d) =>
         autoFirstPage: true,
         compress: true,
         lang: "es-MX",
-        // Sin autor ni título (como el libro); fecha de creación = fecha de emisión.
+        // Sin autor ni título (como el libro); fecha de creación = fecha de emisión (o de la vista previa).
         info: { Producer: "SoftArq", Creator: "SoftArq", CreationDate: fechaCreacion, ModDate: fechaCreacion },
       });
       const partes: Buffer[] = [];
@@ -364,11 +484,8 @@ export const generarPdf: GeneradorPdf = (d) =>
       let y = encabezado(doc, d);
       y = tabla(doc, d, y);
       y = totales(doc, d, y);
-      y = seccion(doc, "Alcance", d.textos.alcance, y);
-      y = seccion(doc, "Condiciones", d.textos.condiciones, y);
-      y = seccion(doc, "Exclusiones", d.textos.exclusiones, y);
-      y = seccion(doc, "Aviso", d.leyendaTecnica, y);
-      const registro = `Registro operativo — Preparó: ${d.personas.preparo} · Aprobó: ${d.personas.aprobo} · Emitió: ${d.personas.emitio}. Precios en pesos mexicanos (MXN).`;
+      for (const [titulo, texto] of d.secciones) y = seccion(doc, titulo, texto, y);
+      const registro = d.registro;
       if (y + alto(doc, registro, ANCHO, "normal", 8) > LIMITE_INFERIOR) {
         doc.addPage();
         y = MARGEN.superior;

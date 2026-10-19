@@ -1,4 +1,4 @@
--- Permisos del rol de la aplicación tras cada `prisma migrate deploy` (ADR-0004, ADR-0007 a ADR-0010, ADR-0013 a ADR-0017).
+-- Permisos del rol de la aplicación tras cada `prisma migrate deploy` (ADR-0004, ADR-0007 a ADR-0010, ADR-0013 a ADR-0019).
 -- Lo ejecuta el rol migrador con `prisma db execute`. Solo sentencias constantes.
 -- La aplicación lee y escribe catálogos, pero no borra (los registros se desactivan o anulan),
 -- no ejecuta DDL y no puede leer ni alterar el historial de migraciones.
@@ -186,5 +186,26 @@ DO $$ BEGIN
     GRANT EXECUTE ON FUNCTION public.softarq_editar_persona(UUID, UUID, UUID, INTEGER, JSONB, TEXT) TO softarq_app;
     GRANT EXECUTE ON FUNCTION public.softarq_restablecer_contrasena(UUID, UUID, UUID, TEXT, TIMESTAMPTZ, TEXT, UUID, TEXT, BYTEA, TIMESTAMPTZ) TO softarq_app;
     GRANT EXECUTE ON FUNCTION public.softarq_cambiar_contrasena_propia(UUID, UUID, TEXT) TO softarq_app;
+  END IF;
+END $$;
+
+-- ADR-0019 (módulo 15): duplicar, ciclo de la versión nueva y auditoría de la vista previa. Funciones
+-- SECURITY INVOKER (actúan con los permisos anteriores). `cotizacion_borrador`: además de la captura,
+-- UPDATE solo de las columnas del ciclo (las escribe softarq_preparar_nueva_version). Sin DELETE ni
+-- DEFINER. Condicional para restaurar respaldos anteriores.
+DO $$ BEGIN
+  IF to_regprocedure('public.softarq_registrar_vista_previa(uuid,uuid,uuid,uuid,uuid,text,bytea,timestamptz)') IS NOT NULL THEN
+    GRANT UPDATE (ciclo_version_origen, ciclo_modo_precios, ciclo_motivo, ciclo_preparado_por, ciclo_preparado_en)
+      ON TABLE public.cotizacion_borrador TO softarq_app;
+    REVOKE ALL ON FUNCTION public.softarq_ultima_emitida(UUID, UUID) FROM PUBLIC;
+    REVOKE ALL ON FUNCTION public.softarq_requiere_nueva_version(UUID, UUID) FROM PUBLIC;
+    REVOKE ALL ON FUNCTION public.softarq_duplicar_cotizacion(UUID, UUID, UUID, INTEGER, INTEGER, UUID, INTEGER, JSONB, UUID, TEXT, BYTEA, TIMESTAMPTZ) FROM PUBLIC;
+    REVOKE ALL ON FUNCTION public.softarq_preparar_nueva_version(UUID, UUID, UUID, INTEGER, INTEGER, TEXT, TEXT, JSONB, UUID, TEXT, BYTEA, TIMESTAMPTZ) FROM PUBLIC;
+    REVOKE ALL ON FUNCTION public.softarq_registrar_vista_previa(UUID, UUID, UUID, UUID, UUID, TEXT, BYTEA, TIMESTAMPTZ) FROM PUBLIC;
+    GRANT EXECUTE ON FUNCTION public.softarq_ultima_emitida(UUID, UUID) TO softarq_app;
+    GRANT EXECUTE ON FUNCTION public.softarq_requiere_nueva_version(UUID, UUID) TO softarq_app;
+    GRANT EXECUTE ON FUNCTION public.softarq_duplicar_cotizacion(UUID, UUID, UUID, INTEGER, INTEGER, UUID, INTEGER, JSONB, UUID, TEXT, BYTEA, TIMESTAMPTZ) TO softarq_app;
+    GRANT EXECUTE ON FUNCTION public.softarq_preparar_nueva_version(UUID, UUID, UUID, INTEGER, INTEGER, TEXT, TEXT, JSONB, UUID, TEXT, BYTEA, TIMESTAMPTZ) TO softarq_app;
+    GRANT EXECUTE ON FUNCTION public.softarq_registrar_vista_previa(UUID, UUID, UUID, UUID, UUID, TEXT, BYTEA, TIMESTAMPTZ) TO softarq_app;
   END IF;
 END $$;

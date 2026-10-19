@@ -59,6 +59,9 @@ function servicios(s: Partial<ServiciosCotizaciones>): ServiciosCotizaciones {
     componentesExcepcion: noUsar,
     excepcionesVersion: noUsar,
     salidasInternas: noUsar,
+    duplicarCotizacion: noUsar,
+    prepararNuevaVersion: noUsar,
+    vistaPrevia: noUsar,
     decidirExcepcion: noUsar,
     registrarRespuesta: noUsar,
     corregirRespuesta: noUsar,
@@ -90,6 +93,8 @@ const VERSION: ResumenVersion = {
   autor: "[DEMO] Preparador 1",
   total: "54190.68",
   motivo: null,
+  modoPrecios: null,
+  versionOrigen: null,
 };
 
 const validacion = (cambios: Partial<ValidacionEmision> = {}): ValidacionEmision => ({

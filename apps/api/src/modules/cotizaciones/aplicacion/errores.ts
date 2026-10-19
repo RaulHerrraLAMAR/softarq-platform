@@ -55,7 +55,12 @@ export type CodigoNegocio =
   // Módulo 13 (ADR-0017): parámetros y personas.
   | "CORREO_EXISTENTE"
   | "ULTIMO_ADMINISTRADOR"
-  | "AUTOPROTECCION";
+  | "AUTOPROTECCION"
+  // Módulo 15 (ADR-0019): versión nueva con modo de precios (B-34) y vista previa BORRADOR (B-25).
+  | "NUEVA_VERSION_SIN_PREPARAR"
+  | "NUEVA_VERSION_NO_APLICA"
+  | "SELECCIONES_DIVERGENTES"
+  | "VISTA_PREVIA_BLOQUEADA";
 
 export interface DetalleError {
   campos?: { ruta: string; mensaje: string }[];
@@ -68,6 +73,8 @@ export interface DetalleError {
   excepcionesVigentes?: unknown;
   /** Registro de catálogo vigente, existente (DUPLICADO) o que se solapa (SOLAPE_VIGENCIA). */
   registroVigente?: unknown;
+  /** Selecciones del borrador y las que dejaría el modo de precios (409 SELECCIONES_DIVERGENTES). */
+  selecciones?: { actuales: { insumoCodigo: string; precioCodigo: string }[]; propuestas: { insumoCodigo: string; precioCodigo: string }[] };
 }
 
 export class ErrorNegocio extends Error {
@@ -187,6 +194,15 @@ const MENSAJES: Record<string, [CodigoNegocio, string]> = {
     "No puede retirarse su propia función de Administrador del sistema, desactivarse ni restablecer su propia contraseña: pídalo a otro Administrador o use «Cambiar mi contraseña».",
   ],
   APROBACION_DIRECTA: ["VALOR_INVALIDO", "El concepto se aprueba con la operación Aprobar."],
+  // Módulo 15 (ADR-0019, B-34): tras una emisión, la versión nueva exige preparar modo y motivo.
+  NUEVA_VERSION_SIN_PREPARAR: [
+    "NUEVA_VERSION_SIN_PREPARAR",
+    "La última versión está emitida: prepare la versión nueva (modo de precios y motivo) antes de editar o calcular.",
+  ],
+  NUEVA_VERSION_NO_APLICA: [
+    "NUEVA_VERSION_NO_APLICA",
+    "No corresponde preparar una versión nueva: la última versión no es la emitida indicada o el ciclo ya está preparado.",
+  ],
 };
 
 /** Traduce un error de las funciones de la base a `ErrorNegocio`; si no lo reconoce, lo devuelve igual. */

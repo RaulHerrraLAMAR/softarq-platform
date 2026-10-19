@@ -125,6 +125,9 @@ Toda relación entre datos propios es una FK compuesta con `organizacion_id`, de
 | `parametros.administrar` | `GET` y `PATCH /api/v1/admin/parametros` | ✗ | ✗ | ✗ | ✓ | `BTN_Parametros`, `Param_Guardar`: `Req_Funcion FN_ADMSIS` (módulo 13, ADR-0017) |
 | `personas.administrar` | `GET` y `POST /admin/personas`; `GET` y `PATCH /admin/personas/{id}`; `POST /admin/personas/{id}/restablecimiento` | ✗ | ✗ | ✗ | ✓ | `BTN_Personas`, `Persona_Guardar`: `Req_Funcion FN_ADMSIS` (módulo 13, ADR-0017) |
 | `cotizaciones.consultar` **y** `salidas.consultar` | `GET /cotizaciones/{id}/versiones/{n}/salidas-internas` (compras calculadas, detalle e indicadores; solo lectura) | ✓ | ✓ | ✗ | ✗ | Hojas 12 COMPRAS, 13 DETALLE_CALCULO e indicadores de 14 REVISION; en el libro se abren sin función (D-20). **Decisión del propietario** (módulo 14, ADR-0018 §2.1); cambio intencionado frente a la protección de costos del ADR-0009 |
+| `cotizaciones.preparar` | `POST /cotizaciones/{id}/duplicados` (folio nuevo desde una versión o desde el borrador guardado) | ✓ | ✗ | ✗ | ✗ | `BTN_Duplicar` (B-35): `Req_Funcion FN_PREP` (módulo 15, ADR-0019 §3) |
+| `cotizaciones.preparar` | `POST /cotizaciones/{id}/nueva-version` (modo de precios y motivo tras una emisión) | ✓ | ✗ | ✗ | ✗ | `BTN_NuevaVersion` (B-34): `Req_Funcion FN_PREP` (módulo 15, ADR-0019 §4) |
+| `cotizaciones.consultar` | `POST /cotizaciones/{id}/versiones/{n}/vista-previa` (PDF BORRADOR; registra VISTA_PREVIA) | ✓ | ✓ | ✓ | ✓ | `BTN_VistaPrevia` (B-25) no exige función (módulo 15, ADR-0019 §5) |
 
 ¹ Por identidad, además de la capacidad: un Revisor no emite una versión que él preparó. Y siempre hace falta una aprobación vigente de esa versión, hecha por una persona distinta de su autor. Poder emitir no concede aprobar.
 
@@ -267,3 +270,14 @@ Las versiones, aprobaciones, emisiones y PDF no cambian por la administración. 
 
 **Detalle histórico:** las versiones anteriores al módulo muestran sus cifras y solo los códigos (`SIN_NOMBRES`); nunca se completan con el catálogo actual. Consultar no escribe nada.
 
+## 16. Duplicar, modo de precios y vista previa BORRADOR (módulo 15, ADR-0019)
+
+| Tabla | Cambio | Notas |
+|---|---|---|
+| `cotizacion` | `duplicada_de_id` (FK compuesta con la organización), `duplicada_de_version` y `duplicada_de_revision` (CHECK: sin origen, o con origen y exactamente uno de los dos números) | Origen de un duplicado: versión concreta o revisión del borrador guardado. Se escribe solo en `softarq_duplicar_cotizacion` |
+| `cotizacion_borrador` | `ciclo_version_origen`, `ciclo_modo_precios` (`CONSERVAR` \| `ELEGIR_DE_NUEVO`), `ciclo_motivo`, `ciclo_preparado_por` y `ciclo_preparado_en` (CHECK de todo o nada) | Ciclo de la versión nueva tras una emisión. `softarq_guardar_borrador` y `softarq_crear_version` responden `NUEVA_VERSION_SIN_PREPARAR` mientras la última versión sea la emitida y el ciclo no corresponda a esa emisión |
+| `cotizacion_version` | `modo_precios` y `version_origen` (NULL si no aplica; CHECK conjunto) | Copiados del ciclo al calcular; inmutables como el resto de la versión |
+| `idempotencia` | Recursos `nueva_version` y `vista_previa` | La duplicación usa el recurso `cotizacion` |
+| `bitacora` | Eventos `COTIZACION_DUPLICADA`, `NUEVA_VERSION_PREPARADA` y `VISTA_PREVIA` | La vista previa se registra después de generar el PDF, una vez por clave; el PDF no se guarda |
+
+**Duplicar** copia partidas, mediciones, textos del origen y consolidación; no copia selecciones de precio, excepciones, aprobaciones, emisiones ni respuestas. **Preparar la versión nueva** solo cambia las selecciones del borrador: CONSERVAR = las de la versión emitida; ELEGIR_DE_NUEVO = ninguna. **La vista previa** combina los datos congelados de la versión con los actuales del emisor, el cliente y el proyecto; solo para versiones Borrador, En revisión o Aprobada con cálculo vigente (BL-16, BL-19).

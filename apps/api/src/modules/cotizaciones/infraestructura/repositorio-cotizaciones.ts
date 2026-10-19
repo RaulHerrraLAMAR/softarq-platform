@@ -15,6 +15,8 @@ import type {
   Cliente,
   CotizacionComercial,
   Evento,
+  ModoPrecios,
+  NuevaVersion,
   Proyecto,
   ResumenCambios,
   ResumenCotizacion,
@@ -73,6 +75,8 @@ const seleccionResumenVersion = {
   autorNombre: true,
   total: true,
   motivo: true,
+  modoPrecios: true,
+  versionOrigen: true,
 } satisfies Prisma.CotizacionVersionSelect;
 
 const seleccionCotizacion = {
@@ -270,7 +274,28 @@ function aResumenVersion(
     autor: v.autorNombre,
     total: v.total.toFixed(2),
     motivo: v.motivo,
+    modoPrecios: (v.modoPrecios as ModoPrecios | null) ?? null,
+    versionOrigen: v.versionOrigen ?? null,
   };
+}
+
+/**
+ * Ciclo de la versión nueva (B-34, módulo 15) a partir de la última emisión, la última versión y el
+ * ciclo guardado en el borrador. Misma regla que `softarq_requiere_nueva_version`.
+ */
+export function cicloNuevaVersion(
+  ultimaVersion: number,
+  emisiones: EmisionesPorVersion,
+  ciclo: { versionOrigen: number | null; modo: string | null; motivo: string | null; por: string | null; en: Date | null },
+): NuevaVersion | null {
+  const emitida = Math.max(0, ...[...emisiones.values()].map((e) => e.versionNumero));
+  if (emitida === 0) return null;
+  const preparada =
+    ciclo.versionOrigen === emitida && ciclo.modo && ciclo.motivo && ciclo.por && ciclo.en
+      ? { modo: ciclo.modo as ModoPrecios, motivo: ciclo.motivo, por: ciclo.por, en: iso(ciclo.en) }
+      : null;
+  if (emitida !== ultimaVersion && !preparada) return null;
+  return { requerida: emitida === ultimaVersion && !preparada, versionOrigen: emitida, preparada };
 }
 
 function aResumenCotizacion(
@@ -481,8 +506,24 @@ export class RepositorioCotizaciones {
       where: { id, organizacionId: ctx.organizacionId },
       select: {
         ...seleccionCotizacion,
-        borrador: { select: { revision: true, actualizadoEn: true, captura: true, autor: nombreDeAutor } },
+        borrador: {
+          select: {
+            revision: true,
+            actualizadoEn: true,
+            captura: true,
+            autor: nombreDeAutor,
+            cicloVersionOrigen: true,
+            cicloModoPrecios: true,
+            cicloMotivo: true,
+            cicloPreparadoEn: true,
+            preparadorCiclo: nombreDeAutor,
+          },
+        },
         versiones: { select: seleccionResumenVersion, orderBy: { numero: "desc" } },
+        duplicadaDeId: true,
+        duplicadaDeVersion: true,
+        duplicadaDeRevision: true,
+        duplicadaDe: { select: { folio: true } },
       },
     });
     if (!f || !f.borrador) return null;
@@ -495,7 +536,19 @@ export class RepositorioCotizaciones {
     const revisiones = await this.revisionesDeVersiones(ctx, f.versiones.map((v) => v.id));
     const emisiones = await new RepositorioEmisiones(this.db).emisionesDeCotizaciones(ctx, [f.id]);
     const versiones = f.versiones.map((v) => aResumenVersion(f.folio, v, f.ultimaVersion, revisiones, emisiones));
+    const b = f.borrador;
     return {
+      duplicadaDe:
+        f.duplicadaDeId && f.duplicadaDe
+          ? { cotizacionId: f.duplicadaDeId, folio: f.duplicadaDe.folio, version: f.duplicadaDeVersion, revision: f.duplicadaDeRevision }
+          : null,
+      nuevaVersion: cicloNuevaVersion(f.ultimaVersion, emisiones, {
+        versionOrigen: b.cicloVersionOrigen,
+        modo: b.cicloModoPrecios,
+        motivo: b.cicloMotivo,
+        por: b.preparadorCiclo?.usuario.nombre ?? null,
+        en: b.cicloPreparadoEn,
+      }),
       cotizacion: aResumenCotizacion(f, f.versiones[0], revisiones, emisiones),
       borrador: {
         revision: f.borrador.revision,
@@ -529,6 +582,80 @@ export class RepositorioCotizaciones {
         ${idem.clave}::uuid, ${idem.operacion}, ${idem.huella}, ${idem.expiraEn}::timestamptz
       )::text AS id`;
     return filas[0]!.id;
+  }
+
+  /** B-35 (módulo 15): una sola sentencia (`softarq_duplicar_cotizacion`), con folio nuevo. */
+  async duplicarCotizacion(
+    ctx: ContextoOrganizacion,
+    autor: Autor,
+    origenId: string,
+    origen: { version: number | null; revision: number | null },
+    proyectoId: string,
+    anio: number,
+    captura: CapturaBorrador,
+    idem: Idempotencia,
+  ): Promise<string> {
+    const filas = await this.db.$queryRaw<{ id: string }[]>`
+      SELECT softarq_duplicar_cotizacion(
+        ${ctx.organizacionId}::uuid, ${autor.usuarioId}::uuid, ${origenId}::uuid, ${origen.version}::integer, ${origen.revision}::integer,
+        ${proyectoId}::uuid, ${anio}::integer, ${JSON.stringify(captura)}::jsonb,
+        ${idem.clave}::uuid, ${idem.operacion}, ${idem.huella}, ${idem.expiraEn}::timestamptz
+      )::text AS id`;
+    return filas[0]!.id;
+  }
+
+  /** ¿La última versión está emitida sin ciclo preparado? (`softarq_requiere_nueva_version`, B-34). */
+  async requiereNuevaVersion(ctx: ContextoOrganizacion, cotizacionId: string): Promise<boolean> {
+    const f = await this.db.$queryRaw<{ r: boolean | null }[]>`
+      SELECT softarq_requiere_nueva_version(${ctx.organizacionId}::uuid, ${cotizacionId}::uuid) AS r`;
+    return f[0]?.r === true;
+  }
+
+  /** Captura congelada de una versión de la organización (origen de una duplicación). */
+  async capturaDeVersion(ctx: ContextoOrganizacion, cotizacionId: string, numero: number): Promise<CapturaBorrador | null> {
+    const v = await this.db.cotizacionVersion.findFirst({
+      where: { organizacionId: ctx.organizacionId, cotizacionId, numero },
+      select: { captura: true },
+    });
+    return v ? capturaDe(v.captura) : null;
+  }
+
+  /** Proyecto de una cotización de la organización y si está disponible para registros nuevos. */
+  async proyectoDeCotizacion(ctx: ContextoOrganizacion, cotizacionId: string) {
+    return this.db.cotizacion.findFirst({
+      where: { organizacionId: ctx.organizacionId, id: cotizacionId },
+      select: { folio: true, proyectoId: true, proyecto: { select: { activo: true, cliente: { select: { activo: true } } } } },
+    });
+  }
+
+  /** B-34 (módulo 15): una sola sentencia (`softarq_preparar_nueva_version`). */
+  async prepararNuevaVersion(
+    ctx: ContextoOrganizacion,
+    autor: Autor,
+    cotizacionId: string,
+    revision: number,
+    versionOrigen: number,
+    modo: ModoPrecios,
+    motivo: string,
+    seleccion: CapturaBorrador["seleccion"],
+    idem: Idempotencia,
+  ): Promise<number> {
+    const filas = await this.db.$queryRaw<{ revision: number }[]>`
+      SELECT softarq_preparar_nueva_version(
+        ${ctx.organizacionId}::uuid, ${autor.usuarioId}::uuid, ${cotizacionId}::uuid, ${revision}::integer, ${versionOrigen}::integer,
+        ${modo}, ${motivo}, ${JSON.stringify(seleccion)}::jsonb,
+        ${idem.clave}::uuid, ${idem.operacion}, ${idem.huella}, ${idem.expiraEn}::timestamptz
+      ) AS revision`;
+    return filas[0]!.revision;
+  }
+
+  /** B-25 (módulo 15): auditoría VISTA_PREVIA idempotente (`softarq_registrar_vista_previa`). */
+  async registrarVistaPrevia(ctx: ContextoOrganizacion, autor: Autor, cotizacionId: string, versionId: string, idem: Idempotencia): Promise<void> {
+    await this.db.$queryRaw`
+      SELECT softarq_registrar_vista_previa(
+        ${ctx.organizacionId}::uuid, ${autor.usuarioId}::uuid, ${cotizacionId}::uuid, ${versionId}::uuid,
+        ${idem.clave}::uuid, ${idem.operacion}, ${idem.huella}, ${idem.expiraEn}::timestamptz
+      )::text AS ok`;
   }
 
   async guardarBorrador(

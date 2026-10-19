@@ -169,7 +169,7 @@ function tamano(bytes: number): string {
 }
 
 /** Guarda el archivo descargado con su nombre (sin abrir ventanas ni URL públicas). */
-function guardarArchivo(blob: Blob, nombre: string): void {
+export function guardarArchivo(blob: Blob, nombre: string): void {
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;

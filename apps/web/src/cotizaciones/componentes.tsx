@@ -34,6 +34,14 @@ function detalleEvento(e: Evento): string {
   if (e.tipo === "VERSION_CREADA" && typeof d["numero"] === "number") return `v${d["numero"]} desde la revisión ${String(d["revisionBorrador"])}`;
   if (e.tipo === "CALCULO_BLOQUEADO" && Array.isArray(d["codigos"])) return (d["codigos"] as unknown[]).join(", ");
   if (e.tipo === "COTIZACION_CREADA" && typeof d["folio"] === "string") return d["folio"];
+  // Módulo 15 (ADR-0019).
+  if (e.tipo === "COTIZACION_DUPLICADA" && typeof d["origenFolio"] === "string") {
+    return `desde ${d["origenFolio"]}${typeof d["origenVersion"] === "number" ? `-v${d["origenVersion"]}` : ` (borrador, revisión ${String(d["origenRevision"])})`}`;
+  }
+  if (e.tipo === "NUEVA_VERSION_PREPARADA" && typeof d["versionOrigen"] === "number") {
+    return `desde v${d["versionOrigen"]} · ${d["modo"] === "CONSERVAR" ? "conservar precios" : "elegir precios de nuevo"}`;
+  }
+  if (e.tipo === "VISTA_PREVIA" && typeof d["numero"] === "number") return `v${d["numero"]} (BORRADOR, sin emitir)`;
   if (typeof d["numero"] === "number" && /REVISION|CAMBIOS|APROBA|ENVIO|EMISION|EMITIDA/.test(e.tipo)) {
     const codigos = Array.isArray(d["codigos"]) ? ` · ${(d["codigos"] as unknown[]).join(", ")}` : "";
     return `v${d["numero"]}${codigos}`;

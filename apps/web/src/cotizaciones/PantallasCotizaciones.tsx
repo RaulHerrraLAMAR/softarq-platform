@@ -16,6 +16,7 @@ import { FormularioCliente, FormularioProyecto } from "../clientes/formularios.t
 import { Enlace, useRuta } from "../navegacion/ruta.tsx";
 import { CambiosVersion, EstadoVersion, ResumenCaptura } from "./componentes.tsx";
 import { TarjetaEmision } from "./emision.tsx";
+import { PanelDuplicar, VistaPreviaPdf, admiteVistaPrevia } from "./duplicar-modo-vista-previa.tsx";
 import { PanelExcepcionesVersion } from "../excepciones/PanelExcepcionesVersion.tsx";
 import { PanelRespuesta } from "./respuestas.tsx";
 
@@ -375,11 +376,14 @@ export function VistaVersion({
   numero,
   puedeVerExcepciones = false,
   puedeVerSalidas = false,
+  puedeDuplicar = false,
 }: {
   servicios: ServiciosCotizaciones;
   id: string;
   numero: number;
   puedeVerExcepciones?: boolean;
+  /** Módulo 15 (B-35): duplicar esta versión (`cotizaciones.preparar`); la API lo exige igualmente. */
+  puedeDuplicar?: boolean;
   /** Módulo 14: enlace a las salidas internas (`salidas.consultar`); la API lo exige igualmente. */
   puedeVerSalidas?: boolean;
 }) {
@@ -466,9 +470,31 @@ export function VistaVersion({
         />
         <Detalle respuesta={{ estado: "CALCULADO", fechaCalculo: v.version.fechaCalculo, cotizacion: v.cotizacion, avisos: v.avisos }} />
       </section>
+      {admiteVistaPrevia(v.version) ? (
+        <VistaPreviaPdf cotizaciones={servicios} cotizacionId={id} numero={numero} idVersion={v.version.idVersion} fechaCalculo={v.version.fechaCalculo} />
+      ) : null}
+      {puedeDuplicar ? <DuplicarVersion servicios={servicios} id={id} numero={numero} idVersion={v.version.idVersion} /> : null}
       <ResumenCaptura captura={v.captura} titulo="Captura de esta versión" />
       {puedeVerExcepciones ? <PanelExcepcionesVersion servicios={servicios} cotizacionId={id} numero={numero} /> : null}
       {v.version.emision ? <><TarjetaEmision emision={v.version.emision} cotizaciones={servicios} /><PanelRespuesta emisionId={v.version.emision.id} servicios={servicios} /></> : null}
     </Pagina>
+  );
+}
+
+/** Duplicar una versión concreta (B-35): el proyecto destino se propone desde la cotización. */
+function DuplicarVersion({ servicios, id, numero, idVersion }: { servicios: ServiciosCotizaciones; id: string; numero: number; idVersion: string }) {
+  const { estado } = useCarga((s) => servicios.detalleCotizacion(id, s), [id]);
+  if (estado.fase !== "listo") return null;
+  const c = estado.datos.cotizacion;
+  return (
+    <section className="seccion" aria-label="Duplicar esta versión">
+      <PanelDuplicar
+        cotizaciones={servicios}
+        cotizacionId={id}
+        origen={{ tipo: "VERSION", numero }}
+        descripcionOrigen={`la versión ${idVersion}`}
+        proyecto={{ ...c.proyecto, clienteActivo: c.cliente.activo }}
+      />
+    </section>
   );
 }

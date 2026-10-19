@@ -92,6 +92,17 @@ export type FalloApi =
    * DOCUMENTO_NO_DISPONIBLE (el archivo emitido falta o no coincide; nunca se regenera).
    */
   | { tipo: "documento"; codigo: "DOCUMENTO_NO_GENERADO" | "DOCUMENTO_NO_DISPONIBLE"; mensaje: string }
+  /**
+   * Módulo 15 (B-34): 409 NUEVA_VERSION_SIN_PREPARAR (tras una emisión, preparar antes modo y
+   * motivo) o SELECCIONES_DIVERGENTES (`selecciones` del borrador y las que dejaría el modo; nada
+   * cambió); 422 NUEVA_VERSION_NO_APLICA.
+   */
+  | {
+      tipo: "nueva_version";
+      codigo: "NUEVA_VERSION_SIN_PREPARAR" | "NUEVA_VERSION_NO_APLICA" | "SELECCIONES_DIVERGENTES";
+      mensaje: string;
+      selecciones?: { actuales: { insumoCodigo: string; precioCodigo: string }[]; propuestas: { insumoCodigo: string; precioCodigo: string }[] };
+    }
   /** 422 IDEMPOTENCIA_CONFLICTO o IDEMPOTENCIA_CADUCADA. */
   | { tipo: "idempotencia"; mensaje: string }
   | { tipo: "no_disponible" }
@@ -134,6 +145,8 @@ export interface ClienteApi {
   eliminar(ruta: string, opciones?: OpcionesSolicitud): Promise<ResultadoApi<null>>;
   /** GET de un archivo (p. ej. el PDF emitido): el contenido como Blob, con la sesión. */
   descargar(ruta: string, tipo: string, opciones?: OpcionesSolicitud): Promise<ResultadoApi<Blob>>;
+  /** POST que devuelve un archivo (módulo 15: vista previa BORRADOR), con CSRF y cabeceras. */
+  enviarDescarga(ruta: string, tipo: string, opciones?: OpcionesSolicitud): Promise<ResultadoApi<Blob>>;
   /** Cancela todo lo pendiente y descarta las respuestas que lleguen después. */
   cancelarTodo(): void;
 }
@@ -262,6 +275,13 @@ export function crearClienteApi(
         (c) => (c instanceof Blob ? { ok: true, datos: c } : { ok: false, fallo: { tipo: "incompatible" } }),
         { ...opciones, cabeceras: { ...(opciones.cabeceras ?? {}), Accept: tipo } },
       ),
+    enviarDescarga: (ruta, tipo, opciones = {}) =>
+      solicitar(
+        "POST",
+        ruta,
+        (c) => (c instanceof Blob ? { ok: true, datos: c } : { ok: false, fallo: { tipo: "incompatible" } }),
+        { ...opciones, cuerpo: opciones.cuerpo ?? {}, cabeceras: { ...(opciones.cabeceras ?? {}), Accept: tipo } },
+      ),
     cancelarTodo() {
       generacion++;
       for (const c of pendientes) c.abort();
@@ -305,6 +325,9 @@ function falloPorEstado(respuesta: Response, error: RespuestaError | null): Fall
         return { tipo: "catalogo", codigo: e.codigo, mensaje: e.mensaje, registroVigente: e.registroVigente ?? null };
       }
       if (e?.codigo === "CORREO_EXISTENTE") return { tipo: "administracion", codigo: e.codigo, mensaje: e.mensaje, campos: e.campos ?? [] };
+      if (e?.codigo === "NUEVA_VERSION_SIN_PREPARAR" || e?.codigo === "SELECCIONES_DIVERGENTES") {
+        return { tipo: "nueva_version", codigo: e.codigo, mensaje: e.mensaje, ...(e.selecciones ? { selecciones: e.selecciones } : {}) };
+      }
       if (e?.codigo === "REVISION_PENDIENTE" || e?.codigo === "VERSION_NO_VIGENTE" || e?.codigo === "CONFLICTO_REVISION") {
         return { tipo: "revision", codigo: e.codigo, mensaje: e.mensaje, revisionVigente: e.revisionVigente ?? null };
       }
@@ -329,7 +352,10 @@ function falloPorEstado(respuesta: Response, error: RespuestaError | null): Fall
         case "DECISION_BLOQUEADA":
         case "EMISION_BLOQUEADA":
         case "DESCARTE_BLOQUEADO":
+        case "VISTA_PREVIA_BLOQUEADA":
           return { tipo: "bloqueado", problemas: e.problemas ?? [], codigo: e.codigo, mensaje: e.mensaje };
+        case "NUEVA_VERSION_NO_APLICA":
+          return { tipo: "nueva_version", codigo: e.codigo, mensaje: e.mensaje };
         case "REFERENCIA_NO_DISPONIBLE":
           return { tipo: "referencia", campos: e.campos ?? [] };
         case "EXCEPCION_INVALIDA":
@@ -402,6 +428,7 @@ export function mensajeDeFallo(fallo: FalloApi): string {
     case "respuesta":
     case "estado":
     case "documento":
+    case "nueva_version":
       return fallo.mensaje;
     case "no_encontrado":
       return "Algún elemento de la captura ya no existe en el catálogo.";

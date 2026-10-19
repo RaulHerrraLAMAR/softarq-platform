@@ -46,6 +46,7 @@ import { ServicioRevisiones } from "../modules/cotizaciones/aplicacion/servicio-
 import { ServicioRespuestas } from "../modules/cotizaciones/aplicacion/servicio-respuestas.js";
 import { ServicioExcepciones } from "../modules/cotizaciones/aplicacion/servicio-excepciones.js";
 import { ServicioSalidasInternas } from "../modules/cotizaciones/aplicacion/servicio-salidas-internas.js";
+import { ServicioVistaPrevia } from "../modules/cotizaciones/aplicacion/servicio-vista-previa.js";
 import { ServicioAdministracionCatalogos } from "../modules/catalogos/aplicacion/servicio-administracion.js";
 import { ServicioCatalogoTecnico } from "../modules/catalogos/aplicacion/servicio-catalogo-tecnico.js";
 import { ServicioAdministracionSistema } from "../modules/administracion/aplicacion/servicio-administracion-sistema.js";
@@ -78,6 +79,7 @@ import {
   ExcepcionesRevisionController,
   SalidasInternasController,
   VerificacionVersionController,
+  VistaPreviaController,
 } from "./controladores-cotizaciones.js";
 import { FiltroErrores, errorDeValidacion } from "./errores.js";
 import { GuardiaSesion } from "./guardia-sesion.js";
@@ -99,6 +101,7 @@ import {
   SERVICIO_CATALOGO_TECNICO,
   SERVICIO_ADMINISTRACION_SISTEMA,
   SERVICIO_SALIDAS_INTERNAS,
+  SERVICIO_VISTA_PREVIA,
 } from "./tokens.js";
 
 const VENTANA_LIMITADOR_MS = 60_000;
@@ -164,6 +167,7 @@ function moduloRaiz(config: ConfiguracionApi, opciones: OpcionesAplicacion): Dyn
       ExcepcionesRevisionController,
       VerificacionVersionController,
       SalidasInternasController,
+      VistaPreviaController,
       AdministracionCatalogosController,
       CatalogoTecnicoController,
       AdministracionSistemaController,
@@ -274,6 +278,12 @@ function moduloRaiz(config: ConfiguracionApi, opciones: OpcionesAplicacion): Dyn
         provide: SERVICIO_SALIDAS_INTERNAS,
         useFactory: (bd: ServicioBaseDeDatos) => new ServicioSalidasInternas(bd.cliente),
         inject: [BASE_DE_DATOS],
+      },
+      {
+        provide: SERVICIO_VISTA_PREVIA,
+        useFactory: (bd: ServicioBaseDeDatos, reloj: Reloj, instante: RelojSesiones) =>
+          new ServicioVistaPrevia(bd.cliente, reloj, instante, opciones.documentos?.generador ?? generarPdf),
+        inject: [BASE_DE_DATOS, RELOJ, RELOJ_SESIONES],
       },
       { provide: APP_GUARD, useClass: ThrottlerGuard },
       {

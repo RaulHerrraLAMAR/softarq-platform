@@ -66,6 +66,8 @@ function detalle(revision = 3, versiones: DetalleCotizacion["versiones"] = []): 
     descartar: { permitido: true, motivoNoPermitido: null },
     revisiones: [],
     eventos: [],
+    duplicadaDe: null,
+    nuevaVersion: null,
   };
 }
 
@@ -86,6 +88,8 @@ const VERSION: Version = {
     autor: "[DEMO] Preparador 1",
     total: "2320.00",
     motivo: null,
+    modoPrecios: null,
+    versionOrigen: null,
   },
   cliente: { codigo: "CLI-00001", nombre: "[DEMO] Cliente" },
   proyecto: { codigo: "PRY-00001", nombre: "[DEMO] Obra", ubicacion: null, descripcion: null },
@@ -145,6 +149,9 @@ function cotizacionesFalsas(s: Partial<ServiciosCotizaciones> = {}): ServiciosCo
     componentesExcepcion: vi.fn(),
     excepcionesVersion: vi.fn(),
     salidasInternas: vi.fn(),
+    duplicarCotizacion: vi.fn(),
+    prepararNuevaVersion: vi.fn(),
+    vistaPrevia: vi.fn(),
     decidirExcepcion: vi.fn(),
     registrarRespuesta: vi.fn(),
     corregirRespuesta: vi.fn(),

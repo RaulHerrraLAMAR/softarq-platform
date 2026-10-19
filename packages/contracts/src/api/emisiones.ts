@@ -134,6 +134,50 @@ export const EsquemaDocumentoCotizacion = z.strictObject({
 });
 export type DocumentoCotizacion = z.infer<typeof EsquemaDocumentoCotizacion>;
 
+/**
+ * Vista previa marcada BORRADOR (módulo 15, ADR-0019; B-25 `BTN_VistaPrevia`). Misma estructura
+ * comercial (D-16), pero NO es un documento emitido:
+ * - partidas, importes y textos: congelados de la versión calculada;
+ * - emisor, cliente, proyecto, contacto y días de vigencia: actuales al generarla (como el libro);
+ * - lo que falta se indica tal cual (emisor pendiente, sin textos, sin aprobación), sin inventarlo.
+ * Nunca se guarda en el registro de emisión ni en la carpeta de documentos.
+ */
+export const EsquemaDocumentoBorrador = z.strictObject({
+  tipo: z.literal("BORRADOR"),
+  plantilla: z.string(),
+  ambiente: z.enum(["DEMO", "PRODUCCION"]),
+  origen: z.enum(ORIGENES_COTIZACION),
+  folio: z.string(),
+  versionNumero: z.number().int().positive(),
+  idVersion: z.string(),
+  /** Fecha del cálculo de la versión representada. */
+  fechaCalculo: EsquemaFechaISO,
+  /** Fecha del servidor al generar la vista previa. */
+  fechaGeneracion: EsquemaFechaISO,
+  vigenciaDias: z.number().int().positive().nullable(),
+  emisor: z.strictObject({
+    nombre: z.string().nullable(),
+    domicilio: z.string().nullable(),
+    telefono: z.string().nullable(),
+    correo: z.string().nullable(),
+    logo: z.enum(LOGOS_EMISOR).nullable(),
+  }),
+  cliente: z.strictObject({ codigo: z.string(), nombre: z.string() }),
+  contacto: z.strictObject({ nombre: z.string().nullable(), telefono: z.string().nullable(), correo: z.string().nullable() }),
+  proyecto: z.strictObject({ codigo: z.string(), nombre: z.string(), ubicacion: z.string().nullable(), descripcion: z.string().nullable() }),
+  moneda: z.literal("MXN"),
+  partidas: EsquemaDocumentoCotizacion.shape.partidas,
+  subtotal: EsquemaDecimalTexto,
+  impuesto: EsquemaDocumentoCotizacion.shape.impuesto,
+  total: EsquemaDecimalTexto,
+  /** Textos de la versión; `null` si la versión no los tiene (no se completan con la plantilla). */
+  textos: EsquemaTextosCotizacion.nullable(),
+  leyendaTecnica: z.string(),
+  /** Preparó y, si la versión está aprobada, aprobó; nunca «emitió». */
+  personas: z.strictObject({ preparo: z.string(), aprobo: z.string().nullable() }),
+});
+export type DocumentoBorrador = z.infer<typeof EsquemaDocumentoBorrador>;
+
 // ---------------------------------------------------------------------------
 // Validación previa y emisión
 // ---------------------------------------------------------------------------

@@ -22,6 +22,8 @@ import {
   EsquemaSolicitudBorrador,
   EsquemaSolicitudCliente,
   EsquemaSolicitudCotizacion,
+  EsquemaSolicitudDuplicado,
+  EsquemaSolicitudNuevaVersion,
   EsquemaSolicitudProyecto,
   EsquemaSolicitudVersion,
   EsquemaVersion,
@@ -400,6 +402,59 @@ export function construirDocumentoOpenApi(): Record<string, unknown> {
           summary: "Cotización, borrador (revisión, autor y completitud), versiones y eventos recientes",
           parameters: [PARAMETRO_ID],
           responses: { "200": ok("DetalleCotizacion", "Cotización."), ...errores(401, 403, 404, 429, 503, 500) },
+        },
+      },
+      "/api/v1/cotizaciones/{id}/duplicados": {
+        post: {
+          summary: "Duplica la cotización (B-35; Preparador): folio nuevo desde una versión concreta o desde el borrador guardado",
+          description:
+            "El origen es explícito: `{tipo: VERSION, numero}` (captura congelada de esa versión, en cualquier estado) o `{tipo: BORRADOR, revision}` " +
+            "(si el borrador cambió: 409 BORRADOR_DESACTUALIZADO). El servidor lee el origen de la base. Se copian partidas, mediciones, textos del origen " +
+            "y consolidación; NO se copian selecciones de precio, excepciones (ni sus valores técnicos), aprobaciones, emisiones ni respuestas. " +
+            "Las referencias que dejaron de estar disponibles se conservan marcadas y no se sustituyen. Proyecto destino activo con cliente activo " +
+            "(422 REGISTRO_INACTIVO). Sin versiones: la primera se crea al calcular. El original no cambia.",
+          security: CON_EFECTOS,
+          parameters: [PARAMETRO_ID, CABECERA_IDEMPOTENCIA],
+          requestBody: cuerpo("SolicitudDuplicado"),
+          responses: {
+            "201": ok("DetalleCotizacion", "Cotización duplicada (o reproducida con Idempotent-Replayed)."),
+            ...errores(400, 401, 403, 404, 409, 413, 415, 422, 429, 503, 500),
+          },
+        },
+      },
+      "/api/v1/cotizaciones/{id}/nueva-version": {
+        post: {
+          summary: "Prepara la versión nueva tras una emisión (B-34; Preparador): modo de precios y motivo",
+          description:
+            "Solo cuando la última versión está emitida y el ciclo no está preparado (si no: 422 NUEVA_VERSION_NO_APLICA). CONSERVAR toma las selecciones " +
+            "de la versión emitida (mismos códigos e importes; anulados → BL-08, vencidos → BL-09); ELEGIR_DE_NUEVO las vacía. Ninguno elige el menor precio; " +
+            "recargo, impuesto y tarifa son los vigentes al calcular. Partidas, mediciones y textos del borrador se conservan. Si las selecciones del borrador " +
+            "ya difieren de las emitidas: 409 SELECCIONES_DIVERGENTES con `selecciones` (nada cambia) hasta enviar `reemplazarSeleccionesDelBorrador: true`. " +
+            "Mientras falte este paso, guardar el borrador y calcular responden 409 NUEVA_VERSION_SIN_PREPARAR.",
+          security: CON_EFECTOS,
+          parameters: [PARAMETRO_ID, CABECERA_IDEMPOTENCIA],
+          requestBody: cuerpo("SolicitudNuevaVersion"),
+          responses: {
+            "200": ok("DetalleCotizacion", "Ciclo preparado (o reproducido con Idempotent-Replayed)."),
+            ...errores(400, 401, 403, 404, 409, 413, 415, 422, 429, 503, 500),
+          },
+        },
+      },
+      "/api/v1/cotizaciones/{id}/versiones/{numero}/vista-previa": {
+        post: {
+          summary: "Vista previa PDF marcada BORRADOR de la versión (B-25; cualquier función con cotizaciones.consultar)",
+          description:
+            "Solo versiones en Borrador, En revisión o Aprobada de un folio activo (si no: 422 VISTA_PREVIA_BLOQUEADA con BL-19) y con el cálculo vigente: " +
+            "última versión, igual al borrador guardado y reproducible con el catálogo y los parámetros de hoy (si no: BL-16 y los bloqueos del motor). " +
+            "Partidas, importes y textos de la versión; emisor, cliente, proyecto, contacto y vigencia actuales. «BORRADOR — NO VÁLIDO COMO COTIZACIÓN», " +
+            "DEMOSTRACIÓN, folio, versión y paginación en cada página. No se guarda, no crea emisión, no consume folio y no cambia estados; registra la " +
+            "auditoría VISTA_PREVIA una vez por Idempotency-Key. Content-Disposition attachment COT-AAAA-NNNNN-vN-BORRADOR.pdf, Cache-Control no-store.",
+          security: CON_EFECTOS,
+          parameters: [PARAMETRO_ID, PARAMETRO_NUMERO, CABECERA_IDEMPOTENCIA],
+          responses: {
+            "200": { description: "PDF BORRADOR (no emitido).", content: { "application/pdf": { schema: { type: "string", format: "binary" } } } },
+            ...errores(401, 403, 404, 422, 429, 503, 500),
+          },
         },
       },
       "/api/v1/cotizaciones/{id}/borrador": {
@@ -1063,6 +1118,8 @@ export function construirDocumentoOpenApi(): Record<string, unknown> {
         Proyecto: json(EsquemaProyecto, "output"),
         RespuestaProyectos: json(EsquemaRespuestaProyectos, "output"),
         SolicitudCotizacion: json(EsquemaSolicitudCotizacion, "input"),
+        SolicitudDuplicado: json(EsquemaSolicitudDuplicado, "input"),
+        SolicitudNuevaVersion: json(EsquemaSolicitudNuevaVersion, "input"),
         RespuestaCotizaciones: json(EsquemaRespuestaCotizaciones, "output"),
         DetalleCotizacion: json(EsquemaDetalleCotizacion, "output"),
         Borrador: json(EsquemaBorrador, "output"),

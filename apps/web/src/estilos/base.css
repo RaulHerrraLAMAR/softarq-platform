@@ -2040,3 +2040,25 @@ textarea[aria-invalid="true"] {
 .totales-internos dd {
   white-space: nowrap;
 }
+
+/* Módulo 15: duplicar, versión nueva y vista previa PDF BORRADOR. */
+.lista-compacta {
+  margin: var(--esp-2) 0;
+  padding-left: var(--esp-6);
+}
+
+.lista-compacta li + li {
+  margin-top: var(--esp-1);
+}
+
+.opcion-en-linea {
+  display: flex;
+  align-items: center;
+  gap: var(--esp-2);
+  min-height: 44px;
+  overflow-wrap: anywhere;
+}
+
+.panel-nueva-version .opcion-dato {
+  white-space: normal;
+}

@@ -2,9 +2,10 @@
  * Generador del PDF comercial (módulo 8, ADR-0010): contenido, paginación, acentos y ausencia de
  * datos internos. El texto se extrae con pdfjs-dist (devDependency) de los bytes generados.
  */
+import { createHash } from "node:crypto";
 import { describe, expect, it } from "vitest";
-import { EsquemaDocumentoCotizacion, LEYENDA_DEMO, type DocumentoCotizacion } from "@softarq/contracts";
-import { ErrorGeneracionPdf, generarPdf } from "../dominio/pdf/generador-pdf.js";
+import { EsquemaDocumentoBorrador, EsquemaDocumentoCotizacion, LEYENDA_DEMO, type DocumentoBorrador, type DocumentoCotizacion } from "@softarq/contracts";
+import { EMISOR_PENDIENTE, ErrorGeneracionPdf, MARCA_BORRADOR, SIN_EMITIR, generarPdf } from "../dominio/pdf/generador-pdf.js";
 import { cantidad, dinero, fecha, porcentaje, unidad } from "../dominio/pdf/formato.js";
 import { LEYENDA_TECNICA, PLANTILLA_PDF } from "../dominio/emision.js";
 import { TEXTOS_DEMO } from "../dominio/textos.js";
@@ -200,5 +201,115 @@ describe("generador del PDF", { timeout: 60_000 }, () => {
     const a = await textoPorPagina(await generarPdf(documento(4)));
     const b = await textoPorPagina(await generarPdf(documento(4)));
     expect(a).toEqual(b);
+  });
+});
+
+/**
+ * Módulo 15 (ADR-0019): el documento EMITIDO no cambia con la variante BORRADOR. Huella SHA-256 de
+ * este documento fijo calculada ANTES de modificar el generador (`_work/tmp/m15/huella-emitido-antes.txt`).
+ */
+const HUELLA_EMITIDO_ANTES = "6bbe7811905cae06615fba5a289c4a0f78544343e1b3f8485676ee2e6d24c3a6";
+
+function documentoFijo(): DocumentoCotizacion {
+  const d = documento(30);
+  return EsquemaDocumentoCotizacion.parse({
+    ...d,
+    partidas: d.partidas.map((p, i) => ({ ...p, descripcion: `[DEMO] Partida ${i + 1} — muro de block reforzado`, unidad: "m2" })),
+  });
+}
+
+function borrador(partidas = 3, larga = false, extra: Partial<DocumentoBorrador> = {}): DocumentoBorrador {
+  const d = documento(partidas, larga);
+  return EsquemaDocumentoBorrador.parse({
+    tipo: "BORRADOR",
+    plantilla: d.plantilla,
+    ambiente: "DEMO",
+    origen: "WEB_DEMO",
+    folio: d.folio,
+    versionNumero: d.versionNumero,
+    idVersion: d.idVersion,
+    fechaCalculo: "2027-10-10",
+    fechaGeneracion: "2027-10-15",
+    vigenciaDias: 15,
+    emisor: { ...d.emisor },
+    cliente: d.cliente,
+    contacto: d.contacto,
+    proyecto: d.proyecto,
+    moneda: "MXN",
+    partidas: d.partidas,
+    subtotal: d.subtotal,
+    impuesto: d.impuesto,
+    total: d.total,
+    textos: larga
+      ? {
+          alcance: `${d.textos.alcance} `.repeat(12).trim(),
+          condiciones: `${d.textos.condiciones} `.repeat(12).trim(),
+          exclusiones: `${d.textos.exclusiones} `.repeat(12).trim(),
+        }
+      : d.textos,
+    leyendaTecnica: d.leyendaTecnica,
+    personas: { preparo: "[DEMO] Preparador 1", aprobo: null },
+    ...extra,
+  });
+}
+
+describe("vista previa BORRADOR (B-25, módulo 15)", () => {
+  it("el documento EMITIDO genera exactamente los mismos bytes que antes del módulo", async () => {
+    const huella = createHash("sha256").update(await generarPdf(documentoFijo())).digest("hex");
+    expect(huella).toBe(HUELLA_EMITIDO_ANTES);
+  });
+
+  it("multipágina con textos largos: BORRADOR, DEMOSTRACIÓN, folio, versión y paginación en cada página; nada cortado", async () => {
+    const pdf = await generarPdf(borrador(60, true));
+    const paginas = await textoPorPagina(pdf);
+    expect(paginas.length).toBeGreaterThanOrEqual(4);
+    paginas.forEach((p, i) => {
+      expect(p).toContain(MARCA_BORRADOR);
+      expect(p).toContain(LEYENDA_DEMO);
+      expect(p).toContain("COT-2026-00042-v3 · WEB DEMO · BORRADOR");
+      expect(p).toContain(`Página ${i + 1} de ${paginas.length}`);
+    });
+    const todo = paginas.join(" ");
+    for (let i = 1; i <= 60; i++) expect(todo).toContain(`Partida ${i}`);
+    expect(todo).toContain("$16,181.83");
+    expect(todo).toContain(`Fecha de emisión ${SIN_EMITIR}`);
+    expect(todo).toContain("15 días naturales desde la emisión");
+    expect(todo).toContain("Vista previa sin emitir");
+    expect(todo).toContain("Aprobó: (pendiente)");
+    expect(todo).toContain("Emitió: (sin emitir)");
+    // Las condiciones largas terminan completas (última frase presente) y el registro operativo al final.
+    expect(todo.lastIndexOf("Registro operativo")).toBeGreaterThan(todo.lastIndexOf("Exclusiones"));
+    // No se presenta como emitido.
+    expect(todo).not.toContain("Documento comercial emitido");
+    expect(todo).not.toMatch(/Vigente hasta \d/);
+  });
+
+  it("datos ausentes: emisor pendiente y versión sin textos se indican tal cual, sin plantillas", async () => {
+    const pdf = await generarPdf(
+      borrador(2, false, {
+        emisor: { nombre: null, domicilio: null, telefono: null, correo: null, logo: null },
+        textos: null,
+        vigenciaDias: null,
+        contacto: { nombre: null, telefono: null, correo: null },
+      }),
+    );
+    const todo = (await textoPorPagina(pdf)).join(" ");
+    expect(todo).toContain(EMISOR_PENDIENTE);
+    expect(todo).toContain("No registrados en esta versión.");
+    expect(todo).toContain("Vigencia No definida");
+    expect(todo).not.toContain("Alcance ");
+  });
+
+  it("sin datos internos en el texto ni en los metadatos; sin autor, título ni adjuntos", async () => {
+    const pdf = await generarPdf(borrador(5));
+    const texto = (await textoPorPagina(pdf)).join(" ").toLowerCase();
+    for (const prohibido of ["costo", "proveedor", "consumo", "rendimiento", "desperdicio", "margen", "recargo", "excepci", "sobrante", "postgres", "_work"]) {
+      expect(texto, prohibido).not.toContain(prohibido);
+    }
+    const m = await metadatos(pdf);
+    expect(m["Author"]).toBeUndefined();
+    expect(m["Title"]).toBeUndefined();
+    expect(m["adjuntos"]).toBeNull();
+    expect(pdf.toString("latin1")).not.toMatch(/\/EmbeddedFile|\/JavaScript|\/Launch/);
   });
 });

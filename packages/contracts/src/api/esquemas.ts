@@ -464,6 +464,11 @@ export const CODIGOS_ERROR_API = [
   "CONCEPTO_INCOMPLETO",
   "REQUISITOS_INCOMPLETOS",
   "CONFLICTO_APROBACION",
+  // Módulo 15 (ADR-0019): versión nueva con modo de precios (B-34) y vista previa BORRADOR (B-25).
+  "NUEVA_VERSION_SIN_PREPARAR",
+  "NUEVA_VERSION_NO_APLICA",
+  "SELECCIONES_DIVERGENTES",
+  "VISTA_PREVIA_BLOQUEADA",
 ] as const;
 export type CodigoErrorApi = (typeof CODIGOS_ERROR_API)[number];
 
@@ -506,6 +511,13 @@ export const EsquemaRespuestaError = z.strictObject({
      * el registro existente en DUPLICADO o el precio que se solapa en SOLAPE_VIGENCIA.
      */
     registroVigente: z.unknown().optional(),
+    /** Módulo 15: 409 SELECCIONES_DIVERGENTES, selecciones del borrador y las que dejaría el modo. */
+    selecciones: z
+      .strictObject({
+        actuales: z.array(z.strictObject({ insumoCodigo: z.string(), precioCodigo: z.string() })),
+        propuestas: z.array(z.strictObject({ insumoCodigo: z.string(), precioCodigo: z.string() })),
+      })
+      .optional(),
   }),
 });
 export type RespuestaError = z.infer<typeof EsquemaRespuestaError>;

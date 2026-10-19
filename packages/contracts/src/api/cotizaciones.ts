@@ -340,6 +340,80 @@ export type SolicitudBorrador = z.infer<typeof EsquemaSolicitudBorrador>;
  * Calcular y guardar una versión. El navegador NO envía captura, resultados ni importes: el
  * servidor calcula con el borrador guardado en esa revisión y las condiciones vigentes.
  */
+// ---------------------------------------------------------------------------
+// Módulo 15 (ADR-0019): duplicar (B-35) y preparar la versión nueva con modo de precios (B-34)
+// ---------------------------------------------------------------------------
+
+/**
+ * Origen EXPLÍCITO de una duplicación: una versión concreta (su captura congelada) o el borrador
+ * guardado en la revisión indicada (si cambió entre tanto: 409 BORRADOR_DESACTUALIZADO). El
+ * servidor lee el origen de la base; nunca acepta una captura enviada por el navegador.
+ */
+export const EsquemaOrigenDuplicado = z.discriminatedUnion("tipo", [
+  z.strictObject({ tipo: z.literal("VERSION"), numero: z.number().int().positive() }),
+  z.strictObject({ tipo: z.literal("BORRADOR"), revision: z.number().int().nonnegative() }),
+]);
+export type OrigenDuplicado = z.infer<typeof EsquemaOrigenDuplicado>;
+
+export const EsquemaSolicitudDuplicado = z.strictObject({
+  origen: EsquemaOrigenDuplicado,
+  /** Proyecto destino (activo, con cliente activo, de la organización); por omisión, el del origen. */
+  proyectoId: EsquemaUuid,
+});
+export type SolicitudDuplicado = z.infer<typeof EsquemaSolicitudDuplicado>;
+
+/**
+ * B-34: CONSERVAR toma las selecciones de precio de la versión emitida (mismos códigos y, por ser
+ * inmutables, mismos importes; anulados → BL-08, vencidos → BL-09). ELEGIR_DE_NUEVO las vacía: se
+ * eligen explícitamente entre las opciones vigentes. Ninguno elige el menor precio. Recargo,
+ * impuesto y tarifa son los vigentes al calcular en ambos casos.
+ */
+export const MODOS_PRECIOS = ["CONSERVAR", "ELEGIR_DE_NUEVO"] as const;
+export type ModoPrecios = (typeof MODOS_PRECIOS)[number];
+
+export const LIMITES_NUEVA_VERSION = { minimoMotivo: 10 } as const;
+
+export const EsquemaSolicitudNuevaVersion = z.strictObject({
+  /** Número de la última versión emitida (la que origina el ciclo). */
+  versionOrigen: z.number().int().positive(),
+  modo: z.enum(MODOS_PRECIOS, { error: "Elija el modo de precios." }),
+  motivo: z
+    .string({ error: "El motivo es obligatorio." })
+    .trim()
+    .max(LIMITES_COTIZACIONES.longitudMotivo, { error: `Motivo: máximo ${LIMITES_COTIZACIONES.longitudMotivo} caracteres.` })
+    .refine((t) => t.length >= LIMITES_NUEVA_VERSION.minimoMotivo && /\p{L}/u.test(t), {
+      error: `Explique el motivo de la versión nueva (al menos ${LIMITES_NUEVA_VERSION.minimoMotivo} caracteres).`,
+    }),
+  revisionBorrador: z.number().int().nonnegative(),
+  /**
+   * Decisión explícita cuando las selecciones del borrador ya difieren de las que dejaría el modo
+   * (409 SELECCIONES_DIVERGENTES). Sin ella no se cambia nada.
+   */
+  reemplazarSeleccionesDelBorrador: z.literal(true).optional(),
+});
+export type SolicitudNuevaVersion = z.infer<typeof EsquemaSolicitudNuevaVersion>;
+
+/** Estado del ciclo de la versión nueva (B-34) en el detalle de la cotización. */
+export const EsquemaNuevaVersion = z.strictObject({
+  /** Hay que preparar el ciclo antes de editar o calcular (la última versión está emitida). */
+  requerida: z.boolean(),
+  /** Última versión emitida (origen del ciclo). */
+  versionOrigen: z.number().int().positive(),
+  /** Ciclo ya preparado para esa emisión (`null` si falta). */
+  preparada: z
+    .strictObject({ modo: z.enum(MODOS_PRECIOS), motivo: z.string(), por: z.string(), en: z.string() })
+    .nullable(),
+});
+export type NuevaVersion = z.infer<typeof EsquemaNuevaVersion>;
+
+/** Origen de una cotización duplicada (trazabilidad, B-35). */
+export const EsquemaDuplicadaDe = z.strictObject({
+  cotizacionId: z.string(),
+  folio: z.string(),
+  version: z.number().int().positive().nullable(),
+  revision: z.number().int().nonnegative().nullable(),
+});
+
 export const EsquemaSolicitudVersion = z.strictObject({
   revisionBorrador: z.number().int().nonnegative(),
   motivo: z
@@ -467,6 +541,9 @@ export const EsquemaResumenVersion = z.strictObject({
   autor: z.string(),
   total: EsquemaDecimalTexto,
   motivo: z.string().nullable(),
+  /** Módulo 15 (B-34): modo de precios del ciclo en el que se calculó y versión emitida de origen. */
+  modoPrecios: z.enum(MODOS_PRECIOS).nullable(),
+  versionOrigen: z.number().int().positive().nullable(),
 });
 export type ResumenVersion = z.infer<typeof EsquemaResumenVersion>;
 
@@ -576,6 +653,9 @@ export const EsquemaDetalleCotizacion = z.strictObject({
   /** Revisiones de sus versiones con sus decisiones y responsables (módulo 7). */
   revisiones: z.array(EsquemaHistorialRevision),
   eventos: z.array(EsquemaEvento),
+  /** Módulo 15: origen si es un duplicado (B-35) y ciclo de la versión nueva tras emitir (B-34). */
+  duplicadaDe: EsquemaDuplicadaDe.nullable(),
+  nuevaVersion: EsquemaNuevaVersion.nullable(),
 });
 export type DetalleCotizacion = z.infer<typeof EsquemaDetalleCotizacion>;
 

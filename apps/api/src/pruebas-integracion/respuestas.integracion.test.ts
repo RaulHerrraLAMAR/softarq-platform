@@ -26,8 +26,14 @@ async function documento(e: string) {
   expect(res.status).toBe(200); return createHash("sha256").update(Buffer.from(await res.arrayBuffer())).digest("hex");
 }
 async function version(id: string, numero: number) {
-  const v = await p.post(`/api/v1/cotizaciones/${id}/versiones`, { revisionBorrador: 0, ...(numero > 1 ? { motivo: "Nueva propuesta comercial para el cliente." } : {}) }, idem()); expect(v.status, v.texto).toBe(201);
-  const rev = await p.post(`/api/v1/cotizaciones/${id}/versiones/${numero}/revisiones`, { revisionBorrador: 0 }, idem()); expect(rev.status, rev.texto).toBe(201);
+  // Módulo 15 (B-34): tras emitir, la versión nueva se prepara antes con modo de precios y motivo.
+  let revisionBorrador = 0;
+  if (numero > 1) {
+    const prep = await p.post(`/api/v1/cotizaciones/${id}/nueva-version`, { versionOrigen: numero - 1, modo: "CONSERVAR", motivo: "Nueva propuesta comercial para el cliente.", revisionBorrador }, idem()); expect(prep.status, prep.texto).toBe(200);
+    revisionBorrador = prep.cuerpo.borrador.revision;
+  }
+  const v = await p.post(`/api/v1/cotizaciones/${id}/versiones`, { revisionBorrador }, idem()); expect(v.status, v.texto).toBe(201);
+  const rev = await p.post(`/api/v1/cotizaciones/${id}/versiones/${numero}/revisiones`, { revisionBorrador }, idem()); expect(rev.status, rev.texto).toBe(201);
   const dec = await r.post(`/api/v1/revisiones/${rev.cuerpo.revision.id}/decision`, { decision: "APROBAR", versionId: v.cuerpo.version.id, revision: rev.cuerpo.revision.revision }, idem()); expect(dec.status, dec.texto).toBe(200);
   const em = await p.post(`/api/v1/cotizaciones/${id}/versiones/${numero}/emision`, { versionId: v.cuerpo.version.id, revisionId: rev.cuerpo.revision.id }, idem()); expect(em.status, em.texto).toBe(201);
   return { id, emision: em.cuerpo.emision.id as string, versionId: v.cuerpo.version.id as string };

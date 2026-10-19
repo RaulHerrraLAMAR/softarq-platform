@@ -173,7 +173,16 @@ function Contenido({ sesion, servicios, cotizaciones, catalogoAdmin, administrac
       case "revision":
         return <PantallaRevision servicios={cotizaciones} id={ruta.id} puedeVerExcepciones={puedeVerExcepciones} puedeVerSalidas={puedeVerSalidas} />;
       case "version":
-        return <VistaVersion servicios={cotizaciones} id={ruta.id} numero={ruta.numero} puedeVerExcepciones={puedeVerExcepciones} puedeVerSalidas={puedeVerSalidas} />;
+        return (
+          <VistaVersion
+            servicios={cotizaciones}
+            id={ruta.id}
+            numero={ruta.numero}
+            puedeVerExcepciones={puedeVerExcepciones}
+            puedeVerSalidas={puedeVerSalidas}
+            puedeDuplicar={puedePreparar}
+          />
+        );
       case "salidas":
         return puedeVerSalidas ? (
           <PantallaSalidasInternas

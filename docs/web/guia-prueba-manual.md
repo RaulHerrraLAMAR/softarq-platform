@@ -247,11 +247,31 @@ En `softarq_dev` no hay otra forma de reproducir un precio vencido sin manipular
 | I7 | Abre las salidas internas de `COT-2026-00004-v1` (anterior al módulo 14) | Aviso «Nombres y vigencias no congelados en esta versión»: cifras completas con solo códigos; no aparecen nombres actuales del catálogo |
 | I8 | 390 px y teclado en las tres vistas | Tablas como tarjetas, foco visible, sin desplazamiento horizontal |
 
+### Duplicar, versión nueva tras emitir y vista previa BORRADOR (D1–D10, módulo 15; pendiente de ejecución formal)
+
+- **Sesión:** `[DEMO] Preparador 1`; `[DEMO] Revisor 1` para aprobar; `[DEMO] Administrador` para D9.
+- **Qué registrar:** folio de origen y folio nuevo, versión o revisión duplicada, modo elegido y motivo, y el nombre de cada PDF BORRADOR descargado.
+- **Fuentes y decisiones:** B-25 `BTN_VistaPrevia`, B-34 `BTN_NuevaVersion` y B-35 `BTN_Duplicar` del libro; Word §1.6, §3.8, §3.9 y §3.11 (BL-16, BL-19); ADR-0019.
+
+| Caso | Acción | Resultado esperado |
+|---|---|---|
+| D1 | Cotización con el Ejemplo 1 → «Calcular y guardar versión» → «Descargar BORRADOR (PDF)» | Archivo `COT-…-v1-BORRADOR.pdf`: franja «BORRADOR — NO VÁLIDO COMO COTIZACIÓN», marca de agua «BORRADOR», «Sin emitir», «Aprobó: (pendiente)», total $54,190.68 y pie «… · BORRADOR · Página X de Y». No aparece en «Emisión» |
+| D2 | Cambie una medición, guarde el borrador sin calcular y vuelva a pedir la vista previa de la v1 | Se rechaza con BL-16 (la versión no corresponde al borrador guardado); no se recalcula nada |
+| D3 | Cambie el nombre del cliente o el emisor y pida la vista previa de la versión vigente | El PDF muestra los datos actuales; la versión no cambia. Sin emisor completo: «[EMISOR PENDIENTE]» |
+| D4 | «Duplicar el borrador guardado…» con el mismo proyecto | Folio nuevo con el aviso «Duplicada de el borrador guardado de COT-…»; sin precios elegidos ni excepciones; no tiene versiones hasta calcular. El original no cambia |
+| D5 | Abra una versión (también Sustituida o Descartada) → «Duplicar esta versión…»; desactive antes el proyecto para comprobar que pide otro | Folio nuevo desde esa versión; con el proyecto inactivo hay que elegir otro proyecto activo |
+| D6 | Envíe la v1 a revisión, apruébela (Revisor) y emítala | Tras emitir, el editor muestra «Preparar la versión nueva» y no deja guardar ni calcular. La vista previa de la versión emitida no se ofrece (se descarga el original) |
+| D7 | «Preparar la versión nueva» sin elegir modo o con un motivo corto | Mensaje junto al formulario; no cambia nada |
+| D8 | Elija «Conservar los precios de la versión emitida», escriba el motivo → «Calcular y guardar versión» | Aviso con el modo y el motivo; v2 con los mismos precios; el total solo cambia si cambiaron los parámetros vigentes. El PDF emitido de la v1 conserva su SHA-256. En otra cotización emitida, «Elegir los precios de nuevo» deja todos los insumos sin precio elegido (ninguno se elige automáticamente) |
+| D9 | Con `[DEMO] Administrador`, abra una versión en Borrador | Puede descargar la vista previa BORRADOR; no ve «Duplicar» |
+| D10 | 390 px y teclado: duplicar, preparar la versión nueva y vista previa | Foco visible, paneles legibles, sin desplazamiento horizontal |
+
 ## 4. Qué no hace todavía
 
 - La calculadora DEMO no guarda su captura (para conservarla, «Guardar como cotización»).
 - La aprobación **no es una emisión** ni una entrega al cliente. La emisión (módulo 8) genera un PDF **DEMO**: no se envía por correo ni al cliente y no es una cotización comercial real.
-- Sin duplicar cotizaciones, correo ni app móvil. Respuesta y vigencia: módulo 9; excepciones: módulo 10.
+- Sin correo ni app móvil. Respuesta y vigencia: módulo 9; excepciones: módulo 10; duplicar y vista previa BORRADOR: módulo 15.
+- La vista previa BORRADOR no se guarda: se descarga o se abre cada vez, y solo de versiones Borrador, En revisión o Aprobada con cálculo vigente.
 - Los tipos de costo adicional siguen solo con la carga DEMO. Los cinco conceptos heredados de `softarq_dev` muestran «Datos incompletos de la carga anterior» hasta que el Administrador los complete (ADR-0016 §2.3).
 - Sin registro público de usuarios, correo ni recuperación de contraseña por la propia persona: el Administrador del sistema da de alta y restablece (módulo 13).
 - Solo punto decimal (por ejemplo, `0.12`).

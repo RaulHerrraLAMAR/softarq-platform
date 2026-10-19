@@ -346,6 +346,39 @@ async function comprobarDestino(manifiesto) {
         registrar("salidas internas: referencias congeladas íntegras tras restaurar", a === b, `${r.con} versión(es) con referencias y ${r.sin} anterior(es) sin ellas (solo lectura)`);
       } finally { await origen.end(); }
     }
+    // Módulo 15 (ADR-0019): origen de duplicados, ciclo de la versión nueva y modo por versión.
+    // Condicional: respaldos anteriores no tienen las columnas.
+    const conModulo15 = (await c.query(`SELECT count(*)::int n FROM information_schema.columns
+        WHERE table_schema='public' AND table_name='cotizacion' AND column_name='duplicada_de_id'`)).rows[0].n === 1;
+    if (conModulo15) {
+      const r = (await c.query(`SELECT
+          (SELECT count(*) FROM cotizacion q LEFT JOIN cotizacion o ON o.id = q.duplicada_de_id
+            WHERE q.duplicada_de_id IS NOT NULL AND (o.id IS NULL OR o.organizacion_id <> q.organizacion_id))::int origenes,
+          (SELECT count(*) FROM cotizacion WHERE duplicada_de_id IS NOT NULL)::int duplicadas,
+          (SELECT count(*) FROM cotizacion_version WHERE modo_precios IS NOT NULL)::int con_modo,
+          (SELECT count(*) FROM pg_constraint WHERE conname IN ('cotizacion_duplicada_de_ck','cotizacion_borrador_ciclo_ck','cotizacion_version_modo_ck'))::int ck,
+          (SELECT count(*) FROM pg_proc WHERE proname IN ('softarq_duplicar_cotizacion','softarq_preparar_nueva_version','softarq_registrar_vista_previa','softarq_requiere_nueva_version','softarq_ultima_emitida') AND NOT prosecdef)::int funciones,
+          has_function_privilege('softarq_app','public.softarq_registrar_vista_previa(uuid,uuid,uuid,uuid,uuid,text,bytea,timestamptz)','EXECUTE') vista_previa,
+          has_column_privilege('softarq_app','public.cotizacion_borrador','ciclo_modo_precios','UPDATE') ciclo,
+          has_column_privilege('softarq_app','public.cotizacion','duplicada_de_id','UPDATE') edita_origen,
+          has_any_column_privilege('softarq_app','public.cotizacion_version','UPDATE') edita_version`)).rows[0];
+      registrar(
+        "duplicar y modo de precios: origen coherente, CHECK, funciones y permisos mínimos restaurados",
+        r.origenes === 0 && r.ck === 3 && r.funciones === 5 && r.vista_previa && r.ciclo && !r.edita_origen && !r.edita_version,
+        JSON.stringify(r),
+      );
+      const origen = new pg.Client({ connectionString: urlRespaldo().cadena }); await origen.connect();
+      try {
+        const sql = `SELECT json_build_array(
+            (SELECT coalesce(json_agg(json_build_array(q.id, q.duplicada_de_id, q.duplicada_de_version, q.duplicada_de_revision) ORDER BY q.id), '[]') FROM cotizacion q),
+            (SELECT coalesce(json_agg(json_build_array(b.cotizacion_id, b.ciclo_version_origen, b.ciclo_modo_precios, b.ciclo_motivo, b.ciclo_preparado_por) ORDER BY b.cotizacion_id), '[]') FROM cotizacion_borrador b),
+            (SELECT coalesce(json_agg(json_build_array(v.id, v.modo_precios, v.version_origen) ORDER BY v.id), '[]') FROM cotizacion_version v),
+            (SELECT count(*) FROM bitacora WHERE tipo IN ('COTIZACION_DUPLICADA','NUEVA_VERSION_PREPARADA','VISTA_PREVIA'))
+          )::text AS f`;
+        const a = (await origen.query(sql)).rows[0].f, b = (await c.query(sql)).rows[0].f;
+        registrar("duplicados, ciclos, modos y auditoría de vistas previas íntegros tras restaurar", a === b, `${r.duplicadas} duplicada(s) y ${r.con_modo} versión(es) con modo (solo lectura)`);
+      } finally { await origen.end(); }
+    }
     const resumen = (await c.query(`SELECT
         (SELECT count(*) FROM organizacion)::int organizaciones, (SELECT count(*) FROM usuario)::int usuarios,
         (SELECT count(*) FROM cotizacion)::int cotizaciones, (SELECT count(*) FROM cotizacion_version)::int versiones,

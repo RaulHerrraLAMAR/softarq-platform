@@ -105,6 +105,8 @@ describe("OpenAPI", () => {
       "/api/v1/cotizaciones/{id}",
       "/api/v1/cotizaciones/{id}/borrador",
       "/api/v1/cotizaciones/{id}/descarte",
+      "/api/v1/cotizaciones/{id}/duplicados",
+      "/api/v1/cotizaciones/{id}/nueva-version",
       "/api/v1/cotizaciones/{id}/versiones",
       "/api/v1/cotizaciones/{id}/versiones/{numero}",
       "/api/v1/cotizaciones/{id}/versiones/{numero}/emision",
@@ -113,6 +115,7 @@ describe("OpenAPI", () => {
       "/api/v1/cotizaciones/{id}/versiones/{numero}/revisiones",
       "/api/v1/cotizaciones/{id}/versiones/{numero}/salidas-internas",
       "/api/v1/cotizaciones/{id}/versiones/{numero}/verificacion",
+      "/api/v1/cotizaciones/{id}/versiones/{numero}/vista-previa",
       "/api/v1/emisiones/{id}",
       "/api/v1/emisiones/{id}/documento",
       "/api/v1/emisiones/{id}/respuestas",
@@ -212,6 +215,10 @@ describe("OpenAPI", () => {
       ["/api/v1/cotizaciones", "post"],
       ["/api/v1/cotizaciones/{id}/borrador", "put"],
       ["/api/v1/cotizaciones/{id}/versiones", "post"],
+      // Módulo 15 (ADR-0019): duplicar, preparar la versión nueva y vista previa (auditoría).
+      ["/api/v1/cotizaciones/{id}/duplicados", "post"],
+      ["/api/v1/cotizaciones/{id}/nueva-version", "post"],
+      ["/api/v1/cotizaciones/{id}/versiones/{numero}/vista-previa", "post"],
     ];
     for (const [ruta, metodo] of escrituras) {
       expect(d.paths[ruta]?.[metodo]?.security, `${metodo} ${ruta}`).toEqual([{ cookieSesion: [], tokenCsrf: [] }]);

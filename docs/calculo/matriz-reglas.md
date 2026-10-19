@@ -88,10 +88,10 @@ Las medidas, precios y parámetros completos de cada escenario están en `domain
 | BL-14 (vigencia comercial) | **Implementada** en la verificación vigente (`bl14`) |
 | BL-15 (emisor) | **Implementada** al emitir (módulo 8, `faltantesEmisor` y `bl15`): nombre, domicilio, teléfono, correo y logotipo existente |
 | BL-20 (textos) | **Implementada** (módulo 8, `dominio/textos.ts`, `bl20`): textos de la versión al enviar, aprobar y emitir; no intervienen en el cálculo |
-| BL-16 (sello del cálculo) | Versiones (módulo 6: huellas) y verificación vigente (módulo 7: huella comparable de la entrada, `bl16`) |
+| BL-16 (sello del cálculo) | Versiones (módulo 6: huellas) y verificación vigente (módulo 7: huella comparable de la entrada, `bl16`); módulo 15: la vista previa PDF BORRADOR exige que la versión sea la última, corresponda a la revisión del borrador guardado y reproduzca su entrada (`servicio-vista-previa.ts`, sin recalcular ni escribir) |
 | BL-17 (revisor ≠ preparador) | **Implementada** por identidad al aprobar (módulo 7) y al emitir (módulo 8: aprobación vigente de esa versión por otra persona, `bl17`, `softarq_emitir_version` y CHECK `emision_bl17_ck`; quién emite: ADR-0010 §2) |
 | BL-18 sobre la proyección guardada | **Implementada** en la verificación vigente (`bl18`) |
-| BL-19 (estado) | **Implementada** para enviar, decidir, guardar y calcular con revisión pendiente (módulo 7) y para emitir (ya emitida, no es la última, descartada, revisión pendiente; módulo 8, `bl19`) |
+| BL-19 (estado) | **Implementada** para enviar, decidir, guardar y calcular con revisión pendiente (módulo 7) y para emitir (ya emitida, no es la última, descartada, revisión pendiente; módulo 8, `bl19`); módulo 15: vista previa solo de versiones Borrador, En revisión o Aprobada de un folio activo (`bloqueosEstadoVistaPrevia`) |
 | AV-02 (precio vence antes del fin de la vigencia comercial) | **Implementado** como aviso con la fecha del servidor (`av02`); al emitir, con la fecha de emisión + `VIGENCIA_DIAS` (CR-16) |
 | AV-04 (excepciones autorizadas) | **Implementado** (módulo 10, `av04`): un aviso por excepción autorizada, sin valores técnicos ni motivo en el texto. TI-072 |
 | AV-05 (concepto genérico o personalizado) | **Implementado** como aviso (`av05`) |

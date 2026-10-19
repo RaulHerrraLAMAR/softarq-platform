@@ -20,7 +20,14 @@ import { EsquemaConsultaComponentesExcepcion, EsquemaDecisionExcepcion,
 import type { ServicioExcepciones } from "../modules/cotizaciones/aplicacion/servicio-excepciones.js";
 import type { SalidasInternasVersion } from "@softarq/contracts";
 import type { ServicioSalidasInternas } from "../modules/cotizaciones/aplicacion/servicio-salidas-internas.js";
-import { SERVICIO_SALIDAS_INTERNAS } from "./tokens.js";
+import { SERVICIO_SALIDAS_INTERNAS, SERVICIO_VISTA_PREVIA } from "./tokens.js";
+import type { ServicioVistaPrevia } from "../modules/cotizaciones/aplicacion/servicio-vista-previa.js";
+import {
+  EsquemaSolicitudDuplicado,
+  EsquemaSolicitudNuevaVersion,
+  type SolicitudDuplicado,
+  type SolicitudNuevaVersion,
+} from "@softarq/contracts";
 import {
   CABECERA_IDEMPOTENCIA,
   CABECERA_IDEMPOTENCIA_REPRODUCIDA,
@@ -263,6 +270,39 @@ export class CotizacionesController {
   ): Promise<DetalleCotizacion> {
     const clave = claveIdempotencia(req);
     const r = await this.servicio.crear(organizacionDe(req), autorDe(req), s, clave);
+    marcarReproducida(res, r.reproducida);
+    return r.detalle;
+  }
+
+  /**
+   * Duplicar (B-35, módulo 15): cotización nueva con folio nuevo desde una versión concreta o desde
+   * el borrador guardado (revisión esperada). El origen lo lee el servidor; no cambia.
+   */
+  @Post(":id/duplicados")
+  @HttpCode(201)
+  @Requiere("cotizaciones.preparar")
+  async duplicar(
+    @Req() req: Request,
+    @Res({ passthrough: true }) res: Response,
+    @Param() params: unknown,
+    @Body({ schema: EsquemaSolicitudDuplicado }) s: SolicitudDuplicado,
+  ): Promise<DetalleCotizacion> {
+    const r = await this.servicio.duplicar(organizacionDe(req), autorDe(req), idDeRuta(params), s, claveIdempotencia(req));
+    marcarReproducida(res, r.reproducida);
+    return r.detalle;
+  }
+
+  /** Preparar la versión nueva tras una emisión (B-34, módulo 15): modo de precios y motivo. */
+  @Post(":id/nueva-version")
+  @HttpCode(200)
+  @Requiere("cotizaciones.preparar")
+  async prepararNuevaVersion(
+    @Req() req: Request,
+    @Res({ passthrough: true }) res: Response,
+    @Param() params: unknown,
+    @Body({ schema: EsquemaSolicitudNuevaVersion }) s: SolicitudNuevaVersion,
+  ): Promise<DetalleCotizacion> {
+    const r = await this.servicio.prepararNuevaVersion(organizacionDe(req), autorDe(req), idDeRuta(params), s, claveIdempotencia(req));
     marcarReproducida(res, r.reproducida);
     return r.detalle;
   }
@@ -625,5 +665,37 @@ export class SalidasInternasController {
   consultar(@Req() req: Request, @Param() params: unknown): Promise<SalidasInternasVersion> {
     const v = versionDeRuta(params);
     return this.servicio.consultar(organizacionDe(req), v.id, v.numero);
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Vista previa PDF marcada BORRADOR (módulo 15, ADR-0019)
+// ---------------------------------------------------------------------------
+
+/**
+ * `POST /cotizaciones/{id}/versiones/{n}/vista-previa`: PDF BORRADOR en la respuesta (no se guarda
+ * ni se emite). POST porque registra la auditoría VISTA_PREVIA (idempotente con `Idempotency-Key`);
+ * limitador de cálculo, porque comprueba el cálculo y genera el documento. Separado de la emisión y
+ * de la descarga del original: ningún campo de esta solicitud puede convertirla en emisión.
+ */
+@Controller("cotizaciones")
+@SkipThrottle({ calculo: false })
+export class VistaPreviaController {
+  constructor(@Inject(SERVICIO_VISTA_PREVIA) private readonly servicio: ServicioVistaPrevia) {}
+
+  @Post(":id/versiones/:numero/vista-previa")
+  @HttpCode(200)
+  @Requiere("cotizaciones.consultar")
+  async generar(@Req() req: Request, @Res() res: Response, @Param() params: unknown): Promise<void> {
+    const v = versionDeRuta(params);
+    const r = await this.servicio.generar(organizacionDe(req), autorDe(req), v.id, v.numero, claveIdempotencia(req));
+    res.status(200);
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader("Content-Disposition", `attachment; filename="${r.nombre}"`);
+    res.setHeader("Content-Length", String(r.pdf.length));
+    res.setHeader("Cache-Control", "private, no-store");
+    res.setHeader("X-Content-Type-Options", "nosniff");
+    if (r.reproducida) res.setHeader(CABECERA_IDEMPOTENCIA_REPRODUCIDA, "true");
+    res.end(r.pdf);
   }
 }

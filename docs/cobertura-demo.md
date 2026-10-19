@@ -1,9 +1,9 @@
 # Cobertura del DEMO local frente al Excel y al alcance documentado
 
-- Fecha: 18/10/2026, al cerrar el módulo 14 (antes: 17/10/2026, módulo 13).
+- Fecha: 19/10/2026, al cerrar el módulo 15 (antes: 18/10/2026, módulo 14).
 - **Fuentes:**
   - Word maestro v1.3: §1.3 incluido, §1.4 excluido, §1.6 funciones, §3 reglas y §5 uso;
-  - ADR-0001 a ADR-0018;
+  - ADR-0001 a ADR-0019;
   - código comprobado con búsquedas dirigidas, sin suponer lo que no se ve en él.
 - **Leyenda:**
   - **V**: implementado y verificado con pruebas automatizadas;
@@ -25,10 +25,10 @@
 | Emisión inmutable, PDF sin datos internos (W §3.13) | V | Módulo 8 |
 | Quién emite: también el Preparador | A | ADR-0010 §2 |
 | Textos por versión (alcance, condiciones y exclusiones) | A | ADR-0010; desde el módulo 13 las plantillas TEXTO_* son parámetros editables que se copian a cotizaciones nuevas (ADR-0017 §2.2) |
-| Vista previa del PDF marcada BORRADOR (W §1.3, `BTN_VistaPrevia`) | — | La web muestra la vista previa comercial en pantalla; no genera un PDF BORRADOR |
+| Vista previa del PDF marcada BORRADOR (W §1.3, B-25 `BTN_VistaPrevia`) | A | Módulo 15, ADR-0019 §5. `POST …/versiones/{n}/vista-previa` (`cotizaciones.consultar`, las cuatro funciones): versión Borrador, En revisión o Aprobada con cálculo vigente (BL-16, BL-19), marca en cada página, datos actuales del emisor, cliente y proyecto, auditoría VISTA_PREVIA. **Adaptación:** se entrega directamente, sin guardar el archivo |
 | Versiones con motivo e historial | V | Módulos 6 a 9 |
-| Nueva versión con «modo de precios» y precios anteriores (B-34/B-35) | — | Sin modo de precios: la versión nueva siempre calcula con el catálogo vigente |
-| Duplicar cotización (B-33) | — | No existe |
+| Nueva versión con «modo de precios» (B-34 `BTN_NuevaVersion`) | A | Módulo 15, ADR-0019 §4. Tras emitir, el paso «Preparar la versión nueva» (modo CONSERVAR o ELEGIR_DE_NUEVO y motivo) es obligatorio para editar o calcular; la versión guarda modo y origen. **Adaptación:** ciclo en el borrador vivo, que solo cambia las selecciones |
+| Duplicar cotización (B-35 `BTN_Duplicar`) | A | Módulo 15, ADR-0019 §3. Desde una versión concreta (cualquier estado) o desde el borrador guardado (**ampliación** frente al libro); folio nuevo, sin selecciones de precio ni excepciones, proyecto destino activo, origen registrado. (La fila decía B-33, que en el libro es «Abrir».) |
 | Descarte (B-37) | V | Módulo 8 |
 | Respuesta del cliente y vencimiento (B-36) | A | Módulo 9: registro interno por emisión, vigencia derivada sin escritura automática, captura tardía con recepción en plazo (ADR-0013) |
 | Folio WEB DEMO propio | A | ADR-0008 |
@@ -76,12 +76,12 @@ Hipótesis inicial: excepciones; administración de catálogos y parámetros; co
 | 2 | ~~Catálogos (2): insumos y conversiones, conceptos y componentes con trazabilidad (BL-05), aprobación de conceptos y personalizados~~ | Hecho (módulo 12) |
 | 3 | ~~Parámetros restringidos con motivo, personas y funciones (Administrador del sistema)~~ | Hecho (módulo 13) |
 | 4 | ~~Salidas internas de solo lectura (compras calculadas, detalle e indicadores), con permiso propio~~ | Hecho (módulo 14) |
-| 5 | Duplicar, modo de precios y vista previa del PDF BORRADOR | 1 módulo |
+| 5 | ~~Duplicar, modo de precios y vista previa del PDF BORRADOR~~ | Hecho (módulo 15) |
 | 6 | App Expo: alcance por decidir (consulta, revisión y decisión; captura) | 2 a 3 módulos |
 | 7 | Cierre integral del DEMO: ejecución formal de la guía, recorrido completo y documentación | 1 módulo |
 
-**Total restante para el DEMO local completo:** de 4 a 5 módulos (antes 5 a 6). La preparación para Railway (TLS, cookie `Secure`/`__Host-`, proxy, limitadores y documentos compartidos, variables y respaldo remoto) es aparte: de 1 a 2 módulos.
+**Total restante para el DEMO local completo:** de 3 a 4 módulos (antes 4 a 5). La preparación para Railway (TLS, cookie `Secure`/`__Host-`, proxy, limitadores y documentos compartidos, variables y respaldo remoto) es aparte: de 1 a 2 módulos.
 
-**Siguiente módulo recomendado:** el **5 (duplicar, modo de precios y vista previa del PDF BORRADOR)**. Antes conviene que el Administrador regularice los cinco conceptos heredados de `softarq_dev` con el mapeo del ADR-0016 §2.3. Expo conviene después de fijar su alcance. Quedan además, fuera de los bloques: los contadores de 00 INICIO y la tarea de seguridad «identidad de las funciones SQL» (ADR-0018 §7).
+**Siguiente módulo recomendado:** fijar primero el alcance de Expo (bloque 6) con el propietario; si se pospone, el **7 (cierre integral)**. Sigue conviniendo que el Administrador regularice los cinco conceptos heredados de `softarq_dev` con el mapeo del ADR-0016 §2.3. Quedan además, fuera de los bloques: los contadores de 00 INICIO y la tarea de seguridad «identidad de las funciones SQL» (ADR-0018 §7).
 
 Con los módulos 11 y 12 ya se pueden capturar en la web precios, proveedores, tarifas, insumos, conversiones, conceptos y componentes reales cuando el cliente los entregue (capítulo 8). Siguen pendientes la política de vigencias (P3) y la carga real, que no se hace en el DEMO.

@@ -42,6 +42,7 @@ import { Enlace, useRuta } from "../navegacion/ruta.tsx";
 import { ListaEventos, ResumenCaptura, TablaVersiones } from "./componentes.tsx";
 import { AvisoDescartada, EditorTextos, PanelDescarte, SeccionEmision, TextosVersion } from "./emision.tsx";
 import { SeccionExcepciones } from "../excepciones/SeccionExcepciones.tsx";
+import { AvisoCicloPreparado, AvisoDuplicada, PanelDuplicar, PanelNuevaVersion, VistaPreviaPdf, admiteVistaPrevia } from "./duplicar-modo-vista-previa.tsx";
 import { HistorialRevisiones, NOTA_NO_EMISION } from "./revisiones.tsx";
 
 interface Guardada {
@@ -152,7 +153,8 @@ export function PantallaCotizacion({
   if (estado.fase === "error") return <CargaFallida fallo={estado.fallo} alReintentar={recargar} />;
   const enRevision = estado.datos.versiones.find((v) => v.estado === "EN_REVISION") ?? null;
   const descartada = estado.datos.cotizacion.estadoFolio !== "ACTIVO";
-  if (!puedePreparar || enRevision || descartada) {
+  const prepararNueva = puedePreparar && !enRevision && !descartada && estado.datos.nuevaVersion?.requerida === true;
+  if (!puedePreparar || enRevision || descartada || prepararNueva) {
     return (
       <ConsultaCotizacion
         detalle={estado.datos}
@@ -163,13 +165,17 @@ export function PantallaCotizacion({
         subtitulo={
           descartada
             ? "Descartada: la cotización solo se consulta."
-            : puedePreparar
+            : prepararNueva
+              ? "La última versión está emitida: prepare la versión nueva para editar y calcular."
+              : puedePreparar
               ? "En revisión: la captura no se puede editar ni calcular mientras la revisión esté pendiente."
               : "Consulta: su función permite ver la cotización y sus versiones, no editarla ni calcularla. Las decisiones de revisión se toman en «Revisiones»."
         }
         aviso={
           descartada ? (
             <AvisoDescartada detalle={estado.datos} />
+          ) : prepararNueva ? (
+            <PanelNuevaVersion cotizaciones={cotizaciones} detalle={estado.datos} alPreparada={recargar} />
           ) : enRevision ? (
             <AvisoEnRevision
               key={enRevision.revisionVigente?.id}
@@ -298,6 +304,7 @@ function ConsultaCotizacion({
       acciones={<Enlace a={{ pantalla: "cotizaciones" }}>Volver a cotizaciones</Enlace>}
     >
       <EncabezadoCotizacion detalle={detalle} />
+      <AvisoDuplicada detalle={detalle} />
       {aviso}
       <Aviso tono="info" titulo="Borrador actual" rol="status">
         <p>
@@ -310,6 +317,24 @@ function ConsultaCotizacion({
           Versiones guardadas
         </h2>
         <TablaVersiones cotizacionId={detalle.cotizacion.id} versiones={detalle.versiones} />
+        {detalle.versiones[0] && admiteVistaPrevia(detalle.versiones[0]) && detalle.versiones[0].revisionBorrador === b.revision ? (
+          <VistaPreviaPdf
+            cotizaciones={cotizaciones}
+            cotizacionId={detalle.cotizacion.id}
+            numero={detalle.versiones[0].numero}
+            idVersion={detalle.versiones[0].idVersion}
+            fechaCalculo={detalle.versiones[0].fechaCalculo}
+          />
+        ) : null}
+        {puedePreparar ? (
+          <PanelDuplicar
+            cotizaciones={cotizaciones}
+            cotizacionId={detalle.cotizacion.id}
+            origen={{ tipo: "BORRADOR", revision: b.revision }}
+            descripcionOrigen={`el borrador guardado (revisión ${b.revision})`}
+            proyecto={{ ...detalle.cotizacion.proyecto, clienteActivo: detalle.cotizacion.cliente.activo }}
+          />
+        ) : null}
       </section>
       <SeccionEmision detalle={detalle} cotizaciones={cotizaciones} puedeEmitir={puedeEmitir} alCambiar={alCambiar} />
       {puedePreparar ? <PanelDescarte detalle={detalle} cotizaciones={cotizaciones} alDescartada={alCambiar} /> : null}
@@ -584,6 +609,8 @@ function EditorBorrador({
   const avisos = (
     <>
       <EncabezadoCotizacion detalle={detalle} />
+      <AvisoDuplicada detalle={detalle} />
+      <AvisoCicloPreparado detalle={detalle} />
       <div className={`estado-borrador${sucio || guardado.fase === "conflicto" ? " estado-borrador-pendiente" : ""}`} aria-live="polite">
         <p className="estado-borrador-linea">
           <strong>{estadoBorrador}</strong>
@@ -658,6 +685,7 @@ function EditorBorrador({
     </>
   );
 
+  const ultimaParaVistaPrevia = detalle.versiones[0] && admiteVistaPrevia(detalle.versiones[0]) ? detalle.versiones[0] : null;
   const panelGuardar = (
     <section className="panel-guardar" aria-labelledby="titulo-guardar-version">
       <h2 id="titulo-guardar-version" className="seccion-titulo">
@@ -739,6 +767,29 @@ function EditorBorrador({
       ) : null}
       <h3 className="subtitulo">Versiones</h3>
       <TablaVersiones cotizacionId={id} versiones={detalle.versiones} />
+      {ultimaParaVistaPrevia ? (
+        sucio || ultimaParaVistaPrevia.revisionBorrador !== guardada.revision ? (
+          <p className="ayuda">
+            La vista previa PDF corresponde a la última versión calculada ({ultimaParaVistaPrevia.idVersion}); guarde y calcule para ver sus cambios.
+          </p>
+        ) : (
+          <VistaPreviaPdf
+            cotizaciones={cotizaciones}
+            cotizacionId={id}
+            numero={ultimaParaVistaPrevia.numero}
+            idVersion={ultimaParaVistaPrevia.idVersion}
+            fechaCalculo={ultimaParaVistaPrevia.fechaCalculo}
+          />
+        )
+      ) : null}
+      <PanelDuplicar
+        cotizaciones={cotizaciones}
+        cotizacionId={id}
+        origen={{ tipo: "BORRADOR", revision: guardada.revision }}
+        descripcionOrigen={`el borrador guardado (revisión ${guardada.revision})`}
+        proyecto={{ ...detalle.cotizacion.proyecto, clienteActivo: detalle.cotizacion.cliente.activo }}
+        cambiosSinGuardar={sucio}
+      />
       <details className="detalle">
         <summary>Revisiones ({detalle.revisiones.length})</summary>
         <HistorialRevisiones revisiones={detalle.revisiones} />

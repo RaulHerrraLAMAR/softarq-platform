@@ -160,6 +160,11 @@ const ESTADO_NEGOCIO: Record<CodigoNegocio, number> = {
   CORREO_EXISTENTE: 409,
   ULTIMO_ADMINISTRADOR: 422,
   AUTOPROTECCION: 422,
+  // Módulo 15 (ADR-0019).
+  NUEVA_VERSION_SIN_PREPARAR: 409,
+  NUEVA_VERSION_NO_APLICA: 422,
+  SELECCIONES_DIVERGENTES: 409,
+  VISTA_PREVIA_BLOQUEADA: 422,
 };
 
 export function traducirError(error: unknown): ErrorApi {

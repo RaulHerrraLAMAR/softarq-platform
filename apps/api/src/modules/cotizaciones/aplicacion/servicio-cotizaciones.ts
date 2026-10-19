@@ -27,6 +27,8 @@ import {
   type RespuestaCotizaciones,
   type SolicitudBorrador,
   type SolicitudCotizacion,
+  type SolicitudDuplicado,
+  type SolicitudNuevaVersion,
   type SolicitudVersion,
   type Version,
 } from "@softarq/contracts";
@@ -44,6 +46,7 @@ import { codigosReferenciados, evaluarReferencias, referenciasNuevasInvalidas } 
 import { sinExcepciones, validarExcepciones } from "../dominio/excepciones.js";
 import { resumirCambios } from "../dominio/resumen-cambios.js";
 import { aReferenciasInternas, codigosDeReferencias } from "../dominio/salidas-internas.js";
+import { capturaDuplicada, mismasSelecciones, seleccionesDelModo } from "../dominio/duplicacion.js";
 import { conTextosIniciales, textosPredeterminados } from "../dominio/textos.js";
 import { RepositorioEmisiones } from "../infraestructura/repositorio-emisiones.js";
 import { RepositorioRevisiones } from "../infraestructura/repositorio-revisiones.js";
@@ -254,12 +257,120 @@ export class ServicioCotizaciones {
     return { detalle: await this.detalle(ctx, r.id, true), reproducida: r.reproducida };
   }
 
+  /**
+   * Duplicar (B-35, módulo 15): cotización nueva e independiente con folio nuevo, desde una versión
+   * concreta o desde el borrador guardado en la revisión indicada. El origen se lee de la base
+   * (nunca del navegador) y no cambia. Sin selecciones de precio ni excepciones; sin versiones.
+   */
+  async duplicar(
+    ctx: ContextoOrganizacion,
+    autor: Autor,
+    origenId: string,
+    s: SolicitudDuplicado,
+    clave: string,
+  ): Promise<{ detalle: DetalleCotizacion; reproducida: boolean }> {
+    const ahora = this.relojInstante.ahora();
+    const idem = prepararIdempotencia(clave, "duplicar_cotizacion", { cotizacionId: origenId }, s, ahora);
+    const anio = Number(this.reloj.hoy().slice(0, 4));
+    const r = await ejecutarIdempotente(this.repo, ctx, autor, idem, ahora, async () => {
+      let origen: CapturaBorrador;
+      if (s.origen.tipo === "VERSION") {
+        const c = await this.repo.capturaDeVersion(ctx, origenId, s.origen.numero);
+        if (!c) throw new ErrorNegocio("NO_ENCONTRADO", "La versión de origen no existe en su organización.");
+        origen = c;
+      } else {
+        const b = await this.repo.obtenerBorrador(ctx, origenId);
+        if (!b) throw NO_ENCONTRADO();
+        if (b.revision !== s.origen.revision) {
+          throw new ErrorNegocio(
+            "BORRADOR_DESACTUALIZADO",
+            `El borrador de origen cambió: ${b.actualizadoPor} guardó la revisión ${b.revision}. Revise qué se duplicará y vuelva a intentarlo.`,
+            { actual: { revision: b.revision, actualizadoPor: b.actualizadoPor, actualizadoEn: b.actualizadoEn } },
+          );
+        }
+        origen = b.captura;
+      }
+      const origenRef = s.origen.tipo === "VERSION" ? { version: s.origen.numero, revision: null } : { version: null, revision: s.origen.revision };
+      return this.repo.duplicarCotizacion(ctx, autor, origenId, origenRef, s.proyectoId, anio, capturaDuplicada(origen), idem);
+    });
+    return { detalle: await this.detalle(ctx, r.id, true), reproducida: r.reproducida };
+  }
+
+  /**
+   * Preparar la versión nueva tras una emisión (B-34, módulo 15): modo de precios y motivo. Solo
+   * cambia las selecciones del borrador (CONSERVAR: las de la versión emitida; ELEGIR_DE_NUEVO:
+   * ninguna); partidas, mediciones y textos se conservan. Si el borrador ya tiene selecciones
+   * distintas de las emitidas, no cambia nada sin la confirmación explícita.
+   */
+  async prepararNuevaVersion(
+    ctx: ContextoOrganizacion,
+    autor: Autor,
+    id: string,
+    s: SolicitudNuevaVersion,
+    clave: string,
+  ): Promise<{ detalle: DetalleCotizacion; reproducida: boolean }> {
+    const ahora = this.relojInstante.ahora();
+    const idem = prepararIdempotencia(clave, "preparar_nueva_version", { cotizacionId: id }, s, ahora);
+    const previo = await this.repo.buscarIdempotencia(ctx, autor, idem.clave);
+    if (previo) return { detalle: await this.detalle(ctx, reproducible(previo, idem, ahora), true), reproducida: true };
+
+    const d = await this.repo.obtenerCotizacion(ctx, id, 0);
+    if (!d) throw NO_ENCONTRADO();
+    if (!d.nuevaVersion?.requerida || d.nuevaVersion.versionOrigen !== s.versionOrigen) {
+      throw new ErrorNegocio(
+        "NUEVA_VERSION_NO_APLICA",
+        d.nuevaVersion?.preparada
+          ? "La versión nueva ya está preparada para esta emisión: continúe editando el borrador."
+          : "No corresponde preparar una versión nueva: la última versión no es la emitida indicada.",
+      );
+    }
+    if (d.borrador.revision !== s.revisionBorrador) {
+      throw new ErrorNegocio(
+        "CONFLICTO_EDICION",
+        `El borrador cambió: ${d.borrador.actualizadoPor} guardó la revisión ${d.borrador.revision}. Recargue antes de preparar.`,
+        { actual: { revision: d.borrador.revision, actualizadoPor: d.borrador.actualizadoPor, actualizadoEn: d.borrador.actualizadoEn } },
+      );
+    }
+    const emitida = await this.repo.capturaDeVersion(ctx, id, s.versionOrigen);
+    if (!emitida) throw NO_ENCONTRADO();
+    const propuestas = seleccionesDelModo(s.modo, emitida);
+    const actuales = d.borrador.captura.seleccion;
+    if (!mismasSelecciones(actuales, emitida.seleccion) && !mismasSelecciones(actuales, propuestas) && s.reemplazarSeleccionesDelBorrador !== true) {
+      throw new ErrorNegocio(
+        "SELECCIONES_DIVERGENTES",
+        "El borrador tiene selecciones de precio distintas de las de la versión emitida. Revise las diferencias y confirme si deben reemplazarse; nada cambió.",
+        { selecciones: { actuales: actuales.map((x) => ({ ...x })), propuestas } },
+      );
+    }
+    try {
+      await this.repo.prepararNuevaVersion(ctx, autor, id, s.revisionBorrador, s.versionOrigen, s.modo, s.motivo, propuestas, idem);
+    } catch (e) {
+      const r = reconocerErrorBase(e);
+      if (r?.tipo === "idempotencia_repetida") {
+        const otro = await this.repo.buscarIdempotencia(ctx, autor, idem.clave);
+        if (otro) return { detalle: await this.detalle(ctx, reproducible(otro, idem, ahora), true), reproducida: true };
+      }
+      if (r?.tipo === "negocio" && r.codigo === "CONFLICTO_EDICION") {
+        const actual = await this.repo.obtenerBorrador(ctx, id);
+        if (actual) {
+          throw new ErrorNegocio("CONFLICTO_EDICION", `El borrador cambió: ${actual.actualizadoPor} guardó la revisión ${actual.revision}. Recargue antes de preparar.`, {
+            actual: { revision: actual.revision, actualizadoPor: actual.actualizadoPor, actualizadoEn: actual.actualizadoEn },
+          });
+        }
+      }
+      throw traducirErrorBase(e);
+    }
+    return { detalle: await this.detalle(ctx, id, true), reproducida: false };
+  }
+
   async guardarBorrador(
     ctx: ContextoOrganizacion,
     autor: Autor,
     id: string,
     s: SolicitudBorrador,
   ): Promise<RespuestaBorradorGuardado> {
+    // B-34 (módulo 15): tras una emisión, primero se prepara la versión nueva (lo exige también la base).
+    if (await this.repo.requiereNuevaVersion(ctx, id)) throw traducirErrorBase(new Error("SOFTARQ:NUEVA_VERSION_SIN_PREPARAR"));
     // Referencias nuevas: deben estar disponibles hoy. Las ya guardadas en la revisión sobre la
     // que se editó se conservan aunque hayan dejado de estarlo (el usuario decide quitarlas).
     // Si la revisión ya no es esa, se omite: la sentencia de guardado responderá el conflicto.
@@ -328,6 +439,9 @@ export class ServicioCotizaciones {
 
     const previo = await this.repo.buscarIdempotencia(ctx, autor, idem.clave);
     if (previo) return reproducir(reproducible(previo, idem, ahora));
+    // B-34 (módulo 15): tras una emisión, la versión nueva exige preparar antes modo y motivo
+    // (la sentencia de escritura lo vuelve a comprobar).
+    if (await this.repo.requiereNuevaVersion(ctx, id)) throw traducirErrorBase(new Error("SOFTARQ:NUEVA_VERSION_SIN_PREPARAR"));
 
     for (let intento = 1; ; intento++) {
       const a = await this.faseA(ctx, autor, id, s);

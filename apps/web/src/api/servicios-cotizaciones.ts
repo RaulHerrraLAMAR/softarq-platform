@@ -29,6 +29,8 @@ import {
   type DecisionExcepcion,
   type ExcepcionesVersion,
   type SalidasInternasVersion,
+  type SolicitudDuplicado,
+  type SolicitudNuevaVersion,
   type RespuestaComponentesExcepcion,
   type SeguimientoEmision,
   type EventoRespuestaCliente,
@@ -116,6 +118,10 @@ export interface ServiciosCotizaciones {
   // Excepciones B-22 (módulo 10, ADR-0014): contrato interno con capacidad propia.
   componentesExcepcion(conceptos: readonly string[], signal?: AbortSignal): Promise<ResultadoApi<RespuestaComponentesExcepcion>>;
   excepcionesVersion(id: string, numero: number, signal?: AbortSignal): Promise<ResultadoApi<ExcepcionesVersion>>;
+  // Módulo 15 (ADR-0019): duplicar (B-35), preparar la versión nueva (B-34) y vista previa BORRADOR (B-25).
+  duplicarCotizacion(id: string, d: SolicitudDuplicado, clave: string): Promise<ResultadoApi<DetalleCotizacion>>;
+  prepararNuevaVersion(id: string, d: SolicitudNuevaVersion, clave: string): Promise<ResultadoApi<DetalleCotizacion>>;
+  vistaPrevia(id: string, numero: number, clave: string): Promise<ResultadoApi<Blob>>;
   /** Salidas internas de una versión (módulo 14, ADR-0018): contrato interno con `salidas.consultar`. */
   salidasInternas(id: string, numero: number, signal?: AbortSignal): Promise<ResultadoApi<SalidasInternasVersion>>;
   decidirExcepcion(
@@ -146,6 +152,15 @@ export function crearServiciosCotizaciones(cliente: ClienteApi): ServiciosCotiza
       cliente.obtener(`/api/v1/excepciones/componentes?conceptos=${encodeURIComponent(conceptos.join(","))}`, EsquemaRespuestaComponentesExcepcion, { signal }),
     excepcionesVersion: (id, numero, signal) =>
       cliente.obtener(`/api/v1/cotizaciones/${encodeURIComponent(id)}/versiones/${numero}/excepciones`, EsquemaExcepcionesVersion, { signal }),
+    duplicarCotizacion: (id, d, clave) =>
+      cliente.enviar(`/api/v1/cotizaciones/${encodeURIComponent(id)}/duplicados`, EsquemaDetalleCotizacion, { cuerpo: d, cabeceras: conClave(clave) }),
+    prepararNuevaVersion: (id, d, clave) =>
+      cliente.enviar(`/api/v1/cotizaciones/${encodeURIComponent(id)}/nueva-version`, EsquemaDetalleCotizacion, { cuerpo: d, cabeceras: conClave(clave) }),
+    vistaPrevia: (id, numero, clave) =>
+      cliente.enviarDescarga(`/api/v1/cotizaciones/${encodeURIComponent(id)}/versiones/${numero}/vista-previa`, "application/pdf", {
+        cabeceras: conClave(clave),
+        tiempoMaximo: 60_000,
+      }),
     salidasInternas: (id, numero, signal) =>
       cliente.obtener(`/api/v1/cotizaciones/${encodeURIComponent(id)}/versiones/${numero}/salidas-internas`, EsquemaSalidasInternasVersion, { signal }),
     decidirExcepcion: (revisionId, numero, d, clave) =>
