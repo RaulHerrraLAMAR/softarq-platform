@@ -319,6 +319,33 @@ async function comprobarDestino(manifiesto) {
           `${r.temporales} temporal(es) pendiente(s); ${activas} sesiones activas`);
       } finally { await origen.end(); }
     }
+    // Módulo 14 (ADR-0018): referencias internas congeladas en versiones nuevas. Condicional: respaldos
+    // anteriores no tienen la columna.
+    const conReferencias = (await c.query(`SELECT count(*)::int n FROM information_schema.columns
+        WHERE table_schema='public' AND table_name='cotizacion_version' AND column_name='referencias_internas'`)).rows[0].n === 1;
+    if (conReferencias) {
+      const r = (await c.query(`SELECT
+          (SELECT count(*) FROM cotizacion_version WHERE referencias_internas IS NOT NULL AND jsonb_typeof(referencias_internas) <> 'object')::int malas,
+          (SELECT count(*) FROM cotizacion_version WHERE referencias_internas IS NOT NULL)::int con,
+          (SELECT count(*) FROM cotizacion_version WHERE referencias_internas IS NULL)::int sin,
+          EXISTS (SELECT 1 FROM pg_constraint WHERE conname='cotizacion_version_referencias_ck') ck,
+          (SELECT prosrc LIKE '%referencias_internas%' AND NOT prosecdef FROM pg_proc WHERE proname='softarq_crear_version') funcion,
+          has_table_privilege('softarq_app','public.cotizacion_version','SELECT') lectura,
+          has_table_privilege('softarq_app','public.cotizacion_version','INSERT') insercion,
+          has_any_column_privilege('softarq_app','public.cotizacion_version','UPDATE') edicion,
+          (SELECT count(*)::int FROM pg_trigger t JOIN pg_class k ON k.oid=t.tgrelid WHERE k.relname='cotizacion_version' AND t.tgname='cotizacion_version_inmutable_trg') inmutable`)).rows[0];
+      registrar(
+        "salidas internas: columna, CHECK, función, inmutabilidad y permisos de versiones restaurados",
+        r.malas === 0 && r.ck && r.funcion && r.lectura && r.insercion && !r.edicion && r.inmutable === 1,
+        JSON.stringify(r),
+      );
+      const origen = new pg.Client({ connectionString: urlRespaldo().cadena }); await origen.connect();
+      try {
+        const sql = `SELECT coalesce(json_agg(json_build_array(v.id, v.referencias_internas) ORDER BY v.id), '[]')::text AS f FROM cotizacion_version v`;
+        const a = (await origen.query(sql)).rows[0].f, b = (await c.query(sql)).rows[0].f;
+        registrar("salidas internas: referencias congeladas íntegras tras restaurar", a === b, `${r.con} versión(es) con referencias y ${r.sin} anterior(es) sin ellas (solo lectura)`);
+      } finally { await origen.end(); }
+    }
     const resumen = (await c.query(`SELECT
         (SELECT count(*) FROM organizacion)::int organizaciones, (SELECT count(*) FROM usuario)::int usuarios,
         (SELECT count(*) FROM cotizacion)::int cotizaciones, (SELECT count(*) FROM cotizacion_version)::int versiones,

@@ -120,6 +120,8 @@ describe("inicio de sesión", () => {
       "respuestas.corregir",
       // ADR-0014 (módulo 10): datos técnicos de las excepciones que registra.
       "excepciones.consultar",
+      // ADR-0018 (módulo 14): compras calculadas, detalle e indicadores internos.
+      "salidas.consultar",
     ]);
     expect(s.inactividadMinutos).toBe(30);
     expect(new Date(s.expiraEn).getTime()).toBe(instante.getTime() + POLITICA_SESION.absolutaMs);

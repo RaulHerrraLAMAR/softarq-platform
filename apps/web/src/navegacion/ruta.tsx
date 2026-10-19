@@ -15,6 +15,7 @@ export type Ruta =
   | { pantalla: "nueva-cotizacion"; proyectoId: string | null }
   | { pantalla: "cotizacion"; id: string }
   | { pantalla: "version"; id: string; numero: number }
+  | { pantalla: "salidas"; id: string; numero: number; vista: VistaSalidas }
   | { pantalla: "clientes" }
   | { pantalla: "cliente"; id: string }
   | { pantalla: "proyectos" }
@@ -25,6 +26,10 @@ export type Ruta =
   | { pantalla: "administracion"; vista: VistaAdministracion }
   | { pantalla: "persona"; id: string }
   | { pantalla: "no-encontrada" };
+
+/** Vistas de las salidas internas de una versión (módulo 14). */
+export const VISTAS_SALIDAS_RUTA = ["compras", "detalle", "indicadores"] as const;
+export type VistaSalidas = (typeof VISTAS_SALIDAS_RUTA)[number];
 
 /** Vistas del Administrador del sistema (módulo 13). */
 export const VISTAS_ADMINISTRACION_RUTA = ["parametros", "personas"] as const;
@@ -53,6 +58,12 @@ export function interpretarHash(hash: string): Ruta | null {
   if ((m = new RegExp(`^/cotizaciones/(${UUID})$`).exec(camino))) return { pantalla: "cotizacion", id: m[1]! };
   if ((m = new RegExp(`^/cotizaciones/(${UUID})/v/([1-9]\\d{0,5})$`).exec(camino))) {
     return { pantalla: "version", id: m[1]!, numero: Number(m[2]) };
+  }
+  if ((m = new RegExp(`^/cotizaciones/(${UUID})/v/([1-9]\\d{0,5})/interno(?:/([a-z]+))?$`).exec(camino))) {
+    const vista = m[3] ?? "compras";
+    if ((VISTAS_SALIDAS_RUTA as readonly string[]).includes(vista)) {
+      return { pantalla: "salidas", id: m[1]!, numero: Number(m[2]), vista: vista as VistaSalidas };
+    }
   }
   if (camino === "/clientes") return { pantalla: "clientes" };
   if ((m = new RegExp(`^/clientes/(${UUID})$`).exec(camino))) return { pantalla: "cliente", id: m[1]! };
@@ -84,6 +95,8 @@ export function hashDe(r: Ruta): string {
       return `#/cotizaciones/${r.id}`;
     case "version":
       return `#/cotizaciones/${r.id}/v/${r.numero}`;
+    case "salidas":
+      return `#/cotizaciones/${r.id}/v/${r.numero}/interno/${r.vista}`;
     case "clientes":
       return "#/clientes";
     case "cliente":
@@ -116,6 +129,7 @@ export function seccionDe(r: Ruta): "calculadora" | "cotizaciones" | "revisiones
     case "nueva-cotizacion":
     case "cotizacion":
     case "version":
+    case "salidas":
       return "cotizaciones";
     case "clientes":
     case "cliente":

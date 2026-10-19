@@ -43,6 +43,7 @@ import { huellaReferencia, sha256 } from "../dominio/huella.js";
 import { codigosReferenciados, evaluarReferencias, referenciasNuevasInvalidas } from "../dominio/referencias.js";
 import { sinExcepciones, validarExcepciones } from "../dominio/excepciones.js";
 import { resumirCambios } from "../dominio/resumen-cambios.js";
+import { aReferenciasInternas, codigosDeReferencias } from "../dominio/salidas-internas.js";
 import { conTextosIniciales, textosPredeterminados } from "../dominio/textos.js";
 import { RepositorioEmisiones } from "../infraestructura/repositorio-emisiones.js";
 import { RepositorioRevisiones } from "../infraestructura/repositorio-revisiones.js";
@@ -433,6 +434,12 @@ export class ServicioCotizaciones {
         };
         const referencia = huellaReferencia(calculo.entrada).toString("hex");
         const comercial = calculo.respuesta.cotizacion;
+        // Módulo 14 (ADR-0018): nombres y vigencias en la MISMA instantánea del cálculo, para las
+        // salidas internas. Solo lectura; no forman parte de la entrada ni de su huella.
+        const tiposAdicional = solicitud.partidas.flatMap((p) => (p.tipo === "ADICIONAL" ? [p.tipoAdicionalCodigo] : []));
+        const referenciasInternas = aReferenciasInternas(
+          await catalogos.leerReferencias(ctx, codigosDeReferencias(calculo.entrada, tiposAdicional)),
+        );
         const datos: DatosVersion = {
           captura: d.borrador.captura,
           solicitudCalculo: solicitud,
@@ -453,6 +460,7 @@ export class ServicioCotizaciones {
           proyectoDescripcion: d.proyecto.descripcion,
           autorNombre: autor.nombre,
           motivo: s.motivo ?? null,
+          referenciasInternas,
           resumenCambios: resumirCambios(
             d.anterior
               ? {

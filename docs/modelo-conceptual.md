@@ -124,6 +124,7 @@ Toda relación entre datos propios es una FK compuesta con `organizacion_id`, de
 
 | `parametros.administrar` | `GET` y `PATCH /api/v1/admin/parametros` | ✗ | ✗ | ✗ | ✓ | `BTN_Parametros`, `Param_Guardar`: `Req_Funcion FN_ADMSIS` (módulo 13, ADR-0017) |
 | `personas.administrar` | `GET` y `POST /admin/personas`; `GET` y `PATCH /admin/personas/{id}`; `POST /admin/personas/{id}/restablecimiento` | ✗ | ✗ | ✗ | ✓ | `BTN_Personas`, `Persona_Guardar`: `Req_Funcion FN_ADMSIS` (módulo 13, ADR-0017) |
+| `cotizaciones.consultar` **y** `salidas.consultar` | `GET /cotizaciones/{id}/versiones/{n}/salidas-internas` (compras calculadas, detalle e indicadores; solo lectura) | ✓ | ✓ | ✗ | ✗ | Hojas 12 COMPRAS, 13 DETALLE_CALCULO e indicadores de 14 REVISION; en el libro se abren sin función (D-20). **Decisión del propietario** (módulo 14, ADR-0018 §2.1); cambio intencionado frente a la protección de costos del ADR-0009 |
 
 ¹ Por identidad, además de la capacidad: un Revisor no emite una versión que él preparó. Y siempre hace falta una aprobación vigente de esa versión, hecha por una persona distinta de su autor. Poder emitir no concede aprobar.
 
@@ -134,6 +135,8 @@ Toda relación entre datos propios es una FK compuesta con `organizacion_id`, de
 ³ Además, cada función de la base vuelve a exigir la función Administrador del catálogo en la pertenencia vigente (`softarq_exigir_funcion`): si se pierde durante la sesión, 403 sin escribir. Consultar datos técnicos o decidir excepciones no concede administrar el catálogo.
 
 ⁴ Con una contraseña temporal vigente, la sesión solo tiene `sesion.propia`, y la guardia solo admite consultar la sesión, cambiar la contraseña y cerrar la sesión (403 `CAMBIO_CONTRASENA_REQUERIDO` en todo lo demás; ADR-0017 §2.1).
+
+Desde el módulo 14, `salidas.consultar` solo da lectura: no concede calcular, aprobar ni emitir, y los administradores no la reciben salvo que tengan además la función Preparador o Revisor.
 
 Desde el módulo 13, cada función queda con su propia administración: el Administrador del catálogo no administra parámetros ni personas, y el Administrador del sistema no administra el catálogo. Una persona puede tener ambas funciones.
 
@@ -250,3 +253,17 @@ Las versiones, aprobaciones, emisiones y PDF no cambian por la administración. 
 **Revocación de sesiones:** desactivar revoca las de la persona en esa organización; restablecer y el cambio propio revocan todas; retirar funciones no revoca, pero surte efecto en la petición siguiente.
 
 **Permisos efectivos del rol de la aplicación:** matriz de garantías y capacidad residual en ADR-0017 §4. Sin UPDATE en `organizacion` ni `tipo_adicional`; en `parametros_calculo` solo las columnas editables; aprobar conceptos solo dentro de funciones DEFINER. Límite no resuelto: las funciones confían en el usuario que reciben.
+
+## 15. Salidas internas de solo lectura (módulo 14, ADR-0018)
+
+| Tabla | Cambio | Notas |
+|---|---|---|
+| `cotizacion_version` | `referencias_internas` (JSONB, `NULL` en versiones anteriores; CHECK de objeto) | Nombres y vigencias del catálogo leídos en la misma instantánea del cálculo (`esquema: 1`). Se escribe solo en `softarq_crear_version`; inmutable como el resto de la versión. Dato interno |
+
+**Salidas** (`GET /cotizaciones/{id}/versiones/{n}/salidas-internas`, `salidas.consultar`), armadas solo con la versión congelada (`entrada_calculo`, `resultado_interno`, `solicitud_calculo`, `referencias_internas`) y las decisiones de sus excepciones:
+- **compras calculadas** (12 COMPRAS): presentación, regla de compra, consumo total, cantidad comprada, unidades, sobrante informativo, precio y costo, consolidadas o por partida, con su prorrateo;
+- **detalle del cálculo** (13 DETALLE_CALCULO): medición, consumos con valores del catálogo copiados frente a los aplicados y sus excepciones, mano de obra o subcontrato, adicionales, costos, P.U. e importe;
+- **indicadores de la versión**: desglose del costo directo, subtotal, impuestos, total, recargo sobre costo y margen sobre precio (solo indicador), con fórmula, base y redondeo en ADR-0018 §5.
+
+**Detalle histórico:** las versiones anteriores al módulo muestran sus cifras y solo los códigos (`SIN_NOMBRES`); nunca se completan con el catálogo actual. Consultar no escribe nada.
+

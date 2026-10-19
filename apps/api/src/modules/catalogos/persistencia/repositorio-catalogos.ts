@@ -152,6 +152,28 @@ export interface TipoAdicionalLeido {
   activo: boolean;
 }
 
+/** Códigos usados por un cálculo, para congelar sus nombres (módulo 14, ADR-0018). */
+export interface CodigosReferencias {
+  insumos: readonly string[];
+  productos: readonly string[];
+  proveedores: readonly string[];
+  precios: readonly string[];
+  tarifas: readonly string[];
+  conceptos: readonly string[];
+  tiposAdicional: readonly string[];
+}
+
+/** Nombres y vigencias leídos en la instantánea del cálculo, ordenados por código. */
+export interface ReferenciasLeidas {
+  insumos: { codigo: string; descripcion: string; unidadBase: string }[];
+  productos: { codigo: string; descripcion: string; presentacion: string; unidadCompra: string }[];
+  proveedores: { codigo: string; nombre: string }[];
+  precios: { codigo: string; vigenteDesde: string; vigenteHasta: string }[];
+  tarifas: { codigo: string; descripcion: string }[];
+  conceptos: { codigo: string; descripcion: string }[];
+  tiposAdicional: { codigo: string; descripcion: string; categoria: string }[];
+}
+
 // ---------------------------------------------------------------------------
 // Datos de alta (por código; las referencias se resuelven dentro de la organización)
 // ---------------------------------------------------------------------------
@@ -662,6 +684,54 @@ export class RepositorioCatalogos {
       unidad: f.unidad,
       activo: f.activo,
     }));
+  }
+
+  /**
+   * Nombres y vigencias de los códigos indicados (módulo 14, ADR-0018). Se llama dentro de la
+   * transacción de la fase A, así que refleja el mismo instante que el cálculo. Solo lectura;
+   * consultas fijas (una por tipo), no una por fila.
+   */
+  async leerReferencias(ctx: ContextoOrganizacion, c: CodigosReferencias): Promise<ReferenciasLeidas> {
+    const org = ctx.organizacionId;
+    const en = (codigos: readonly string[]) => ({ organizacionId: org, codigo: { in: [...codigos] } });
+    const orden = { codigo: "asc" } as const;
+    // En serie: la transacción interactiva usa una sola conexión.
+    const insumos = await this.db.insumo.findMany({
+      where: en(c.insumos),
+      select: { codigo: true, descripcion: true, unidadBase: true },
+      orderBy: orden,
+    });
+    const productos = await this.db.producto.findMany({
+      where: en(c.productos),
+      select: { codigo: true, descripcion: true, presentacion: true, unidadCompra: true },
+      orderBy: orden,
+    });
+    const proveedores = await this.db.proveedor.findMany({ where: en(c.proveedores), select: { codigo: true, nombre: true }, orderBy: orden });
+    const precios = await this.db.precio.findMany({
+      where: en(c.precios),
+      select: { codigo: true, vigenteDesde: true, vigenteHasta: true },
+      orderBy: orden,
+    });
+    const tarifas = await this.db.tarifaManoObra.findMany({ where: en(c.tarifas), select: { codigo: true, descripcion: true }, orderBy: orden });
+    const conceptos = await this.db.concepto.findMany({ where: en(c.conceptos), select: { codigo: true, descripcion: true }, orderBy: orden });
+    const tiposAdicional = await this.db.tipoAdicional.findMany({
+      where: en(c.tiposAdicional),
+      select: { codigo: true, descripcion: true, categoria: true },
+      orderBy: orden,
+    });
+    return {
+      insumos,
+      productos,
+      proveedores,
+      precios: precios.map((p) => ({
+        codigo: p.codigo,
+        vigenteDesde: fechaDeColumna(p.vigenteDesde),
+        vigenteHasta: fechaDeColumna(p.vigenteHasta),
+      })),
+      tarifas,
+      conceptos,
+      tiposAdicional,
+    };
   }
 
   // --------------------- consultas para la API (módulo 3) ---------------------

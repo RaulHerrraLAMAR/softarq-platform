@@ -44,6 +44,7 @@ import {
   EsquemaCorreccionRespuesta,
   EsquemaDecisionExcepcion,
   EsquemaExcepcionesVersion,
+  EsquemaSalidasInternasVersion,
   EsquemaRespuestaComponentesExcepcion,
   EsquemaConsultaComponentesExcepcion,
   EsquemaConsultaConceptos,
@@ -591,6 +592,15 @@ export function construirDocumentoOpenApi(): Record<string, unknown> {
           responses: { "200": ok("ExcepcionesVersion", "Excepciones de la versión."), ...errores(401, 403, 404, 429, 503, 500) },
         },
       },
+      "/api/v1/cotizaciones/{id}/versiones/{numero}/salidas-internas": {
+        get: {
+          summary: "Compras calculadas, detalle del cálculo e indicadores de la versión (Preparador y Revisor; capacidad salidas.consultar)",
+          description:
+            "Contrato INTERNO de solo lectura (12 COMPRAS, 13 DETALLE_CALCULO e indicadores de 14 REVISION): costos, consumos, proveedores, recargo y margen. Todo sale de lo congelado en la versión; nunca del catálogo ni de los parámetros vigentes. `disponibilidad` indica si la versión congeló nombres y vigencias (COMPLETO), solo códigos (SIN_NOMBRES, versiones anteriores al módulo 14) o si el detalle no está disponible (NO_DISPONIBLE). Un indicador sin valor es NO_APLICA (denominador 0) o NO_DISPONIBLE, nunca 0. No escribe nada. Nunca forma parte de la proyección comercial ni del PDF.",
+          parameters: [PARAMETRO_ID, PARAMETRO_NUMERO],
+          responses: { "200": ok("SalidasInternasVersion", "Salidas internas de la versión."), ...errores(401, 403, 404, 429, 503, 500) },
+        },
+      },
       "/api/v1/revisiones/{id}/excepciones/{numero}/decision": {
         post: {
           summary: "Autoriza o rechaza la excepción N de la versión en revisión (Revisor distinto del preparador, BL-17)",
@@ -1017,6 +1027,7 @@ export function construirDocumentoOpenApi(): Record<string, unknown> {
         SeguimientoEmision: json(EsquemaSeguimientoEmision, "output"),
         RespuestaComponentesExcepcion: json(EsquemaRespuestaComponentesExcepcion, "output"),
         ExcepcionesVersion: json(EsquemaExcepcionesVersion, "output"),
+        SalidasInternasVersion: json(EsquemaSalidasInternasVersion, "output"),
         DecisionExcepcion: json(EsquemaDecisionExcepcion, "input"),
         EventoRespuestaCliente: json(EsquemaEventoRespuestaCliente, "output"),
         RegistroRespuesta: json(EsquemaRegistroRespuesta, "input"),

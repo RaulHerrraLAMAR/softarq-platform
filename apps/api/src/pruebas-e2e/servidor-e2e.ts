@@ -54,7 +54,11 @@ async function principal(): Promise<void> {
     // Módulo 7: una persona con las dos funciones, para comprobar BL-17 por identidad en el navegador.
     const ambas = await cargarUsuariosDemo(migrador, new ServicioContrasenas(), {
       organizacion: "DEMO",
-      cuentas: [{ correo: "ambas.e2e@softarq.test", nombre: "[DEMO] Preparador y revisor E2E", funciones: ["PREPARADOR", "REVISOR"] }],
+      cuentas: [
+        { correo: "ambas.e2e@softarq.test", nombre: "[DEMO] Preparador y revisor E2E", funciones: ["PREPARADOR", "REVISOR"] },
+        // Módulo 14: Revisor al que se le retira la función con la pantalla abierta (no se usa en otras pruebas).
+        { correo: "retiro.e2e@softarq.test", nombre: "[DEMO] Revisor con función retirada E2E", funciones: ["REVISOR"] },
+      ],
     });
     const cuenta = (correo: string) => {
       const c = [...r.creadas, ...ambas.creadas].find((x) => x.correo === correo);
@@ -70,6 +74,7 @@ async function principal(): Promise<void> {
           preparador: cuenta(CUENTAS_DEMO[0]!.correo),
           revisor: cuenta(CUENTAS_DEMO[1]!.correo),
           ambas: cuenta("ambas.e2e@softarq.test"),
+          retiro: cuenta("retiro.e2e@softarq.test"),
           administrador: cuenta(CUENTAS_DEMO[2]!.correo),
         },
         null,

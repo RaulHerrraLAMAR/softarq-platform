@@ -662,7 +662,8 @@ model CotizacionBorrador {
 }
 
 /// Versión guardada: registro histórico INMUTABLE de un cálculo válido hecho en el servidor.
-/// entrada_calculo y resultado_interno contienen costos internos y nunca salen de la API.
+/// entrada_calculo y resultado_interno contienen costos internos: nunca salen en contratos comerciales;
+/// solo el contrato interno de salidas (`salidas.consultar`, ADR-0018) los muestra.
 model CotizacionVersion {
   id                  String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   organizacionId      String   @map("organizacion_id") @db.Uuid
@@ -692,6 +693,9 @@ model CotizacionVersion {
   autorNombre         String   @map("autor_nombre") @db.VarChar(200)
   motivo              String?  @db.VarChar(500)
   resumenCambios      Json     @map("resumen_cambios")
+  /// Módulo 14 (ADR-0018): nombres y vigencias del catálogo leídos en la misma instantánea del
+  /// cálculo. NULL en las versiones anteriores al módulo (no se rellenan). Dato interno.
+  referenciasInternas Json?    @map("referencias_internas")
   creadoEn            DateTime @default(now()) @map("creado_en") @db.Timestamptz(3)
 
   cotizacion Cotizacion @relation(fields: [organizacionId, cotizacionId], references: [organizacionId, id], onDelete: Restrict, onUpdate: Restrict)

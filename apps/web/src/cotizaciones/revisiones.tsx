@@ -205,11 +205,14 @@ export function PantallaRevision({
   servicios,
   id,
   puedeVerExcepciones = false,
+  puedeVerSalidas = false,
 }: {
   servicios: ServiciosCotizaciones;
   id: string;
   /** Capacidad `excepciones.consultar` (módulo 10): la API la vuelve a comprobar. */
   puedeVerExcepciones?: boolean;
+  /** Capacidad `salidas.consultar` (módulo 14): enlace a los indicadores internos de la versión. */
+  puedeVerSalidas?: boolean;
 }) {
   const { estado, recargar, setEstado } = useCarga((s) => servicios.detalleRevision(id, s), [id]);
   if (estado.fase === "cargando") return <Cargando etiqueta="Cargando la revisión…" />;
@@ -222,6 +225,7 @@ export function PantallaRevision({
       alActualizar={recargar}
       alCambiar={(d) => setEstado({ fase: "listo", datos: d })}
       puedeVerExcepciones={puedeVerExcepciones}
+      puedeVerSalidas={puedeVerSalidas}
     />
   );
 }
@@ -232,12 +236,14 @@ function DetalleRevisionVista({
   alActualizar,
   alCambiar,
   puedeVerExcepciones,
+  puedeVerSalidas,
 }: {
   servicios: ServiciosCotizaciones;
   detalle: DetalleRevision;
   alActualizar: () => void;
   alCambiar: (d: DetalleRevision) => void;
   puedeVerExcepciones: boolean;
+  puedeVerSalidas: boolean;
 }) {
   const r = detalle.revision;
   const v = detalle.version;
@@ -340,6 +346,9 @@ function DetalleRevisionVista({
         <>
           <Enlace a={{ pantalla: "revisiones" }}>Volver a revisiones</Enlace>
           <Enlace a={{ pantalla: "cotizacion", id: r.cotizacionId }}>Abrir la cotización</Enlace>
+          {puedeVerSalidas ? (
+            <Enlace a={{ pantalla: "salidas", id: r.cotizacionId, numero: r.version.numero, vista: "indicadores" }}>Indicadores internos de la versión</Enlace>
+          ) : null}
         </>
       }
     >

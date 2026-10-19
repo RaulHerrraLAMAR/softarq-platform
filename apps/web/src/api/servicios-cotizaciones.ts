@@ -22,11 +22,13 @@ import {
   EsquemaSeguimientoEmision,
   EsquemaEventoRespuestaCliente,
   EsquemaExcepcionesVersion,
+  EsquemaSalidasInternasVersion,
   EsquemaRespuestaComponentesExcepcion,
   EsquemaVerificacionRevision,
   type VerificacionRevision,
   type DecisionExcepcion,
   type ExcepcionesVersion,
+  type SalidasInternasVersion,
   type RespuestaComponentesExcepcion,
   type SeguimientoEmision,
   type EventoRespuestaCliente,
@@ -114,6 +116,8 @@ export interface ServiciosCotizaciones {
   // Excepciones B-22 (módulo 10, ADR-0014): contrato interno con capacidad propia.
   componentesExcepcion(conceptos: readonly string[], signal?: AbortSignal): Promise<ResultadoApi<RespuestaComponentesExcepcion>>;
   excepcionesVersion(id: string, numero: number, signal?: AbortSignal): Promise<ResultadoApi<ExcepcionesVersion>>;
+  /** Salidas internas de una versión (módulo 14, ADR-0018): contrato interno con `salidas.consultar`. */
+  salidasInternas(id: string, numero: number, signal?: AbortSignal): Promise<ResultadoApi<SalidasInternasVersion>>;
   decidirExcepcion(
     revisionId: string,
     numero: number,
@@ -142,6 +146,8 @@ export function crearServiciosCotizaciones(cliente: ClienteApi): ServiciosCotiza
       cliente.obtener(`/api/v1/excepciones/componentes?conceptos=${encodeURIComponent(conceptos.join(","))}`, EsquemaRespuestaComponentesExcepcion, { signal }),
     excepcionesVersion: (id, numero, signal) =>
       cliente.obtener(`/api/v1/cotizaciones/${encodeURIComponent(id)}/versiones/${numero}/excepciones`, EsquemaExcepcionesVersion, { signal }),
+    salidasInternas: (id, numero, signal) =>
+      cliente.obtener(`/api/v1/cotizaciones/${encodeURIComponent(id)}/versiones/${numero}/salidas-internas`, EsquemaSalidasInternasVersion, { signal }),
     decidirExcepcion: (revisionId, numero, d, clave) =>
       cliente.enviar(`/api/v1/revisiones/${encodeURIComponent(revisionId)}/excepciones/${numero}/decision`, EsquemaExcepcionesVersion, {
         cuerpo: d,

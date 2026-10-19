@@ -18,6 +18,9 @@ import { SERVICIO_EXCEPCIONES, SERVICIO_RESPUESTAS } from "./tokens.js";
 import { EsquemaConsultaComponentesExcepcion, EsquemaDecisionExcepcion,
   type DecisionExcepcionSolicitud, type ExcepcionesVersion, type RespuestaComponentesExcepcion } from "@softarq/contracts";
 import type { ServicioExcepciones } from "../modules/cotizaciones/aplicacion/servicio-excepciones.js";
+import type { SalidasInternasVersion } from "@softarq/contracts";
+import type { ServicioSalidasInternas } from "../modules/cotizaciones/aplicacion/servicio-salidas-internas.js";
+import { SERVICIO_SALIDAS_INTERNAS } from "./tokens.js";
 import {
   CABECERA_IDEMPOTENCIA,
   CABECERA_IDEMPOTENCIA_REPRODUCIDA,
@@ -600,5 +603,27 @@ export class ExcepcionesRevisionController {
     const r = await this.servicio.decidir(organizacionDe(req), actorDe(req), p.data.id, p.data.numero, s, claveIdempotencia(req));
     marcarReproducida(res, r.reproducida);
     return r.excepciones;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Salidas internas de solo lectura (módulo 14, ADR-0018)
+// ---------------------------------------------------------------------------
+
+/**
+ * Compras calculadas, detalle del cálculo e indicadores de UNA versión:
+ * `GET /cotizaciones/{id}/versiones/{n}/salidas-internas`. Contrato interno (costos y margen):
+ * exige `salidas.consultar` además de `cotizaciones.consultar`. Solo lectura.
+ */
+@Controller("cotizaciones")
+@SkipThrottle({ calculo: true })
+export class SalidasInternasController {
+  constructor(@Inject(SERVICIO_SALIDAS_INTERNAS) private readonly servicio: ServicioSalidasInternas) {}
+
+  @Get(":id/versiones/:numero/salidas-internas")
+  @Requiere("cotizaciones.consultar", "salidas.consultar")
+  consultar(@Req() req: Request, @Param() params: unknown): Promise<SalidasInternasVersion> {
+    const v = versionDeRuta(params);
+    return this.servicio.consultar(organizacionDe(req), v.id, v.numero);
   }
 }

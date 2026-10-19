@@ -14,7 +14,7 @@ export const MOTIVO_REVISOR =
   "Su función (Revisor) no incluye calcular; en el libro de la fase 1 el cálculo lo hace el Preparador. Puede consultar los catálogos y la captura.";
 
 export function Raiz() {
-  const { estado, servicios, cotizaciones, catalogoAdmin, administracion, iniciar, cerrar, cambiarContrasena, reintentarVerificacion } = useSesion();
+  const { estado, servicios, cotizaciones, catalogoAdmin, administracion, iniciar, cerrar, cambiarContrasena, reintentarVerificacion, refrescar } = useSesion();
 
   // Contraseña temporal (módulo 13): solo el cambio o cerrar la sesión. La API rechaza todo lo demás
   // (403 CAMBIO_CONTRASENA_REQUERIDO); esta pantalla no es la protección, solo la guía.
@@ -31,6 +31,7 @@ export function Raiz() {
         catalogoAdmin={catalogoAdmin}
         administracion={administracion}
         barraSesion={<BarraSesion sesion={estado.sesion} alCerrar={cerrar} />}
+        alRefrescarSesion={refrescar}
         motivoSinCalculo={puedeCalcular ? null : estado.sesion.funciones.includes("REVISOR") ? MOTIVO_REVISOR : "Su función no incluye calcular."}
       />
     );

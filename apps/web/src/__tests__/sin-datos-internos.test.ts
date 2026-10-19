@@ -49,6 +49,16 @@ describe("la web no contiene fórmulas ni costos internos", () => {
   const PROHIBIDO_EN_ADMINISTRACION = /consumo|rendimiento|desperdicio|margen|tarifa|traslape|sobrante[A-Z]|precioProveedor|@softarq\/api|prisma|apps\/api|fixtures/i;
   const enAdministracion = (archivo: string) => relative(SRC, archivo).split(/[\\/]/)[0] === "administracion";
 
+  // Excepción explícita y acotada (módulo 14, ADR-0018): la carpeta `salidas-internas/` muestra, con su
+  // contrato interno y su capacidad propia (`salidas.consultar`, Preparador y Revisor), las compras
+  // calculadas, el detalle y los indicadores de una versión: costos, consumos, rendimientos,
+  // desperdicios, traslapes, tarifas, sobrantes, recargo y margen. Siguen prohibidos los módulos de la
+  // API, Prisma y las fixtures. Nada de esto pasa a la cotización comercial ni al PDF; el acceso real lo
+  // comprueba la API (`salidas-internas.integracion.test.ts`: 403 para los administradores, 404 entre
+  // organizaciones y contratos comerciales sin estos campos).
+  const PROHIBIDO_EN_SALIDAS = /precioProveedor|@softarq\/api|prisma|apps\/api|fixtures/i;
+  const enSalidas = (archivo: string) => relative(SRC, archivo).split(/[\\/]/)[0] === "salidas-internas";
+
   it.each(archivos(SRC).map((a) => [relative(SRC, a), a]))("%s", (_nombre, archivo) => {
     const lineas = readFileSync(archivo, "utf-8")
       .split("\n")
@@ -62,7 +72,9 @@ describe("la web no contiene fórmulas ni costos internos", () => {
           ? PROHIBIDO_EN_TECNICO
           : enAdministracion(archivo)
             ? PROHIBIDO_EN_ADMINISTRACION
-            : PROHIBIDO;
+            : enSalidas(archivo)
+              ? PROHIBIDO_EN_SALIDAS
+              : PROHIBIDO;
     expect(lineas.filter((l) => patron.test(l))).toEqual([]);
   });
 
@@ -101,6 +113,13 @@ describe("la web no contiene fórmulas ni costos internos", () => {
       .filter(enAdministracion)
       .map((a) => relative(SRC, a).split(/[\\/]/).join("/"));
     expect(cubiertos.sort()).toEqual(["administracion/PantallasAdministracion.tsx", "administracion/porcentaje.ts", "administracion/servicios.ts"]);
+  });
+
+  it("la excepción del módulo 14 cubre solo la carpeta salidas-internas/ y sus archivos", () => {
+    const cubiertos = archivos(SRC)
+      .filter(enSalidas)
+      .map((a) => relative(SRC, a).split(/[\\/]/).join("/"));
+    expect(cubiertos.sort()).toEqual(["salidas-internas/PantallaSalidasInternas.tsx"]);
   });
 
   it("no hay HTML interpretado", () => {

@@ -111,6 +111,7 @@ describe("OpenAPI", () => {
       "/api/v1/cotizaciones/{id}/versiones/{numero}/emision/validacion",
       "/api/v1/cotizaciones/{id}/versiones/{numero}/excepciones",
       "/api/v1/cotizaciones/{id}/versiones/{numero}/revisiones",
+      "/api/v1/cotizaciones/{id}/versiones/{numero}/salidas-internas",
       "/api/v1/cotizaciones/{id}/versiones/{numero}/verificacion",
       "/api/v1/emisiones/{id}",
       "/api/v1/emisiones/{id}/documento",
@@ -173,6 +174,12 @@ describe("OpenAPI", () => {
     // La proyección comercial, la versión y la verificación siguen sin datos de proveedor, presentación ni tarifas.
     for (const esquema of ["Version", "DetalleCotizacion", "VerificacionRevision"]) {
       expect(JSON.stringify(doc.components.schemas[esquema]), esquema).not.toMatch(/rendimientoJornada|"contenido"|motivoAnulacion|"fuente"|proveedor|incrementoMinimo/i);
+    }
+    // Módulo 14 (ADR-0018): el contrato interno de salidas existe aparte; los comerciales no lo incluyen.
+    expect(Object.keys(doc.components.schemas)).toContain("SalidasInternasVersion");
+    for (const esquema of ["Version", "DetalleCotizacion", "VerificacionRevision", "DetalleEmision", "RespuestaCalculoDemo"]) {
+      expect(JSON.stringify(doc.components.schemas[esquema]), esquema).toBeDefined();
+      expect(JSON.stringify(doc.components.schemas[esquema]), esquema).not.toMatch(/costoProrrateado|costoCompra|margenSobrePrecio|recargoSobreCosto|sobrante|referenciasInternas/);
     }
     // Las opciones de precio del Preparador muestran proveedor y presentación, nunca el importe de compra.
     expect(JSON.stringify(doc.components.schemas["RespuestaOpcionesPrecio"])).not.toMatch(/precioUnitario|rendimientoJornada|"contenido"|motivoAnulacion|"fuente"/);

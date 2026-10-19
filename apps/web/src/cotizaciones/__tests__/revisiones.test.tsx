@@ -120,6 +120,7 @@ function servicios(s: Partial<ServiciosCotizaciones>): ServiciosCotizaciones {
     seguimientoEmision: noUsar,
     componentesExcepcion: noUsar,
     excepcionesVersion: noUsar,
+    salidasInternas: noUsar,
     decidirExcepcion: noUsar,
     registrarRespuesta: noUsar,
     corregirRespuesta: noUsar,

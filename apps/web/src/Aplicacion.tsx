@@ -27,6 +27,7 @@ import { PantallaCotizacion } from "./cotizaciones/EditorCotizacion.tsx";
 import { PantallaEmisor } from "./cotizaciones/emision.tsx";
 import { ListaCotizaciones, NuevaCotizacion, VistaVersion } from "./cotizaciones/PantallasCotizaciones.tsx";
 import { BandejaRevisiones, PantallaRevision } from "./cotizaciones/revisiones.tsx";
+import { PantallaSalidasInternas } from "./salidas-internas/PantallaSalidasInternas.tsx";
 import { Enlace, ProveedorRuta, hashDe, seccionDe, useRuta, type Ruta } from "./navegacion/ruta.tsx";
 
 export interface PropsAplicacion {
@@ -39,6 +40,8 @@ export interface PropsAplicacion {
   administracion: ServiciosAdministracion;
   barraSesion: ReactNode;
   motivoSinCalculo: string | null;
+  /** Vuelve a consultar la sesión (módulo 14): tras perder una función con la pantalla abierta. */
+  alRefrescarSesion?: () => void;
 }
 
 export function Aplicacion(props: PropsAplicacion) {
@@ -81,7 +84,7 @@ function Navegacion({ ruta, puedeAdministrarCatalogo, puedeAdministrarSistema }:
   );
 }
 
-function Contenido({ sesion, servicios, cotizaciones, catalogoAdmin, administracion, barraSesion, motivoSinCalculo }: PropsAplicacion) {
+function Contenido({ sesion, servicios, cotizaciones, catalogoAdmin, administracion, barraSesion, motivoSinCalculo, alRefrescarSesion }: PropsAplicacion) {
   const { ruta, pendiente, confirmarSalida, cancelarSalida, navegar } = useRuta();
   const puede = (c: Capacidad) => sesion.capacidades.includes(c);
   const puedePreparar = puede("cotizaciones.preparar");
@@ -89,6 +92,7 @@ function Contenido({ sesion, servicios, cotizaciones, catalogoAdmin, administrac
   const puedeEnviarRevision = puede("revisiones.enviar");
   const puedeEmitir = puede("emisiones.emitir");
   const puedeVerExcepciones = puede("excepciones.consultar");
+  const puedeVerSalidas = puede("salidas.consultar");
   const puedeAdministrarCatalogo = puede("catalogos.administrar");
   const puedeParametros = puede("parametros.administrar");
   const puedePersonas = puede("personas.administrar");
@@ -167,9 +171,27 @@ function Contenido({ sesion, servicios, cotizaciones, catalogoAdmin, administrac
       case "revisiones":
         return <BandejaRevisiones servicios={cotizaciones} />;
       case "revision":
-        return <PantallaRevision servicios={cotizaciones} id={ruta.id} puedeVerExcepciones={puedeVerExcepciones} />;
+        return <PantallaRevision servicios={cotizaciones} id={ruta.id} puedeVerExcepciones={puedeVerExcepciones} puedeVerSalidas={puedeVerSalidas} />;
       case "version":
-        return <VistaVersion servicios={cotizaciones} id={ruta.id} numero={ruta.numero} puedeVerExcepciones={puedeVerExcepciones} />;
+        return <VistaVersion servicios={cotizaciones} id={ruta.id} numero={ruta.numero} puedeVerExcepciones={puedeVerExcepciones} puedeVerSalidas={puedeVerSalidas} />;
+      case "salidas":
+        return puedeVerSalidas ? (
+          <PantallaSalidasInternas
+            key={`${ruta.id}-${ruta.numero}`}
+            servicios={cotizaciones}
+            id={ruta.id}
+            numero={ruta.numero}
+            vista={ruta.vista}
+            {...(alRefrescarSesion ? { alPerderPermiso: alRefrescarSesion } : {})}
+          />
+        ) : (
+          <Pagina titulo="Sin permiso">
+            <Aviso tono="info" titulo="Su función no consulta las salidas internas">
+              <p>Las compras calculadas, el detalle y los indicadores internos de una versión los consultan el Preparador y el Revisor.</p>
+              <Enlace a={{ pantalla: "version", id: ruta.id, numero: ruta.numero }}>Ver la versión</Enlace>
+            </Aviso>
+          </Pagina>
+        );
       case "clientes":
         return <ListaClientes servicios={cotizaciones} puedeGestionar={puedeGestionar} />;
       case "cliente":

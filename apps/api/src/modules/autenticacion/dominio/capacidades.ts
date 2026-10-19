@@ -28,6 +28,11 @@
  * - Módulo 13 (ADR-0017): parámetros (`BTN_Parametros`, B-38) y personas y funciones
  *   (`BTN_Personas`, B-39) exigen `Req_Funcion FN_ADMSIS` → `parametros.administrar` y
  *   `personas.administrar`, solo para el Administrador del sistema.
+ * - Módulo 14 (ADR-0018): las hojas 12 COMPRAS, 13 DETALLE_CALCULO y 14 REVISION no exigen función
+ *   en el libro (D-20). Decisión del propietario: `salidas.consultar` solo para Preparador (prepara
+ *   y usa 12 y 13) y Revisor (indicadores internos de 14, §5.5). Cambio intencionado frente a la
+ *   protección de costos de ADR-0009: el Revisor ya consulta costos e indicadores. Los
+ *   administradores no la reciben. Consultar no concede calcular, aprobar ni emitir.
  */
 import { CAPACIDADES, type Capacidad, type FuncionUsuario } from "@softarq/contracts";
 
@@ -47,6 +52,8 @@ export const CAPACIDADES_POR_FUNCION: Readonly<Record<FuncionUsuario, readonly C
     "emisiones.emitir",
     // Módulo 10 (ADR-0014): datos técnicos de las excepciones que registra (B-22).
     "excepciones.consultar",
+    // Módulo 14 (ADR-0018): compras calculadas, detalle e indicadores (12 y 13 del libro).
+    "salidas.consultar",
   ],
   REVISOR: [
     "sesion.propia",
@@ -57,6 +64,8 @@ export const CAPACIDADES_POR_FUNCION: Readonly<Record<FuncionUsuario, readonly C
     "emisiones.emitir",
     // Módulo 10 (ADR-0014): ver las excepciones que autoriza o rechaza (B-29).
     "excepciones.consultar",
+    // Módulo 14 (ADR-0018): costos e indicadores internos para revisar (14 REVISION, §5.5).
+    "salidas.consultar",
   ],
   ADMIN_CATALOGO: [
     "sesion.propia",

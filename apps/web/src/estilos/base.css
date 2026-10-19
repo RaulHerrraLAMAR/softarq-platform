@@ -1975,3 +1975,68 @@ textarea[aria-invalid="true"] {
 .celda-correo {
   overflow-wrap: anywhere;
 }
+
+/* ---------------------------------------------------------------------------
+   Salidas internas de una versión (módulo 14): se distinguen del documento comercial.
+   --------------------------------------------------------------------------- */
+.marca-interna {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--esp-2) var(--esp-3);
+  margin-bottom: var(--esp-4);
+  padding: var(--esp-3) var(--esp-4);
+  border: 2px dashed var(--color-aviso);
+  border-radius: var(--radio);
+  background: var(--color-aviso-fondo);
+  color: var(--color-texto);
+}
+
+.marca-interna p {
+  margin: 0;
+  flex: 1 1 18rem;
+}
+
+.selector-version {
+  max-width: 28rem;
+  margin-bottom: var(--esp-4);
+}
+
+.seccion-subtitulo {
+  margin: var(--esp-6) 0 var(--esp-2);
+  font-size: var(--texto-md);
+  font-weight: 600;
+  color: var(--color-primario);
+}
+
+.partida-interna {
+  border-top: 1px solid var(--color-borde);
+  padding-top: var(--esp-3);
+  margin-top: var(--esp-4);
+}
+
+.tabla-interna td,
+.tabla-interna th {
+  vertical-align: top;
+}
+
+/* Cifras y «Consolidada» sin cortes; los textos largos (nombres) se ajustan por palabras. */
+@media (min-width: 721px) {
+  .tabla-interna td.numero,
+  .tabla-interna .sin-corte {
+    white-space: nowrap;
+  }
+}
+
+.tabla-interna td {
+  overflow-wrap: break-word;
+}
+
+.totales-internos {
+  max-width: 36rem;
+  margin-top: var(--esp-3);
+}
+
+.totales-internos dd {
+  white-space: nowrap;
+}

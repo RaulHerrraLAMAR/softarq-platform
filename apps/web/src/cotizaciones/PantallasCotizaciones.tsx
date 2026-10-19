@@ -374,11 +374,14 @@ export function VistaVersion({
   id,
   numero,
   puedeVerExcepciones = false,
+  puedeVerSalidas = false,
 }: {
   servicios: ServiciosCotizaciones;
   id: string;
   numero: number;
   puedeVerExcepciones?: boolean;
+  /** Módulo 14: enlace a las salidas internas (`salidas.consultar`); la API lo exige igualmente. */
+  puedeVerSalidas?: boolean;
 }) {
   const { estado, recargar } = useCarga((s) => servicios.consultarVersion(id, numero, s), [id, numero]);
   if (estado.fase === "cargando") return <Cargando etiqueta="Cargando la versión…" />;
@@ -396,7 +399,16 @@ export function VistaVersion({
           <Folio folio={v.folio} /> · <EstadoVersion version={v.version} />
         </>
       }
-      acciones={<Enlace a={{ pantalla: "cotizacion", id }}>Volver a la cotización</Enlace>}
+      acciones={
+        <>
+          {puedeVerSalidas ? (
+            <Enlace a={{ pantalla: "salidas", id, numero, vista: "compras" }} className="boton boton-secundario">
+              Salidas internas
+            </Enlace>
+          ) : null}
+          <Enlace a={{ pantalla: "cotizacion", id }}>Volver a la cotización</Enlace>
+        </>
+      }
     >
       <Aviso tono="info" titulo="Registro histórico: se muestra tal como se guardó" rol="status">
         <p>

@@ -230,6 +230,23 @@ En `softarq_dev` no hay otra forma de reproducir un precio vencido sin manipular
 | U7 | Abre tu propia cuenta | «Es su propia cuenta»: no puede retirarse Administrador del sistema, desactivarse ni restablecerse |
 | U8 | 390 px y teclado en «Personas y funciones» | Tarjetas de una columna, correos largos partidos, foco visible y sin desplazamiento horizontal |
 
+### Salidas internas: compras, detalle e indicadores (I1–I8, módulo 14; pendiente de ejecución formal)
+
+- **Sesión:** `[DEMO] Preparador 1` o `[DEMO] Revisor 1`; para I6, `[DEMO] Administrador`.
+- **Qué registrar:** folio y versión consultados, y si la versión es anterior al módulo 14 (solo códigos) o nueva (con nombres).
+- **Fuentes y decisiones:** hojas 12 COMPRAS, 13 DETALLE_CALCULO y 14 REVISION del libro; Word §3.4–3.6 y §3.14; ADR-0018.
+
+| Caso | Acción | Resultado esperado |
+|---|---|---|
+| I1 | Cotización con el Ejemplo 1 → «Calcular y guardar versión» → abrir la v1 → «Salidas internas» | Encabezado con WEB DEMO, folio y versión, estado, fecha del cálculo, «Consolidadas por producto y proveedor» y alcance; marca «Uso interno»; tres compras, la consolidada dice «Consolidada» |
+| I2 | «Compras calculadas»: revise presentación, unidades, sobrante y prorrateo | El sobrante se informa y no se descuenta; el prorrateo de cada compra suma su costo y se muestra con cuatro decimales truncados |
+| I3 | «Detalle del cálculo» | Por partida: medición, consumos (rendimiento, desperdicio, traslape, conversión, consumo base, compra y costo prorrateado), mano de obra, costos, P.U. e importe |
+| I4 | «Indicadores» | Total $54,190.68; recargo sobre costo y margen sobre precio por separado, cada uno con su fórmula |
+| I5 | Crea una v2 con «Comprar por partida» y usa «Versión consultada» | La URL cambia a la versión elegida; la v2 dice «Separadas por partida» y sus compras indican la partida. La v1 no cambia |
+| I6 | Con `[DEMO] Administrador`, abre la misma versión y pega la dirección `…/interno/compras` | Sin enlace «Salidas internas»; la dirección directa muestra «Su función no consulta las salidas internas» y ninguna cifra |
+| I7 | Abre las salidas internas de `COT-2026-00004-v1` (anterior al módulo 14) | Aviso «Nombres y vigencias no congelados en esta versión»: cifras completas con solo códigos; no aparecen nombres actuales del catálogo |
+| I8 | 390 px y teclado en las tres vistas | Tablas como tarjetas, foco visible, sin desplazamiento horizontal |
+
 ## 4. Qué no hace todavía
 
 - La calculadora DEMO no guarda su captura (para conservarla, «Guardar como cotización»).
@@ -238,6 +255,7 @@ En `softarq_dev` no hay otra forma de reproducir un precio vencido sin manipular
 - Los tipos de costo adicional siguen solo con la carga DEMO. Los cinco conceptos heredados de `softarq_dev` muestran «Datos incompletos de la carga anterior» hasta que el Administrador los complete (ADR-0016 §2.3).
 - Sin registro público de usuarios, correo ni recuperación de contraseña por la propia persona: el Administrador del sistema da de alta y restablece (módulo 13).
 - Solo punto decimal (por ejemplo, `0.12`).
+- Las salidas internas (módulo 14) no se exportan ni se imprimen (sin CSV ni PDF interno), no suman varias cotizaciones y no incluyen los contadores de la hoja 00 INICIO.
 
 ## 5. Registro de la prueba en persona
 

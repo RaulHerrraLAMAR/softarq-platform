@@ -47,6 +47,43 @@ export function formatearTasa(texto: string): string {
   return `${signo}${entero}${resto ? `.${resto}` : ""} %`;
 }
 
+/**
+ * Recorta un decimal de texto a `decimales` posiciones SIN redondear ("343.99447" → "343.9944").
+ * Solo para mostrar (Word maestro §3.14: el prorrateo se muestra con cuatro decimales truncados;
+ * el valor completo no cambia). Sin `number`.
+ */
+export function truncarDecimales(texto: string, decimales: number): string {
+  const m = PATRON.exec(texto);
+  if (!m) return texto;
+  const [, signo = "", enteros = "", fraccion = ""] = m;
+  const corte = fraccion.slice(0, decimales).padEnd(decimales, "0");
+  const cero = /^0*$/.test(enteros) && /^0*$/.test(corte);
+  return `${cero ? "" : signo}${enteros}${decimales > 0 ? `.${corte}` : ""}`;
+}
+
+/**
+ * Redondea un decimal de texto a `decimales` posiciones, mitad hacia arriba y simétrico en
+ * negativos (CR-15), con aritmética de dígitos sobre el texto (sin `number`). Solo para mostrar:
+ * el valor de la API conserva su precisión completa.
+ */
+export function redondearDecimales(texto: string, decimales: number): string {
+  const m = PATRON.exec(texto);
+  if (!m) return texto;
+  const [, signo = "", enteros = "", fraccion = ""] = m;
+  const digitos = `${enteros}${fraccion.padEnd(decimales, "0").slice(0, decimales)}`.split("").map((d) => d.charCodeAt(0) - 48);
+  if ((fraccion.charCodeAt(decimales) || 48) - 48 >= 5) {
+    let i = digitos.length - 1;
+    while (i >= 0 && digitos[i] === 9) digitos[i--] = 0;
+    if (i >= 0) digitos[i]! += 1;
+    else digitos.unshift(1);
+  }
+  const todos = digitos.join("");
+  const ent = todos.slice(0, todos.length - decimales).replace(/^0+(?=\d)/, "") || "0";
+  const frac = todos.slice(todos.length - decimales);
+  const cero = /^0*$/.test(todos);
+  return `${cero ? "" : signo}${ent}${decimales > 0 ? `.${frac}` : ""}`;
+}
+
 /** "2026-09-25" → "25/09/2026" (sin crear objetos Date ni depender de la zona horaria). */
 export function formatearFecha(iso: string): string {
   const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso);

@@ -1,9 +1,9 @@
 # Cobertura del DEMO local frente al Excel y al alcance documentado
 
-- Fecha: 17/10/2026, al cerrar el módulo 13 (antes: 17/10/2026, módulo 12).
+- Fecha: 18/10/2026, al cerrar el módulo 14 (antes: 17/10/2026, módulo 13).
 - **Fuentes:**
   - Word maestro v1.3: §1.3 incluido, §1.4 excluido, §1.6 funciones, §3 reglas y §5 uso;
-  - ADR-0001 a ADR-0017;
+  - ADR-0001 a ADR-0018;
   - código comprobado con búsquedas dirigidas, sin suponer lo que no se ve en él.
 - **Leyenda:**
   - **V**: implementado y verificado con pruebas automatizadas;
@@ -46,7 +46,10 @@
 | Parámetros restringidos con motivo, personas y funciones (Administrador del sistema, B-38, B-39) | V | Módulo 13, ADR-0017. Web «Administración» (Parámetros, Personas y funciones), API `/admin/parametros` y `/admin/personas`, funciones SECURITY DEFINER, regla del último administrador, contraseña temporal con cambio obligatorio |
 | Ambiente editable, CONSOLIDAR_PREDETERMINADO, DEMO_* aparte | A | ADR-0017 §6 y §8: ambiente de solo lectura, elección explícita del consolidado, un juego de valores por organización |
 | `db:migrar` solo tras un respaldo verificado; permisos efectivos del rol de la aplicación reducidos | V | ADR-0017 §3 y §4. Límite documentado: las funciones confían en el usuario que reciben |
-| Detalle interno de solo lectura: 12 COMPRAS, 13 DETALLE e indicadores internos en revisión (W §1.3, §5.5) | — | El servidor guarda `resultado_interno`; ninguna pantalla lo muestra (requiere su permiso y contrato propios) |
+| Detalle interno de solo lectura: 12 COMPRAS, 13 DETALLE e indicadores internos de la versión (W §1.3, RF-16, §3.4–3.6, §3.14, §5.5) | V | Módulo 14, ADR-0018. Capacidad `salidas.consultar` (Preparador y Revisor; decisión del propietario), `GET /cotizaciones/{id}/versiones/{n}/salidas-internas`, web «Salidas internas». Solo la versión congelada; las versiones anteriores al módulo muestran solo códigos (sin nombres) |
+| Margen equivalente k/(1+k) de 13 A5 | A | ADR-0018 §5: no se muestra para no confundirlo con el margen real; recargo y margen se muestran por separado |
+| Contadores operativos de 00 INICIO (borradores, en revisión, aprobadas por emitir, vencidas, precios por vencer, último folio, avisos) | — | Pendiente por decisión del propietario (ADR-0018 §2.2). Fuente: hoja 00 INICIO; reglas por definir (si cuentan cotizaciones o versiones y con qué fecha) |
+| Exportación de informes internos (compras, detalle) | F | Mejora opcional fuera del alcance acordado (ADR-0018 §2.3); ninguna fuente la define (D-19). No es un requisito incumplido |
 | Bitácora | P | Eventos en `bitacora` e historial por cotización; sin consulta general |
 | Respaldo y restauración | A | `pg_dump` con PDF y prueba de restauración (ADR-0012) en lugar del respaldo del libro |
 | Exportación CSV UTF-8 (W §1.3) | — | Su motivo era migrar a PostgreSQL, que ya es la base. Exportarla para usuarios queda por decidir |
@@ -72,13 +75,13 @@ Hipótesis inicial: excepciones; administración de catálogos y parámetros; co
 | 1 | ~~Catálogos (1): proveedores, productos, precios con vigencia (anular en lugar de borrar) y tarifas~~ | Hecho (módulo 11) |
 | 2 | ~~Catálogos (2): insumos y conversiones, conceptos y componentes con trazabilidad (BL-05), aprobación de conceptos y personalizados~~ | Hecho (módulo 12) |
 | 3 | ~~Parámetros restringidos con motivo, personas y funciones (Administrador del sistema)~~ | Hecho (módulo 13) |
-| 4 | Salidas internas de solo lectura (compras calculadas, detalle e indicadores), con permiso propio; exportación si se decide | 1 módulo |
+| 4 | ~~Salidas internas de solo lectura (compras calculadas, detalle e indicadores), con permiso propio~~ | Hecho (módulo 14) |
 | 5 | Duplicar, modo de precios y vista previa del PDF BORRADOR | 1 módulo |
 | 6 | App Expo: alcance por decidir (consulta, revisión y decisión; captura) | 2 a 3 módulos |
 | 7 | Cierre integral del DEMO: ejecución formal de la guía, recorrido completo y documentación | 1 módulo |
 
-**Total restante para el DEMO local completo:** de 5 a 6 módulos (antes 6 a 7). La preparación para Railway (TLS, cookie `Secure`/`__Host-`, proxy, limitadores y documentos compartidos, variables y respaldo remoto) es aparte: de 1 a 2 módulos.
+**Total restante para el DEMO local completo:** de 4 a 5 módulos (antes 5 a 6). La preparación para Railway (TLS, cookie `Secure`/`__Host-`, proxy, limitadores y documentos compartidos, variables y respaldo remoto) es aparte: de 1 a 2 módulos.
 
-**Siguiente módulo recomendado:** el **4 (salidas internas de solo lectura)**. Antes conviene que el Administrador regularice los cinco conceptos heredados de `softarq_dev` con el mapeo del ADR-0016 §2.3. Expo conviene después de fijar su alcance.
+**Siguiente módulo recomendado:** el **5 (duplicar, modo de precios y vista previa del PDF BORRADOR)**. Antes conviene que el Administrador regularice los cinco conceptos heredados de `softarq_dev` con el mapeo del ADR-0016 §2.3. Expo conviene después de fijar su alcance. Quedan además, fuera de los bloques: los contadores de 00 INICIO y la tarea de seguridad «identidad de las funciones SQL» (ADR-0018 §7).
 
 Con los módulos 11 y 12 ya se pueden capturar en la web precios, proveedores, tarifas, insumos, conversiones, conceptos y componentes reales cuando el cliente los entregue (capítulo 8). Siguen pendientes la política de vigencias (P3) y la carga real, que no se hace en el DEMO.

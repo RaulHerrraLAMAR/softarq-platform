@@ -42,6 +42,12 @@ export interface ValorSesion {
   cambiarContrasena(datos: CambioContrasena): Promise<ResultadoInicio>;
   cerrar(): Promise<ResultadoInicio>;
   reintentarVerificacion(): void;
+  /**
+   * Vuelve a pedir la sesión al servidor sin cambiar de identidad (módulo 14): tras un 403 con la
+   * pantalla abierta, la navegación deja de ofrecer lo que la función ya no permite. No descarta
+   * nada de la identidad: si la sesión dejó de ser válida, el cliente la da por vencida.
+   */
+  refrescar(): Promise<void>;
 }
 
 const ContextoSesion = createContext<ValorSesion | null>(null);
@@ -170,9 +176,30 @@ export function ProveedorSesion({ urlApi, children, hacerFetch }: PropsProveedor
     [sesion, olvidar],
   );
 
+  const refrescar = useCallback(async (): Promise<void> => {
+    if (estadoActual.current.fase !== "autenticado") return;
+    const g = generacion.current;
+    const r = await sesion.consultar();
+    // Solo si sigue siendo la misma identidad: nunca se mezclan datos de sesiones distintas.
+    if (!r.ok || g !== generacion.current || estadoActual.current.fase !== "autenticado") return;
+    csrf.current = r.datos.csrfToken;
+    setEstado({ fase: "autenticado", sesion: r.datos, generacion: g });
+  }, [sesion]);
+
   const valor = useMemo<ValorSesion>(
-    () => ({ estado, servicios, cotizaciones, catalogoAdmin, administracion, iniciar, cerrar, cambiarContrasena, reintentarVerificacion: () => setIntento((n) => n + 1) }),
-    [estado, servicios, cotizaciones, catalogoAdmin, administracion, iniciar, cerrar, cambiarContrasena],
+    () => ({
+      estado,
+      servicios,
+      cotizaciones,
+      catalogoAdmin,
+      administracion,
+      iniciar,
+      cerrar,
+      cambiarContrasena,
+      reintentarVerificacion: () => setIntento((n) => n + 1),
+      refrescar,
+    }),
+    [estado, servicios, cotizaciones, catalogoAdmin, administracion, iniciar, cerrar, cambiarContrasena, refrescar],
   );
   return <ContextoSesion.Provider value={valor}>{children}</ContextoSesion.Provider>;
 }

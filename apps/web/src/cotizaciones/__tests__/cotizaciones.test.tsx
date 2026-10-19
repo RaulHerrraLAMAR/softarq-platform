@@ -144,6 +144,7 @@ function cotizacionesFalsas(s: Partial<ServiciosCotizaciones> = {}): ServiciosCo
     seguimientoEmision: vi.fn(),
     componentesExcepcion: vi.fn(),
     excepcionesVersion: vi.fn(),
+    salidasInternas: vi.fn(),
     decidirExcepcion: vi.fn(),
     registrarRespuesta: vi.fn(),
     corregirRespuesta: vi.fn(),

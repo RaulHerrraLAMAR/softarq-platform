@@ -48,6 +48,18 @@ describe("matriz de permisos (contrastada con el libro)", () => {
     expect(capacidadesDe(["PREPARADOR"])).not.toContain("revisiones.decidir");
   });
 
+  it("salidas internas (ADR-0018): Preparador y Revisor; los administradores no, salvo por otra función", () => {
+    expect(capacidadesDe(["PREPARADOR"])).toContain("salidas.consultar");
+    expect(capacidadesDe(["REVISOR"])).toContain("salidas.consultar");
+    expect(capacidadesDe(["ADMIN_CATALOGO"])).not.toContain("salidas.consultar");
+    expect(capacidadesDe(["ADMIN_SISTEMA"])).not.toContain("salidas.consultar");
+    expect(capacidadesDe(["ADMIN_CATALOGO", "ADMIN_SISTEMA"])).not.toContain("salidas.consultar");
+    expect(capacidadesDe(["ADMIN_SISTEMA", "PREPARADOR"])).toContain("salidas.consultar");
+    // Consultar costos no concede calcular, aprobar ni emitir.
+    expect(capacidadesDe(["REVISOR"])).not.toContain("calculo.ejecutar");
+    expect(capacidadesDe(["PREPARADOR"])).not.toContain("revisiones.decidir");
+  });
+
   it("administrar catálogos: solo el Administrador del catálogo (Req_Funcion FN_ADMCAT, ADR-0015)", () => {
     expect(capacidadesDe(["ADMIN_CATALOGO"])).toContain("catalogos.administrar");
     // Consultar datos técnicos o decidir excepciones no concede administrar el catálogo.

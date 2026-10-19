@@ -32,7 +32,7 @@ export interface CuentaE2E {
  * Cuentas creadas por el servidor de pruebas en softarq_test en cada corrida
  * (D:\Proyecto_SoftArq\_work\secrets\accesos-e2e.json, fuera del repositorio).
  */
-export function cuentasE2E(): { preparador: CuentaE2E; revisor: CuentaE2E; ambas: CuentaE2E; administrador: CuentaE2E } {
+export function cuentasE2E(): { preparador: CuentaE2E; revisor: CuentaE2E; ambas: CuentaE2E; administrador: CuentaE2E; retiro: CuentaE2E } {
   return JSON.parse(readFileSync(join(RAIZ_REPO, "..", "_work", "secrets", "accesos-e2e.json"), "utf8")) as {
     preparador: CuentaE2E;
     revisor: CuentaE2E;
@@ -40,6 +40,8 @@ export function cuentasE2E(): { preparador: CuentaE2E; revisor: CuentaE2E; ambas
     ambas: CuentaE2E;
     /** Administrador del catálogo y del sistema (módulos 8 y 11). */
     administrador: CuentaE2E;
+    /** Revisor al que se retira la función con la pantalla abierta (módulo 14). */
+    retiro: CuentaE2E;
   };
 }
 

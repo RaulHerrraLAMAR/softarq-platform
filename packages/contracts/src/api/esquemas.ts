@@ -346,6 +346,9 @@ export const CAPACIDADES = [
   // Módulo 13 (ADR-0017): parámetros (B-38) y personas y funciones (B-39), Administrador del sistema.
   "parametros.administrar",
   "personas.administrar",
+  // Módulo 14 (ADR-0018): salidas internas de una versión (compras calculadas, detalle e
+  // indicadores, con costos y margen), solo lectura. Preparador y Revisor.
+  "salidas.consultar",
 ] as const;
 export type Capacidad = (typeof CAPACIDADES)[number];
 

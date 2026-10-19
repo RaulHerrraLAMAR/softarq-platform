@@ -2,9 +2,17 @@
 
 > Léelo al empezar. Actualízalo al terminar cada tarea (sección por sección, sin borrar el historial de la tabla 4). Reglas de trabajo: [`AGENTS.md`](AGENTS.md).
 
-**Última actualización:** 17/10/2026 · Claude Code (Claude Opus 5.5) · módulo 13, parámetros y personas (§22), sobre `b3b785d` (correcciones previas: migración protegida, permisos efectivos e impacto en versiones). Anterior: módulo 12 (§21).
+**Última actualización:** 18/10/2026 · Claude Code (Claude Opus 5.5) · módulo 14, salidas internas de solo lectura (§23), sobre `7072d13` (módulo 13). Anterior: módulo 13 (§22).
 
 ## 1. Estado actual
+
+- **Módulo 14:** implementado (ADR-0018). Preparador y Revisor (capacidad nueva `salidas.consultar`) consultan, de una versión concreta y en solo lectura, en «Salidas internas» y en `GET /api/v1/cotizaciones/{id}/versiones/{n}/salidas-internas`:
+  - **compras calculadas** (12 COMPRAS): presentación, regla, unidades, sobrante informativo, precio y costo, consolidadas o por partida, con su prorrateo;
+  - **detalle del cálculo** (13 DETALLE_CALCULO): medición, consumos (valor de catálogo de la versión frente al aplicado y excepciones), mano de obra, adicionales, costos, P.U. e importe;
+  - **indicadores de la versión**: desglose del costo directo, subtotal, impuestos, total, recargo sobre costo y margen sobre precio (solo indicador).
+  - Los administradores no la reciben. Sin exportación. Contadores de 00 INICIO pendientes.
+  - **Detalle histórico:** las versiones nuevas congelan nombres y vigencias (`referencias_internas`); las anteriores muestran cifras y solo códigos, sin usar el catálogo actual.
+  - Detalle y pruebas en §23.
 
 - **Módulo 13:** implementado (ADR-0017). El Administrador del sistema gestiona en «Administración» y en `/api/v1/admin/{parametros,personas}`:
   - **parámetros:** recargo, impuesto, vigencia y plantillas de textos, con motivo, revisión e impacto previo; ambiente y moneda solo lectura; solo afectan a cálculos y cotizaciones nuevos;
@@ -121,7 +129,7 @@
   - restauración solo en `softarq_restauracion`;
   - prueba completa 30/30, con descarga del PDF por una API temporal;
   - detalle en §17.
-- **Todavía no existen:** registro o CRUD de usuarios, recuperación de contraseña, MFA, administración de insumos, conversiones, conceptos y componentes (proveedores, productos, precios y tarifas sí: módulo 11) y de parámetros, duplicar cotizaciones, modo de precios en versiones nuevas, vista previa PDF BORRADOR, salidas internas (compras calculadas y detalle), correo, anulación de documentos emitidos ni móvil (lista completa en [`docs/cobertura-demo.md`](docs/cobertura-demo.md)).
+- **Todavía no existen:** recuperación de contraseña por la propia persona, MFA, alta y edición de tipos de costo adicional, duplicar cotizaciones, modo de precios en versiones nuevas, vista previa PDF BORRADOR, contadores de 00 INICIO, exportación de informes internos, correo, anulación de documentos emitidos ni móvil (lista completa en [`docs/cobertura-demo.md`](docs/cobertura-demo.md)).
 
 ## 2. Decisiones vigentes
 
@@ -143,6 +151,7 @@
 | ADR-0015 | Administración de proveedores, productos, precios y tarifas por el Administrador del catálogo: funciones de una sentencia con bitácora, revisión e idempotencia; disparadores (producto con precios, precio inmutable salvo anular o acortar, tarifa inmutable); cierre de vigencia con sucesor (P3 pendiente); asignar tarifa conservando la aprobación; contrato `/admin` interno; capacidad `catalogos.administrar` | [`docs/adr/0015-administracion-catalogos.md`](docs/adr/0015-administracion-catalogos.md) |
 | ADR-0016 | Catálogo técnico: tipos de estructura, insumos, conversiones, conceptos y componentes; aprobación de conceptos por cualquier Administrador del catálogo; BL-05 de trazabilidad; conceptos heredados | [`docs/adr/0016-catalogo-tecnico-aprobacion-conceptos.md`](docs/adr/0016-catalogo-tecnico-aprobacion-conceptos.md) |
 | ADR-0017 | Parámetros y personas por el Administrador del sistema; contraseña temporal (72 h) con cambio obligatorio en la API; plantillas TEXTO_* copiadas a cotizaciones nuevas; migración protegida; matriz de permisos efectivos con su capacidad residual | [`docs/adr/0017-parametros-personas-permisos.md`](docs/adr/0017-parametros-personas-permisos.md) |
+| ADR-0018 | Salidas internas de solo lectura (compras calculadas, detalle e indicadores de una versión) con `salidas.consultar` para Preparador y Revisor (cambio intencionado frente a la protección de costos del ADR-0009); `referencias_internas` congeladas solo en versiones nuevas; sin exportación; tarea propuesta de identidad de las funciones SQL | [`docs/adr/0018-salidas-internas.md`](docs/adr/0018-salidas-internas.md) |
 | ADR-0014 | Excepciones B-22 en el borrador, congeladas en la versión; decisión inmutable del Revisor ≠ preparador ligada a la versión; enviar con registradas, aprobar y emitir con autorizadas; rechazada bloquea esa versión (vN+1); AV-04; contrato interno con capacidad `excepciones.consultar`; sin flujo de autorización paralelo | [`docs/adr/0014-excepciones.md`](docs/adr/0014-excepciones.md) |
 | Propietario | Libro oficial `entrega\Cotizador_Estructuras_F1.xlsm`; COT-2026-00016/00017 y la persona en turno se conservan; evidencias citadas por archivo, escenario y caso | [`docs/fase1-estado-verificado.md`](docs/fase1-estado-verificado.md) §4 |
 | Entorno | Trabajo en `D:\Proyecto_SoftArq`; temporales y cachés en `_work`; sin remoto ni push | `AGENTS.md` §1 |
@@ -554,12 +563,21 @@ En los cuatro, el resultado completo es idéntico al calculado con los fixtures 
     - el ahorro de tokens no se ha medido.
 
     Detalle: [`docs/herramientas/graphify.md`](docs/herramientas/graphify.md) §3 y §6.
+24. **Salidas internas (ADR-0018):**
+    - las 10 versiones de `softarq_dev` anteriores al módulo (`COT-2026-00001` a `00010`) no tienen `referencias_internas`: muestran cifras y solo códigos (`SIN_NOMBRES`). No se rellenan a propósito;
+    - sin exportación ni impresión, sin agregados entre cotizaciones y sin los contadores de 00 INICIO;
+    - la respuesta no se pagina (la acota una versión: hasta 100 partidas por `LIMITES_API.partidas`, con sus consumos y compras);
+    - dentro de una transacción interactiva, Prisma resuelve en paralelo las relaciones anidadas (aviso de `pg`): la lectura del módulo usa consultas planas y en serie. Quien añada lecturas anidadas dentro de `$transaction` debe evitarlo igual;
+    - el límite de identidad de las funciones SQL (ADR-0017 §4) sigue sin resolver; el módulo no lo amplía (ADR-0018 §7).
 
 ## 7. Siguiente tarea
 
-1. **Recompilar y reiniciar** la API y la web del propietario si están en marcha con código anterior: `softarq_dev` ya tiene la migración del módulo 13 (§22).
+1. **Recompilar y reiniciar** la API y la web del propietario si están en marcha con código anterior: `softarq_dev` ya tiene la migración del módulo 14 (§23).
 2. **Regularizar los conceptos heredados** de `softarq_dev` cuando el propietario lo decida, con el mapeo documentado (ADR-0016 §2.3): completar tipo y regla vuelve el concepto a Borrador y exige una nueva aprobación. No se ejecuta automáticamente.
-3. **Siguiente módulo recomendado:** salidas internas de solo lectura (compras calculadas, detalle e indicadores, con permiso propio). Después: duplicar, modo de precios y vista previa BORRADOR; Expo (alcance por decidir); cierre integral. Tarea de seguridad propuesta (no hecha): que las funciones resuelvan la identidad desde la sesión en lugar de `p_usuario` (ADR-0017 §4).
+3. **Siguiente módulo recomendado:** duplicar cotización, modo de precios en versiones nuevas y vista previa del PDF marcada BORRADOR (bloque 5 de `docs/cobertura-demo.md`). Después: Expo (alcance por decidir) y cierre integral. Pendientes aparte:
+   - **tarea de seguridad propuesta (no hecha): identidad de las funciones SQL**, con objetivo, límites de confianza y pruebas en ADR-0018 §7 (un id de sesión o una variable que fije la misma credencial no la resuelve);
+   - contadores operativos de 00 INICIO (fuente y reglas por definir; ADR-0018 §2.2);
+   - exportación de informes internos: mejora opcional, solo si el propietario la pide.
    - Matriz y estimación en [`docs/cobertura-demo.md`](docs/cobertura-demo.md).
 4. **Pendiente del cliente:**
    - definir P3, la política de vigencias; la adaptación del DEMO está en ADR-0015 §2.2;
@@ -600,6 +618,8 @@ Alternativas más cortas:
 
 - `b3b785d`: correcciones previas al módulo 13 (migración protegida, permisos efectivos, impacto en versiones).
 - Módulo 13: commit «Módulo 13: parámetros y personas del Administrador del sistema» (§22); consultar `git log -1 --oneline` para su hash. MD5 del libro al cerrar: `b60debc121957b8d8e3f2c2edd9a5b4f` (sin cambios).
+- `7072d13`: Módulo 13.
+- Módulo 14: commit «Módulo 14: salidas internas de solo lectura (compras, detalle e indicadores)» (§23); consultar `git log -1 --oneline` para su hash. MD5 del libro al cerrar: `b60debc121957b8d8e3f2c2edd9a5b4f` (sin cambios).
 
 Rama `main`. Sin remoto ni push.
 
@@ -1265,3 +1285,53 @@ Decisiones y reglas: [ADR-0017](docs/adr/0017-parametros-personas-permisos.md). 
 - Si se pierde la contraseña temporal no hay recuperación: hace falta un restablecimiento. Entrega manual, sin correo.
 - La guía manual (P1–P6, U1–U8) no se ha ejecutado formalmente; la revisión personal sigue registrada solo como declaración (no cuenta como PR-41 ni PR-44).
 - Los cinco conceptos heredados siguen sin regularizar; P3 sigue pendiente con el cliente.
+
+## 23. Salidas internas de solo lectura (módulo 14)
+
+Decisiones y reglas: [ADR-0018](docs/adr/0018-salidas-internas.md). Sobre `7072d13`. Plan aprobado por el propietario con tres decisiones: `salidas.consultar` solo para Preparador y Revisor (cambio intencionado frente a la protección de costos del ADR-0009); indicadores solo de la versión (contadores de 00 INICIO pendientes); sin exportación.
+
+**Fuentes leídas (solo lectura, en memoria):** Word §1.3, RF-16, §3.4–3.6, §3.14 («3 bultos para P001 y 17 para P002 … $2,900.00»; prorrateo con 4 decimales truncados), §5.5, D-07, D-09, D-10, D-19, D-20; libro: 12 COMPRAS, 13 DETALLE_CALCULO, 10 COTIZAR (resumen), 14 REVISION (A7), 00 INICIO. Ninguna fuente restringe quién ve 12, 13 o 14, define indicadores agregados ni exporta informes.
+
+**Qué se hizo:**
+
+| Capa | Cambio |
+|---|---|
+| Base | Migración `20261020120000_salidas_internas`: `cotizacion_version.referencias_internas` (JSONB NULL, CHECK de objeto) y `softarq_crear_version` con la columna (misma firma y SECURITY INVOKER). Sin permisos nuevos |
+| API | `dominio/salidas-internas.ts` (lectura validada de la instantánea, armado, sumas por categoría con `Dec`, conciliación, NO_APLICA/NO_DISPONIBLE); `servicio-salidas-internas.ts` (READ ONLY, REPEATABLE READ); `obtenerVersionInterna` con consultas planas y en serie; `RepositorioCatalogos.leerReferencias` en la fase A; `SalidasInternasController`; capacidad en `capacidades.ts`; OpenAPI |
+| Contratos | `api/salidas-internas.ts`; `salidas.consultar` en `CAPACIDADES` |
+| Web | `salidas-internas/PantallaSalidasInternas.tsx` (rutas `…/v/{n}/interno/{compras,detalle,indicadores}`, selector de versión, marca «Uso interno», estados); enlaces en la versión y la revisión; `refrescar()` de la sesión tras un 403; `redondearDecimales` y `truncarDecimales` sin `number`; estilos; excepción acotada en `sin-datos-internos` |
+| E2E | Cuenta `retiro.e2e@softarq.test` (Revisor) y `ajustar-base funciones <correo> <FUNCIONES>` para retirar funciones con la pantalla abierta |
+| Respaldo | `probar-restauracion.mjs`: 2 comprobaciones nuevas (columna, CHECK, función, inmutabilidad y permisos; referencias íntegras) |
+
+**Quién consulta qué:**
+- **Preparador y Revisor** (y cualquier persona con alguna de esas funciones): compras, detalle e indicadores de cualquier versión de su organización.
+- **Administrador del catálogo y Administrador del sistema** sin otra función: 403 (sin enlace; «Sin permiso» por ruta directa). Conservan sus accesos administrativos.
+- Persona desactivada: 401. Función retirada: 403 en la petición siguiente y la web deja de ofrecer el enlace. Temporal pendiente: 403 `CAMBIO_CONTRASENA_REQUERIDO`. Otra organización: 404.
+
+**Datos históricos disponibles:** cifras completas de todas las versiones (entrada y resultado congelados desde el módulo 6). Nombres y vigencias solo en versiones creadas desde este módulo. En `softarq_dev`, `COT-2026-00001` a `00010` (10 versiones) muestran solo códigos y `COT-2026-00011` a `00014` tienen referencias.
+
+**Pruebas de ESTA sesión** (registros en `D:\Proyecto_SoftArq\_work\tmp\m14`):
+
+| Comando o comprobación | Resultado |
+|---|---|
+| `pnpm verificar` (final) | **742/742** (API 470, web 272); código 0. Tras el último ajuste visual, web repetida: tipos y 272/272 |
+| Integración completa (un worker, `softarq_test`) | **327/327**, 20 archivos (20 nuevas del módulo). Primera corrida 323/326: 2 fallos de mi prueba (columna inexistente en la huella; los precios no se editan por disparador) y el inventario de capacidades de `autenticacion.integracion.test.ts` (cambio intencionado: el Preparador recibe `salidas.consultar`) |
+| E2E completa (Edge, un worker) | **67/67** (4 nuevas). La primera corrida mostró un aviso de `pg` («client.query() when the client is already executing a query»), reproducido con `--trace-deprecation`. Causa: `revisionesDeVersiones`, con relaciones anidadas, dentro de la transacción interactiva. Corregido con consultas planas; la corrida final no lo muestra. Después, el spec del módulo se repitió (4/4) tras compactar la tabla de compras |
+| Unitarias del módulo | 17 de dominio con `ESPERADO_3_14` (K01–K03, prorrateo de K02, 3 + 17 = 20 bultos, $2,900.00, mano de obra UNIDAD/JORNADA, margen 16.67 %, NO_APLICA, SIN_NOMBRES, NO_DISPONIBLE, excepción autorizada); 12 de pantalla; 2 de formato; 1 de capacidades |
+| Cuatro referencias | 54,190.68; 43,312.16; 22,405.28; 4,911.79, con unidades por producto de R1 (47/6/19) y R2 (4.5): integración y humo |
+| `db:migrar` protegido en `softarq_dev` | Respaldo `softarq_dev-20261019T054402Z-9d6c60` creado y **verificado antes** de aplicar `20261020120000_salidas_internas`; código 0 |
+| `db:cargar-demo` repetido | Creados `{}`; «Los valores DEMO coinciden» |
+| Humo con la API real (127.0.0.1:3200, detenida al terminar; `humo-m14.mjs`) | **69 pasos correctos**: capacidades por función; `COT-2026-00004-v1` (emitida, anterior al módulo) SIN_NOMBRES con solo códigos; Revisor 200; Administrador 403 sin datos internos; 404; huella del negocio idéntica antes y después de consultar; cuatro cotizaciones DEMO nuevas (`COT-2026-00011` a `00014`) con referencias, totales, unidades, conciliación y versión comercial sin datos internos |
+| `respaldo:probar-restauracion` | **53/53** (2 nuevas) |
+| Revisión visual | Capturas en `_work\evidencias\modulo14` revisadas (escritorio 01–06, móvil 07–09). Corregido: la tabla de compras cortaba la última columna y partía palabras; la etiqueta de impuestos repetía «Impuesto» |
+| Graphify | `pnpm grafo:actualizar`: VIGENTE (284 archivos). `explain ServicioSalidasInternas`, `explain salidas-internas.ts`, `explain PantallaSalidasInternas` y `path SalidasInternasController → construirSalidasInternas` correctos. `salidas.consultar` es una cadena: verificada con `rg` (7 archivos) |
+| MD5 del libro | `b60debc121957b8d8e3f2c2edd9a5b4f` antes y después |
+
+**Datos DEMO creados en `softarq_dev`:** clientes, proyectos y cotizaciones `[DEMO] … humo M14` (`COT-2026-00011` a `00014`, v1 sin enviar). Catálogo y parámetros sin cambios.
+
+**Límites y pendientes:**
+- Identidad de las funciones SQL (ADR-0017 §4): sin resolver; tarea separada con objetivo, límites y pruebas en ADR-0018 §7. El módulo no amplía la capacidad residual: solo SELECT con `softarq_app`, sin funciones ni concesiones nuevas.
+- Contadores de 00 INICIO y exportación de informes: fuera de este módulo (ADR-0018 §2).
+- La guía manual (I1–I8) no se ha ejecutado formalmente. La revisión personal sigue registrada solo como declaración y no cuenta como PR-41 ni PR-44, que siguen pendientes.
+- Los cinco conceptos heredados siguen sin regularizar; P3 sigue pendiente con el cliente.
+- Si el propietario tiene una API o una web en marcha con código anterior, debe recompilar y reiniciar: `softarq_dev` ya tiene la migración del módulo 14. La función `softarq_crear_version` nueva acepta la llamada anterior, que deja `referencias_internas` en NULL.

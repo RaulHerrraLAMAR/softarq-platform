@@ -60,4 +60,6 @@ export const ESPERADO_3_14 = {
   },
   /** PC-39: sin consolidar, B se compra por separado. */
   sinConsolidarPB: { unidades: "20", costo: "2900" },
+  /** §3.14: «Sin consolidar, B se compraría por separado: 3 bultos para P001 y 17 para P002». */
+  sinConsolidarPBPorPartida: { P001: "3", P002: "17" },
 } as const;

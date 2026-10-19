@@ -5,6 +5,7 @@
  *   node dist-e2e/pruebas-e2e/ajustar-base.js concepto <codigo> aprobado|borrador
  *   node dist-e2e/pruebas-e2e/ajustar-base.js parametros sin-impuesto|demo
  *   node dist-e2e/pruebas-e2e/ajustar-base.js sesiones revocar <correo>
+ *   node dist-e2e/pruebas-e2e/ajustar-base.js funciones <correo> <FUNCION[,FUNCION]>
  *
  * `sesiones revocar` simula que la sesión terminó en el servidor (revocación con UPDATE, lo único
  * que el rol de la aplicación puede modificar en `sesion`).
@@ -52,9 +53,17 @@ async function principal(args: string[]): Promise<void> {
         data: { revocadaEn: new Date(), motivoRevocacion: "RESTABLECIMIENTO" },
       });
       console.log(`[e2e] sesiones revocadas: ${r.count}`);
+    } else if (que === "funciones" && a && b && /^[A-Z_]+(,[A-Z_]+)*$/.test(b)) {
+      // Módulo 14: retirar o devolver funciones con la sesión abierta (rol migrador; la aplicación no
+      // escribe pertenencias). La guardia las relee en la petición siguiente.
+      const funciones = b.split(",");
+      const n = await migrador.$executeRaw`
+        UPDATE membresia m SET funciones = ${funciones}::varchar[] FROM usuario u
+         WHERE u.id = m.usuario_id AND u.correo = ${a} AND m.organizacion_id = ${org.id}::uuid`;
+      if (n !== 1) throw new Error(`No se encontró la pertenencia de ${a}.`);
     } else {
       throw new Error(
-        "Uso: ajustar-base proveedor <codigo> activo|inactivo | concepto <codigo> aprobado|borrador | parametros sin-impuesto|demo | sesiones revocar <correo>",
+        "Uso: ajustar-base proveedor <codigo> activo|inactivo | concepto <codigo> aprobado|borrador | parametros sin-impuesto|demo | sesiones revocar <correo> | funciones <correo> <FUNCION[,FUNCION]>",
       );
     }
     console.log(`[e2e] softarq_test: ${args.join(" ")}`);

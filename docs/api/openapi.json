@@ -4497,6 +4497,104 @@
         }
       }
     },
+    "/api/v1/cotizaciones/{id}/versiones/{numero}/salidas-internas": {
+      "get": {
+        "summary": "Compras calculadas, detalle del cálculo e indicadores de la versión (Preparador y Revisor; capacidad salidas.consultar)",
+        "description": "Contrato INTERNO de solo lectura (12 COMPRAS, 13 DETALLE_CALCULO e indicadores de 14 REVISION): costos, consumos, proveedores, recargo y margen. Todo sale de lo congelado en la versión; nunca del catálogo ni de los parámetros vigentes. `disponibilidad` indica si la versión congeló nombres y vigencias (COMPLETO), solo códigos (SIN_NOMBRES, versiones anteriores al módulo 14) o si el detalle no está disponible (NO_DISPONIBLE). Un indicador sin valor es NO_APLICA (denominador 0) o NO_DISPONIBLE, nunca 0. No escribe nada. Nunca forma parte de la proyección comercial ni del PDF.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "numero",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Salidas internas de la versión.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SalidasInternasVersion"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "NO_AUTENTICADO (sin cookie de sesión) o SESION_NO_VALIDA (vencida, revocada o desconocida; se borra la cookie).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "SIN_PERMISO (la función no concede la capacidad), CSRF_NO_VALIDO u ORIGEN_NO_PERMITIDO.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "NO_ENCONTRADO: ruta, id o códigos inexistentes en la organización (un id de otra organización responde igual).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "DEMASIADAS_SOLICITUDES (cabecera Retry-After).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "ERROR_INTERNO, DOCUMENTO_NO_GENERADO (no se generó o guardó el PDF; no hay emisión y se puede reintentar) o DOCUMENTO_NO_DISPONIBLE (el archivo emitido falta o no coincide con su registro; nunca se regenera).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "SERVICIO_NO_DISPONIBLE: PostgreSQL no disponible.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/revisiones/{id}/excepciones/{numero}/decision": {
       "post": {
         "summary": "Autoriza o rechaza la excepción N de la versión en revisión (Revisor distinto del preparador, BL-17)",
@@ -11445,6 +11543,1508 @@
         ],
         "additionalProperties": false
       },
+      "SalidasInternasVersion": {
+        "type": "object",
+        "properties": {
+          "encabezado": {
+            "type": "object",
+            "properties": {
+              "versionId": {
+                "type": "string",
+                "format": "uuid",
+                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+              },
+              "idVersion": {
+                "type": "string"
+              },
+              "folio": {
+                "type": "string"
+              },
+              "numero": {
+                "type": "integer",
+                "exclusiveMinimum": 0,
+                "maximum": 9007199254740991
+              },
+              "origen": {
+                "type": "string"
+              },
+              "ambiente": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "moneda": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "estado": {
+                "type": "string",
+                "enum": [
+                  "BORRADOR",
+                  "EN_REVISION",
+                  "APROBADA",
+                  "EMITIDA",
+                  "SUSTITUIDA"
+                ]
+              },
+              "esUltima": {
+                "type": "boolean"
+              },
+              "fechaCalculo": {
+                "type": "string"
+              },
+              "consolidarCompras": {
+                "type": [
+                  "boolean",
+                  "null"
+                ]
+              },
+              "versionMotor": {
+                "type": "string"
+              },
+              "autorNombre": {
+                "type": "string"
+              },
+              "creadoEn": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "versionId",
+              "idVersion",
+              "folio",
+              "numero",
+              "origen",
+              "ambiente",
+              "moneda",
+              "estado",
+              "esUltima",
+              "fechaCalculo",
+              "consolidarCompras",
+              "versionMotor",
+              "autorNombre",
+              "creadoEn"
+            ],
+            "additionalProperties": false
+          },
+          "disponibilidad": {
+            "type": "object",
+            "properties": {
+              "estado": {
+                "type": "string",
+                "enum": [
+                  "COMPLETO",
+                  "SIN_NOMBRES",
+                  "NO_DISPONIBLE"
+                ]
+              },
+              "motivo": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "required": [
+              "estado",
+              "motivo"
+            ],
+            "additionalProperties": false
+          },
+          "compras": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "numero": {
+                  "type": "integer",
+                  "exclusiveMinimum": 0,
+                  "maximum": 9007199254740991
+                },
+                "insumo": {
+                  "type": "object",
+                  "properties": {
+                    "codigo": {
+                      "type": "string"
+                    },
+                    "nombre": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "codigo",
+                    "nombre"
+                  ],
+                  "additionalProperties": false
+                },
+                "unidadBase": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "producto": {
+                  "type": "object",
+                  "properties": {
+                    "codigo": {
+                      "type": "string"
+                    },
+                    "nombre": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "codigo",
+                    "nombre"
+                  ],
+                  "additionalProperties": false
+                },
+                "presentacion": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "unidadCompra": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "proveedor": {
+                  "type": "object",
+                  "properties": {
+                    "codigo": {
+                      "type": "string"
+                    },
+                    "nombre": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "codigo",
+                    "nombre"
+                  ],
+                  "additionalProperties": false
+                },
+                "precio": {
+                  "type": "object",
+                  "properties": {
+                    "codigo": {
+                      "type": "string"
+                    },
+                    "vigenteDesde": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "vigenteHasta": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "codigo",
+                    "vigenteDesde",
+                    "vigenteHasta"
+                  ],
+                  "additionalProperties": false
+                },
+                "partida": {
+                  "anyOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "numero": {
+                          "type": "integer",
+                          "exclusiveMinimum": 0,
+                          "maximum": 9007199254740991
+                        },
+                        "descripcion": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "numero",
+                        "descripcion"
+                      ],
+                      "additionalProperties": false
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "regla": {
+                  "type": "string",
+                  "enum": [
+                    "PAQUETE_COMPLETO",
+                    "FRACCIONABLE"
+                  ]
+                },
+                "consumoTotal": {
+                  "type": "string"
+                },
+                "contenido": {
+                  "type": "string"
+                },
+                "incrementoMinimo": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "cantidadComprada": {
+                  "type": "string"
+                },
+                "unidades": {
+                  "type": "string"
+                },
+                "sobrante": {
+                  "type": "string"
+                },
+                "precioUnitario": {
+                  "type": "string"
+                },
+                "costoCompra": {
+                  "type": "string"
+                },
+                "prorrateo": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "partidaId": {
+                        "type": "string"
+                      },
+                      "partidaNumero": {
+                        "type": "integer",
+                        "exclusiveMinimum": 0,
+                        "maximum": 9007199254740991
+                      },
+                      "componenteCodigo": {
+                        "type": "string"
+                      },
+                      "consumoBase": {
+                        "type": "string"
+                      },
+                      "costoProrrateado": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "partidaId",
+                      "partidaNumero",
+                      "componenteCodigo",
+                      "consumoBase",
+                      "costoProrrateado"
+                    ],
+                    "additionalProperties": false
+                  }
+                }
+              },
+              "required": [
+                "numero",
+                "insumo",
+                "unidadBase",
+                "producto",
+                "presentacion",
+                "unidadCompra",
+                "proveedor",
+                "precio",
+                "partida",
+                "regla",
+                "consumoTotal",
+                "contenido",
+                "incrementoMinimo",
+                "cantidadComprada",
+                "unidades",
+                "sobrante",
+                "precioUnitario",
+                "costoCompra",
+                "prorrateo"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "partidas": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "numero": {
+                  "type": "integer",
+                  "exclusiveMinimum": 0,
+                  "maximum": 9007199254740991
+                },
+                "tipo": {
+                  "type": "string",
+                  "enum": [
+                    "CONCEPTO",
+                    "ADICIONAL"
+                  ]
+                },
+                "concepto": {
+                  "anyOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "codigo": {
+                          "type": "string"
+                        },
+                        "nombre": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "codigo",
+                        "nombre"
+                      ],
+                      "additionalProperties": false
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "tipoAdicional": {
+                  "anyOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "codigo": {
+                          "type": "string"
+                        },
+                        "nombre": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "codigo",
+                        "nombre"
+                      ],
+                      "additionalProperties": false
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "categoria": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "descripcion": {
+                  "type": "string"
+                },
+                "unidad": {
+                  "type": "string"
+                },
+                "cantidad": {
+                  "type": "string"
+                },
+                "renglones": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "numero": {
+                        "type": "integer",
+                        "exclusiveMinimum": 0,
+                        "maximum": 9007199254740991
+                      },
+                      "resultado": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "numero",
+                      "resultado"
+                    ],
+                    "additionalProperties": false
+                  }
+                },
+                "consumos": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "componenteCodigo": {
+                        "type": "string"
+                      },
+                      "insumo": {
+                        "type": "object",
+                        "properties": {
+                          "codigo": {
+                            "type": "string"
+                          },
+                          "nombre": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          }
+                        },
+                        "required": [
+                          "codigo",
+                          "nombre"
+                        ],
+                        "additionalProperties": false
+                      },
+                      "catalogo": {
+                        "anyOf": [
+                          {
+                            "type": "object",
+                            "properties": {
+                              "rendimiento": {
+                                "type": "string"
+                              },
+                              "desperdicio": {
+                                "type": "string"
+                              },
+                              "traslape": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              }
+                            },
+                            "required": [
+                              "rendimiento",
+                              "desperdicio",
+                              "traslape"
+                            ],
+                            "additionalProperties": false
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
+                      "rendimientoUsado": {
+                        "type": "string"
+                      },
+                      "desperdicioUsado": {
+                        "type": "string"
+                      },
+                      "traslapeUsado": {
+                        "type": "string"
+                      },
+                      "unidadRendimiento": {
+                        "type": "string"
+                      },
+                      "unidadBase": {
+                        "type": "string"
+                      },
+                      "consumoNeto": {
+                        "type": "string"
+                      },
+                      "consumoConDesperdicio": {
+                        "type": "string"
+                      },
+                      "factorConversion": {
+                        "type": "string"
+                      },
+                      "consumoBase": {
+                        "type": "string"
+                      },
+                      "compraNumero": {
+                        "type": "integer",
+                        "exclusiveMinimum": 0,
+                        "maximum": 9007199254740991
+                      },
+                      "costoProrrateado": {
+                        "type": "string"
+                      },
+                      "ajustes": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "numero": {
+                              "type": "integer",
+                              "exclusiveMinimum": 0,
+                              "maximum": 9007199254740991
+                            },
+                            "campo": {
+                              "type": "string",
+                              "enum": [
+                                "RENDIMIENTO",
+                                "DESPERDICIO"
+                              ]
+                            },
+                            "valorAplicado": {
+                              "type": "string"
+                            },
+                            "estado": {
+                              "type": "string",
+                              "enum": [
+                                "PENDIENTE",
+                                "AUTORIZADA",
+                                "RECHAZADA"
+                              ]
+                            }
+                          },
+                          "required": [
+                            "numero",
+                            "campo",
+                            "valorAplicado",
+                            "estado"
+                          ],
+                          "additionalProperties": false
+                        }
+                      }
+                    },
+                    "required": [
+                      "componenteCodigo",
+                      "insumo",
+                      "catalogo",
+                      "rendimientoUsado",
+                      "desperdicioUsado",
+                      "traslapeUsado",
+                      "unidadRendimiento",
+                      "unidadBase",
+                      "consumoNeto",
+                      "consumoConDesperdicio",
+                      "factorConversion",
+                      "consumoBase",
+                      "compraNumero",
+                      "costoProrrateado",
+                      "ajustes"
+                    ],
+                    "additionalProperties": false
+                  }
+                },
+                "manoObra": {
+                  "anyOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "tarifa": {
+                          "type": "object",
+                          "properties": {
+                            "codigo": {
+                              "type": "string"
+                            },
+                            "nombre": {
+                              "type": [
+                                "string",
+                                "null"
+                              ]
+                            }
+                          },
+                          "required": [
+                            "codigo",
+                            "nombre"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "modalidad": {
+                          "type": "string",
+                          "enum": [
+                            "UNIDAD",
+                            "JORNADA",
+                            "SUBCONTRATO"
+                          ]
+                        },
+                        "unidad": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "importeTarifa": {
+                          "type": "string"
+                        },
+                        "rendimientoJornada": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "jornadas": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "tarifa",
+                        "modalidad",
+                        "unidad",
+                        "importeTarifa",
+                        "rendimientoJornada",
+                        "jornadas"
+                      ],
+                      "additionalProperties": false
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "costoMateriales": {
+                  "type": "string"
+                },
+                "costoManoObra": {
+                  "type": "string"
+                },
+                "costoSubcontrato": {
+                  "type": "string"
+                },
+                "costoAdicional": {
+                  "type": "string"
+                },
+                "costoDirecto": {
+                  "type": "string"
+                },
+                "precioUnitarioVenta": {
+                  "type": "string"
+                },
+                "importe": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "id",
+                "numero",
+                "tipo",
+                "concepto",
+                "tipoAdicional",
+                "categoria",
+                "descripcion",
+                "unidad",
+                "cantidad",
+                "renglones",
+                "consumos",
+                "manoObra",
+                "costoMateriales",
+                "costoManoObra",
+                "costoSubcontrato",
+                "costoAdicional",
+                "costoDirecto",
+                "precioUnitarioVenta",
+                "importe"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "indicadores": {
+            "type": "object",
+            "properties": {
+              "costoMateriales": {
+                "oneOf": [
+                  {
+                    "type": "object",
+                    "properties": {
+                      "estado": {
+                        "type": "string",
+                        "const": "VALOR"
+                      },
+                      "valor": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "estado",
+                      "valor"
+                    ],
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "estado": {
+                        "type": "string",
+                        "const": "NO_APLICA"
+                      },
+                      "motivo": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "estado",
+                      "motivo"
+                    ],
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "estado": {
+                        "type": "string",
+                        "const": "NO_DISPONIBLE"
+                      },
+                      "motivo": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "estado",
+                      "motivo"
+                    ],
+                    "additionalProperties": false
+                  }
+                ]
+              },
+              "costoManoObra": {
+                "oneOf": [
+                  {
+                    "type": "object",
+                    "properties": {
+                      "estado": {
+                        "type": "string",
+                        "const": "VALOR"
+                      },
+                      "valor": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "estado",
+                      "valor"
+                    ],
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "estado": {
+                        "type": "string",
+                        "const": "NO_APLICA"
+                      },
+                      "motivo": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "estado",
+                      "motivo"
+                    ],
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "estado": {
+                        "type": "string",
+                        "const": "NO_DISPONIBLE"
+                      },
+                      "motivo": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "estado",
+                      "motivo"
+                    ],
+                    "additionalProperties": false
+                  }
+                ]
+              },
+              "costoSubcontrato": {
+                "oneOf": [
+                  {
+                    "type": "object",
+                    "properties": {
+                      "estado": {
+                        "type": "string",
+                        "const": "VALOR"
+                      },
+                      "valor": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "estado",
+                      "valor"
+                    ],
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "estado": {
+                        "type": "string",
+                        "const": "NO_APLICA"
+                      },
+                      "motivo": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "estado",
+                      "motivo"
+                    ],
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "estado": {
+                        "type": "string",
+                        "const": "NO_DISPONIBLE"
+                      },
+                      "motivo": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "estado",
+                      "motivo"
+                    ],
+                    "additionalProperties": false
+                  }
+                ]
+              },
+              "costosAdicionales": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "categoria": {
+                      "type": "string"
+                    },
+                    "valor": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "categoria",
+                    "valor"
+                  ],
+                  "additionalProperties": false
+                }
+              },
+              "costoAdicional": {
+                "oneOf": [
+                  {
+                    "type": "object",
+                    "properties": {
+                      "estado": {
+                        "type": "string",
+                        "const": "VALOR"
+                      },
+                      "valor": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "estado",
+                      "valor"
+                    ],
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "estado": {
+                        "type": "string",
+                        "const": "NO_APLICA"
+                      },
+                      "motivo": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "estado",
+                      "motivo"
+                    ],
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "estado": {
+                        "type": "string",
+                        "const": "NO_DISPONIBLE"
+                      },
+                      "motivo": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "estado",
+                      "motivo"
+                    ],
+                    "additionalProperties": false
+                  }
+                ]
+              },
+              "costoDirecto": {
+                "oneOf": [
+                  {
+                    "type": "object",
+                    "properties": {
+                      "estado": {
+                        "type": "string",
+                        "const": "VALOR"
+                      },
+                      "valor": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "estado",
+                      "valor"
+                    ],
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "estado": {
+                        "type": "string",
+                        "const": "NO_APLICA"
+                      },
+                      "motivo": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "estado",
+                      "motivo"
+                    ],
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "estado": {
+                        "type": "string",
+                        "const": "NO_DISPONIBLE"
+                      },
+                      "motivo": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "estado",
+                      "motivo"
+                    ],
+                    "additionalProperties": false
+                  }
+                ]
+              },
+              "costoDirectoRedondeado": {
+                "oneOf": [
+                  {
+                    "type": "object",
+                    "properties": {
+                      "estado": {
+                        "type": "string",
+                        "const": "VALOR"
+                      },
+                      "valor": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "estado",
+                      "valor"
+                    ],
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "estado": {
+                        "type": "string",
+                        "const": "NO_APLICA"
+                      },
+                      "motivo": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "estado",
+                      "motivo"
+                    ],
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "estado": {
+                        "type": "string",
+                        "const": "NO_DISPONIBLE"
+                      },
+                      "motivo": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "estado",
+                      "motivo"
+                    ],
+                    "additionalProperties": false
+                  }
+                ]
+              },
+              "subtotal": {
+                "oneOf": [
+                  {
+                    "type": "object",
+                    "properties": {
+                      "estado": {
+                        "type": "string",
+                        "const": "VALOR"
+                      },
+                      "valor": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "estado",
+                      "valor"
+                    ],
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "estado": {
+                        "type": "string",
+                        "const": "NO_APLICA"
+                      },
+                      "motivo": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "estado",
+                      "motivo"
+                    ],
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "estado": {
+                        "type": "string",
+                        "const": "NO_DISPONIBLE"
+                      },
+                      "motivo": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "estado",
+                      "motivo"
+                    ],
+                    "additionalProperties": false
+                  }
+                ]
+              },
+              "impuesto": {
+                "type": "object",
+                "properties": {
+                  "nombre": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "tasa": {
+                    "oneOf": [
+                      {
+                        "type": "object",
+                        "properties": {
+                          "estado": {
+                            "type": "string",
+                            "const": "VALOR"
+                          },
+                          "valor": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "estado",
+                          "valor"
+                        ],
+                        "additionalProperties": false
+                      },
+                      {
+                        "type": "object",
+                        "properties": {
+                          "estado": {
+                            "type": "string",
+                            "const": "NO_APLICA"
+                          },
+                          "motivo": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "estado",
+                          "motivo"
+                        ],
+                        "additionalProperties": false
+                      },
+                      {
+                        "type": "object",
+                        "properties": {
+                          "estado": {
+                            "type": "string",
+                            "const": "NO_DISPONIBLE"
+                          },
+                          "motivo": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "estado",
+                          "motivo"
+                        ],
+                        "additionalProperties": false
+                      }
+                    ]
+                  },
+                  "base": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "importe": {
+                    "oneOf": [
+                      {
+                        "type": "object",
+                        "properties": {
+                          "estado": {
+                            "type": "string",
+                            "const": "VALOR"
+                          },
+                          "valor": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "estado",
+                          "valor"
+                        ],
+                        "additionalProperties": false
+                      },
+                      {
+                        "type": "object",
+                        "properties": {
+                          "estado": {
+                            "type": "string",
+                            "const": "NO_APLICA"
+                          },
+                          "motivo": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "estado",
+                          "motivo"
+                        ],
+                        "additionalProperties": false
+                      },
+                      {
+                        "type": "object",
+                        "properties": {
+                          "estado": {
+                            "type": "string",
+                            "const": "NO_DISPONIBLE"
+                          },
+                          "motivo": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "estado",
+                          "motivo"
+                        ],
+                        "additionalProperties": false
+                      }
+                    ]
+                  }
+                },
+                "required": [
+                  "nombre",
+                  "tasa",
+                  "base",
+                  "importe"
+                ],
+                "additionalProperties": false
+              },
+              "total": {
+                "oneOf": [
+                  {
+                    "type": "object",
+                    "properties": {
+                      "estado": {
+                        "type": "string",
+                        "const": "VALOR"
+                      },
+                      "valor": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "estado",
+                      "valor"
+                    ],
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "estado": {
+                        "type": "string",
+                        "const": "NO_APLICA"
+                      },
+                      "motivo": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "estado",
+                      "motivo"
+                    ],
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "estado": {
+                        "type": "string",
+                        "const": "NO_DISPONIBLE"
+                      },
+                      "motivo": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "estado",
+                      "motivo"
+                    ],
+                    "additionalProperties": false
+                  }
+                ]
+              },
+              "recargoSobreCosto": {
+                "oneOf": [
+                  {
+                    "type": "object",
+                    "properties": {
+                      "estado": {
+                        "type": "string",
+                        "const": "VALOR"
+                      },
+                      "valor": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "estado",
+                      "valor"
+                    ],
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "estado": {
+                        "type": "string",
+                        "const": "NO_APLICA"
+                      },
+                      "motivo": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "estado",
+                      "motivo"
+                    ],
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "estado": {
+                        "type": "string",
+                        "const": "NO_DISPONIBLE"
+                      },
+                      "motivo": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "estado",
+                      "motivo"
+                    ],
+                    "additionalProperties": false
+                  }
+                ]
+              },
+              "margenSobrePrecio": {
+                "oneOf": [
+                  {
+                    "type": "object",
+                    "properties": {
+                      "estado": {
+                        "type": "string",
+                        "const": "VALOR"
+                      },
+                      "valor": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "estado",
+                      "valor"
+                    ],
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "estado": {
+                        "type": "string",
+                        "const": "NO_APLICA"
+                      },
+                      "motivo": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "estado",
+                      "motivo"
+                    ],
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "estado": {
+                        "type": "string",
+                        "const": "NO_DISPONIBLE"
+                      },
+                      "motivo": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "estado",
+                      "motivo"
+                    ],
+                    "additionalProperties": false
+                  }
+                ]
+              }
+            },
+            "required": [
+              "costoMateriales",
+              "costoManoObra",
+              "costoSubcontrato",
+              "costosAdicionales",
+              "costoAdicional",
+              "costoDirecto",
+              "costoDirectoRedondeado",
+              "subtotal",
+              "impuesto",
+              "total",
+              "recargoSobreCosto",
+              "margenSobrePrecio"
+            ],
+            "additionalProperties": false
+          },
+          "conciliacion": {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "categorias": {
+                    "type": "boolean"
+                  },
+                  "importes": {
+                    "type": "boolean"
+                  },
+                  "prorrateo": {
+                    "type": "boolean"
+                  }
+                },
+                "required": [
+                  "categorias",
+                  "importes",
+                  "prorrateo"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "avisos": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "codigo": {
+                  "type": "string"
+                },
+                "referencia": {
+                  "type": "string"
+                },
+                "mensaje": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "codigo",
+                "referencia",
+                "mensaje"
+              ],
+              "additionalProperties": false
+            }
+          }
+        },
+        "required": [
+          "encabezado",
+          "disponibilidad",
+          "compras",
+          "partidas",
+          "indicadores",
+          "conciliacion",
+          "avisos"
+        ],
+        "additionalProperties": false
+      },
       "DecisionExcepcion": {
         "type": "object",
         "properties": {
@@ -11745,7 +13345,8 @@
                 "excepciones.consultar",
                 "catalogos.administrar",
                 "parametros.administrar",
-                "personas.administrar"
+                "personas.administrar",
+                "salidas.consultar"
               ]
             }
           },

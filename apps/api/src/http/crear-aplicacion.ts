@@ -45,6 +45,7 @@ import { ServicioEmisiones, type GanchosEmision } from "../modules/cotizaciones/
 import { ServicioRevisiones } from "../modules/cotizaciones/aplicacion/servicio-revisiones.js";
 import { ServicioRespuestas } from "../modules/cotizaciones/aplicacion/servicio-respuestas.js";
 import { ServicioExcepciones } from "../modules/cotizaciones/aplicacion/servicio-excepciones.js";
+import { ServicioSalidasInternas } from "../modules/cotizaciones/aplicacion/servicio-salidas-internas.js";
 import { ServicioAdministracionCatalogos } from "../modules/catalogos/aplicacion/servicio-administracion.js";
 import { ServicioCatalogoTecnico } from "../modules/catalogos/aplicacion/servicio-catalogo-tecnico.js";
 import { ServicioAdministracionSistema } from "../modules/administracion/aplicacion/servicio-administracion-sistema.js";
@@ -75,6 +76,7 @@ import {
   ExcepcionesCatalogoController,
   ExcepcionesVersionController,
   ExcepcionesRevisionController,
+  SalidasInternasController,
   VerificacionVersionController,
 } from "./controladores-cotizaciones.js";
 import { FiltroErrores, errorDeValidacion } from "./errores.js";
@@ -96,6 +98,7 @@ import {
   SERVICIO_ADMIN_CATALOGOS,
   SERVICIO_CATALOGO_TECNICO,
   SERVICIO_ADMINISTRACION_SISTEMA,
+  SERVICIO_SALIDAS_INTERNAS,
 } from "./tokens.js";
 
 const VENTANA_LIMITADOR_MS = 60_000;
@@ -160,6 +163,7 @@ function moduloRaiz(config: ConfiguracionApi, opciones: OpcionesAplicacion): Dyn
       ExcepcionesVersionController,
       ExcepcionesRevisionController,
       VerificacionVersionController,
+      SalidasInternasController,
       AdministracionCatalogosController,
       CatalogoTecnicoController,
       AdministracionSistemaController,
@@ -265,6 +269,11 @@ function moduloRaiz(config: ConfiguracionApi, opciones: OpcionesAplicacion): Dyn
         provide: SERVICIO_EXCEPCIONES,
         useFactory: (bd: ServicioBaseDeDatos, instante: RelojSesiones) => new ServicioExcepciones(bd.cliente, instante),
         inject: [BASE_DE_DATOS, RELOJ_SESIONES],
+      },
+      {
+        provide: SERVICIO_SALIDAS_INTERNAS,
+        useFactory: (bd: ServicioBaseDeDatos) => new ServicioSalidasInternas(bd.cliente),
+        inject: [BASE_DE_DATOS],
       },
       { provide: APP_GUARD, useClass: ThrottlerGuard },
       {

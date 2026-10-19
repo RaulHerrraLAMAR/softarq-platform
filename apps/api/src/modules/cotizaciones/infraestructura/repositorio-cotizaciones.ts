@@ -7,7 +7,8 @@
  *   invocadas con `$queryRaw` de plantilla (parámetros enlazados, nunca texto concatenado): cada
  *   alta o edición es UNA sentencia atómica con su evento y su registro de idempotencia.
  * - Las columnas internas de las versiones (entrada y resultado del cálculo) solo se leen para el
- *   servidor; ningún método de consulta para HTTP las devuelve.
+ *   servidor; ningún método de consulta comercial las devuelve. La única excepción es
+ *   `obtenerVersionInterna`, para el contrato interno de salidas (`salidas.consultar`, ADR-0018).
  */
 import type {
   CapturaBorrador,
@@ -25,6 +26,7 @@ import { EsquemaCapturaBorrador } from "@softarq/contracts";
 import type { Prisma } from "../../../generated/prisma/client.js";
 import type { ContextoOrganizacion, Db } from "../../catalogos/persistencia/repositorio-catalogos.js";
 import type { Idempotencia, RegistroIdempotencia } from "../aplicacion/idempotencia.js";
+import type { VersionParaSalidas } from "../dominio/salidas-internas.js";
 import { RepositorioEmisiones } from "./repositorio-emisiones.js";
 
 export interface Autor {
@@ -143,6 +145,8 @@ export interface DatosVersion {
   autorNombre: string;
   motivo: string | null;
   resumenCambios: ResumenCambios;
+  /** Módulo 14 (ADR-0018): nombres y vigencias del catálogo en la instantánea del cálculo. Interno. */
+  referenciasInternas: unknown;
 }
 
 export interface VersionGuardada {
@@ -211,7 +215,10 @@ function aProyecto(f: FilaProyecto): Proyecto {
  * (si la aprobación no se anuló) o Borrador (sin revisión, cambios solicitados, retirada o
  * aprobación anulada), como en el libro.
  */
-export function estadoDeVersion(r: RevisionDeVersion | null, emision: ResumenEmision | null = null): ResumenVersion["estado"] {
+export function estadoDeVersion(
+  r: { readonly estado: RevisionDeVersion["estado"]; readonly anulacion: unknown } | null,
+  emision: Pick<ResumenEmision, "sustituida"> | null = null,
+): ResumenVersion["estado"] {
   if (emision) return emision.sustituida ? "SUSTITUIDA" : "EMITIDA";
   if (r?.estado === "PENDIENTE") return "EN_REVISION";
   if (r?.estado === "APROBADA" && !r.anulacion) return "APROBADA";
@@ -671,6 +678,73 @@ export class RepositorioCotizaciones {
       cotizacion: v.proyeccionComercial as CotizacionComercial,
       avisos: v.avisos as VersionGuardada["avisos"],
       cambios: v.resumenCambios as ResumenCambios,
+    };
+  }
+
+  /**
+   * Versión con su instantánea interna (módulo 14, ADR-0018), para las salidas internas. Solo
+   * lectura y solo de la organización; consultas fijas por versión. Nunca toca el catálogo.
+   */
+  async obtenerVersionInterna(
+    ctx: ContextoOrganizacion,
+    cotizacionId: string,
+    numero: number,
+  ): Promise<VersionParaSalidas | null> {
+    // Consultas planas y en serie: dentro de una transacción interactiva, Prisma resolvería las
+    // relaciones anidadas en paralelo sobre la misma conexión (aviso de `pg`).
+    const org = ctx.organizacionId;
+    const q = await this.db.cotizacion.findFirst({ where: { organizacionId: org, id: cotizacionId }, select: { folio: true, origen: true, ultimaVersion: true } });
+    if (!q) return null;
+    const v = await this.db.cotizacionVersion.findFirst({
+      where: { organizacionId: org, cotizacionId, numero },
+      select: {
+        id: true,
+        numero: true,
+        fechaCalculo: true,
+        creadoEn: true,
+        autorNombre: true,
+        versionMotor: true,
+        entradaCalculo: true,
+        resultadoInterno: true,
+        solicitudCalculo: true,
+        referenciasInternas: true,
+      },
+    });
+    if (!v) return null;
+    // Estado derivado (`estadoDeVersion`): última revisión de la versión, su anulación y su emisión.
+    const revision = await this.db.revision.findFirst({
+      where: { organizacionId: org, versionId: v.id },
+      orderBy: [{ enviadoEn: "desc" }, { id: "desc" }],
+      select: { id: true, estado: true },
+    });
+    const anulada = revision
+      ? (await this.db.revisionEvento.count({ where: { organizacionId: org, revisionId: revision.id, tipo: "APROBACION_ANULADA" } })) > 0
+      : false;
+    const emitida = (await this.db.emision.count({ where: { organizacionId: org, versionId: v.id } })) > 0;
+    const sustituida = emitida && (await this.db.emision.count({ where: { organizacionId: org, cotizacionId, versionNumero: { gt: v.numero } } })) > 0;
+    const decisiones = await this.db.excepcionDecision.findMany({
+      where: { organizacionId: org, versionId: v.id },
+      select: { numero: true, decision: true },
+    });
+    const estado = estadoDeVersion(
+      revision ? { estado: revision.estado as RevisionDeVersion["estado"], anulacion: anulada ? true : null } : null,
+      emitida ? { sustituida } : null,
+    );
+    return {
+      versionId: v.id,
+      folio: q.folio,
+      numero: v.numero,
+      origen: q.origen,
+      resumen: { estado, esUltima: v.numero === q.ultimaVersion },
+      fechaCalculo: fechaIso(v.fechaCalculo),
+      versionMotor: v.versionMotor,
+      autorNombre: v.autorNombre,
+      creadoEn: iso(v.creadoEn),
+      entradaCalculo: v.entradaCalculo,
+      resultadoInterno: v.resultadoInterno,
+      solicitudCalculo: v.solicitudCalculo,
+      referenciasInternas: v.referenciasInternas,
+      decisiones: new Map(decisiones.map((d) => [d.numero, d.decision as "AUTORIZADA" | "RECHAZADA"])),
     };
   }
 
