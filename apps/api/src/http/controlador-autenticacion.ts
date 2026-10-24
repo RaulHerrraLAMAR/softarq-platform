@@ -102,6 +102,7 @@ export class AutenticacionController {
         this.registro?.log(`[${id}] ACCESO_LIMITE`);
         res.setHeader("Retry-After", String(r.reintentarEnSegundos));
         throw new ErrorApi(429, "DEMASIADAS_SOLICITUDES", "Demasiados intentos de acceso; espere antes de volver a intentarlo.");
+      case "CUENTA_INTERNA": // solo lo devuelve el acceso móvil; en la web nunca ocurre
       case "CREDENCIALES_INVALIDAS":
         this.registro?.log(`[${id}] ACCESO_FALLO`);
         throw new ErrorApi(401, "CREDENCIALES_INVALIDAS", "Correo o contraseña incorrectos.");
@@ -179,12 +180,14 @@ export class AutenticacionController {
 @SkipThrottle({ calculo: true })
 export class AutenticacionMovilController {
   private readonly registro: Logger | null;
+  private readonly panelUrl: string;
 
   constructor(
     @Inject(SERVICIO_AUTENTICACION) private readonly servicio: ServicioAutenticacion,
     @Inject(CONFIGURACION) config: ConfiguracionApi,
   ) {
     this.registro = config.registro === "ninguno" ? null : new Logger("Seguridad");
+    this.panelUrl = config.panelUrl;
   }
 
   @Post("sesion")
@@ -205,6 +208,9 @@ export class AutenticacionMovilController {
       case "CREDENCIALES_INVALIDAS":
         this.registro?.log(`[${id}] ACCESO_MOVIL_FALLO`);
         throw new ErrorApi(401, "CREDENCIALES_INVALIDAS", "Correo o contraseña incorrectos.");
+      case "CUENTA_INTERNA":
+        this.registro?.log(`[${id}] ACCESO_MOVIL_CUENTA_INTERNA`);
+        throw new ErrorApi(403, "CUENTA_INTERNA_USE_PANEL", "Esta aplicación es para clientes. Tu cuenta es del equipo: entra al panel de trabajo.", { panelUrl: this.panelUrl });
       case "TEMPORAL_CADUCADA":
         this.registro?.log(`[${id}] ACCESO_MOVIL_TEMPORAL_CADUCADA`);
         throw new ErrorApi(401, "CONTRASENA_TEMPORAL_CADUCADA", "La contraseña temporal caducó. Pida al Administrador del sistema un restablecimiento.");

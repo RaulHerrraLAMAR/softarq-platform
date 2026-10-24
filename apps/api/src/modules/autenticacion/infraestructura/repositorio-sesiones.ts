@@ -7,7 +7,7 @@
  * - en `sesion` se inserta y se actualizan únicamente la actividad y la revocación (permisos por
  *   columna en PostgreSQL). No hay DELETE.
  */
-import { FUNCIONES_USUARIO, type FuncionUsuario } from "@softarq/contracts";
+import { FUNCIONES_SESION, type FuncionSesion } from "@softarq/contracts";
 import type { PrismaClient } from "../../../generated/prisma/client.js";
 
 export interface CuentaParaAcceso {
@@ -17,7 +17,7 @@ export interface CuentaParaAcceso {
   /** Caducidad de la contraseña temporal vigente (`null` = definitiva). Módulo 13. */
   readonly temporalExpiraEn: Date | null;
   /** Pertenencias activas (en esta etapa el acceso exige exactamente una). */
-  readonly membresiasActivas: readonly { organizacionId: string }[];
+  readonly membresiasActivas: readonly { organizacionId: string; funciones: readonly FuncionSesion[] }[];
 }
 
 /** PREVIA: formulario de acceso web. USUARIO: cookie web. MOVIL: Bearer del canal móvil (ADR-0020). */
@@ -39,7 +39,7 @@ export interface SesionCompleta {
     readonly membresiaActiva: boolean;
     /** La contraseña vigente es temporal: la sesión queda restringida al cambio (módulo 13). */
     readonly temporalExpiraEn: Date | null;
-    readonly funciones: readonly FuncionUsuario[];
+    readonly funciones: readonly FuncionSesion[];
     readonly organizacion: { readonly id: string; readonly codigo: string; readonly nombre: string; readonly esDemo: boolean };
   } | null;
 }
@@ -63,7 +63,7 @@ export type MotivoRevocacion =
   | "DESACTIVADA"
   | "CAMBIO_CONTRASENA";
 
-const FUNCIONES_VALIDAS = new Set<string>(FUNCIONES_USUARIO);
+const FUNCIONES_VALIDAS = new Set<string>(FUNCIONES_SESION);
 
 export class RepositorioSesiones {
   constructor(private readonly prisma: PrismaClient) {}
@@ -76,7 +76,7 @@ export class RepositorioSesiones {
         hashContrasena: true,
         activo: true,
         contrasenaTemporalExpiraEn: true,
-        membresias: { where: { activa: true }, select: { organizacionId: true } },
+        membresias: { where: { activa: true }, select: { organizacionId: true, funciones: true } },
       },
     });
     if (!u) return null;
@@ -85,7 +85,7 @@ export class RepositorioSesiones {
       hashContrasena: u.hashContrasena,
       activo: u.activo,
       temporalExpiraEn: u.contrasenaTemporalExpiraEn,
-      membresiasActivas: u.membresias,
+      membresiasActivas: u.membresias.map((m) => ({ organizacionId: m.organizacionId, funciones: m.funciones.filter((f): f is FuncionSesion => FUNCIONES_VALIDAS.has(f)) })),
     };
   }
 
@@ -127,7 +127,7 @@ export class RepositorioSesiones {
             usuarioActivo: m.usuario.activo,
             membresiaActiva: m.activa,
             temporalExpiraEn: m.usuario.contrasenaTemporalExpiraEn,
-            funciones: m.funciones.filter((f): f is FuncionUsuario => FUNCIONES_VALIDAS.has(f)),
+            funciones: m.funciones.filter((f): f is FuncionSesion => FUNCIONES_VALIDAS.has(f)),
             organizacion: m.organizacion,
           }
         : null,

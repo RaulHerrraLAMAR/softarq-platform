@@ -2,7 +2,7 @@
  * Apoyo de las pruebas (Node): un `fetch` falso que registra lo que la app envía, y datos válidos según
  * los contratos. No es código de la app.
  */
-import { CAPACIDADES, type Capacidad, type FuncionUsuario, type RespuestaAccesoMovil, type RespuestaSesionMovil } from "@softarq/contracts/movil";
+import { CAPACIDADES, type Capacidad, type FuncionSesion, type RespuestaAccesoMovil, type RespuestaSesionMovil } from "@softarq/contracts/movil";
 
 export interface Peticion {
   metodo: string;
@@ -55,7 +55,7 @@ export function crearFetchFalso(manejador: Manejador) {
 export const TOKEN_A = "A".repeat(43);
 export const TOKEN_B = "B".repeat(43);
 
-export function sesionDe(funciones: FuncionUsuario[], capacidades: Capacidad[], extra: Partial<RespuestaSesionMovil> = {}): RespuestaSesionMovil {
+export function sesionDe(funciones: FuncionSesion[], capacidades: Capacidad[], extra: Partial<RespuestaSesionMovil> = {}): RespuestaSesionMovil {
   return {
     usuario: { nombre: "[DEMO] Persona", correo: "persona@softarq.test" },
     organizacion: { codigo: "DEMO", nombre: "[DEMO] Organización", esDemo: true },

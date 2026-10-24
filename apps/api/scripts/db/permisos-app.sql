@@ -209,3 +209,26 @@ DO $$ BEGIN
     GRANT EXECUTE ON FUNCTION public.softarq_registrar_vista_previa(UUID, UUID, UUID, UUID, UUID, TEXT, BYTEA, TIMESTAMPTZ) TO softarq_app;
   END IF;
 END $$;
+-- Módulo 17 (ADR-0021): cliente externo, trabajos, precios de referencia, solicitudes y estimaciones. La aplicación solo
+-- LEE estas tablas; toda escritura pasa por funciones SECURITY DEFINER que comprueban la identidad en la base.
+DO $$
+BEGIN
+  IF to_regprocedure('public.softarq_atender_solicitud(uuid,uuid,uuid,integer,integer,jsonb)') IS NOT NULL THEN
+    REVOKE INSERT, UPDATE ON TABLE public.acceso_cliente, public.trabajo_cliente, public.opcion_trabajo_cliente,
+      public.referencia_estimacion, public.solicitud_cliente, public.estimacion_solicitud FROM softarq_app;
+    GRANT EXECUTE ON FUNCTION public.softarq_exigir_cliente(UUID, UUID) TO softarq_app;
+    GRANT EXECUTE ON FUNCTION public.softarq_crear_acceso_cliente(UUID, UUID, UUID, JSONB, TEXT, TIMESTAMPTZ) TO softarq_app;
+    GRANT EXECUTE ON FUNCTION public.softarq_estado_acceso_cliente(UUID, UUID, UUID, BOOLEAN, TEXT) TO softarq_app;
+    GRANT EXECUTE ON FUNCTION public.softarq_editar_persona(UUID, UUID, UUID, INTEGER, JSONB, TEXT) TO softarq_app;
+    GRANT EXECUTE ON FUNCTION public.softarq_cliente_crear_proyecto(UUID, UUID, JSONB) TO softarq_app;
+    GRANT EXECUTE ON FUNCTION public.softarq_cliente_crear_solicitud(UUID, UUID, UUID, INTEGER, JSONB) TO softarq_app;
+    GRANT EXECUTE ON FUNCTION public.softarq_cliente_guardar_solicitud(UUID, UUID, UUID, INTEGER, JSONB) TO softarq_app;
+    GRANT EXECUTE ON FUNCTION public.softarq_cliente_enviar_solicitud(UUID, UUID, UUID, INTEGER) TO softarq_app;
+    GRANT EXECUTE ON FUNCTION public.softarq_cliente_retirar_solicitud(UUID, UUID, UUID, TEXT) TO softarq_app;
+    GRANT EXECUTE ON FUNCTION public.softarq_cliente_registrar_estimacion(UUID, UUID, UUID, INTEGER, JSONB, BYTEA) TO softarq_app;
+    GRANT EXECUTE ON FUNCTION public.softarq_designar_referencia(UUID, UUID, UUID, UUID, DATE, TEXT) TO softarq_app;
+    GRANT EXECUTE ON FUNCTION public.softarq_retirar_referencia(UUID, UUID, UUID, TEXT) TO softarq_app;
+    GRANT EXECUTE ON FUNCTION public.softarq_guardar_trabajo_cliente(UUID, UUID, JSONB) TO softarq_app;
+    GRANT EXECUTE ON FUNCTION public.softarq_atender_solicitud(UUID, UUID, UUID, INTEGER, INTEGER, JSONB) TO softarq_app;
+  END IF;
+END $$;

@@ -52,7 +52,7 @@ export function prismaApp(): ClientePrisma {
  */
 export const RAIZ_PRUEBAS_DOCUMENTOS = resolve(RAIZ_API, "..", "..", "..", "_work", "pruebas");
 
-export function directorioDocumentosPrueba(nombre: "integracion" | "e2e"): string {
+export function directorioDocumentosPrueba(nombre: "integracion" | "e2e" | "cliente"): string {
   return join(RAIZ_PRUEBAS_DOCUMENTOS, `documentos-${nombre}`);
 }
 

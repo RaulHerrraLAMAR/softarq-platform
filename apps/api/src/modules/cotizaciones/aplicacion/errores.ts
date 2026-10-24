@@ -60,7 +60,11 @@ export type CodigoNegocio =
   | "NUEVA_VERSION_SIN_PREPARAR"
   | "NUEVA_VERSION_NO_APLICA"
   | "SELECCIONES_DIVERGENTES"
-  | "VISTA_PREVIA_BLOQUEADA";
+  | "VISTA_PREVIA_BLOQUEADA"
+  // Módulo 17 (ADR-0021): solicitudes de clientes.
+  | "SOLICITUD_NO_EDITABLE"
+  | "SOLICITUD_INCOMPLETA"
+  | "ESTADO_SOLICITUD_NO_PERMITE";
 
 export interface DetalleError {
   campos?: { ruta: string; mensaje: string }[];
@@ -194,6 +198,13 @@ const MENSAJES: Record<string, [CodigoNegocio, string]> = {
     "No puede retirarse su propia función de Administrador del sistema, desactivarse ni restablecer su propia contraseña: pídalo a otro Administrador o use «Cambiar mi contraseña».",
   ],
   APROBACION_DIRECTA: ["VALOR_INVALIDO", "El concepto se aprueba con la operación Aprobar."],
+  // Módulo 17 (ADR-0021): cliente externo, solicitudes y referencias de estimación.
+  SOLICITUD_NO_EDITABLE: ["SOLICITUD_NO_EDITABLE", "La solicitud ya se envió: no se edita. Puedes retirarla si aún no la atiende el equipo."],
+  SOLICITUD_INCOMPLETA: ["SOLICITUD_INCOMPLETA", "Falta información en la solicitud antes de enviarla."],
+  ESTADO_SOLICITUD_NO_PERMITE: ["ESTADO_SOLICITUD_NO_PERMITE", "El estado actual de la solicitud no permite esta operación."],
+  ACCESO_EXISTENTE: ["DUPLICADO", "Este cliente ya tiene un acceso a la app."],
+  REFERENCIA_INCOMPATIBLE: ["VALOR_INVALIDO", "El precio no corresponde a un producto de este insumo."],
+  PRECIO_NO_VIGENTE: ["VIGENCIA_INVALIDA", "El precio no está vigente en la fecha de hoy."],
   // Módulo 15 (ADR-0019, B-34): tras una emisión, la versión nueva exige preparar modo y motivo.
   NUEVA_VERSION_SIN_PREPARAR: [
     "NUEVA_VERSION_SIN_PREPARAR",

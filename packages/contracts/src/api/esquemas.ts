@@ -316,6 +316,15 @@ export const FUNCIONES_USUARIO = ["PREPARADOR", "REVISOR", "ADMIN_CATALOGO", "AD
 export type FuncionUsuario = (typeof FUNCIONES_USUARIO)[number];
 
 /**
+ * Módulo 17 (ADR-0021): función exclusiva de las cuentas de cliente de la app. No es una función del libro ni se
+ * asigna desde la administración de personas; una cuenta con esta función no tiene ninguna otra.
+ */
+export const FUNCION_CLIENTE = "CLIENTE" as const;
+/** Funciones que puede mostrar una sesión: las internas del libro y la del cliente de la app. */
+export const FUNCIONES_SESION = [...FUNCIONES_USUARIO, FUNCION_CLIENTE] as const;
+export type FuncionSesion = (typeof FUNCIONES_SESION)[number];
+
+/**
  * Capacidades que la API comprueba en esta etapa. Solo es la enumeración: qué función concede cada
  * capacidad lo decide la API (matriz en ADR-0007); el cliente únicamente la muestra.
  */
@@ -349,6 +358,11 @@ export const CAPACIDADES = [
   // Módulo 14 (ADR-0018): salidas internas de una versión (compras calculadas, detalle e
   // indicadores, con costos y margen), solo lectura. Preparador y Revisor.
   "salidas.consultar",
+  // Módulo 17 (ADR-0021): atender las solicitudes de los clientes (Preparador).
+  "solicitudes.atender",
+  // Módulo 17 (ADR-0021): capacidades propias del cliente de la app; ninguna función interna las recibe.
+  "cliente.solicitudes",
+  "cliente.cotizaciones",
 ] as const;
 export type Capacidad = (typeof CAPACIDADES)[number];
 
@@ -379,7 +393,7 @@ export type RespuestaCsrf = z.infer<typeof EsquemaRespuestaCsrf>;
 export const EsquemaRespuestaSesion = z.strictObject({
   usuario: z.strictObject({ nombre: z.string(), correo: z.string() }),
   organizacion: z.strictObject({ codigo: z.string(), nombre: z.string(), esDemo: z.boolean() }),
-  funciones: z.array(z.enum(FUNCIONES_USUARIO)),
+  funciones: z.array(z.enum(FUNCIONES_SESION)),
   capacidades: z.array(z.enum(CAPACIDADES)),
   /** Instante ISO 8601 de la expiración absoluta. */
   expiraEn: z.string(),
@@ -483,6 +497,11 @@ export const CODIGOS_ERROR_API = [
   "NUEVA_VERSION_NO_APLICA",
   "SELECCIONES_DIVERGENTES",
   "VISTA_PREVIA_BLOQUEADA",
+  // Módulo 17 (ADR-0021): cliente externo, solicitud y estimación preliminar.
+  "CUENTA_INTERNA_USE_PANEL",
+  "SOLICITUD_NO_EDITABLE",
+  "SOLICITUD_INCOMPLETA",
+  "ESTADO_SOLICITUD_NO_PERMITE",
 ] as const;
 export type CodigoErrorApi = (typeof CODIGOS_ERROR_API)[number];
 
@@ -525,6 +544,8 @@ export const EsquemaRespuestaError = z.strictObject({
      * el registro existente en DUPLICADO o el precio que se solapa en SOLAPE_VIGENCIA.
      */
     registroVigente: z.unknown().optional(),
+    /** Módulo 17: 403 CUENTA_INTERNA_USE_PANEL, dirección del panel del equipo para esta cuenta. */
+    panelUrl: z.string().optional(),
     /** Módulo 15: 409 SELECCIONES_DIVERGENTES, selecciones del borrador y las que dejaría el modo. */
     selecciones: z
       .strictObject({

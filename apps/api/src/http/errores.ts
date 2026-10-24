@@ -165,6 +165,10 @@ const ESTADO_NEGOCIO: Record<CodigoNegocio, number> = {
   NUEVA_VERSION_NO_APLICA: 422,
   SELECCIONES_DIVERGENTES: 409,
   VISTA_PREVIA_BLOQUEADA: 422,
+  // Módulo 17 (ADR-0021).
+  SOLICITUD_NO_EDITABLE: 409,
+  SOLICITUD_INCOMPLETA: 422,
+  ESTADO_SOLICITUD_NO_PERMITE: 409,
 };
 
 export function traducirError(error: unknown): ErrorApi {

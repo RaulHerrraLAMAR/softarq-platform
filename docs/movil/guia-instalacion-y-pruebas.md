@@ -2,6 +2,8 @@
 
 Guía práctica del módulo 16, etapa 1 (acceso y consulta). Decisiones y motivos: [ADR-0020](../adr/0020-app-movil-expo-conexion-y-sesion-movil.md). Trabajo en la laptop: `C:\Proyecto_SoftArq\Proyecto_SoftArq` (en PowerShell, desde `softarq-platform`).
 
+> **Cambio de producto (módulo 17, ADR-0021, 24/10/2026):** la app es ahora **del cliente**. La API ya no admite cuentas internas en la app (responde 403 `CUENTA_INTERNA_USE_PANEL`) y las rutas internas de consulta dejaron de estar disponibles por Bearer. La app de la etapa 1 (consulta interna de clientes, proyectos y cotizaciones) **no funciona** contra esta API y se reemplaza en la etapa E2; hasta entonces, esta guía describe la conexión (USB, Metro) y la instalación, que siguen vigentes, y la lista T1–T10 de la §10 queda **obsoleta**. La API del cliente está en [`api-del-cliente.md`](api-del-cliente.md).
+
 > **Estado de las pruebas en el teléfono:** consulte el registro de la §10. Una prueba en el teléfono se anota como realizada **solo** cuando se ejecutó en el dispositivo; las pruebas automatizadas y las capturas de la web no la sustituyen.
 
 ## 1. Tres conexiones distintas

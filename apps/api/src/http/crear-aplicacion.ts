@@ -50,9 +50,13 @@ import { ServicioVistaPrevia } from "../modules/cotizaciones/aplicacion/servicio
 import { ServicioAdministracionCatalogos } from "../modules/catalogos/aplicacion/servicio-administracion.js";
 import { ServicioCatalogoTecnico } from "../modules/catalogos/aplicacion/servicio-catalogo-tecnico.js";
 import { ServicioAdministracionSistema } from "../modules/administracion/aplicacion/servicio-administracion-sistema.js";
+import { ServicioAdministracionCliente } from "../modules/cliente/aplicacion/servicio-administracion-cliente.js";
+import { ServicioCliente } from "../modules/cliente/aplicacion/servicio-cliente.js";
+import { ServicioEquipo } from "../modules/cliente/aplicacion/servicio-equipo.js";
 import { AdministracionCatalogosController } from "./controladores-catalogos-admin.js";
 import { CatalogoTecnicoController } from "./controladores-catalogo-tecnico.js";
 import { AdministracionSistemaController } from "./controladores-administracion.js";
+import { AdministracionClienteController, ClienteController, SolicitudesEquipoController } from "./controladores-cliente.js";
 import { generarPdf, type GeneradorPdf } from "../modules/cotizaciones/dominio/pdf/generador-pdf.js";
 import {
   AlmacenArchivos,
@@ -102,6 +106,9 @@ import {
   SERVICIO_ADMINISTRACION_SISTEMA,
   SERVICIO_SALIDAS_INTERNAS,
   SERVICIO_VISTA_PREVIA,
+  SERVICIO_CLIENTE,
+  SERVICIO_EQUIPO,
+  SERVICIO_ADMINISTRACION_CLIENTE,
 } from "./tokens.js";
 
 const VENTANA_LIMITADOR_MS = 60_000;
@@ -172,6 +179,9 @@ function moduloRaiz(config: ConfiguracionApi, opciones: OpcionesAplicacion): Dyn
       AdministracionCatalogosController,
       CatalogoTecnicoController,
       AdministracionSistemaController,
+      ClienteController,
+      SolicitudesEquipoController,
+      AdministracionClienteController,
       EmisorController,
       OpenApiController,
     ],
@@ -269,6 +279,23 @@ function moduloRaiz(config: ConfiguracionApi, opciones: OpcionesAplicacion): Dyn
         provide: SERVICIO_ADMINISTRACION_SISTEMA,
         useFactory: (bd: ServicioBaseDeDatos, instante: RelojSesiones) => new ServicioAdministracionSistema(bd.cliente, new ServicioContrasenas(), instante),
         inject: [BASE_DE_DATOS, RELOJ_SESIONES],
+      },
+      {
+        provide: SERVICIO_CLIENTE,
+        useFactory: (bd: ServicioBaseDeDatos, reloj: Reloj, instante: RelojSesiones, emisiones: ServicioEmisiones) =>
+          new ServicioCliente(bd.cliente, reloj, instante, emisiones),
+        inject: [BASE_DE_DATOS, RELOJ, RELOJ_SESIONES, SERVICIO_EMISIONES],
+      },
+      {
+        provide: SERVICIO_EQUIPO,
+        useFactory: (bd: ServicioBaseDeDatos, reloj: Reloj) => new ServicioEquipo(bd.cliente, reloj),
+        inject: [BASE_DE_DATOS, RELOJ],
+      },
+      {
+        provide: SERVICIO_ADMINISTRACION_CLIENTE,
+        useFactory: (bd: ServicioBaseDeDatos, reloj: Reloj, instante: RelojSesiones) =>
+          new ServicioAdministracionCliente(bd.cliente, new ServicioContrasenas(), reloj, instante),
+        inject: [BASE_DE_DATOS, RELOJ, RELOJ_SESIONES],
       },
       {
         provide: SERVICIO_EXCEPCIONES,

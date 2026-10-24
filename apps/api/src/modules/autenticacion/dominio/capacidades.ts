@@ -33,10 +33,13 @@
  *   y usa 12 y 13) y Revisor (indicadores internos de 14, §5.5). Cambio intencionado frente a la
  *   protección de costos de ADR-0009: el Revisor ya consulta costos e indicadores. Los
  *   administradores no la reciben. Consultar no concede calcular, aprobar ni emitir.
+ * - Módulo 17 (ADR-0021): `solicitudes.atender` solo para el Preparador (atiende las solicitudes de los clientes y
+ *   prepara la cotización formal). El cliente de la app tiene la función exclusiva CLIENTE con capacidades propias
+ *   (`cliente.*`) que ninguna función interna recibe, y no recibe ninguna interna: su acceso es solo a lo suyo.
  */
-import { CAPACIDADES, type Capacidad, type FuncionUsuario } from "@softarq/contracts";
+import { CAPACIDADES, type Capacidad, type FuncionSesion } from "@softarq/contracts";
 
-export const CAPACIDADES_POR_FUNCION: Readonly<Record<FuncionUsuario, readonly Capacidad[]>> = {
+export const CAPACIDADES_POR_FUNCION: Readonly<Record<FuncionSesion, readonly Capacidad[]>> = {
   PREPARADOR: [
     "sesion.propia",
     "catalogos.consultar",
@@ -54,6 +57,8 @@ export const CAPACIDADES_POR_FUNCION: Readonly<Record<FuncionUsuario, readonly C
     "excepciones.consultar",
     // Módulo 14 (ADR-0018): compras calculadas, detalle e indicadores (12 y 13 del libro).
     "salidas.consultar",
+    // Módulo 17 (ADR-0021): solicitudes de los clientes.
+    "solicitudes.atender",
   ],
   REVISOR: [
     "sesion.propia",
@@ -86,10 +91,12 @@ export const CAPACIDADES_POR_FUNCION: Readonly<Record<FuncionUsuario, readonly C
     "parametros.administrar",
     "personas.administrar",
   ],
+  // Módulo 17 (ADR-0021): cuenta del cliente de la app. Solo lo propio; nada interno.
+  CLIENTE: ["sesion.propia", "cliente.solicitudes", "cliente.cotizaciones"],
 };
 
 /** Unión de las capacidades de las funciones, en el orden de `CAPACIDADES`. */
-export function capacidadesDe(funciones: readonly FuncionUsuario[]): Capacidad[] {
+export function capacidadesDe(funciones: readonly FuncionSesion[]): Capacidad[] {
   const concedidas = new Set(funciones.flatMap((f) => CAPACIDADES_POR_FUNCION[f]));
   return CAPACIDADES.filter((c) => concedidas.has(c));
 }

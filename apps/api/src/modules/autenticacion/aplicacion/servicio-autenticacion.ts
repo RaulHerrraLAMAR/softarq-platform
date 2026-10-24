@@ -11,7 +11,7 @@
  * - módulo 13 (ADR-0017): con una contraseña temporal la sesión queda restringida (solo consultar la
  *   sesión, cambiar la contraseña y cerrar); una temporal caducada no permite entrar.
  */
-import type { Capacidad, FuncionUsuario } from "@softarq/contracts";
+import type { Capacidad, FuncionSesion } from "@softarq/contracts";
 import { capacidadesDe } from "../dominio/capacidades.js";
 import { POLITICA_SESION, debeActualizarActividad, estadoTemporal, normalizarCorreo } from "../dominio/politica.js";
 import type { ServicioContrasenas } from "../infraestructura/contrasenas.js";
@@ -32,7 +32,7 @@ export interface ContextoSesion {
   readonly sesionId: string;
   readonly usuario: { readonly id: string; readonly nombre: string; readonly correo: string };
   readonly organizacion: { readonly id: string; readonly codigo: string; readonly nombre: string; readonly esDemo: boolean };
-  readonly funciones: readonly FuncionUsuario[];
+  readonly funciones: readonly FuncionSesion[];
   readonly capacidades: readonly Capacidad[];
   readonly expiraEn: Date;
   /** Contraseña temporal pendiente de cambio: la guardia solo deja las rutas del cambio. */
@@ -60,6 +60,8 @@ export type ResultadoAcceso =
   | { estado: "CORRECTO"; tokens: TokensEmitidos; contexto: ContextoSesion }
   | { estado: "CREDENCIALES_INVALIDAS" }
   | { estado: "TEMPORAL_CADUCADA" }
+  /** Módulo 17: la contraseña es correcta pero la cuenta es interna; la app es solo para clientes (se dirige al panel). */
+  | { estado: "CUENTA_INTERNA" }
   | { estado: "LIMITE"; reintentarEnSegundos: number };
 
 export type ResultadoCambioContrasena =
@@ -135,9 +137,16 @@ export class ServicioAutenticacion {
       : await this.contrasenas.verificarFicticio(contrasena);
     // Una sola pertenencia activa: la selección de organización aún no existe (ADR-0007 §2).
     const membresia = datos?.membresiasActivas.length === 1 ? datos.membresiasActivas[0] : undefined;
-    if (!datos || !coincide || !datos.activo || !membresia) {
+    // Módulo 17 (ADR-0021): una cuenta de cliente no abre una sesión web y una interna no abre una móvil. La web responde
+    // como una credencial inválida (no revela que la cuenta existe); la app, con la contraseña correcta, explica y dirige al panel.
+    const esCliente = membresia?.funciones.includes("CLIENTE") === true;
+    if (!datos || !coincide || !datos.activo || !membresia || (tipo === "USUARIO" && esCliente)) {
       this.limitador.registrarFallo(cuenta, ip);
       return { estado: "CREDENCIALES_INVALIDAS" };
+    }
+    if (tipo === "MOVIL" && !esCliente) {
+      this.limitador.registrarExito(cuenta, ip);
+      return { estado: "CUENTA_INTERNA" };
     }
 
     const ahora = this.reloj.ahora();
@@ -196,6 +205,12 @@ export class ServicioAutenticacion {
     if (estado !== "VIGENTE") return { estado: "NO_VALIDA", motivo: estado };
 
     const t = s.titular;
+    // Módulo 17: aislamiento de canales por tipo de cuenta (una sesión móvil solo de clientes; la web, solo de internos).
+    const cuentaCliente = t.funciones.includes("CLIENTE");
+    if (tipo === "MOVIL" ? !cuentaCliente : cuentaCliente) {
+      await this.repo.revocar(s.id, "MEMBRESIA_INACTIVA", ahora);
+      return { estado: "NO_VALIDA", motivo: tipo === "MOVIL" ? "CUENTA_INTERNA" : "CUENTA_CLIENTE" };
+    }
     const motivoInactiva: MotivoRevocacion | null = !t.usuarioActivo
       ? "USUARIO_INACTIVO"
       : !t.membresiaActiva

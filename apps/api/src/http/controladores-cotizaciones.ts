@@ -94,7 +94,7 @@ import type { ServicioEmisiones } from "../modules/cotizaciones/aplicacion/servi
 import type { ServicioRevisiones } from "../modules/cotizaciones/aplicacion/servicio-revisiones.js";
 import { organizacionDe, sesionDe } from "./contexto.js";
 import { ErrorApi } from "./errores.js";
-import { PermitidaEnMovil, Requiere } from "./guardia-sesion.js";
+import { Requiere } from "./guardia-sesion.js";
 import { SERVICIO_CLIENTES, SERVICIO_COTIZACIONES, SERVICIO_EMISIONES, SERVICIO_REVISIONES } from "./tokens.js";
 
 const EsquemaClaveIdempotencia = z.uuid();
@@ -165,14 +165,12 @@ export class ClientesController {
 
   @Get()
   @Requiere("clientes.consultar")
-  @PermitidaEnMovil()
   listar(@Req() req: Request, @Query({ schema: EsquemaConsultaClientes }) c: ConsultaClientes): Promise<RespuestaClientes> {
     return this.servicio.listarClientes(organizacionDe(req), c);
   }
 
   @Get(":id")
   @Requiere("clientes.consultar")
-  @PermitidaEnMovil()
   detalle(@Req() req: Request, @Param() params: unknown): Promise<DetalleCliente> {
     return this.servicio.detalleCliente(organizacionDe(req), idDeRuta(params));
   }
@@ -205,14 +203,12 @@ export class ProyectosController {
 
   @Get()
   @Requiere("clientes.consultar")
-  @PermitidaEnMovil()
   listar(@Req() req: Request, @Query({ schema: EsquemaConsultaProyectos }) c: ConsultaProyectos): Promise<RespuestaProyectos> {
     return this.servicio.listarProyectos(organizacionDe(req), c);
   }
 
   @Get(":id")
   @Requiere("clientes.consultar")
-  @PermitidaEnMovil()
   detalle(@Req() req: Request, @Param() params: unknown): Promise<Proyecto> {
     return this.servicio.detalleProyecto(organizacionDe(req), idDeRuta(params));
   }
@@ -249,7 +245,6 @@ export class CotizacionesController {
 
   @Get()
   @Requiere("cotizaciones.consultar")
-  @PermitidaEnMovil()
   listar(
     @Req() req: Request,
     @Query({ schema: EsquemaConsultaCotizaciones }) c: ConsultaCotizaciones,
@@ -259,7 +254,6 @@ export class CotizacionesController {
 
   @Get(":id")
   @Requiere("cotizaciones.consultar")
-  @PermitidaEnMovil()
   detalle(@Req() req: Request, @Param() params: unknown): Promise<DetalleCotizacion> {
     // Las excepciones del borrador solo para quien tiene su capacidad (módulo 10).
     return this.servicio.detalle(organizacionDe(req), idDeRuta(params), sesionDe(req).capacidades.includes("excepciones.consultar"));
@@ -351,7 +345,6 @@ export class CotizacionesController {
   /** Versión guardada tal como se almacenó: nunca se recalcula al consultarla. */
   @Get(":id/versiones/:numero")
   @Requiere("cotizaciones.consultar")
-  @PermitidaEnMovil()
   version(@Req() req: Request, @Param() params: unknown): Promise<Version> {
     const r = EsquemaParametroVersion.safeParse(params);
     if (!r.success) throw new ErrorApi(404, "NO_ENCONTRADO", "La versión no existe en su organización.");
@@ -385,7 +378,8 @@ export class CotizacionesController {
 
 function actorDe(req: Request) {
   const s = sesionDe(req);
-  return { usuarioId: s.usuario.id, nombre: s.usuario.nombre, capacidades: s.capacidades, funciones: s.funciones };
+  // Las rutas internas nunca atienden a una cuenta de cliente (sin capacidades internas); se excluye su función por tipos.
+  return { usuarioId: s.usuario.id, nombre: s.usuario.nombre, capacidades: s.capacidades, funciones: s.funciones.filter((f): f is Exclude<typeof f, "CLIENTE"> => f !== "CLIENTE") };
 }
 
 /** Enviar a revisión una versión concreta: `POST /cotizaciones/{id}/versiones/{numero}/revisiones`. */

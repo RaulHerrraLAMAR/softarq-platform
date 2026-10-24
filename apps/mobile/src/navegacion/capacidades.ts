@@ -5,7 +5,7 @@
  * es presentación; la API comprueba la capacidad en cada solicitud. Las funciones administrativas no
  * implican acciones del Preparador o del Revisor: cuentan únicamente las capacidades combinadas.
  */
-import type { Capacidad, FuncionUsuario } from "@softarq/contracts/movil";
+import type { Capacidad, FuncionSesion } from "@softarq/contracts/movil";
 
 export interface Secciones {
   /** Listado y detalle de clientes (`clientes.consultar`). */
@@ -25,11 +25,12 @@ export function seccionesDe(capacidades: readonly Capacidad[]): Secciones {
 
 export const hayAlgoQueConsultar = (s: Secciones): boolean => s.clientes || s.proyectos || s.cotizaciones;
 
-const NOMBRE_FUNCION: Record<FuncionUsuario, string> = {
+const NOMBRE_FUNCION: Record<FuncionSesion, string> = {
   PREPARADOR: "Preparador",
   REVISOR: "Revisor",
   ADMIN_CATALOGO: "Administrador del catálogo",
   ADMIN_SISTEMA: "Administrador del sistema",
+  CLIENTE: "Cliente",
 };
 
-export const textoFunciones = (funciones: readonly FuncionUsuario[]): string => funciones.map((f) => NOMBRE_FUNCION[f]).join(" · ");
+export const textoFunciones = (funciones: readonly FuncionSesion[]): string => funciones.map((f) => NOMBRE_FUNCION[f]).join(" · ");

@@ -44,10 +44,13 @@ const CODIGO_POR_SEGMENTO: Record<string, string> = {
   componentes: "CMP-00001",
   conversiones: "m",
   personas: "00000000-0000-4000-8000-000000000000",
+  // Módulo 17 (ADR-0021).
+  "accesos-cliente": "00000000-0000-4000-8000-000000000000",
+  "referencias-estimacion": "INS-00001",
 };
 
 /** Rutas del Administrador del sistema (módulo 13); el resto de `/admin` es del catálogo. */
-const esDelSistema = (ruta: string) => /^\/api\/v1\/admin\/(parametros|personas)(\/|$)/.test(ruta);
+const esDelSistema = (ruta: string) => /^\/api\/v1\/admin\/(parametros|personas|accesos-cliente)(\/|$)/.test(ruta);
 
 function rutasAdmin(): { metodo: string; ruta: string }[] {
   const doc = construirDocumentoOpenApi() as { paths: Record<string, Record<string, unknown>> };
@@ -147,8 +150,10 @@ describe("acceso real a /admin por función y ruta", () => {
       "GET /api/v1/admin/personas/{id}",
       "PATCH /api/v1/admin/parametros",
       "PATCH /api/v1/admin/personas/{id}",
+      "POST /api/v1/admin/accesos-cliente/{id}/contrasena",
       "POST /api/v1/admin/personas",
       "POST /api/v1/admin/personas/{id}/restablecimiento",
+      "PUT /api/v1/admin/accesos-cliente/{id}/estado",
     ]);
   });
 

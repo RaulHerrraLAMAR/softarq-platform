@@ -65,6 +65,7 @@ model Organizacion {
   contadores      Contador[]
   bitacora        Bitacora[]
   emisor          Emisor?
+  trabajosCliente TrabajoCliente[]
 
   @@map("organizacion")
 }
@@ -121,6 +122,7 @@ model Insumo {
   conversiones Conversion[]
   productos    Producto[]
   componentes  Componente[]
+  referenciasEstimacion ReferenciaEstimacion[]
 
   @@unique([organizacionId, id])
   @@unique([organizacionId, codigo])
@@ -244,8 +246,10 @@ model Precio {
   producto     Producto     @relation(fields: [organizacionId, productoId], references: [organizacionId, id], onDelete: Restrict, onUpdate: Restrict)
   proveedor    Proveedor    @relation(fields: [organizacionId, proveedorId], references: [organizacionId, id], onDelete: Restrict, onUpdate: Restrict)
   registrador  Membresia?   @relation("PrecioRegistradoPor", fields: [organizacionId, registradoPor], references: [organizacionId, usuarioId], onDelete: Restrict, onUpdate: Restrict, map: "precio_registrado_por_fk")
+  referenciasEstimacion ReferenciaEstimacion[]
   anulador     Membresia?   @relation("PrecioAnuladoPor", fields: [organizacionId, anuladoPor], references: [organizacionId, usuarioId], onDelete: Restrict, onUpdate: Restrict, map: "precio_anulado_por_fk")
 
+  @@unique([organizacionId, id])
   @@unique([organizacionId, codigo])
   @@map("precio")
 }
@@ -325,6 +329,7 @@ model Concepto {
   autor         Membresia?      @relation("ConceptoCreadoPor", fields: [organizacionId, creadoPor], references: [organizacionId, usuarioId], onDelete: Restrict, onUpdate: Restrict, map: "concepto_creado_por_fk")
   modificador   Membresia?      @relation("ConceptoModificadoPor", fields: [organizacionId, modificadoPor], references: [organizacionId, usuarioId], onDelete: Restrict, onUpdate: Restrict, map: "concepto_modificado_por_fk")
   componentes   Componente[]
+  opcionesCliente OpcionTrabajoCliente[]
 
   @@unique([organizacionId, id])
   @@unique([organizacionId, codigo])
@@ -510,6 +515,14 @@ model Membresia {
   parametrosModificados      ParametrosCalculo[]      @relation("ParametrosModificadosPor")
   modificador                Membresia?               @relation("MembresiaModificadaPor", fields: [organizacionId, modificadaPor], references: [organizacionId, usuarioId], onDelete: Restrict, onUpdate: Restrict, map: "membresia_modificada_por_fk")
   membresiasModificadas      Membresia[]              @relation("MembresiaModificadaPor")
+  // Cliente externo de la app (módulo 17, ADR-0021).
+  accesoCliente              AccesoCliente?           @relation("AccesoClienteMembresia")
+  accesosClienteCreados      AccesoCliente[]          @relation("AccesoClienteCreadoPor")
+  trabajosClienteModificados TrabajoCliente[]         @relation("TrabajoClienteModificadoPor")
+  referenciasDesignadas      ReferenciaEstimacion[]   @relation("ReferenciaDesignadaPor")
+  referenciasRetiradas       ReferenciaEstimacion[]   @relation("ReferenciaRetiradaPor")
+  solicitudesCreadas         SolicitudCliente[]       @relation("SolicitudCreadaPor")
+  solicitudesAtendidas       SolicitudCliente[]       @relation("SolicitudAtendidaPor")
 
   @@unique([organizacionId, usuarioId])
   @@index([usuarioId])
@@ -572,6 +585,8 @@ model Cliente {
   autor        Membresia    @relation("ClienteCreadoPor", fields: [organizacionId, creadoPor], references: [organizacionId, usuarioId], onDelete: Restrict, onUpdate: Restrict)
   modificador  Membresia    @relation("ClienteModificadoPor", fields: [organizacionId, modificadoPor], references: [organizacionId, usuarioId], onDelete: Restrict, onUpdate: Restrict)
   proyectos    Proyecto[]
+  acceso       AccesoCliente?
+  solicitudes  SolicitudCliente[]
 
   @@unique([organizacionId, id])
   @@unique([organizacionId, codigo])
@@ -600,6 +615,7 @@ model Proyecto {
   autor        Membresia    @relation("ProyectoCreadoPor", fields: [organizacionId, creadoPor], references: [organizacionId, usuarioId], onDelete: Restrict, onUpdate: Restrict)
   modificador  Membresia    @relation("ProyectoModificadoPor", fields: [organizacionId, modificadoPor], references: [organizacionId, usuarioId], onDelete: Restrict, onUpdate: Restrict)
   cotizaciones Cotizacion[]
+  solicitudes  SolicitudCliente[]
 
   @@unique([organizacionId, id])
   @@unique([organizacionId, codigo])
@@ -634,6 +650,8 @@ model Cotizacion {
   duplicadaDeId       String?   @map("duplicada_de_id") @db.Uuid
   duplicadaDeVersion  Int?      @map("duplicada_de_version")
   duplicadaDeRevision Int?      @map("duplicada_de_revision")
+  /// Módulo 17 (ADR-0021): solicitud del cliente de la que nace (origen APP_CLIENTE); única.
+  solicitudId         String?   @map("solicitud_id") @db.Uuid
 
   proyecto    Proyecto            @relation(fields: [organizacionId, clienteId, proyectoId], references: [organizacionId, clienteId, id], onDelete: Restrict, onUpdate: Restrict)
   duplicadaDe Cotizacion?         @relation("CotizacionDuplicada", fields: [organizacionId, duplicadaDeId], references: [organizacionId, id], onDelete: Restrict, onUpdate: Restrict, map: "cotizacion_duplicada_de_fk")
@@ -644,9 +662,12 @@ model Cotizacion {
   versiones   CotizacionVersion[]
   revisiones  Revision[]
   emisiones   Emision[]
+  solicitud   SolicitudCliente?   @relation("SolicitudCotizacion", fields: [organizacionId, solicitudId], references: [organizacionId, id], onDelete: Restrict, onUpdate: Restrict, map: "cotizacion_solicitud_fk")
 
   @@unique([organizacionId, id])
   @@unique([organizacionId, folio])
+  /// Módulo 17: una cotización por solicitud (los NULL no cuentan).
+  @@unique([organizacionId, solicitudId])
   /// Destino de la FK de `revision`: identificador, organización y folio coherentes (ADR-0009).
   @@unique([organizacionId, id, folio])
   @@index([organizacionId, creadoEn])
@@ -978,4 +999,167 @@ model ExcepcionDecision {
   @@unique([organizacionId, versionId, numero], map: "excepcion_decision_unica_key")
   @@index([organizacionId, revisionId])
   @@map("excepcion_decision")
+}
+
+// ---------------------------------------------------------------------------
+// Módulo 17 (ADR-0021): cliente externo de la app, trabajos para clientes, precios de referencia,
+// solicitudes y estimaciones preliminares. softarq_app solo LEE estas tablas con INSERT/UPDATE directos
+// revocados: toda escritura pasa por funciones SECURITY DEFINER que comprueban la identidad en la base
+// (acceso del cliente o función interna). La estimación y la bitácora son de solo alta.
+// ---------------------------------------------------------------------------
+
+/// Vínculo de una cuenta de cliente con su Cliente. Una cuenta tiene exactamente uno y un Cliente, una cuenta.
+/// La pertenencia de la cuenta lleva la función exclusiva CLIENTE (CHECK). Solo la crea `softarq_crear_acceso_cliente`.
+model AccesoCliente {
+  id             String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organizacionId String   @map("organizacion_id") @db.Uuid
+  usuarioId      String   @unique @map("usuario_id") @db.Uuid
+  clienteId      String   @map("cliente_id") @db.Uuid
+  activo         Boolean  @default(true)
+  creadoPor      String   @map("creado_por") @db.Uuid
+  creadoEn       DateTime @default(now()) @map("creado_en") @db.Timestamptz(3)
+  modificadoEn   DateTime @default(now()) @map("modificado_en") @db.Timestamptz(3)
+
+  membresia Membresia @relation("AccesoClienteMembresia", fields: [organizacionId, usuarioId], references: [organizacionId, usuarioId], onDelete: Restrict, onUpdate: Restrict)
+  cliente   Cliente   @relation(fields: [organizacionId, clienteId], references: [organizacionId, id], onDelete: Restrict, onUpdate: Restrict)
+  autor     Membresia @relation("AccesoClienteCreadoPor", fields: [organizacionId, creadoPor], references: [organizacionId, usuarioId], onDelete: Restrict, onUpdate: Restrict)
+
+  @@unique([organizacionId, clienteId])
+  @@unique([organizacionId, usuarioId])
+  @@map("acceso_cliente")
+}
+
+/// Trabajo que se ofrece al cliente (Cubierta, Losa, Muro…). Traduce la decisión técnica: no expone conceptos.
+model TrabajoCliente {
+  id             String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organizacionId String   @map("organizacion_id") @db.Uuid
+  codigo         String   @db.VarChar(40)
+  nombre         String   @db.VarChar(80)
+  descripcion    String   @db.VarChar(300)
+  /// cubierta | losa | muro (lista cerrada; CHECK).
+  ilustracion    String   @db.VarChar(10)
+  orden          Int
+  activo         Boolean  @default(true)
+  revision       Int      @default(0)
+  /// NULL solo en la carga DEMO (sin persona).
+  modificadoPor  String?  @map("modificado_por") @db.Uuid
+  modificadoEn   DateTime @default(now()) @map("modificado_en") @db.Timestamptz(3)
+
+  organizacion Organizacion           @relation(fields: [organizacionId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  modificador  Membresia?             @relation("TrabajoClienteModificadoPor", fields: [organizacionId, modificadoPor], references: [organizacionId, usuarioId], onDelete: Restrict, onUpdate: Restrict, map: "trabajo_cliente_modificado_por_fk")
+  opciones     OpcionTrabajoCliente[]
+
+  @@unique([organizacionId, id])
+  @@unique([organizacionId, codigo])
+  @@map("trabajo_cliente")
+}
+
+/// Opción de un trabajo: apunta a UN concepto (que la API exige aprobado al estimar) y fija `consolidarCompras`.
+model OpcionTrabajoCliente {
+  id                String  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organizacionId    String  @map("organizacion_id") @db.Uuid
+  trabajoId         String  @map("trabajo_id") @db.Uuid
+  codigo            String  @db.VarChar(40)
+  nombre            String  @db.VarChar(80)
+  descripcion       String  @db.VarChar(300)
+  conceptoId        String  @map("concepto_id") @db.Uuid
+  consolidarCompras Boolean @map("consolidar_compras")
+  /// [{clave, etiqueta, ayuda}] en el orden de captura; la API lo contrasta con la fórmula del concepto.
+  medidas           Json
+  orden             Int
+  activa            Boolean @default(true)
+
+  trabajo  TrabajoCliente @relation(fields: [organizacionId, trabajoId], references: [organizacionId, id], onDelete: Restrict, onUpdate: Restrict)
+  concepto Concepto       @relation(fields: [organizacionId, conceptoId], references: [organizacionId, id], onDelete: Restrict, onUpdate: Restrict)
+
+  @@unique([organizacionId, trabajoId, codigo])
+  @@map("opcion_trabajo_cliente")
+}
+
+/// Precio de referencia de un insumo para las estimaciones. Una referencia ACTIVA por insumo (índice parcial).
+/// No es una selección aprobada de ninguna cotización.
+model ReferenciaEstimacion {
+  id             String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organizacionId String    @map("organizacion_id") @db.Uuid
+  insumoId       String    @map("insumo_id") @db.Uuid
+  precioId       String    @map("precio_id") @db.Uuid
+  motivo         String    @db.VarChar(200)
+  designadaPor   String?   @map("designada_por") @db.Uuid
+  designadaEn    DateTime  @default(now()) @map("designada_en") @db.Timestamptz(3)
+  retiradaPor    String?   @map("retirada_por") @db.Uuid
+  retiradaEn     DateTime? @map("retirada_en") @db.Timestamptz(3)
+  motivoRetiro   String?   @map("motivo_retiro") @db.VarChar(200)
+
+  insumo     Insumo      @relation(fields: [organizacionId, insumoId], references: [organizacionId, id], onDelete: Restrict, onUpdate: Restrict)
+  precio     Precio      @relation(fields: [organizacionId, precioId], references: [organizacionId, id], onDelete: Restrict, onUpdate: Restrict)
+  designador Membresia?  @relation("ReferenciaDesignadaPor", fields: [organizacionId, designadaPor], references: [organizacionId, usuarioId], onDelete: Restrict, onUpdate: Restrict, map: "referencia_designada_por_fk")
+  retirador  Membresia?  @relation("ReferenciaRetiradaPor", fields: [organizacionId, retiradaPor], references: [organizacionId, usuarioId], onDelete: Restrict, onUpdate: Restrict, map: "referencia_retirada_por_fk")
+
+  @@index([organizacionId, insumoId])
+  @@map("referencia_estimacion")
+}
+
+/// Solicitud de cotización de un cliente: un proyecto, varios trabajos. SOL-AAAA-NNNNN.
+/// BORRADOR → ENVIADA → EN_PREPARACION (la atiende el equipo) o RETIRADA. "Cotizada" se deriva de la emisión.
+model SolicitudCliente {
+  id             String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organizacionId String    @map("organizacion_id") @db.Uuid
+  folio          String    @db.VarChar(20)
+  anio           Int
+  clienteId      String    @map("cliente_id") @db.Uuid
+  proyectoId     String    @map("proyecto_id") @db.Uuid
+  estado         String    @db.VarChar(15)
+  /// EsquemaCapturaSolicitud (contracts): medidas y elecciones del cliente. Nunca precios.
+  captura        Json
+  revision       Int       @default(0)
+  creadaPor      String    @map("creada_por") @db.Uuid
+  creadaEn       DateTime  @default(now()) @map("creada_en") @db.Timestamptz(3)
+  actualizadaEn  DateTime  @default(now()) @map("actualizada_en") @db.Timestamptz(3)
+  enviadaEn      DateTime? @map("enviada_en") @db.Timestamptz(3)
+  retiradaEn     DateTime? @map("retirada_en") @db.Timestamptz(3)
+  atendidaPor    String?   @map("atendida_por") @db.Uuid
+  atendidaEn     DateTime? @map("atendida_en") @db.Timestamptz(3)
+
+  proyecto     Proyecto               @relation(fields: [organizacionId, clienteId, proyectoId], references: [organizacionId, clienteId, id], onDelete: Restrict, onUpdate: Restrict)
+  cliente      Cliente                @relation(fields: [organizacionId, clienteId], references: [organizacionId, id], onDelete: Restrict, onUpdate: Restrict)
+  autor        Membresia              @relation("SolicitudCreadaPor", fields: [organizacionId, creadaPor], references: [organizacionId, usuarioId], onDelete: Restrict, onUpdate: Restrict)
+  atendedor    Membresia?             @relation("SolicitudAtendidaPor", fields: [organizacionId, atendidaPor], references: [organizacionId, usuarioId], onDelete: Restrict, onUpdate: Restrict, map: "solicitud_atendida_por_fk")
+  estimaciones EstimacionSolicitud[]
+  cotizacion   Cotizacion?            @relation("SolicitudCotizacion")
+
+  @@unique([organizacionId, id])
+  @@unique([organizacionId, folio])
+  @@index([organizacionId, clienteId, actualizadaEn])
+  @@index([organizacionId, estado, enviadaEn])
+  @@map("solicitud_cliente")
+}
+
+/// Instantánea inmutable de una estimación: captura, referencias usadas, parámetros, fecha y huella. Solo alta.
+/// `entrada` y `resultado` son INTERNOS (costos): nunca se envían al cliente; sirven para explicar el resultado.
+model EstimacionSolicitud {
+  id              String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organizacionId  String   @map("organizacion_id") @db.Uuid
+  solicitudId     String   @map("solicitud_id") @db.Uuid
+  numero          Int
+  revisionCaptura Int      @map("revision_captura")
+  /// ESTIMADA | SIN_ESTIMACION
+  estado          String   @db.VarChar(15)
+  captura         Json
+  /// [{insumoCodigo, precioCodigo}] realmente usadas.
+  referencias     Json
+  /// Parámetros aplicados (ambiente, impuesto, recargo de la fecha de cálculo): interno.
+  parametros      Json?
+  motivoCodigo    String?  @map("motivo_codigo") @db.VarChar(20)
+  comercial       Json?
+  avisos          Json
+  entrada         Json?
+  resultado       Json?
+  huella          Bytes
+  fechaCalculo    DateTime @map("fecha_calculo") @db.Date
+  calculadaEn     DateTime @default(now()) @map("calculada_en") @db.Timestamptz(3)
+
+  solicitud SolicitudCliente @relation(fields: [organizacionId, solicitudId], references: [organizacionId, id], onDelete: Restrict, onUpdate: Restrict)
+
+  @@unique([solicitudId, numero])
+  @@map("estimacion_solicitud")
 }

@@ -1,5 +1,7 @@
 // Servicio de autenticación: sesión de tipo MOVIL (módulo 16, ADR-0020). Repositorio en memoria; sin PostgreSQL.
-import type { FuncionUsuario } from "@softarq/contracts";
+// Módulo 17 (ADR-0021): la app es solo para cuentas CLIENTE y la web solo para internas. Estas pruebas sustituyen a las de
+// la etapa 1, que usaban una cuenta interna (Preparador) en el canal móvil: ahora esa cuenta recibe CUENTA_INTERNA.
+import type { FuncionSesion } from "@softarq/contracts";
 import { describe, expect, it } from "vitest";
 import { LimitadorAccesos } from "../aplicacion/limitador-accesos.js";
 import { ServicioAutenticacion } from "../aplicacion/servicio-autenticacion.js";
@@ -18,7 +20,7 @@ interface Cuenta {
   contrasena: string;
   activo: boolean;
   temporalExpiraEn: Date | null;
-  membresias: { organizacionId: string; activa: boolean; funciones: FuncionUsuario[] }[];
+  membresias: { organizacionId: string; activa: boolean; funciones: FuncionSesion[] }[];
 }
 
 /** Repositorio en memoria con la misma semántica que el de Prisma para lo que usa el servicio. */
@@ -35,7 +37,7 @@ class RepoMemoria {
           hashContrasena: `hash:${c.contrasena}`,
           activo: c.activo,
           temporalExpiraEn: c.temporalExpiraEn,
-          membresiasActivas: c.membresias.filter((m) => m.activa).map((m) => ({ organizacionId: m.organizacionId })),
+          membresiasActivas: c.membresias.filter((m) => m.activa).map((m) => ({ organizacionId: m.organizacionId, funciones: m.funciones })),
         }
       : null;
   };
@@ -107,8 +109,17 @@ function montar(extra: Partial<Cuenta> = {}) {
     contrasena: "correcta-0123456789",
     activo: true,
     temporalExpiraEn: null,
-    membresias: [{ organizacionId: ORG.id, activa: true, funciones: ["PREPARADOR"] }],
+    membresias: [{ organizacionId: ORG.id, activa: true, funciones: ["CLIENTE"] }],
     ...extra,
+  });
+  // Cuenta interna (Preparador): entra por la web, no por la app.
+  repo.cuentas.push({
+    usuarioId: "u2",
+    correo: "interna@softarq.test",
+    contrasena: "interna-0123456789",
+    activo: true,
+    temporalExpiraEn: null,
+    membresias: [{ organizacionId: ORG.id, activa: true, funciones: ["PREPARADOR"] }],
   });
   let ahora = new Date("2026-10-24T12:00:00Z");
   const contrasenas = {
@@ -122,6 +133,7 @@ function montar(extra: Partial<Cuenta> = {}) {
 }
 
 const ENTRAR = ["persona@softarq.test", "correcta-0123456789", "127.0.0.1"] as const;
+const ENTRAR_INTERNA = ["interna@softarq.test", "interna-0123456789", "127.0.0.1"] as const;
 
 describe("acceso móvil", () => {
   it("crea una sesión de tipo MOVIL con titular, sin sesión previa, y guarda solo el SHA-256 del token", async () => {
@@ -135,7 +147,8 @@ describe("acceso móvil", () => {
     expect(guardadas[0]!.nueva.titular).toEqual({ usuarioId: "u1", organizacionId: ORG.id });
     expect(guardadas[0]!.nueva.tokenHash.equals(hashDeToken(r.tokens.tokenSesion))).toBe(true);
     expect(JSON.stringify([...repo.sesiones.values()])).not.toContain(r.tokens.tokenSesion);
-    expect(r.contexto).toMatchObject({ funciones: ["PREPARADOR"], organizacion: { codigo: "DEMO" }, cambioContrasenaRequerido: false });
+    expect(r.contexto).toMatchObject({ funciones: ["CLIENTE"], organizacion: { codigo: "DEMO" }, cambioContrasenaRequerido: false });
+    expect(r.contexto.capacidades).toEqual(["sesion.propia", "cliente.solicitudes", "cliente.cotizaciones"]);
     expect(r.tokens.expiraEn.getTime() - montar().ahora().getTime()).toBe(POLITICA_SESION.absolutaMs);
   });
 
@@ -147,9 +160,24 @@ describe("acceso móvil", () => {
     expect((await inactiva.servicio.iniciarSesionMovil(...ENTRAR)).estado).toBe("CREDENCIALES_INVALIDAS");
     const sinMembresia = montar({ membresias: [] });
     expect((await sinMembresia.servicio.iniciarSesionMovil(...ENTRAR)).estado).toBe("CREDENCIALES_INVALIDAS");
-    const dos = montar({ membresias: [{ organizacionId: "a", activa: true, funciones: ["REVISOR"] }, { organizacionId: "b", activa: true, funciones: ["REVISOR"] }] });
+    const dos = montar({ membresias: [{ organizacionId: "a", activa: true, funciones: ["CLIENTE"] }, { organizacionId: "b", activa: true, funciones: ["CLIENTE"] }] });
     expect((await dos.servicio.iniciarSesionMovil(...ENTRAR)).estado).toBe("CREDENCIALES_INVALIDAS");
     expect(m.repo.sesiones.size + inactiva.repo.sesiones.size + sinMembresia.repo.sesiones.size + dos.repo.sesiones.size).toBe(0);
+  });
+
+  it("una cuenta INTERNA con la contraseña correcta recibe CUENTA_INTERNA (se le dirige al panel) y no abre sesión móvil; con la incorrecta, el mismo fallo genérico", async () => {
+    const m = montar();
+    expect((await m.servicio.iniciarSesionMovil(...ENTRAR_INTERNA)).estado).toBe("CUENTA_INTERNA");
+    expect((await m.servicio.iniciarSesionMovil("interna@softarq.test", "mala", "127.0.0.1")).estado).toBe("CREDENCIALES_INVALIDAS");
+    expect(m.repo.sesiones.size).toBe(0);
+  });
+
+  it("una cuenta de CLIENTE no abre sesión web: responde como una credencial inválida y no crea sesión", async () => {
+    const m = montar();
+    await m.servicio.crearSesionPrevia(undefined);
+    const idPrevia = [...m.repo.sesiones.values()][0]!.id;
+    expect((await m.servicio.iniciarSesion({ sesionId: idPrevia }, ...ENTRAR)).estado).toBe("CREDENCIALES_INVALIDAS");
+    expect([...m.repo.sesiones.values()].filter((x) => x.nueva.tipo === "USUARIO")).toHaveLength(0);
   });
 
   it("el limitador de accesos también cubre el canal móvil (cuenta + IP: 5 fallos)", async () => {
@@ -183,18 +211,18 @@ describe("aislamiento entre canales", () => {
     const { servicio, repo } = montar();
     const previa = await servicio.crearSesionPrevia(undefined);
     const idPrevia = [...repo.sesiones.values()][0]!.id;
-    const web = await servicio.iniciarSesion({ sesionId: idPrevia }, ...ENTRAR);
+    const web = await servicio.iniciarSesion({ sesionId: idPrevia }, ...ENTRAR_INTERNA);
     if (web.estado !== "CORRECTO") throw new Error("acceso web");
     expect((await servicio.resolver(web.tokens.tokenSesion)).estado).toBe("VIGENTE");
     expect(await servicio.resolverMovil(web.tokens.tokenSesion)).toEqual({ estado: "NO_VALIDA", motivo: "DESCONOCIDA" });
     expect(await servicio.resolverMovil(previa.tokenSesion)).toEqual({ estado: "NO_VALIDA", motivo: "DESCONOCIDA" });
   });
 
-  it("un acceso móvil no revoca la sesión web de la misma persona (son sesiones independientes)", async () => {
+  it("un acceso móvil no revoca la sesión web de otra cuenta (son sesiones independientes)", async () => {
     const { servicio, repo } = montar();
     await servicio.crearSesionPrevia(undefined);
     const idPrevia = [...repo.sesiones.values()][0]!.id;
-    const web = await servicio.iniciarSesion({ sesionId: idPrevia }, ...ENTRAR);
+    const web = await servicio.iniciarSesion({ sesionId: idPrevia }, ...ENTRAR_INTERNA);
     await servicio.iniciarSesionMovil(...ENTRAR);
     if (web.estado !== "CORRECTO") throw new Error("acceso web");
     expect((await servicio.resolver(web.tokens.tokenSesion)).estado).toBe("VIGENTE");
@@ -248,14 +276,24 @@ describe("vida de la sesión móvil", () => {
     expect([...b.repo.sesiones.values()][0]!.motivo).toBe("MEMBRESIA_INACTIVA");
   });
 
-  it("las funciones se leen en cada solicitud: un cambio afecta a la siguiente, no se copian a la sesión", async () => {
+  it("las funciones se leen en cada solicitud: si la cuenta deja de ser de cliente, la sesión móvil se revoca en la siguiente", async () => {
     const a = await entrar();
     const antes = await a.servicio.resolverMovil(a.token);
-    expect(antes.estado === "VIGENTE" && antes.sesion.capacidades.includes("calculo.ejecutar")).toBe(true);
+    expect(antes.estado === "VIGENTE" && antes.sesion.capacidades.includes("cliente.solicitudes")).toBe(true);
+    expect(antes.estado === "VIGENTE" && antes.sesion.capacidades.includes("calculo.ejecutar")).toBe(false);
     a.repo.cuentas[0]!.membresias[0]!.funciones = ["REVISOR"];
-    const despues = await a.servicio.resolverMovil(a.token);
-    expect(despues.estado === "VIGENTE" && despues.sesion.capacidades.includes("calculo.ejecutar")).toBe(false);
-    expect(despues.estado === "VIGENTE" && despues.sesion.funciones).toEqual(["REVISOR"]);
+    expect(await a.servicio.resolverMovil(a.token)).toEqual({ estado: "NO_VALIDA", motivo: "CUENTA_INTERNA" });
+    expect([...a.repo.sesiones.values()][0]!.revocadaEn).not.toBeNull();
+  });
+
+  it("una cuenta que pasa a ser de cliente pierde su sesión web viva (CUENTA_CLIENTE)", async () => {
+    const m = montar();
+    await m.servicio.crearSesionPrevia(undefined);
+    const idPrevia = [...m.repo.sesiones.values()][0]!.id;
+    const web = await m.servicio.iniciarSesion({ sesionId: idPrevia }, ...ENTRAR_INTERNA);
+    if (web.estado !== "CORRECTO") throw new Error("acceso web");
+    m.repo.cuentas[1]!.membresias[0]!.funciones = ["CLIENTE"];
+    expect(await m.servicio.resolver(web.tokens.tokenSesion)).toEqual({ estado: "NO_VALIDA", motivo: "CUENTA_CLIENTE" });
   });
 
   it("un temporal que aparece después (restablecimiento) restringe la sesión viva", async () => {

@@ -100,6 +100,9 @@ export class ClienteMovil {
   post(ruta: string, cuerpo: unknown, o: { cabeceras?: Record<string, string>; token?: string | null } = {}) {
     return this.solicitar("POST", ruta, { ...o, cuerpo });
   }
+  put(ruta: string, cuerpo: unknown, o: { cabeceras?: Record<string, string>; token?: string | null } = {}) {
+    return this.solicitar("PUT", ruta, { ...o, cuerpo });
+  }
   delete(ruta: string, o: { cabeceras?: Record<string, string>; token?: string | null } = {}) {
     return this.solicitar("DELETE", ruta, o);
   }

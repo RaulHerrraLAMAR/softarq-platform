@@ -50,6 +50,11 @@ const EsquemaEntorno = z.object({
         .min(1)
         .max(10),
     ),
+  // Módulo 17 (ADR-0021): dirección del panel del equipo que la app muestra a una cuenta interna. Solo local en esta etapa.
+  API_PANEL_URL: z
+    .string()
+    .optional()
+    .refine((v) => v === undefined || ORIGEN_LOCAL.test(v), { error: "API_PANEL_URL debe ser un origen local http://localhost:PUERTO." }),
   API_LIMITE_GENERAL_POR_MINUTO: entero("API_LIMITE_GENERAL_POR_MINUTO", 1, 10000, 120),
   API_LIMITE_CALCULO_POR_MINUTO: entero("API_LIMITE_CALCULO_POR_MINUTO", 1, 1000, 30),
   API_LIMITE_CUERPO_KB: entero("API_LIMITE_CUERPO_KB", 1, 1024, 128),
@@ -101,6 +106,8 @@ export interface ConfiguracionApi {
   host: "127.0.0.1";
   puerto: number;
   origenesCors: string[];
+  /** Panel del equipo (por omisión, el primer origen permitido). */
+  panelUrl: string;
   limiteGeneralPorMinuto: number;
   limiteCalculoPorMinuto: number;
   limiteCuerpoKb: number;
@@ -136,6 +143,7 @@ export function leerConfiguracion(entorno: Record<string, string | undefined>): 
     host: e.API_HOST,
     puerto: e.API_PORT,
     origenesCors: e.API_CORS_ORIGINS,
+    panelUrl: e.API_PANEL_URL ?? e.API_CORS_ORIGINS[0]!,
     limiteGeneralPorMinuto: e.API_LIMITE_GENERAL_POR_MINUTO,
     limiteCalculoPorMinuto: e.API_LIMITE_CALCULO_POR_MINUTO,
     limiteCuerpoKb: e.API_LIMITE_CUERPO_KB,

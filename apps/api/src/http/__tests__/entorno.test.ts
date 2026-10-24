@@ -25,6 +25,8 @@ describe("configuración de la API", () => {
       puerto: 3000,
       // Módulo 5: solo localhost (la cookie SameSite=Strict exige el mismo site que la API, ADR-0007).
       origenesCors: ["http://localhost:5173"],
+      // Módulo 17: por omisión el panel es el primer origen permitido.
+      panelUrl: "http://localhost:5173",
       limiteGeneralPorMinuto: 120,
       limiteCalculoPorMinuto: 30,
       limiteCuerpoKb: 128,

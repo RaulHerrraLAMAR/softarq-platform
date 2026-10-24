@@ -31,9 +31,12 @@ describe("matriz de permisos (contrastada con el libro)", () => {
     // Módulo 8: `emisor.configurar` es del Administrador del sistema (17 CONFIG); módulo 11:
     // `catalogos.administrar` es del Administrador del catálogo; módulo 13: parámetros y personas son
     // del Administrador del sistema. Las cuatro funciones juntas suman todas las capacidades.
+    // Módulo 17: las capacidades `cliente.*` son solo de la función CLIENTE; ninguna interna las recibe.
     const deAdministradores = ["emisor.configurar", "catalogos.administrar", "parametros.administrar", "personas.administrar"];
-    expect(capacidadesDe(["REVISOR", "PREPARADOR"])).toEqual(CAPACIDADES.filter((c) => !deAdministradores.includes(c)));
-    expect(capacidadesDe([...FUNCIONES_USUARIO])).toEqual([...CAPACIDADES]);
+    const delCliente = ["cliente.solicitudes", "cliente.cotizaciones"];
+    expect(capacidadesDe(["REVISOR", "PREPARADOR"])).toEqual(CAPACIDADES.filter((c) => !deAdministradores.includes(c) && !delCliente.includes(c)));
+    expect(capacidadesDe([...FUNCIONES_USUARIO])).toEqual(CAPACIDADES.filter((c) => !delCliente.includes(c)));
+    expect(capacidadesDe(["CLIENTE"])).toEqual(["sesion.propia", "cliente.solicitudes", "cliente.cotizaciones"]);
     expect(capacidadesDe([])).toEqual([]);
   });
 

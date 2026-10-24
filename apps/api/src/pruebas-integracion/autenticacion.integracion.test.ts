@@ -122,6 +122,8 @@ describe("inicio de sesión", () => {
       "excepciones.consultar",
       // ADR-0018 (módulo 14): compras calculadas, detalle e indicadores internos.
       "salidas.consultar",
+      // Módulo 17 (ADR-0021): solicitudes de los clientes.
+      "solicitudes.atender",
     ]);
     expect(s.inactividadMinutos).toBe(30);
     expect(new Date(s.expiraEn).getTime()).toBe(instante.getTime() + POLITICA_SESION.absolutaMs);

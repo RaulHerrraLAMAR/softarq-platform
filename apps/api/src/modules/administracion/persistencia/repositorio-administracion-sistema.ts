@@ -107,6 +107,8 @@ export class RepositorioAdministracionSistema {
     const filas = await this.db.membresia.findMany({
       where: {
         organizacionId: ctx.organizacionId,
+        // Módulo 17: las cuentas de cliente de la app se administran con sus propias funciones de acceso.
+        NOT: { funciones: { has: "CLIENTE" } },
         ...(f.incluirInactivas ? {} : { activa: true }),
         usuario: {
           ...(f.buscar
@@ -124,7 +126,7 @@ export class RepositorioAdministracionSistema {
   }
 
   async obtenerPersona(ctx: ContextoOrganizacion, usuarioId: string): Promise<PersonaAdmin | null> {
-    const f = await this.db.membresia.findFirst({ where: { organizacionId: ctx.organizacionId, usuarioId }, select: seleccionPersona });
+    const f = await this.db.membresia.findFirst({ where: { organizacionId: ctx.organizacionId, usuarioId, NOT: { funciones: { has: "CLIENTE" } } }, select: seleccionPersona });
     return f ? aPersona(f) : null;
   }
 

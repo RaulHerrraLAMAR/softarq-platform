@@ -12,6 +12,10 @@
     "./movil": {
       "types": "./dist/movil.d.ts",
       "default": "./dist/movil.js"
+    },
+    "./cliente": {
+      "types": "./dist/cliente.d.ts",
+      "default": "./dist/cliente.js"
     }
   },
   "files": [

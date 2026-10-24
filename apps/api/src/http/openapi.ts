@@ -18,6 +18,34 @@ import {
   EsquemaRespuestaBorradorGuardado,
   EsquemaRespuestaClientes,
   EsquemaRespuestaCotizaciones,
+  // Módulo 17 (ADR-0021): cliente externo.
+  EsquemaAccesoCliente,
+  EsquemaAtenderSolicitud,
+  EsquemaDefinicionTrabajo,
+  EsquemaDesignarReferencia,
+  EsquemaDetalleCotizacionCliente,
+  EsquemaDetalleSolicitudEquipo,
+  EsquemaEstadoAccesoCliente,
+  EsquemaEstimacionCliente,
+  EsquemaGuardarSolicitudCliente,
+  EsquemaNuevaSolicitudCliente,
+  EsquemaNuevoAccesoCliente,
+  EsquemaNuevoProyectoCliente,
+  EsquemaProyectoCliente,
+  EsquemaRespuestaAltaAcceso,
+  EsquemaRespuestaAtencion,
+  EsquemaRespuestaCotizacionesCliente,
+  EsquemaRespuestaDefinicionesTrabajo,
+  EsquemaRespuestaEnvioSolicitud,
+  EsquemaRespuestaProyectosCliente,
+  EsquemaRespuestaReferencias,
+  EsquemaRespuestaSolicitudesCliente,
+  EsquemaRespuestaSolicitudesEquipo,
+  EsquemaRespuestaTrabajosCliente,
+  EsquemaRetirarReferencia,
+  EsquemaRetiroSolicitudCliente,
+  EsquemaRevisionSolicitudCliente,
+  EsquemaSolicitudDelCliente,
   EsquemaRespuestaProyectos,
   EsquemaSolicitudBorrador,
   EsquemaSolicitudCliente,
@@ -220,6 +248,8 @@ const CABECERA_IDEMPOTENCIA = {
   schema: { type: "string", format: "uuid" },
 };
 const CON_EFECTOS = [{ cookieSesion: [], tokenCsrf: [] }];
+const CLIENTE =
+  "App del cliente (ADR-0021): sesión móvil Bearer de una cuenta CLIENTE. El cliente y la organización salen de la sesión; un registro ajeno responde 404. Nunca incluye costos, márgenes ni datos internos.";
 
 export function construirDocumentoOpenApi(): Record<string, unknown> {
   return {
@@ -1079,6 +1109,220 @@ export function construirDocumentoOpenApi(): Record<string, unknown> {
           responses: { "200": ok("RespuestaUnidades", "Unidades."), ...errores(401, 403, 429, 503, 500) },
         },
       },
+      // ----------------------------- Módulo 17 (ADR-0021): cliente externo -----------------------------
+      "/api/v1/cliente/trabajos": {
+        get: {
+          summary: "Trabajos y opciones que ofrece el equipo, con las medidas que pide cada opción (app del cliente)",
+          description: CLIENTE,
+          security: [{ tokenMovil: [] }],
+          responses: { "200": ok("RespuestaTrabajosCliente", "Trabajos disponibles."), ...errores(401, 403, 429, 503, 500) },
+        },
+      },
+      "/api/v1/cliente/proyectos": {
+        get: {
+          summary: "Proyectos propios del cliente",
+          description: CLIENTE,
+          security: [{ tokenMovil: [] }],
+          responses: { "200": ok("RespuestaProyectosCliente", "Proyectos."), ...errores(401, 403, 429, 503, 500) },
+        },
+        post: {
+          summary: "Crea un proyecto propio (el cliente sale de la sesión; no se envía)",
+          description: CLIENTE,
+          security: [{ tokenMovil: [] }],
+          requestBody: cuerpo("NuevoProyectoCliente"),
+          responses: { "201": ok("ProyectoCliente", "Proyecto creado."), ...errores(400, 401, 403, 413, 415, 422, 429, 503, 500) },
+        },
+      },
+      "/api/v1/cliente/solicitudes": {
+        get: {
+          summary: "Solicitudes propias, con estado y total estimado vigente (si lo hay)",
+          description: CLIENTE,
+          security: [{ tokenMovil: [] }],
+          responses: { "200": ok("RespuestaSolicitudesCliente", "Solicitudes."), ...errores(401, 403, 429, 503, 500) },
+        },
+        post: {
+          summary: "Crea una solicitud en borrador para un proyecto propio (un proyecto, varios trabajos)",
+          description: CLIENTE,
+          security: [{ tokenMovil: [] }],
+          requestBody: cuerpo("NuevaSolicitudCliente"),
+          responses: { "201": ok("SolicitudDelCliente", "Solicitud creada."), ...errores(400, 401, 403, 404, 413, 415, 422, 429, 503, 500) },
+        },
+      },
+      "/api/v1/cliente/solicitudes/{id}": {
+        get: {
+          summary: "Solicitud propia con su última estimación, lo que falta y su cotización formal (si ya se emitió)",
+          description: CLIENTE,
+          security: [{ tokenMovil: [] }],
+          parameters: [PARAMETRO_ID],
+          responses: { "200": ok("SolicitudDelCliente", "Solicitud."), ...errores(401, 403, 404, 429, 503, 500) },
+        },
+        put: {
+          summary: "Guarda la captura de un borrador (control de concurrencia por revisión; admite capturas incompletas)",
+          description: CLIENTE,
+          security: [{ tokenMovil: [] }],
+          parameters: [PARAMETRO_ID],
+          requestBody: cuerpo("GuardarSolicitudCliente"),
+          responses: { "200": ok("SolicitudDelCliente", "Solicitud guardada."), ...errores(400, 401, 403, 404, 409, 413, 415, 422, 429, 503, 500) },
+        },
+      },
+      "/api/v1/cliente/solicitudes/{id}/estimaciones": {
+        post: {
+          summary: "Calcula la estimación preliminar con los precios de referencia. NO envía la solicitud",
+          description:
+            CLIENTE +
+            " Si falta una referencia válida o el cálculo se bloquea, responde 201 con estado SIN_ESTIMACION y su motivo (sin importe); nunca un cero.",
+          security: [{ tokenMovil: [] }],
+          parameters: [PARAMETRO_ID],
+          requestBody: cuerpo("RevisionSolicitudCliente"),
+          responses: { "201": ok("EstimacionCliente", "Estimación registrada."), ...errores(400, 401, 403, 404, 409, 413, 415, 422, 429, 503, 500) },
+        },
+      },
+      "/api/v1/cliente/solicitudes/{id}/envio": {
+        post: {
+          summary: "Envía la solicitud al equipo (idempotente: un reintento devuelve repetida=true)",
+          description: CLIENTE,
+          security: [{ tokenMovil: [] }],
+          parameters: [PARAMETRO_ID],
+          requestBody: cuerpo("RevisionSolicitudCliente"),
+          responses: { "200": ok("RespuestaEnvioSolicitud", "Solicitud enviada."), ...errores(400, 401, 403, 404, 409, 413, 415, 422, 429, 503, 500) },
+        },
+      },
+      "/api/v1/cliente/solicitudes/{id}/retiro": {
+        post: {
+          summary: "Retira la solicitud mientras no la haya atendido el equipo (idempotente)",
+          description: CLIENTE,
+          security: [{ tokenMovil: [] }],
+          parameters: [PARAMETRO_ID],
+          requestBody: cuerpo("RetiroSolicitudCliente"),
+          responses: { "200": ok("SolicitudDelCliente", "Solicitud retirada."), ...errores(400, 401, 403, 404, 409, 413, 415, 429, 503, 500) },
+        },
+      },
+      "/api/v1/cliente/cotizaciones": {
+        get: {
+          summary: "Cotizaciones EMITIDAS vinculadas a su Cliente, aunque se hayan preparado desde el panel",
+          description: CLIENTE + " Nunca borradores, versiones de trabajo, costos, márgenes ni bitácora.",
+          security: [{ tokenMovil: [] }],
+          responses: { "200": ok("RespuestaCotizacionesCliente", "Cotizaciones emitidas."), ...errores(401, 403, 429, 503, 500) },
+        },
+      },
+      "/api/v1/cliente/cotizaciones/{id}": {
+        get: {
+          summary: "Cotización emitida (proyección comercial; el id es el de la emisión)",
+          description: CLIENTE,
+          security: [{ tokenMovil: [] }],
+          parameters: [PARAMETRO_ID],
+          responses: { "200": ok("DetalleCotizacionCliente", "Cotización."), ...errores(401, 403, 404, 429, 503, 500) },
+        },
+      },
+      "/api/v1/cliente/cotizaciones/{id}/documento": {
+        get: {
+          summary: "PDF emitido de una cotización propia (los mismos bytes registrados)",
+          description: CLIENTE,
+          security: [{ tokenMovil: [] }],
+          parameters: [PARAMETRO_ID],
+          responses: {
+            "200": { description: "PDF.", content: { "application/pdf": { schema: { type: "string", format: "binary" } } } },
+            ...errores(401, 403, 404, 429, 503, 500),
+          },
+        },
+      },
+      "/api/v1/solicitudes": {
+        get: {
+          summary: "Bandeja del equipo: solicitudes enviadas de los clientes (capacidad solicitudes.atender: Preparador)",
+          parameters: [{ name: "estado", in: "query", required: false, schema: { type: "string" }, description: "ENVIADA, EN_PREPARACION o RETIRADA separados por coma (por omisión ENVIADA,EN_PREPARACION)." }],
+          responses: { "200": ok("RespuestaSolicitudesEquipo", "Solicitudes."), ...errores(400, 401, 403, 429, 503, 500) },
+        },
+      },
+      "/api/v1/solicitudes/{id}": {
+        get: {
+          summary: "Solicitud de un cliente con su captura y la estimación preliminar (rotulada como tal)",
+          parameters: [PARAMETRO_ID],
+          responses: { "200": ok("DetalleSolicitudEquipo", "Solicitud."), ...errores(401, 403, 404, 429, 503, 500) },
+        },
+      },
+      "/api/v1/solicitudes/{id}/atencion": {
+        post: {
+          summary: "Atiende la solicitud: crea la cotización en borrador SIN precios elegidos ni compras consolidadas (idempotente)",
+          description: "Las referencias de la estimación no se heredan: el Preparador confirma explícitamente cada precio. 201 la primera vez; 200 si ya estaba atendida.",
+          security: CON_EFECTOS,
+          parameters: [PARAMETRO_ID],
+          requestBody: cuerpo("AtenderSolicitud"),
+          responses: { "200": ok("RespuestaAtencion", "Ya atendida."), "201": ok("RespuestaAtencion", "Cotización creada."), ...errores(400, 401, 403, 404, 409, 413, 415, 422, 429, 503, 500) },
+        },
+      },
+      "/api/v1/clientes/{id}/acceso": {
+        get: {
+          summary: "Acceso del cliente a la app (capacidad personas.administrar: Administrador del sistema)",
+          parameters: [PARAMETRO_ID],
+          responses: { "200": ok("AccesoCliente", "Acceso."), ...errores(401, 403, 404, 429, 503, 500) },
+        },
+        post: {
+          summary: "Crea el acceso del cliente con contraseña temporal de 72 h (se muestra una sola vez; sin autorregistro)",
+          security: CON_EFECTOS,
+          parameters: [PARAMETRO_ID],
+          requestBody: cuerpo("NuevoAccesoCliente"),
+          responses: { "201": ok("RespuestaAltaAcceso", "Acceso creado."), ...errores(400, 401, 403, 404, 409, 413, 415, 422, 429, 503, 500) },
+        },
+      },
+      "/api/v1/admin/accesos-cliente/{usuarioId}/estado": {
+        put: {
+          summary: "Activa o desactiva el acceso (al desactivar se revocan sus sesiones)",
+          security: CON_EFECTOS,
+          parameters: [{ name: "usuarioId", in: "path", required: true, schema: { type: "string", format: "uuid" } }],
+          requestBody: cuerpo("EstadoAccesoCliente"),
+          responses: { "200": ok("AccesoCliente", "Acceso actualizado."), ...errores(400, 401, 403, 404, 413, 415, 422, 429, 503, 500) },
+        },
+      },
+      "/api/v1/admin/accesos-cliente/{usuarioId}/contrasena": {
+        post: {
+          summary: "Restablece la contraseña del cliente: temporal nueva de 72 h (idempotente con Idempotency-Key)",
+          security: CON_EFECTOS,
+          parameters: [{ name: "usuarioId", in: "path", required: true, schema: { type: "string", format: "uuid" } }, CABECERA_IDEMPOTENCIA],
+          requestBody: cuerpo("RetirarReferencia"),
+          responses: { "201": ok("RespuestaAltaAcceso", "Contraseña restablecida."), ...errores(400, 401, 403, 404, 413, 415, 422, 429, 503, 500) },
+        },
+      },
+      "/api/v1/admin/referencias-estimacion": {
+        get: {
+          summary: "Precios de referencia de las estimaciones y los insumos que aún no tienen uno",
+          description: ADMIN,
+          responses: { "200": ok("RespuestaReferencias", "Referencias."), ...errores(401, 403, 429, 503, 500) },
+        },
+      },
+      "/api/v1/admin/referencias-estimacion/{codigo}": {
+        put: {
+          summary: "Designa el precio de referencia de un insumo (vigente, no anulado, producto y proveedor activos)",
+          description: ADMIN + " Una referencia no es una selección aprobada de ninguna cotización.",
+          security: CON_EFECTOS,
+          parameters: [PARAMETRO_CODIGO],
+          requestBody: cuerpo("DesignarReferencia"),
+          responses: { "200": ok("RespuestaReferencias", "Referencias."), ...errores(400, 401, 403, 404, 409, 413, 415, 422, 429, 503, 500) },
+        },
+      },
+      "/api/v1/admin/referencias-estimacion/{codigo}/retiro": {
+        post: {
+          summary: "Retira la referencia de un insumo (queda en el historial)",
+          description: ADMIN,
+          security: CON_EFECTOS,
+          parameters: [PARAMETRO_CODIGO],
+          requestBody: cuerpo("RetirarReferencia"),
+          responses: { "200": ok("RespuestaReferencias", "Referencias."), ...errores(400, 401, 403, 404, 413, 415, 422, 429, 503, 500) },
+        },
+      },
+      "/api/v1/admin/trabajos-cliente": {
+        get: {
+          summary: "Trabajos para clientes (definición del equipo, incluidos los inactivos)",
+          description: ADMIN,
+          responses: { "200": ok("RespuestaDefinicionesTrabajo", "Trabajos."), ...errores(401, 403, 429, 503, 500) },
+        },
+        put: {
+          summary: "Guarda un trabajo con sus opciones; las medidas deben coincidir con la fórmula del concepto",
+          description: ADMIN,
+          security: CON_EFECTOS,
+          requestBody: cuerpo("DefinicionTrabajo"),
+          responses: { "200": ok("RespuestaDefinicionesTrabajo", "Trabajos."), ...errores(400, 401, 403, 413, 415, 422, 429, 503, 500) },
+        },
+      },
       "/api/v1/openapi.json": {
         get: { summary: "Esta especificación", security: [], responses: { "200": { description: "Documento OpenAPI 3.1." } } },
       },
@@ -1148,6 +1392,33 @@ export function construirDocumentoOpenApi(): Record<string, unknown> {
         SolicitudDuplicado: json(EsquemaSolicitudDuplicado, "input"),
         SolicitudNuevaVersion: json(EsquemaSolicitudNuevaVersion, "input"),
         RespuestaCotizaciones: json(EsquemaRespuestaCotizaciones, "output"),
+        RespuestaTrabajosCliente: json(EsquemaRespuestaTrabajosCliente, "output"),
+        ProyectoCliente: json(EsquemaProyectoCliente, "output"),
+        NuevoProyectoCliente: json(EsquemaNuevoProyectoCliente, "input"),
+        RespuestaProyectosCliente: json(EsquemaRespuestaProyectosCliente, "output"),
+        NuevaSolicitudCliente: json(EsquemaNuevaSolicitudCliente, "input"),
+        SolicitudDelCliente: json(EsquemaSolicitudDelCliente, "output"),
+        RespuestaSolicitudesCliente: json(EsquemaRespuestaSolicitudesCliente, "output"),
+        GuardarSolicitudCliente: json(EsquemaGuardarSolicitudCliente, "input"),
+        RevisionSolicitudCliente: json(EsquemaRevisionSolicitudCliente, "input"),
+        RetiroSolicitudCliente: json(EsquemaRetiroSolicitudCliente, "input"),
+        EstimacionCliente: json(EsquemaEstimacionCliente, "output"),
+        RespuestaEnvioSolicitud: json(EsquemaRespuestaEnvioSolicitud, "output"),
+        RespuestaCotizacionesCliente: json(EsquemaRespuestaCotizacionesCliente, "output"),
+        DetalleCotizacionCliente: json(EsquemaDetalleCotizacionCliente, "output"),
+        RespuestaSolicitudesEquipo: json(EsquemaRespuestaSolicitudesEquipo, "output"),
+        DetalleSolicitudEquipo: json(EsquemaDetalleSolicitudEquipo, "output"),
+        AtenderSolicitud: json(EsquemaAtenderSolicitud, "input"),
+        RespuestaAtencion: json(EsquemaRespuestaAtencion, "output"),
+        AccesoCliente: json(EsquemaAccesoCliente, "output"),
+        NuevoAccesoCliente: json(EsquemaNuevoAccesoCliente, "input"),
+        RespuestaAltaAcceso: json(EsquemaRespuestaAltaAcceso, "output"),
+        EstadoAccesoCliente: json(EsquemaEstadoAccesoCliente, "input"),
+        RespuestaReferencias: json(EsquemaRespuestaReferencias, "output"),
+        DesignarReferencia: json(EsquemaDesignarReferencia, "input"),
+        RetirarReferencia: json(EsquemaRetirarReferencia, "input"),
+        RespuestaDefinicionesTrabajo: json(EsquemaRespuestaDefinicionesTrabajo, "output"),
+        DefinicionTrabajo: json(EsquemaDefinicionTrabajo, "input"),
         DetalleCotizacion: json(EsquemaDetalleCotizacion, "output"),
         Borrador: json(EsquemaBorrador, "output"),
         SolicitudBorrador: json(EsquemaSolicitudBorrador, "input"),
