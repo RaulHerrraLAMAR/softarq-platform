@@ -10,6 +10,7 @@
   - **API:** sesión de tipo `MOVIL` por `Authorization: Bearer` (migración aditiva `20261024120000_sesion_movil`), con lista blanca de rutas; la web (cookie, CSRF, `Origin`, CORS) no cambió.
   - **Conexión:** la API sigue en `127.0.0.1`; el teléfono llega por USB (`adb reverse`).
   - **Teléfono:** la instalación y el recorrido se registran en `docs/movil/guia-instalacion-y-pruebas.md` §10 solo cuando se ejecutan en el dispositivo (ver §26).
+- **App móvil, estado de EAS (24/10/2026):** proyecto `@raulherrera09/softarq-demo` (ID `69326c6d-44f9-4e72-83aa-53dbe4b70905`) vinculado en `app.config.ts` (commit «Módulo 16: vincular la app móvil con el proyecto EAS softarq-demo», `419d953` tras la reescritura de mensajes; antes `7a7b9b3`). **La compilación `development` sigue PENDIENTE** (la primera genera la keystore y es interactiva); las pruebas T1–T10 del teléfono siguen en «Pendiente». Detalle en §26.
 - **Entorno actual (24/10/2026):** el proyecto se trasladó a `C:\Proyecto_SoftArq\Proyecto_SoftArq` (repositorio en `...\softarq-platform`; la doble carpeta es intencionada). `softarq_dev` se inicializó desde el respaldo `softarq_dev-20261023T224027Z-22f32d` y las validaciones se repitieron en esta máquina. Las rutas `D:` del resto de este documento describen el equipo original. Detalle y resultados en §25.
 
 - **Módulo 15:** implementado (ADR-0019).
@@ -624,6 +625,8 @@ Alternativas más cortas:
 
 ## 8. Último commit
 
+> **Mensajes reescritos (24/10/2026):** se quitaron de los 27 commits locales los trailers `Co-Authored-By` de asistentes (solo mensajes; árboles idénticos; autor humano intacto; sin remoto ni push). **Los hashes de esta sección y de informes anteriores son los previos a la reescritura.** Correspondencia antiguo → nuevo, respaldo `.bundle` y mensajes originales: `_work\respaldo-historial-git\` (fuera de Git). Regla vigente: los mensajes de commit describen solo el cambio, sin menciones de autoría o generación por IA ni trailers de asistentes.
+
 - `2543baa`: Módulo 2, persistencia de catálogos (sobre `f0a34da`).
 - `fdcc8f4`: skills de proyecto y reglas de uso.
 - `185fd26`: Módulo 3, API HTTP local.
@@ -656,7 +659,7 @@ Alternativas más cortas:
 - `f1367de`: traslado a la laptop (§25), sobre `31cf626`.
 - Módulo 16: commit local «Módulo 16: app móvil Android, etapa 1 (acceso y consulta)» (§26); consultar `git log -1 --oneline` para su hash. Sobre `f1367de`.
 
-Rama `main`. Sin remoto ni push.
+Rama `main`. Sin remoto ni push. Último commit de código: `419d953` (vinculación EAS), sobre `4d37676` (etapa 1 del módulo 16, antes `953ebbe`); el HEAD vigente es `git log -1 --oneline`.
 
 ## 9. Skills de agentes
 
@@ -1548,3 +1551,12 @@ pnpm --filter @softarq/api e2e:servidor      # softarq_test:3101, con una cuenta
 **Pendientes (sin cambios):** conceptos heredados, P3, guía manual formal, contadores de 00 INICIO, RF-26, identidad de las funciones SQL. **PR-41 a PR-44 del Excel siguen pendientes** (la prueba en el teléfono no los cuenta).
 
 **Siguiente etapa móvil:** captura y cálculo; revisión y decisión; emisión y documentos; salidas internas; administración; operación sin conexión; TLS.
+
+### Estado de EAS y de la compilación (24/10/2026)
+
+- **Cuenta y proyecto:** `eas whoami` = `raulherrera09` (también ve la organización `raulherrera09s-team`). `project:init --account raulherrera09` devolvió el proyecto `@raulherrera09/softarq-demo`; no se verificó si ya existía o se creó entonces. El CLI no escribe `app.config.ts` (es dinámico): el ID se añadió a mano en `extra.eas.projectId` (no es secreto). `eas project:info` lo confirma.
+- **CLI fijada:** `pnpm --filter @softarq/mobile eas …` usa `eas-cli@25.2.0` (script `eas`). La global de esta laptop es 25.3.0; ambas ven la misma sesión y el mismo proyecto. Usar la del paquete para compilar.
+- **Archivo de subida real** (`build:inspect --stage archive`, salida en `_work\eas-inspect`): **65 archivos, 768 KB**. Sin `.env` (solo `.env.example`), claves, keystores, APK, PDF, Excel, Word ni SQL; sin API, web, `_work` ni datos. `packages/contracts/dist` va vacío a propósito.
+- **`dist` de contracts:** `exports` apunta a `dist`, así que Metro consume lo compilado; el `dist` vacío no impide el build porque EAS ejecuta `eas-build-post-install` (compila `@softarq/contracts`) tras `pnpm install` y antes del empaquetado.
+- **Perfil `development` resuelto** (`eas config`): APK interna, `developmentClient`, Node 24.11.1, pnpm 11.1.3, `EXPO_PUBLIC_API_URL=http://localhost:3000`, credenciales remotas.
+- **Pendiente:** `eas build --platform android --profile development` (interactivo, lo ejecuta el propietario con `!`); luego instalar por enlace/QR y recorrer T1–T10 en el teléfono (§10 de la guía). No se registró ninguna prueba en el teléfono. No se repitió la suite por la vinculación (solo cambió una línea de configuración).
