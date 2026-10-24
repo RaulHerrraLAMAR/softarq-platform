@@ -1,0 +1,1098 @@
+<title>Obra cálida, muestras SoftArq</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500..800&family=Inter:wght@400;500;600&display=swap">
+<style>
+/* Concepto: taller de maquetas. Cal y papel como base, terracota para actuar, petróleo para estructurar.
+   Profundidad con capas sólidas (borde inferior, caras isométricas) y no con degradados en cada componente. */
+:root {
+  --mesa: #E2D9C9; --cal: #EFE8DC; --papel: #FFFDF9; --hundido: #E5DCCD;
+  --tinta: #22201C; --suave: #5C554A; --linea: #D3C9B7;
+  --terracota: #C8451E; --terracota-luz: #E36A40; --terracota-borde: #8E2D0F; --sobre-terracota: #FFFFFF;
+  --petroleo: #14535A; --petroleo-fondo: #14535A; --petroleo-tinte: #D3E5E3; --petroleo-borde: #0C3A40;
+  --ocre: #E2A62A; --ocre-tinte: #F6E3B4; --espesor: #8A5A0B;
+  --verde: #2C7A4C; --verde-tinte: #CDE6D3; --rojo: #B3261E; --rojo-tinte: #F6D6D2;
+  --c1: #D9D2C4; --c2: #BDB5A5; --c3: #9C9484;
+  --t1: #E07A55; --t2: #C8451E; --t3: #9B3114;
+  --p1: #3C8087; --p2: #14535A; --p3: #0C3A40;
+  --o1: #F0C25F; --o2: #E2A62A; --o3: #B98418;
+  --sombra-suave: rgba(60, 40, 20, .28); --trazo: rgba(34, 32, 28, .38);
+  --f-titulo: "Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
+  --f-texto: "Inter", "Segoe UI", system-ui, sans-serif;
+  --escala: 1;
+}
+:root[data-comp="azul"] { --petroleo: #1F3F76; --petroleo-fondo: #1F3F76; --petroleo-tinte: #D6DFF0; --petroleo-borde: #132A52; --p1: #5A7DBA; --p2: #1F3F76; --p3: #132A52; }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --mesa: #12100E; --cal: #1B1916; --papel: #26231F; --hundido: #14120F; --tinta: #F2ECE2; --suave: #B3AA9B; --linea: #3B362E;
+    --terracota: #E2663D; --terracota-luz: #F08A63; --terracota-borde: #9C3A1A; --sobre-terracota: #1B1916;
+    --petroleo: #6CBFC2; --petroleo-fondo: #0F4046; --petroleo-tinte: #17353A; --petroleo-borde: #082A2F;
+    --ocre: #E8B84A; --ocre-tinte: #3E3318; --espesor: #E8B84A; --verde: #6DBE8A; --verde-tinte: #1B3626; --rojo: #F2877F; --rojo-tinte: #3F1E1B;
+    --c1: #6F685B; --c2: #554F44; --c3: #3E3A32; --t1: #EE7F57; --t2: #D45128; --t3: #A93B19;
+    --p1: #5BA9AD; --p2: #2F7D84; --p3: #1E5A60; --o1: #F0C25F; --o2: #E8B84A; --o3: #B98418;
+    --sombra-suave: rgba(0, 0, 0, .6); --trazo: rgba(242, 236, 226, .35); color-scheme: dark;
+  }
+  :root[data-comp="azul"]:not([data-theme="light"]) { --petroleo: #8DB0EA; --petroleo-fondo: #1B3566; --petroleo-tinte: #1B2740; --petroleo-borde: #101D3D; --p1: #6F94D6; --p2: #3D64AE; --p3: #26427C; }
+}
+:root[data-theme="dark"] {
+  --mesa: #12100E; --cal: #1B1916; --papel: #26231F; --hundido: #14120F; --tinta: #F2ECE2; --suave: #B3AA9B; --linea: #3B362E;
+  --terracota: #E2663D; --terracota-luz: #F08A63; --terracota-borde: #9C3A1A; --sobre-terracota: #1B1916;
+  --petroleo: #6CBFC2; --petroleo-fondo: #0F4046; --petroleo-tinte: #17353A; --petroleo-borde: #082A2F;
+  --ocre: #E8B84A; --ocre-tinte: #3E3318; --espesor: #E8B84A; --verde: #6DBE8A; --verde-tinte: #1B3626; --rojo: #F2877F; --rojo-tinte: #3F1E1B;
+  --c1: #6F685B; --c2: #554F44; --c3: #3E3A32; --t1: #EE7F57; --t2: #D45128; --t3: #A93B19;
+  --p1: #5BA9AD; --p2: #2F7D84; --p3: #1E5A60; --o1: #F0C25F; --o2: #E8B84A; --o3: #B98418;
+  --sombra-suave: rgba(0, 0, 0, .6); --trazo: rgba(242, 236, 226, .35); color-scheme: dark;
+}
+:root[data-theme="dark"][data-comp="azul"] { --petroleo: #8DB0EA; --petroleo-fondo: #1B3566; --petroleo-tinte: #1B2740; --petroleo-borde: #101D3D; --p1: #6F94D6; --p2: #3D64AE; --p3: #26427C; }
+
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--mesa); color: var(--tinta); font-family: var(--f-texto); font-size: 15px; line-height: 1.5;
+  padding-block: 24px 64px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+h1, h2, h3, h4 { font-family: var(--f-titulo); margin: 0; text-wrap: balance; letter-spacing: -.015em; }
+button { font: inherit; color: inherit; }
+:focus-visible { outline: 3px solid var(--petroleo); outline-offset: 2px; }
+.pagina { max-width: 1160px; margin: 0 auto; display: grid; gap: 44px; }
+.etiqueta { font-size: 11px; font-weight: 600; letter-spacing: .09em; text-transform: uppercase; color: var(--suave); }
+.encabezado h1 { font-size: clamp(28px, 5.4vw, 44px); font-weight: 800; line-height: 1.05; margin-top: 6px; }
+.encabezado p { max-width: 64ch; color: var(--suave); margin: 12px 0 0; }
+.sello-proto { display: inline-flex; align-items: center; gap: 8px; margin-top: 14px; padding: 6px 12px; border-radius: 99px; background: var(--ocre-tinte); color: var(--tinta); font-size: 13px; font-weight: 600; }
+.sello-proto i { width: 8px; height: 8px; border-radius: 50%; background: var(--ocre); }
+
+/* Controles del prototipo */
+.controles { display: flex; flex-wrap: wrap; gap: 10px 22px; align-items: center; padding: 12px 0; border-block: 1px solid var(--linea); }
+.grupo { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.grupo > span { font-size: 12px; color: var(--suave); font-weight: 600; }
+.seg { display: inline-flex; background: var(--hundido); border-radius: 12px; padding: 3px; gap: 2px; }
+.seg button { border: 0; background: transparent; padding: 8px 14px; min-height: 40px; border-radius: 10px; font-size: 14px; font-weight: 600; color: var(--suave); cursor: pointer; transition: background .18s, color .18s; }
+.seg button[aria-pressed="true"] { background: var(--papel); color: var(--tinta); box-shadow: 0 1px 0 var(--linea), 0 2px 6px -2px var(--sombra-suave); }
+.chk { display: inline-flex; align-items: center; gap: 8px; min-height: 40px; font-size: 14px; cursor: pointer; }
+.chk input { width: 20px; height: 20px; accent-color: var(--petroleo); }
+.enlace { border: 0; background: none; color: var(--terracota-borde); font-weight: 600; text-decoration: underline; text-underline-offset: 3px; cursor: pointer; min-height: 40px; padding: 0 4px; }
+:root[data-theme="dark"] .enlace, :root:not([data-theme="light"]) .enlace { }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .enlace { color: var(--terracota-luz); } }
+:root[data-theme="dark"] .enlace { color: var(--terracota-luz); }
+
+/* Escenario */
+.escenario { display: grid; grid-template-columns: minmax(0, 420px) minmax(0, 1fr); gap: 40px; align-items: start; }
+.notas { display: grid; gap: 22px; min-width: 0; }
+.notas h3 { font-size: 18px; font-weight: 700; margin-bottom: 6px; }
+.notas ul { margin: 0; padding-left: 18px; color: var(--suave); display: grid; gap: 6px; }
+.notas li strong { color: var(--tinta); font-weight: 600; }
+.aviso-formato { border-left: 4px solid var(--ocre); padding: 4px 0 4px 14px; color: var(--tinta); }
+@media (max-width: 900px) { .escenario { grid-template-columns: minmax(0, 1fr); gap: 28px; } }
+
+/* ===== Teléfono ===== */
+.marco { width: 100%; max-width: 400px; margin: 0 auto; border: 9px solid var(--tinta); border-radius: 40px; background: var(--cal); overflow: hidden; position: relative; height: 780px; box-shadow: 0 24px 40px -22px var(--sombra-suave);
+  font-size: calc(15px * var(--escala)); }
+.marco > .estado-sis { height: 26px; display: flex; justify-content: space-between; align-items: center; padding: 0 22px; font-size: 11px; font-weight: 600; color: var(--suave); position: absolute; inset: 0 0 auto; z-index: 5; pointer-events: none; }
+.estado-sis.sobre-hero { color: #fff; }
+.pantalla { position: absolute; inset: 0; overflow-y: auto; overflow-x: hidden; background: var(--cal); padding-top: 26px; display: flex; flex-direction: column; scrollbar-width: thin; }
+.pantalla[hidden] { display: none; }
+.pantalla > * { flex-shrink: 0; }
+.pantalla > .cuerpo { flex: 1 0 auto; }
+.entra-d { animation: entra-d .30s cubic-bezier(.2, .8, .2, 1) both; }
+.entra-a { animation: entra-a .30s cubic-bezier(.2, .8, .2, 1) both; }
+@keyframes entra-d { from { transform: translateX(26%); opacity: 0; } to { transform: none; opacity: 1; } }
+@keyframes entra-a { from { transform: translateX(-26%); opacity: 0; } to { transform: none; opacity: 1; } }
+.cuerpo { padding: 6px 1.2em 1.4em; display: grid; gap: 1.1em; align-content: start; flex: 1; }
+
+.enc { display: grid; gap: .6em; padding: .5em 1.2em .2em; }
+.enc-fila { display: flex; align-items: center; gap: .6em; }
+.volver { width: 44px; height: 44px; border-radius: 50%; border: 0; background: var(--papel); box-shadow: 0 2px 0 var(--linea); display: grid; place-items: center; cursor: pointer; transition: transform .12s; flex: none; }
+.volver:active, .volver.pulsado { transform: translateY(2px); box-shadow: 0 0 0 var(--linea); }
+.volver svg { width: 20px; height: 20px; }
+.enc-titulo { font-family: var(--f-titulo); font-weight: 700; font-size: 1.05em; }
+.pasos { display: flex; gap: 5px; }
+.pasos i { flex: 1; height: 6px; border-radius: 99px; background: var(--linea); position: relative; overflow: hidden; }
+.pasos i::after { content: ""; position: absolute; inset: 0; background: var(--terracota); transform-origin: left; transform: scaleX(0); transition: transform .5s cubic-bezier(.3, .8, .3, 1); }
+.pasos i.hecho::after { transform: scaleX(1); }
+.pasos i.actual::after { transform: scaleX(.5); background: var(--petroleo); }
+.pasos-txt { font-size: .8em; color: var(--suave); font-weight: 600; letter-spacing: .02em; }
+.titulo-pantalla { font-family: var(--f-titulo); font-weight: 800; font-size: 1.85em; line-height: 1.05; letter-spacing: -.025em; }
+.sub { color: var(--suave); font-size: .95em; margin-top: .3em; }
+
+/* Botón con volumen */
+.btn3d { position: relative; display: flex; align-items: center; justify-content: center; gap: .5em; width: 100%; min-height: 3.4em; padding: .8em 1.2em; margin-bottom: .36em;
+  border: 0; border-radius: 1.05em; cursor: pointer; font-family: var(--f-titulo); font-weight: 700; font-size: 1.08em; letter-spacing: -.005em;
+  color: var(--sobre-terracota); background: var(--terracota); touch-action: manipulation; -webkit-tap-highlight-color: transparent;
+  box-shadow: inset 0 .14em 0 var(--terracota-luz), 0 .36em 0 var(--terracota-borde), 0 .7em 1em -.3em var(--sombra-suave);
+  transform: translateY(0); transition: transform .24s cubic-bezier(.2, .9, .3, 1.25), box-shadow .24s cubic-bezier(.2, .9, .3, 1.25); }
+.btn3d.pulsado, .btn3d:active:not([aria-disabled="true"]) { transform: translateY(.28em);
+  box-shadow: inset 0 .08em 0 var(--terracota-luz), 0 .08em 0 var(--terracota-borde), 0 .2em .4em -.2em var(--sombra-suave); transition-duration: .06s; }
+.btn3d[aria-disabled="true"] { background: var(--hundido); color: var(--suave); cursor: not-allowed; box-shadow: inset 0 .1em 0 rgba(255, 255, 255, .25), 0 .2em 0 var(--linea); }
+.btn3d.sec { background: var(--papel); color: var(--tinta); box-shadow: inset 0 0 0 2px var(--tinta), 0 .3em 0 var(--tinta); font-weight: 600; min-height: 3.1em; }
+.btn3d.sec.pulsado, .btn3d.sec:active { box-shadow: inset 0 0 0 2px var(--tinta), 0 .06em 0 var(--tinta); }
+.btn3d.petroleo { background: var(--petroleo-fondo); color: #fff; box-shadow: inset 0 .14em 0 rgba(255, 255, 255, .22), 0 .36em 0 var(--petroleo-borde), 0 .7em 1em -.3em var(--sombra-suave); }
+.btn3d.petroleo.pulsado, .btn3d.petroleo:active { box-shadow: inset 0 .08em 0 rgba(255, 255, 255, .22), 0 .08em 0 var(--petroleo-borde), 0 .2em .4em -.2em var(--sombra-suave); }
+.btn3d .giro { width: 1.1em; height: 1.1em; border-radius: 50%; border: 2.5px solid currentColor; border-right-color: transparent; animation: gira .8s linear infinite; display: none; }
+.btn3d.cargando .giro { display: block; }
+@keyframes gira { to { transform: rotate(360deg); } }
+.enlace-s { border: 0; background: none; padding: .6em .4em; min-height: 44px; color: var(--terracota-borde); font-weight: 600; text-decoration: underline; text-underline-offset: 3px; cursor: pointer; width: 100%; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .enlace-s { color: var(--terracota-luz); } }
+:root[data-theme="dark"] .enlace-s { color: var(--terracota-luz); }
+.pie-accion { position: sticky; bottom: 0; padding: .8em 1.2em .7em; background: var(--cal); border-top: 1px solid var(--linea); display: grid; gap: .3em; z-index: 3; }
+.pie-accion.dos { grid-template-columns: 1fr 1.7fr; align-items: end; gap: .8em; }
+.estado-vivo { font-size: .82em; color: var(--suave); min-height: 1.2em; text-align: center; }
+
+/* Inicio */
+.hero { background: var(--petroleo-fondo); color: #fff; padding: 2.4em 1.2em 5.4em; position: relative; margin-top: -26px; padding-top: calc(26px + 1.4em); border-radius: 0 0 2.4em 0; overflow: hidden; }
+.hero h2 { font-size: 1.9em; font-weight: 800; line-height: 1.05; letter-spacing: -.03em; max-width: 9em; }
+.hero p { margin: .5em 0 0; max-width: 17em; opacity: .9; font-size: .95em; }
+.hero svg.escena { position: absolute; right: -.6em; bottom: 3.4em; width: 54%; height: auto; pointer-events: none; }
+.hero .marca { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.2em; }
+.logo { font-family: var(--f-titulo); font-weight: 800; font-size: 1.15em; letter-spacing: -.02em; display: inline-flex; align-items: center; gap: .4em; }
+.logo svg { width: 1.2em; height: 1.2em; }
+.demo { font-size: .66em; font-weight: 700; letter-spacing: .1em; padding: .25em .8em; border-radius: 99px; border: 1.5px solid currentColor; }
+.cta-flota { margin: -3.2em 1.2em 0; position: relative; z-index: 2; }
+.cta-flota .btn3d { min-height: 4em; font-size: 1.2em; justify-content: flex-start; padding-left: 1.1em; }
+.cta-flota .btn3d small { display: block; font-family: var(--f-texto); font-weight: 400; font-size: .68em; opacity: .92; margin-top: .1em; }
+.cta-flota .btn3d .mas { margin-left: auto; width: 1.9em; height: 1.9em; border-radius: 50%; background: rgba(255, 255, 255, .22); display: grid; place-items: center; }
+.cta-flota .btn3d .mas svg { width: 1em; height: 1em; }
+.bloque h3 { font-size: .74em; letter-spacing: .09em; text-transform: uppercase; font-family: var(--f-texto); font-weight: 600; color: var(--suave); margin-bottom: .55em; }
+.retomar { display: flex; align-items: center; gap: 1em; width: 100%; text-align: left; background: none; border: 0; padding: .3em 0; cursor: pointer; min-height: 56px; }
+.anillo { width: 3.4em; height: 3.4em; flex: none; position: relative; }
+.anillo svg { width: 100%; height: 100%; transform: rotate(-90deg); }
+.anillo circle { fill: none; stroke-width: 5; }
+.anillo .fondo { stroke: var(--linea); }
+.anillo .valor { stroke: var(--terracota); stroke-linecap: round; stroke-dasharray: 126; stroke-dashoffset: 126; transition: stroke-dashoffset .9s cubic-bezier(.3, .8, .3, 1) .2s; }
+.anillo b { position: absolute; inset: 0; display: grid; place-items: center; font-size: .78em; font-variant-numeric: tabular-nums; }
+.retomar .txt { flex: 1; min-width: 0; }
+.retomar strong, .fila-cot strong { font-family: var(--f-titulo); font-size: 1.05em; font-weight: 700; display: block; }
+.retomar span.s, .fila-cot .s { color: var(--suave); font-size: .85em; }
+.flecha { color: var(--terracota-borde); font-weight: 700; }
+.atencion { display: flex; gap: .8em; align-items: center; background: var(--verde-tinte); border-radius: 1em .3em 1em .3em; padding: .8em 1em; text-align: left; border: 0; width: 100%; cursor: pointer; min-height: 56px; color: var(--tinta); }
+.atencion .punto { width: .9em; height: .9em; border-radius: 50%; background: var(--verde); box-shadow: 0 0 0 0 var(--verde); animation: latido 2.4s ease-out 2; flex: none; }
+@keyframes latido { 0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--verde) 55%, transparent); } 80%, 100% { box-shadow: 0 0 0 .8em transparent; } }
+.atencion strong { display: block; font-size: .95em; }
+.atencion span.s { font-size: .82em; color: var(--suave); }
+.lista-cot { display: grid; }
+.fila-cot { display: grid; grid-template-columns: 1fr auto; gap: .1em .8em; padding: .75em 0; border-top: 1px solid var(--linea); align-items: center; background: none; border-inline: 0; border-bottom: 0; text-align: left; width: 100%; cursor: pointer; min-height: 56px; }
+.fila-cot:first-child { border-top: 0; }
+.fila-cot .imp { font-variant-numeric: tabular-nums; font-weight: 600; text-align: right; }
+.fila-cot .imp small { display: block; font-weight: 400; color: var(--suave); font-size: .72em; }
+.fila-cot.nueva { animation: nueva .5s cubic-bezier(.2, .8, .2, 1) both; }
+@keyframes nueva { from { opacity: 0; transform: translateY(-.6em); background: var(--ocre-tinte); } to { opacity: 1; transform: none; background: transparent; } }
+.chip { display: inline-block; font-size: .72em; font-weight: 600; padding: .2em .7em; border-radius: 99px; margin-top: .25em; }
+.ch-bor { background: var(--ocre-tinte); } .ch-env { background: var(--petroleo-tinte); } .ch-lis { background: var(--verde-tinte); } .ch-pre { background: var(--hundido); }
+.barra { position: sticky; bottom: 0; margin-top: auto; display: grid; grid-template-columns: repeat(3, 1fr); background: var(--papel); border-top: 1px solid var(--linea); padding: .3em .6em .5em; z-index: 4; }
+.barra button { border: 0; background: none; display: grid; justify-items: center; gap: .1em; padding: .4em 0; min-height: 52px; font-size: .74em; font-weight: 600; color: var(--suave); cursor: pointer; position: relative; }
+.barra button svg { width: 24px; height: 24px; transition: transform .2s; }
+.barra button[aria-current="page"] { color: var(--terracota-borde); }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .barra button[aria-current="page"] { color: var(--terracota); } }
+:root[data-theme="dark"] .barra button[aria-current="page"] { color: var(--terracota); }
+.barra button[aria-current="page"] svg { transform: translateY(-2px) scale(1.08); }
+.barra button[aria-current="page"]::before { content: ""; position: absolute; top: 0; width: 28px; height: 4px; border-radius: 0 0 4px 4px; background: var(--terracota); }
+
+/* Elección del trabajo */
+.chip-proy { display: inline-flex; align-items: center; gap: .5em; background: var(--petroleo-tinte); border-radius: 99px; padding: .3em .9em; font-size: .85em; font-weight: 600; width: fit-content; }
+.opciones { display: grid; gap: 1.5em; padding-top: 1.2em; }
+.opcion { position: relative; display: flex; align-items: center; gap: .6em; text-align: left; border: 2px solid var(--linea); background: var(--papel); border-radius: 1.3em; padding: .9em 1em .9em .9em; min-height: 7.6em; cursor: pointer;
+  box-shadow: 0 .26em 0 var(--linea); touch-action: manipulation; -webkit-tap-highlight-color: transparent; width: 100%; color: var(--tinta);
+  transition: transform .22s cubic-bezier(.2, .9, .3, 1.2), box-shadow .22s, border-color .2s, background .2s; }
+.opcion:nth-child(even) { flex-direction: row-reverse; text-align: right; }
+.opcion.pulsado { transform: translateY(.2em) scale(.985); box-shadow: 0 .06em 0 var(--linea); transition-duration: .06s; }
+.opcion[aria-checked="true"] { border-color: var(--petroleo); background: var(--petroleo-tinte); box-shadow: 0 .4em 0 var(--petroleo-borde); transform: translateY(-.18em); }
+.opcion[aria-checked="true"].pulsado { transform: translateY(.1em); box-shadow: 0 .1em 0 var(--petroleo-borde); }
+.opcion svg.ilu { width: 9.4em; height: auto; flex: none; margin-block: -2.3em -.7em; margin-inline: -.4em; overflow: visible; filter: drop-shadow(0 .5em .5em var(--sombra-suave)); }
+.opcion .sup { transition: transform .3s cubic-bezier(.2, .9, .3, 1.2); }
+.opcion[aria-checked="true"] .sup { transform: translateY(-5px); }
+.opcion .txt { flex: 1; min-width: 0; display: grid; gap: .15em; }
+.opcion strong { font-family: var(--f-titulo); font-size: 1.3em; font-weight: 800; letter-spacing: -.02em; }
+.opcion .d { font-size: .86em; color: var(--suave); }
+.opcion .pide { display: grid; grid-template-rows: 0fr; transition: grid-template-rows .3s; }
+.opcion .pide > span { display: block; overflow: hidden; font-size: .8em; font-weight: 600; color: var(--petroleo); }
+.opcion[aria-checked="true"] .pide { grid-template-rows: 1fr; }
+.opcion .marca-sel { position: absolute; top: -.7em; width: 1.9em; height: 1.9em; border-radius: 50%; background: var(--petroleo-fondo); color: #fff; display: grid; place-items: center; transform: scale(0); transition: transform .24s cubic-bezier(.2, .9, .3, 1.4); }
+.opcion:nth-child(odd) .marca-sel { right: .9em; } .opcion:nth-child(even) .marca-sel { left: .9em; }
+.opcion[aria-checked="true"] .marca-sel { transform: scale(1); }
+.nota-i { display: flex; gap: .6em; font-size: .85em; color: var(--suave); }
+.nota-i svg { width: 1.2em; height: 1.2em; flex: none; margin-top: .1em; color: var(--petroleo); }
+
+/* Medidas */
+.lamina { background: var(--hundido); margin: .4em 0 0; padding: .5em 0 .4em; position: relative;
+  background-image: linear-gradient(var(--linea) 1px, transparent 1px), linear-gradient(90deg, var(--linea) 1px, transparent 1px); background-size: 22px 22px; background-position: -1px -1px;
+  transition: padding .25s; }
+.lamina::after { content: ""; position: absolute; inset: 0; background: color-mix(in srgb, var(--hundido) 55%, transparent); pointer-events: none; }
+.lamina .caja { position: relative; z-index: 1; height: 15.5em; transition: height .3s cubic-bezier(.3, .8, .3, 1); }
+.pantalla.teclado .lamina .caja { height: 9em; }
+.lamina svg { width: 100%; height: 100%; display: block; overflow: visible; }
+.lamina .pie-dib { position: relative; z-index: 1; font-size: .72em; color: var(--suave); text-align: center; padding: 0 1em; }
+.sup-f { fill: var(--s1); } .izq-f { fill: var(--s2); } .der-f { fill: var(--s3); }
+.sol polygon { stroke: var(--trazo); stroke-width: 1; stroke-linejoin: round; }
+.sol.fantasma polygon { fill-opacity: .38; stroke-dasharray: 4 3; }
+.mat-c { --s1: var(--c1); --s2: var(--c2); --s3: var(--c3); } .mat-t { --s1: var(--t1); --s2: var(--t2); --s3: var(--t3); }
+.mat-p { --s1: var(--p1); --s2: var(--p2); --s3: var(--p3); } .mat-o { --s1: var(--o1); --s2: var(--o2); --s3: var(--o3); }
+.det { stroke: var(--trazo); stroke-width: 1; fill: none; }
+.dim line.l { stroke-width: 2; stroke-linecap: round; transition: stroke-width .2s; }
+.dim.act line.l { stroke-width: 4; }
+.dim.pend line.l { stroke-dasharray: 5 4; }
+.dim .chipd rect { transition: fill .2s; }
+.dim text { font: 700 11px var(--f-texto); font-variant-numeric: tabular-nums; text-anchor: middle; dominant-baseline: central; }
+.dim { cursor: pointer; }
+.dim.ent .chipd { animation: resalta .5s ease-out; transform-box: fill-box; transform-origin: center; }
+@keyframes resalta { 0% { transform: scale(.8); } 60% { transform: scale(1.08); } 100% { transform: scale(1); } }
+.secciones { display: flex; gap: .5em; flex-wrap: wrap; align-items: center; }
+.sec-chip { border: 2px solid var(--linea); background: var(--papel); border-radius: 99px; padding: .3em 1em; min-height: 44px; font-weight: 600; font-size: .9em; cursor: pointer; transition: background .2s, border-color .2s; }
+.sec-chip[aria-pressed="true"] { border-color: var(--petroleo); background: var(--petroleo-tinte); }
+.campos { display: grid; gap: .8em; }
+.campo { display: grid; grid-template-columns: 1fr; gap: .25em; }
+.campo label { font-weight: 600; font-size: .92em; display: flex; align-items: center; gap: .5em; }
+.campo label i { width: .85em; height: .85em; border-radius: 3px; background: var(--col); display: inline-block; }
+.campo .ayuda { font-weight: 400; color: var(--suave); font-size: .86em; }
+.entrada { display: flex; align-items: center; background: var(--papel); border: 2px solid var(--linea); border-radius: .9em; min-height: 3.4em; padding: 0 1em; box-shadow: inset 0 .12em 0 rgba(0, 0, 0, .05); transition: border-color .15s, box-shadow .15s; border-left: 6px solid var(--col); }
+.entrada:focus-within { border-color: var(--col); box-shadow: 0 0 0 4px color-mix(in srgb, var(--col) 22%, transparent); }
+.entrada input { flex: 1; min-width: 0; border: 0; background: transparent; font: 600 1.35em var(--f-texto); font-variant-numeric: tabular-nums; color: var(--tinta); padding: .4em 0; outline: none; }
+.entrada .u { color: var(--suave); font-weight: 600; }
+.campo.inv .entrada { border-color: var(--rojo); background: var(--rojo-tinte); }
+.msg-inv { color: var(--rojo); font-size: .85em; font-weight: 600; display: none; gap: .4em; align-items: center; }
+.campo.inv .msg-inv { display: flex; }
+.total-sec { display: flex; justify-content: space-between; font-size: .9em; padding-top: .6em; border-top: 1px dashed var(--linea); color: var(--suave); }
+.total-sec b { color: var(--tinta); font-variant-numeric: tabular-nums; }
+
+/* Resultado */
+.sello { display: inline-flex; width: fit-content; align-items: center; gap: .5em; border: 2.5px solid var(--tinta); border-radius: .5em; padding: .3em .8em; font-family: var(--f-titulo); font-weight: 800; letter-spacing: .06em; text-transform: uppercase; font-size: .86em; transform: rotate(-1.5deg); background: var(--ocre-tinte); }
+.no-formal { font-size: .9em; color: var(--suave); margin-top: .5em; }
+.importe { font-family: var(--f-titulo); font-weight: 800; font-size: 3.1em; line-height: 1; letter-spacing: -.035em; font-variant-numeric: tabular-nums; }
+.importe small { display: block; font-size: .32em; font-weight: 600; letter-spacing: 0; color: var(--suave); margin-top: .5em; }
+.trabajo-res { display: flex; align-items: center; gap: .8em; padding: .8em 0; border-block: 1px solid var(--linea); }
+.trabajo-res svg { width: 4.6em; height: auto; flex: none; overflow: visible; }
+.trabajo-res strong { font-family: var(--f-titulo); font-size: 1.1em; }
+.trabajo-res .s { color: var(--suave); font-size: .86em; }
+.desglose { display: grid; grid-template-rows: 0fr; transition: grid-template-rows .3s cubic-bezier(.3, .8, .3, 1); }
+.desglose.abierto { grid-template-rows: 1fr; }
+.desglose > div { overflow: hidden; }
+.desglose dl { margin: 0; display: grid; grid-template-columns: 1fr auto; gap: .35em 1em; font-size: .92em; padding: .4em 0 .2em; }
+.desglose dd { margin: 0; text-align: right; font-variant-numeric: tabular-nums; font-weight: 600; }
+.desglose .tot { font-weight: 700; border-top: 1px solid var(--linea); padding-top: .4em; }
+.desglose p { font-size: .8em; color: var(--suave); margin: .4em 0 0; }
+.acordeon { border: 0; background: none; display: flex; width: 100%; justify-content: space-between; align-items: center; min-height: 48px; font-weight: 600; cursor: pointer; padding: 0; }
+.acordeon svg { width: 18px; height: 18px; transition: transform .25s; }
+.acordeon[aria-expanded="true"] svg { transform: rotate(180deg); }
+.rev { animation: aparece .5s cubic-bezier(.2, .8, .2, 1) both; animation-delay: var(--d, 0s); }
+@keyframes aparece { from { opacity: 0; transform: translateY(.8em); } to { opacity: 1; transform: none; } }
+.sin-est { background: var(--ocre-tinte); border-radius: 1em; padding: 1em 1.1em; display: grid; gap: .4em; }
+.sin-est strong { font-family: var(--f-titulo); font-size: 1.2em; }
+.lamina-sin { color: var(--suave); font-size: .92em; }
+
+/* Confirmación */
+.velo { position: absolute; inset: 0; background: rgba(20, 16, 10, .5); z-index: 20; display: flex; align-items: flex-end; animation: velo .25s both; }
+.velo[hidden] { display: none; }
+@keyframes velo { from { opacity: 0; } to { opacity: 1; } }
+.hoja { width: 100%; background: var(--papel); border-radius: 1.6em 1.6em 0 0; padding: 1.6em 1.3em 1.4em; display: grid; gap: .9em; justify-items: center; text-align: center; animation: sube .38s cubic-bezier(.2, .9, .3, 1) both; }
+@keyframes sube { from { transform: translateY(100%); } to { transform: none; } }
+.hoja h3 { font-size: 1.5em; font-weight: 800; }
+.hoja p { margin: 0; color: var(--suave); font-size: .93em; max-width: 22em; }
+.palomita { width: 4.6em; height: 4.6em; }
+.palomita circle { fill: var(--verde-tinte); }
+.palomita path { fill: none; stroke: var(--verde); stroke-width: 5; stroke-linecap: round; stroke-linejoin: round; stroke-dasharray: 40; stroke-dashoffset: 40; animation: traza .5s .25s ease-out forwards; }
+@keyframes traza { to { stroke-dashoffset: 0; } }
+.ref { font-size: .8em; color: var(--suave); font-variant-numeric: tabular-nums; }
+
+/* Aviso emergente */
+.aviso-pro { position: absolute; left: 1em; right: 1em; bottom: 5.4em; background: var(--tinta); color: var(--cal); border-radius: .9em; padding: .8em 1em; font-size: .88em; z-index: 30; animation: aparece .3s both; }
+.aviso-pro[hidden] { display: none; }
+
+/* ===== Panel ===== */
+.panel-web { background: var(--cal); border-radius: 16px; border: 1px solid var(--linea); overflow: hidden; display: grid; grid-template-columns: 210px minmax(0, 1fr); min-height: 640px; position: relative; box-shadow: 0 24px 40px -26px var(--sombra-suave); }
+.riel { background: var(--petroleo-fondo); color: #fff; padding: 18px 12px; display: grid; gap: 22px; align-content: start; }
+.riel .logo { padding: 0 8px; }
+.riel nav { display: grid; gap: 2px; }
+.riel nav button { display: flex; align-items: center; gap: 10px; border: 0; background: none; color: rgba(255, 255, 255, .8); padding: 10px 10px; min-height: 42px; border-radius: 10px; font-size: 14px; font-weight: 500; cursor: pointer; text-align: left; transition: background .15s; position: relative; }
+.riel nav button:hover { background: rgba(255, 255, 255, .08); }
+.riel nav button[aria-current="page"] { background: rgba(255, 255, 255, .14); color: #fff; font-weight: 600; }
+.riel nav button[aria-current="page"]::before { content: ""; position: absolute; left: -12px; top: 8px; bottom: 8px; width: 4px; border-radius: 0 4px 4px 0; background: var(--terracota-luz); }
+.riel nav svg { width: 18px; height: 18px; flex: none; }
+.riel nav .n { margin-left: auto; background: var(--terracota); color: #fff; font-size: 11px; font-weight: 700; padding: 1px 7px; border-radius: 99px; }
+.riel .quien { margin-top: auto; font-size: 12px; opacity: .85; padding: 0 8px; }
+.p-main { padding: 22px 26px 28px; display: grid; gap: 22px; align-content: start; min-width: 0; }
+.p-cab { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; flex-wrap: wrap; }
+.p-cab h3 { font-size: 26px; font-weight: 800; }
+.rol-chip { display: inline-flex; align-items: center; gap: 8px; background: var(--petroleo-tinte); padding: 4px 12px; border-radius: 99px; font-size: 13px; font-weight: 600; }
+.franja { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.franja > div { padding: 2px 20px; border-left: 1px solid var(--linea); display: grid; gap: 0; }
+.franja > div:first-child { border-left: 0; padding-left: 0; }
+.franja b { font-family: var(--f-titulo); font-size: 42px; font-weight: 800; line-height: 1; letter-spacing: -.03em; font-variant-numeric: tabular-nums; }
+.franja span { font-size: 13px; color: var(--suave); }
+.franja .u b { color: var(--terracota-borde); }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .franja .u b { color: var(--terracota); } }
+:root[data-theme="dark"] .franja .u b { color: var(--terracota); }
+.tabs { display: flex; gap: 6px; border-bottom: 1px solid var(--linea); }
+.tabs button { border: 0; background: none; padding: 10px 14px; min-height: 44px; font-weight: 600; font-size: 14px; color: var(--suave); cursor: pointer; border-bottom: 3px solid transparent; margin-bottom: -1px; }
+.tabs button[aria-selected="true"] { color: var(--tinta); border-bottom-color: var(--terracota); }
+.tabla-marco { overflow-x: auto; }
+.tabla { min-width: 620px; display: grid; }
+.fila-p { display: grid; grid-template-columns: 1.7fr 1.1fr .8fr auto; gap: 14px; align-items: center; padding: 12px 10px; border-bottom: 1px solid var(--linea); border-radius: 0; background: none; border-inline: 0; border-top: 0; text-align: left; width: 100%; cursor: pointer; color: var(--tinta); min-height: 56px; transition: background .15s; }
+.fila-p:hover { background: var(--papel); }
+.fila-p[aria-selected="true"] { background: var(--petroleo-tinte); }
+.fila-p strong { font-weight: 600; display: block; }
+.fila-p .s { font-size: 13px; color: var(--suave); }
+.fila-p .est { font-variant-numeric: tabular-nums; font-weight: 600; }
+.fila-p .est.sin { color: var(--espesor); font-weight: 600; }
+.btn-p { border: 0; background: var(--terracota); color: var(--sobre-terracota); font-weight: 600; font-size: 13px; padding: 8px 16px; min-height: 40px; border-radius: 10px; cursor: pointer; box-shadow: 0 3px 0 var(--terracota-borde); transition: transform .1s, box-shadow .1s; }
+.btn-p:active { transform: translateY(2px); box-shadow: 0 1px 0 var(--terracota-borde); }
+.btn-p.sec { background: var(--papel); color: var(--tinta); box-shadow: inset 0 0 0 1.5px var(--linea), 0 3px 0 var(--linea); }
+.cajon { position: absolute; top: 0; right: 0; bottom: 0; width: min(360px, 100%); background: var(--papel); border-left: 1px solid var(--linea); box-shadow: -18px 0 30px -22px var(--sombra-suave); padding: 22px; display: grid; gap: 14px; align-content: start; overflow-y: auto; transform: translateX(105%); transition: transform .26s cubic-bezier(.3, .8, .3, 1); z-index: 5; }
+.cajon.abierto { transform: none; }
+.cajon h4 { font-size: 20px; font-weight: 800; }
+.cajon .cerrar { position: absolute; top: 12px; right: 12px; width: 40px; height: 40px; border-radius: 50%; border: 0; background: var(--hundido); cursor: pointer; font-size: 18px; }
+.cajon .est-box { background: var(--ocre-tinte); border-radius: 12px; padding: 12px 14px; display: grid; gap: 2px; }
+.cajon .est-box .grande { font-family: var(--f-titulo); font-size: 30px; font-weight: 800; letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
+.cajon ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; font-size: 14px; }
+.cajon li { display: flex; gap: 10px; align-items: flex-start; }
+.cajon li i { width: 18px; height: 18px; border: 2px solid var(--linea); border-radius: 50%; flex: none; margin-top: 2px; }
+.cajon li.ok i { background: var(--verde); border-color: var(--verde); }
+.cajon .perm { font-size: 12px; color: var(--suave); border-top: 1px dashed var(--linea); padding-top: 10px; }
+.toast-p { position: absolute; left: 50%; bottom: 20px; transform: translateX(-50%); background: var(--tinta); color: var(--cal); padding: 10px 16px; border-radius: 10px; font-size: 14px; z-index: 9; max-width: 90%; animation: aparece .25s both; }
+.toast-p[hidden] { display: none; }
+@media (max-width: 760px) {
+  .panel-web { grid-template-columns: minmax(0, 1fr); }
+  .riel { grid-template-columns: 1fr; padding: 12px; gap: 10px; }
+  .riel nav { display: flex; overflow-x: auto; gap: 4px; }
+  .riel nav button { white-space: nowrap; }
+  .riel nav button[aria-current="page"]::before { display: none; }
+  .riel .quien { display: none; }
+  .p-main { padding: 18px 14px 24px; }
+  .franja b { font-size: 32px; }
+  .franja > div { padding: 2px 10px; }
+}
+
+/* Identidad */
+.seccion h2 { font-size: clamp(22px, 3.4vw, 30px); font-weight: 800; }
+.seccion > p { color: var(--suave); max-width: 66ch; margin: 8px 0 0; }
+.paleta { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 0; margin-top: 20px; border-top: 1px solid var(--linea); }
+.col { display: grid; grid-template-columns: 56px 1fr; gap: 14px; padding: 14px 14px 14px 0; border-bottom: 1px solid var(--linea); align-items: start; }
+.col i { width: 56px; height: 56px; border-radius: 12px; border: 1px solid var(--linea); }
+.col b { display: block; font-weight: 600; }
+.col span { font-size: 13px; color: var(--suave); display: block; }
+.col code { font-size: 12px; font-variant-numeric: tabular-nums; color: var(--suave); }
+.tipo-demo { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 24px; margin-top: 22px; }
+.tipo-demo .a { font-family: var(--f-titulo); font-weight: 800; font-size: 44px; letter-spacing: -.03em; line-height: 1; }
+.tipo-demo .b { font-size: 18px; font-variant-numeric: tabular-nums; font-weight: 500; }
+.tipo-demo small { display: block; color: var(--suave); margin-top: 6px; }
+.tabla-c { overflow-x: auto; margin-top: 20px; }
+.tabla-c table { border-collapse: collapse; min-width: 520px; width: 100%; font-size: 14px; }
+.tabla-c th, .tabla-c td { text-align: left; padding: 8px 12px 8px 0; border-bottom: 1px solid var(--linea); font-variant-numeric: tabular-nums; }
+.tabla-c th { font-size: 12px; color: var(--suave); text-transform: uppercase; letter-spacing: .06em; font-weight: 600; }
+.dos-col { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 32px; }
+.dos-col h3 { font-size: 19px; font-weight: 700; margin-bottom: 8px; }
+.dos-col ul { margin: 0; padding-left: 18px; display: grid; gap: 6px; color: var(--suave); }
+.dos-col li strong { color: var(--tinta); font-weight: 600; }
+
+/* Movimiento reducido: mismos estados sin animación */
+:root[data-mov="no"] *, :root[data-mov="no"] *::before, :root[data-mov="no"] *::after { animation: none !important; transition: none !important; }
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }
+</style>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+  <symbol id="i-inicio" viewBox="0 0 24 24"><path d="M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></symbol>
+  <symbol id="i-doc" viewBox="0 0 24 24"><path d="M6 3h9l4 4v14H6z M9 12h7 M9 16h7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="i-yo" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4" fill="none" stroke="currentColor" stroke-width="2"/><path d="M4 21c1-4 4-6 8-6s7 2 8 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
+  <symbol id="i-atras" viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="i-mas" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="2"/><path d="M12 11v5M12 8h.01" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></symbol>
+  <symbol id="i-abajo" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="i-alerta" viewBox="0 0 24 24"><path d="M12 3l10 18H2z M12 10v5 M12 18h.01" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="i-bandeja" viewBox="0 0 24 24"><path d="M3 13l3-8h12l3 8v6H3z M3 13h5l1 3h6l1-3h5" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></symbol>
+  <symbol id="i-gente" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.5" fill="none" stroke="currentColor" stroke-width="2"/><path d="M2.5 20c.8-3.6 3.3-5.5 6.5-5.5s5.700 1.900 6.500 5.500 M16 5a3.500 3.500 0 0 1 0 6.500 M18 14.700c2 .6 3.200 2.400 3.600 5.300" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
+  <symbol id="i-caja" viewBox="0 0 24 24"><path d="M3 7l9-4 9 4v10l-9 4-9-4z M3 7l9 4 9-4 M12 11v10" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></symbol>
+  <symbol id="i-precio" viewBox="0 0 24 24"><path d="M12 3v18 M16.500 7.500C15.800 6.500 14.200 6 12.500 6 10 6 8.500 7.200 8.500 9s1.500 2.700 3.500 3.100 3.500 1.200 3.500 3-1.500 3-4 3c-1.800 0-3.500-.6-4.200-1.700" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
+</svg>
+
+<div class="pagina">
+  <header class="encabezado">
+    <div class="etiqueta">Iteración 2 · Obra cálida</div>
+    <h1>SoftArq: prototipo para tocar</h1>
+    <p>Cinco pantallas con movimiento, profundidad y datos ficticios. Elige un trabajo, escribe medidas, calcula y envía. Después pasa al panel del equipo. Nada de aquí se guarda ni calcula de verdad.</p>
+    <div class="sello-proto"><i></i>Prototipo con datos ficticios. Los importes son fijos y de ejemplo; el cálculo real lo hará la API.</div>
+  </header>
+
+  <section aria-label="Prototipo">
+    <div class="controles" role="group" aria-label="Controles del prototipo">
+      <div class="grupo"><span>Ver</span>
+        <div class="seg" role="group" aria-label="Superficie">
+          <button type="button" id="b-app" aria-pressed="true">App del cliente</button>
+          <button type="button" id="b-panel" aria-pressed="false">Panel del equipo</button>
+        </div>
+      </div>
+      <div class="grupo"><span>Color complementario</span>
+        <div class="seg" role="group" aria-label="Color complementario">
+          <button type="button" id="c-pet" aria-pressed="true">Verde petróleo</button>
+          <button type="button" id="c-azu" aria-pressed="false">Azul profundo</button>
+        </div>
+      </div>
+      <label class="chk"><input type="checkbox" id="k-grande"> Texto grande</label>
+      <label class="chk"><input type="checkbox" id="k-mov"> Reducir movimiento</label>
+      <label class="chk"><input type="checkbox" id="k-sin"> Simular «sin precio de referencia»</label>
+      <button type="button" class="enlace" id="b-reiniciar">Reiniciar prototipo</button>
+    </div>
+
+    <div class="escenario" style="margin-top:28px">
+      <div id="sup-app">
+        <div class="marco" id="marco" aria-label="Prototipo de la app del cliente">
+          <div class="estado-sis" id="estado-sis"><span>9:41</span><span>SoftArq DEMO</span></div>
+
+          <!-- INICIO -->
+          <section class="pantalla" id="p-inicio" aria-label="Inicio">
+            <div class="hero">
+              <div class="marca"><span class="logo"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 20V9l9-5 9 5v11z" fill="var(--terracota-luz)"/><path d="M3 20V9l9 4.500V20z" fill="var(--terracota)"/><path d="M12 13.500L21 9v11h-9z" fill="var(--terracota-borde)"/></svg>SoftArq</span><span class="demo">DEMO</span></div>
+              <h2>Hola, Laura.<br>¿Qué vamos a construir?</h2>
+              <p>Cotiza tu obra en pocos pasos.</p>
+              <svg class="escena" id="escena" viewBox="0 0 220 170" aria-hidden="true"></svg>
+            </div>
+            <div class="cta-flota">
+              <button type="button" class="btn3d" id="nueva"><span style="text-align:left">Nueva cotización<small>Cubierta, losa o muro</small></span><span class="mas"><svg><use href="#i-mas"/></svg></span></button>
+            </div>
+            <div class="cuerpo">
+              <div class="bloque">
+                <h3>Para retomar</h3>
+                <button type="button" class="retomar" id="retomar">
+                  <span class="anillo"><svg viewBox="0 0 48 48"><circle class="fondo" cx="24" cy="24" r="20"/><circle class="valor" id="anillo" cx="24" cy="24" r="20"/></svg><b>3/4</b></span>
+                  <span class="txt"><strong>Cubierta bodega</strong><span class="s">Bodega Ixtapaluca · te falta el ancho</span></span>
+                  <span class="flecha">Seguir →</span>
+                </button>
+              </div>
+              <div class="bloque">
+                <h3>Necesita tu atención</h3>
+                <button type="button" class="atencion" data-aviso="En la app real se abre la cotización formal y su PDF. No está en este prototipo."><span class="punto"></span><span><strong>Tu cotización de Muro perimetral está lista</strong><span class="s">Ya puedes revisarla y descargar el PDF</span></span></button>
+              </div>
+              <div class="bloque">
+                <h3>Mis cotizaciones y solicitudes</h3>
+                <div class="lista-cot" id="lista-inicio"></div>
+              </div>
+            </div>
+            <nav class="barra" aria-label="Secciones de la app" id="barra-inicio"></nav>
+          </section>
+
+          <!-- MIS COTIZACIONES -->
+          <section class="pantalla" id="p-mias" aria-label="Mis cotizaciones" hidden>
+            <div class="cuerpo" style="padding-top:1.2em">
+              <div><div class="titulo-pantalla">Mis cotizaciones</div><p class="sub">Una <b>estimación</b> es orientativa. Una <b>cotización</b> la prepara y emite el equipo.</p></div>
+              <div class="lista-cot" id="lista-mias"></div>
+            </div>
+            <nav class="barra" aria-label="Secciones de la app" id="barra-mias"></nav>
+          </section>
+
+          <!-- PERFIL -->
+          <section class="pantalla" id="p-perfil" aria-label="Perfil" hidden>
+            <div class="cuerpo" style="padding-top:1.2em">
+              <div class="titulo-pantalla">Perfil</div>
+              <div style="display:flex;gap:1em;align-items:center"><span class="logo" style="width:3.4em;height:3.4em;border-radius:50%;background:var(--petroleo-fondo);color:#fff;display:grid;place-items:center;font-size:1.1em">LM</span><div><strong style="font-family:var(--f-titulo);font-size:1.2em">Laura Méndez</strong><div class="sub" style="margin:0">laura.mendez@correo.test</div></div></div>
+              <div class="lista-cot">
+                <button type="button" class="fila-cot" data-aviso="Cambiar contraseña existe en la app real; aquí solo se muestra su lugar."><span><strong>Cambiar contraseña</strong></span><span class="flecha">›</span></button>
+                <button type="button" class="fila-cot" data-aviso="Tamaño de texto: prueba el control «Texto grande» de esta página."><span><strong>Tamaño de texto</strong><span class="s">Sigue el ajuste del teléfono</span></span><span class="flecha">›</span></button>
+                <button type="button" class="fila-cot" data-aviso="Cerrar sesión no está activo en el prototipo."><span><strong>Cerrar sesión</strong></span><span class="flecha">›</span></button>
+              </div>
+              <p class="sub">Tu cuenta es de cliente: solo ves tus propios proyectos y cotizaciones. La cuenta y la sesión se gestionan aquí, no en el inicio.</p>
+            </div>
+            <nav class="barra" aria-label="Secciones de la app" id="barra-perfil"></nav>
+          </section>
+
+          <!-- TRABAJO -->
+          <section class="pantalla" id="p-trabajo" aria-label="Elegir el trabajo" hidden>
+            <div class="enc">
+              <div class="enc-fila"><button type="button" class="volver" data-ir="inicio" data-dir="a" aria-label="Volver al inicio"><svg><use href="#i-atras"/></svg></button><span class="enc-titulo">Nueva cotización</span></div>
+              <div class="pasos" data-paso="2"></div><div class="pasos-txt">Paso 2 de 4 · Trabajo</div>
+            </div>
+            <div class="cuerpo">
+              <span class="chip-proy">Proyecto: Casa Tlalpan</span>
+              <div><div class="titulo-pantalla">¿Qué vas a construir?</div><p class="sub">Elige un tipo de trabajo. Podrás agregar otro después.</p></div>
+              <div class="opciones" role="radiogroup" aria-label="Tipo de trabajo" id="opciones"></div>
+              <p class="nota-i"><svg><use href="#i-info"/></svg><span>Algunos trabajos tienen varias opciones, por ejemplo el tipo de lámina. Si es tu caso, te lo preguntamos en el paso siguiente.</span></p>
+            </div>
+            <div class="pie-accion"><button type="button" class="btn3d" id="seguir-trabajo" aria-disabled="true">Continuar</button><div class="estado-vivo" id="viv-trabajo" aria-live="polite">Elige una opción para continuar</div></div>
+          </section>
+
+          <!-- MEDIDAS -->
+          <section class="pantalla" id="p-medidas" aria-label="Medidas" hidden>
+            <div class="enc">
+              <div class="enc-fila"><button type="button" class="volver" data-ir="trabajo" data-dir="a" aria-label="Volver al tipo de trabajo"><svg><use href="#i-atras"/></svg></button><span class="enc-titulo" id="tit-med">Medidas</span></div>
+              <div class="pasos" data-paso="3"></div><div class="pasos-txt">Paso 3 de 4 · Medidas</div>
+            </div>
+            <div class="lamina"><div class="caja"><svg id="croquis" viewBox="0 0 360 240" role="img" aria-label="Dibujo de apoyo con las medidas"></svg></div><div class="pie-dib">Dibujo de apoyo, fuera de escala. No es un plano ni valida la estructura.</div></div>
+            <div class="cuerpo" style="padding-top:1em">
+              <div class="secciones" id="secciones" role="group" aria-label="Secciones del trabajo"></div>
+              <div class="campos" id="campos"></div>
+              <div class="total-sec" id="total-sec"></div>
+              <button type="button" class="enlace-s" id="ejemplo">Usar medidas de ejemplo</button>
+            </div>
+            <div class="pie-accion dos"><button type="button" class="btn3d sec" data-ir="trabajo" data-dir="a">Atrás</button><div><button type="button" class="btn3d" id="calcular" aria-disabled="true"><span class="giro"></span><span id="t-calc">Calcular estimación</span></button></div><div class="estado-vivo" id="viv-med" aria-live="polite" style="grid-column:1/-1"></div></div>
+          </section>
+
+          <!-- RESULTADO -->
+          <section class="pantalla" id="p-resultado" aria-label="Resultado" hidden>
+            <div class="enc">
+              <div class="enc-fila"><button type="button" class="volver" data-ir="medidas" data-dir="a" aria-label="Volver a las medidas"><svg><use href="#i-atras"/></svg></button><span class="enc-titulo">Resultado</span></div>
+              <div class="pasos" data-paso="4"></div><div class="pasos-txt">Paso 4 de 4 · Estimación</div>
+            </div>
+            <div class="cuerpo" id="res-cuerpo"></div>
+            <div class="pie-accion" id="res-pie"></div>
+          </section>
+
+          <div class="velo" id="velo" hidden>
+            <div class="hoja" role="dialog" aria-modal="true" aria-labelledby="h-conf">
+              <svg class="palomita" viewBox="0 0 60 60" aria-hidden="true"><circle cx="30" cy="30" r="28"/><path d="M17 31l9 9 17-19"/></svg>
+              <h3 id="h-conf">Solicitud enviada</h3>
+              <p>El equipo revisará tus medidas y preparará tu cotización formal. Te avisaremos aquí cuando esté lista.</p>
+              <span class="ref">Referencia SOL-2026-00012</span>
+              <button type="button" class="btn3d" id="ver-mias">Ver mis cotizaciones</button>
+            </div>
+          </div>
+          <div class="aviso-pro" id="aviso" role="status" hidden></div>
+        </div>
+      </div>
+
+      <div id="sup-panel" hidden>
+        <div class="panel-web" id="panel-web" aria-label="Prototipo del panel del equipo">
+          <aside class="riel">
+            <span class="logo"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 20V9l9-5 9 5v11z" fill="var(--terracota-luz)"/><path d="M3 20V9l9 4.500V20z" fill="var(--terracota)"/><path d="M12 13.500L21 9v11h-9z" fill="var(--terracota-borde)"/></svg>SoftArq</span>
+            <nav id="riel-nav" aria-label="Secciones del panel"></nav>
+            <div class="quien" id="riel-quien"></div>
+          </aside>
+          <main class="p-main">
+            <div class="p-cab">
+              <div><div class="etiqueta" id="p-saludo">Buenos días, Luis</div><h3 id="p-titulo">Lo que necesita tu atención</h3></div>
+              <div class="grupo"><span class="rol-chip" id="rol-chip">Preparador</span><span class="demo" style="font-size:11px;color:var(--terracota-borde)">DEMO</span></div>
+            </div>
+            <div class="seg" role="group" aria-label="Ver como" style="width:fit-content">
+              <button type="button" data-rol="prep" aria-pressed="true">Preparador</button>
+              <button type="button" data-rol="rev" aria-pressed="false">Revisor</button>
+              <button type="button" data-rol="cat" aria-pressed="false">Admin. del catálogo</button>
+            </div>
+            <div class="franja" id="franja"></div>
+            <div>
+              <div class="tabs" role="tablist" id="tabs"></div>
+              <div class="tabla-marco"><div class="tabla" id="tabla" role="list"></div></div>
+            </div>
+          </main>
+          <aside class="cajon" id="cajon" aria-label="Detalle de la solicitud"></aside>
+          <div class="toast-p" id="toast-p" role="status" hidden></div>
+        </div>
+      </div>
+
+      <div class="notas">
+        <div>
+          <h3>Qué probar</h3>
+          <ul>
+            <li><strong>Inicio:</strong> pulsa «Nueva cotización». El botón se hunde y se recupera.</li>
+            <li><strong>Trabajo:</strong> toca una opción; sube, aparece la marca y se abre lo que se le pedirá.</li>
+            <li><strong>Medidas:</strong> toca un campo y mira cómo se resalta su cota en el dibujo. Toca una cota para ir al campo. Deja un campo en 0 para ver el error.</li>
+            <li><strong>Resultado:</strong> «Calcular» y «Enviar solicitud» son acciones separadas. Activa «sin precio de referencia» arriba para ver ese caso.</li>
+            <li><strong>Panel:</strong> cambia de función; la navegación y las acciones cambian con ella.</li>
+          </ul>
+        </div>
+        <div class="aviso-formato">
+          <h3>Límites de este prototipo</h3>
+          <ul>
+            <li>Es una página web. La física real de la pulsación, el teclado del sistema, el botón Atrás de Android y la transición nativa entre pantallas se comprueban en el teléfono.</li>
+            <li>Los importes son constantes de ejemplo (las cifras de referencia de la fase 1). Cambiar las medidas no los cambia.</li>
+            <li>Con «Reducir movimiento» todo sigue funcionando; solo desaparecen las animaciones.</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="seccion" aria-labelledby="h-pal">
+    <h2 id="h-pal">Paleta: qué hace cada color</h2>
+    <p>Cada color tiene un trabajo. El terracota actúa, el petróleo estructura, el ocre avisa y el verde confirma. Los degradados solo aparecen donde hay una superficie que modelar, no en los controles.</p>
+    <div class="paleta">
+      <div class="col"><i style="background:var(--terracota)"></i><div><b>Terracota</b><span>Acción principal y lo que falta por hacer. Con borde inferior oscuro da volumen al botón.</span><code>#C8451E · blanco 4.85:1</code></div></div>
+      <div class="col"><i style="background:var(--petroleo-fondo)"></i><div><b>Verde petróleo</b><span>Estructura: cabecera del inicio, navegación del panel, selección y croquis.</span><code>#14535A · blanco 8.70:1</code></div></div>
+      <div class="col"><i style="background:var(--cal)"></i><div><b>Cal</b><span>Fondo de las pantallas.</span><code>#EFE8DC</code></div></div>
+      <div class="col"><i style="background:var(--papel)"></i><div><b>Papel</b><span>Campos, filas activas y hojas emergentes: se distingue de la cal sin bordes pesados.</span><code>#FFFDF9</code></div></div>
+      <div class="col"><i style="background:var(--hundido)"></i><div><b>Concreto</b><span>Lo hundido: lámina del croquis, controles desactivados y chips neutros.</span><code>#E5DCCD</code></div></div>
+      <div class="col"><i style="background:var(--ocre)"></i><div><b>Ocre</b><span>Atención y estimación preliminar. Siempre con texto oscuro.</span><code>#E2A62A · tinta 7.53:1</code></div></div>
+      <div class="col"><i style="background:var(--verde)"></i><div><b>Verde obra</b><span>Cotización lista y confirmaciones.</span><code>#2C7A4C · blanco 5.26:1</code></div></div>
+      <div class="col"><i style="background:var(--rojo)"></i><div><b>Rojo</b><span>Solo errores de captura, junto con un icono y un texto.</span><code>#B3261E · papel 6.43:1</code></div></div>
+    </div>
+    <div class="dos-col" style="margin-top:28px">
+      <div><h3>Recomendación: verde petróleo</h3><ul>
+        <li><strong>Es el complemento natural del terracota</strong> (cálido frente a frío) y vibra con él sin competir.</li>
+        <li><strong>Se aleja de lo corporativo.</strong> El azul profundo funciona, pero recuerda a banca y a aplicaciones genéricas. El petróleo recuerda a vidrio, acero y agua de obra.</li>
+        <li><strong>Más contraste útil:</strong> 8.7:1 con blanco para texto sobre la cabecera. El azul profundo da 10.3:1, también correcto.</li>
+        <li>Compara ambos con el control «Color complementario» de arriba.</li></ul></div>
+      <div><h3>Tipografía</h3>
+        <div class="tipo-demo" style="margin-top:0"><div><div class="a">Bricolage</div><small>Títulos y cifras grandes. Trazos con carácter, de cartel de obra, sin ser decorativa.</small></div><div><div class="b">Inter · 6.00 m · $43,312.16</div><small>Formularios y texto corrido. Cifras tabulares y buena lectura en tamaños pequeños.</small></div></div>
+      </div>
+    </div>
+    <div class="tabla-c"><table>
+      <caption class="etiqueta" style="text-align:left;padding-bottom:8px">Contrastes calculados (WCAG 2)</caption>
+      <thead><tr><th>Par</th><th>Claro</th><th>Oscuro</th><th>Uso</th></tr></thead>
+      <tbody>
+        <tr><td>Tinta sobre cal</td><td>13.35</td><td>14.93</td><td>Texto</td></tr>
+        <tr><td>Texto suave sobre papel</td><td>7.24</td><td>6.81</td><td>Ayudas y metadatos</td></tr>
+        <tr><td>Texto sobre terracota</td><td>4.85</td><td>5.18</td><td>Botón principal</td></tr>
+        <tr><td>Terracota como texto sobre cal</td><td>3.99</td><td>4.62</td><td>Solo fondos e iconos; los enlaces usan el terracota oscuro (6.8)</td></tr>
+        <tr><td>Verde petróleo sobre papel</td><td>8.56</td><td>7.35</td><td>Selección y cotas</td></tr>
+        <tr><td>Rojo sobre papel</td><td>6.43</td><td>6.37</td><td>Errores</td></tr>
+      </tbody></table></div>
+  </section>
+
+  <section class="seccion" aria-labelledby="h-impl">
+    <h2 id="h-impl">Demostrado aquí y por implementar en Expo</h2>
+    <div class="dos-col" style="margin-top:20px">
+      <div><h3>Demostrado en el prototipo</h3><ul>
+        <li>Botón con volumen: se hunde al pulsar y vuelve con una recuperación suave.</li>
+        <li>Tarjetas de selección con respuesta al toque y estado elegido visible.</li>
+        <li>Transición lateral entre pasos y barra de progreso que se llena.</li>
+        <li>Croquis isométrico ligado a los campos, con cota activa, pendientes y errores.</li>
+        <li>Resultado con aparición escalonada y desglose que se despliega, sin conteo de importes.</li>
+        <li>Confirmación de envío, caso sin estimación y panel por función.</li>
+        <li>Texto grande y movimiento reducido.</li></ul></div>
+      <div><h3>Por implementar y comprobar en el teléfono</h3><ul>
+        <li><strong>Movimiento:</strong> API <code>Animated</code> de React Native con controlador nativo para escala y posición. No hace falta añadir <code>reanimated</code>.</li>
+        <li><strong>Botón y tarjetas:</strong> dos capas (cara y borde inferior) movidas con <code>transform</code>; no dependen de la sombra de Android.</li>
+        <li><strong>Ilustraciones:</strong> <code>react-native-svg</code> (módulo nativo incluido en Expo; entra en la única compilación nueva). La proyección isométrica será una función pura con pruebas.</li>
+        <li><strong>Pantallas:</strong> transición de <code>expo-router</code>; el botón Atrás de Android y el teclado se verifican en el dispositivo.</li>
+        <li><strong>Animación del dibujo:</strong> se anima el valor numérico y se redibuja; en una laptop de 8 GB y un teléfono de gama media debe medirse.</li>
+        <li><strong>Reducir movimiento:</strong> <code>AccessibilityInfo.isReduceMotionEnabled</code>.</li>
+        <li><strong>Pendiente de diseño:</strong> descuentos (ventanas y tragaluces), varias obras en una solicitud y el paso «Opción» cuando un trabajo tiene variantes.</li></ul></div>
+    </div>
+    <p style="margin-top:20px">Referencias consultadas con la skill del repositorio: para «Construction/Architecture» sugiere gris, naranja de seguridad y azul de plano; coincide con terracota más un frío estructural. En guías de interacción: estado de pulsación inmediato, indicador de pasos, objetivos táctiles de 48 dp en Android y respeto al movimiento reducido. No se incorporó ninguna plantilla ni recurso externo; todo el dibujo es propio.</p>
+  </section>
+</div>
+
+<script>
+(function () {
+  "use strict";
+  var $ = function (s, r) { return (r || document).querySelector(s); };
+  var $$ = function (s, r) { return Array.prototype.slice.call((r || document).querySelectorAll(s)); };
+  var raiz = document.documentElement;
+  var reduce = function () { return raiz.getAttribute("data-mov") === "no" || (window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches); };
+
+  /* ---------- Isométrico ---------- */
+  var K = Math.sqrt(3) / 2;
+  function P(x, y, z) { return [(x - y) * K, (x + y) * 0.5 - z]; }
+  function pt(a) { return a.map(function (p) { return p[0].toFixed(1) + "," + p[1].toFixed(1); }).join(" "); }
+  function caja(ox, oy, oz, dx, dy, dz, mat, extra, cls) {
+    var q = function (x, y, z) { return P(ox + x, oy + y, oz + z); };
+    var top = pt([q(0, 0, dz), q(dx, 0, dz), q(dx, dy, dz), q(0, dy, dz)]);
+    var izq = pt([q(0, dy, 0), q(dx, dy, 0), q(dx, dy, dz), q(0, dy, dz)]);
+    var der = pt([q(dx, 0, 0), q(dx, dy, 0), q(dx, dy, dz), q(dx, 0, dz)]);
+    return '<g class="' + mat + ' sol ' + (cls || "") + '"><polygon class="izq-f" points="' + izq + '"/><polygon class="der-f" points="' + der + '"/><polygon class="sup-f" points="' + top + '"/>' + (extra ? extra(q) : "") + "</g>";
+  }
+  function lineas(a, b, n, q, z, eje) {
+    var s = "";
+    for (var i = 1; i < n; i++) {
+      var f = i / n, p1, p2;
+      if (eje === "y") { p1 = q(a * f, 0, z); p2 = q(a * f, b, z); } else { p1 = q(0, b * f, z); p2 = q(a, b * f, z); }
+      s += '<line class="det" x1="' + p1[0].toFixed(1) + '" y1="' + p1[1].toFixed(1) + '" x2="' + p2[0].toFixed(1) + '" y2="' + p2[1].toFixed(1) + '"/>';
+    }
+    return s;
+  }
+  function iluCubierta() {
+    var panel = '<g class="sup">' + caja(-0.4, -0.4, 5, 9.4, 6.4, 0.6, "mat-t", function (q) { return lineas(9.4, 6.4, 10, q, 0.6, "y"); }) + "</g>";
+    return caja(0.6, 0.2, 0, 0.9, 0.9, 5, "mat-c") + caja(7.6, 0.2, 0, 0.9, 0.9, 5, "mat-c") + caja(0.6, 5, 0, 0.9, 0.9, 5, "mat-c") + panel;
+  }
+  function iluLosa() {
+    var base = caja(0, 0, 0, 9, 6.5, 1.6, "mat-c");
+    var losa = '<g class="sup">' + caja(0, 0, 1.6, 9, 6.5, 1.2, "mat-c", function (q) { return lineas(9, 6.5, 6, q, 1.2, "y") + lineas(9, 6.5, 5, q, 1.2, "x"); }) + "</g>";
+    return base + losa;
+  }
+  function iluMuro() {
+    var base = caja(0, 0, 0, 10, 1.6, 0.8, "mat-c");
+    var muro = '<g class="sup">' + caja(0, 0, 0.8, 10, 1.6, 5, "mat-t", function (q) {
+      var s = "";
+      for (var i = 1; i < 6; i++) { var a = q(0, 1.6, i * 0.83), b = q(10, 1.6, i * 0.83); s += '<line class="det" x1="' + a[0].toFixed(1) + '" y1="' + a[1].toFixed(1) + '" x2="' + b[0].toFixed(1) + '" y2="' + b[1].toFixed(1) + '"/>'; }
+      return s;
+    }) + "</g>";
+    return base + muro;
+  }
+  function ilustracion(tipo, clase) {
+    var fn = { cubierta: iluCubierta, losa: iluLosa, muro: iluMuro }[tipo];
+    var pos = { cubierta: [62, 66, 5.6], losa: [60, 42, 6.4], muro: [56, 44, 5.6] }[tipo];
+    var inner = '<g transform="translate(' + pos[0] + ',' + pos[1] + ') scale(' + pos[2] + ')">' + fn() + "</g>";
+    return '<svg class="' + (clase || "ilu") + '" viewBox="0 0 150 110" aria-hidden="true">' + inner + "</svg>";
+  }
+
+  /* ---------- Estado ---------- */
+  var TRABAJOS = {
+    cubierta: { nombre: "Cubierta", articulo: "la cubierta", d: "Techo de lámina sobre estructura ligera.", pide: "Te pediremos largo y ancho de cada faldón.", campos: ["largo", "ancho"], def: { largo: 8, ancho: 4.5, alto: 0 }, total: 54190.68, unidad: "m²", sub: "46,716.10", iva: "7,474.58", tot: "54,190.68" },
+    losa: { nombre: "Losa", articulo: "la losa", d: "Piso o entrepiso de concreto reforzado.", pide: "Te pediremos largo, ancho y espesor.", campos: ["largo", "ancho", "alto"], def: { largo: 6, ancho: 4, alto: 0.12 }, total: 43312.16, unidad: "m³", sub: "37,338.07", iva: "5,974.09", tot: "43,312.16" },
+    muro: { nombre: "Muro", articulo: "el muro", d: "Muro de tabique, con o sin huecos.", pide: "Te pediremos largo y alto del muro.", campos: ["largo", "alto"], def: { largo: 8, ancho: 0, alto: 2.5 }, total: 22405.28, unidad: "m²", sub: "19,314.90", iva: "3,090.38", tot: "22,405.28" }
+  };
+  var DIM = {
+    largo: { et: "Largo", ayuda: "De borde a borde, en la dirección más larga.", col: "var(--terracota)", chipTxt: "#fff" },
+    ancho: { et: "Ancho", ayuda: "De borde a borde, en la otra dirección.", col: "var(--petroleo)", chipTxt: "#fff" },
+    alto: { et: "Alto", ayuda: "De abajo hacia arriba.", col: "var(--espesor)", chipTxt: "#fff" }
+  };
+  var ETQ = { cubierta: { alto: "Alto" }, losa: { alto: "Espesor" }, muro: { alto: "Alto" } };
+  var AYU = { losa: { alto: "Grueso de la losa, por ejemplo 0.12 m." }, muro: { alto: "De la base a la parte superior del muro." } };
+  var base = function () { return { trabajo: null, secs: [{ largo: "", ancho: "", alto: "" }], act: 0, activo: null, tocado: {} }; };
+  var borrador = base();
+  var lista = [
+    { id: "a", titulo: "Muro perimetral", sub: "Patio trasero", chip: "ch-lis", etq: "Cotización lista", imp: "$22,405.28", nota: "Cotizado" },
+    { id: "b", titulo: "Cubierta bodega", sub: "Bodega Ixtapaluca", chip: "ch-bor", etq: "Borrador, paso 3 de 4", imp: "Sin calcular", nota: "" },
+    { id: "c", titulo: "Losa de cochera", sub: "Casa Coyoacán", chip: "ch-pre", etq: "Cotización anterior", imp: "$18,940.00", nota: "Cotizado" }
+  ];
+  var pantalla = "inicio";
+  var historia = ["inicio"];
+
+  /* ---------- Utilidades ---------- */
+  function num(v) { if (v === "" || v == null) return null; var n = parseFloat(String(v).replace(",", ".")); return isFinite(n) ? n : NaN; }
+  function estadoCampo(v) { if (v === "" || v == null) return "pend"; var n = num(v); return (isNaN(n) || n <= 0 || n > 500) ? "inv" : "ok"; }
+  function fm(n, d) { return Number(n).toLocaleString("es-MX", { minimumFractionDigits: d, maximumFractionDigits: d }); }
+  function aviso(txt) { var a = $("#aviso"); a.textContent = txt; a.hidden = false; clearTimeout(aviso.t); aviso.t = setTimeout(function () { a.hidden = true; }, 3200); }
+  function pulsable(el) {
+    el.addEventListener("pointerdown", function () { if (el.getAttribute("aria-disabled") !== "true") el.classList.add("pulsado"); });
+    ["pointerup", "pointerleave", "pointercancel"].forEach(function (e) { el.addEventListener(e, function () { el.classList.remove("pulsado"); }); });
+  }
+  function pasos(el) {
+    var n = +el.getAttribute("data-paso"); el.innerHTML = "";
+    for (var i = 1; i <= 4; i++) { var b = document.createElement("i"); if (i < n) b.className = "hecho"; else if (i === n) b.className = "actual"; el.appendChild(b); }
+    if (!reduce()) { var act = el.querySelector(".actual"); if (act) { act.classList.remove("actual"); requestAnimationFrame(function () { requestAnimationFrame(function () { act.classList.add("actual"); }); }); } }
+  }
+
+  /* ---------- Navegación entre pantallas ---------- */
+  var IDS = ["inicio", "mias", "perfil", "trabajo", "medidas", "resultado"];
+  function ir(destino, dir) {
+    if (destino === pantalla) return;
+    IDS.forEach(function (id) { $("#p-" + id).hidden = id !== destino; });
+    var el = $("#p-" + destino);
+    el.classList.remove("entra-d", "entra-a");
+    if (!reduce()) { void el.offsetWidth; el.classList.add(dir === "a" ? "entra-a" : "entra-d"); }
+    el.scrollTop = 0;
+    pantalla = destino;
+    $("#estado-sis").classList.toggle("sobre-hero", destino === "inicio");
+    $$(".pasos", el).forEach(pasos);
+    if (destino === "inicio") { pintarInicio(); }
+    if (destino === "mias") pintarLista($("#lista-mias"));
+    if (destino === "trabajo") pintarTrabajo();
+    if (destino === "medidas") pintarMedidas();
+    if (destino === "resultado") pintarResultado();
+  }
+
+  /* ---------- Barra inferior ---------- */
+  function barra(id, actual) {
+    var n = $("#" + id);
+    var it = [["inicio", "Inicio", "#i-inicio"], ["mias", "Mis cotizaciones", "#i-doc"], ["perfil", "Perfil", "#i-yo"]];
+    n.innerHTML = it.map(function (x) { return '<button type="button" data-tab="' + x[0] + '"' + (x[0] === actual ? ' aria-current="page"' : "") + '><svg><use href="' + x[2] + '"/></svg>' + x[1] + "</button>"; }).join("");
+    $$("button", n).forEach(function (b) { b.addEventListener("click", function () { ir(b.getAttribute("data-tab"), "d"); }); });
+  }
+
+  /* ---------- Inicio ---------- */
+  function pintarLista(cont) {
+    cont.innerHTML = lista.map(function (x) {
+      return '<button type="button" class="fila-cot' + (x.nueva ? " nueva" : "") + '" data-aviso="Abrir el detalle existe en la app real; no está en este prototipo."><span><strong>' + x.titulo + '</strong><span class="s">' + x.sub + '</span><br><span class="chip ' + x.chip + '">' + x.etq + '</span></span><span class="imp">' + x.imp + (x.nota ? "<small>" + x.nota + "</small>" : "") + "</span></button>";
+    }).join("");
+    $$("[data-aviso]", cont).forEach(function (b) { b.addEventListener("click", function () { aviso(b.getAttribute("data-aviso")); }); });
+  }
+  function pintarInicio() {
+    barra("barra-inicio", "inicio"); pintarLista($("#lista-inicio"));
+    var an = $("#anillo"); an.style.strokeDashoffset = "126";
+    requestAnimationFrame(function () { requestAnimationFrame(function () { an.style.strokeDashoffset = String(126 * 0.25); }); });
+    escena();
+  }
+  function escena() {
+    var svg = $("#escena");
+    var losa = caja(0, 0, 0, 12, 9, 1.2, "mat-c");
+    var m1 = caja(0.4, 0.4, 1.2, 11.2, 1.1, 4, "mat-t", function (q) { var s = ""; for (var i = 1; i < 5; i++) { var a = q(0, 1.1, i * 0.8), b = q(11.2, 1.1, i * 0.8); s += '<line class="det" x1="' + a[0].toFixed(1) + '" y1="' + a[1].toFixed(1) + '" x2="' + b[0].toFixed(1) + '" y2="' + b[1].toFixed(1) + '"/>'; } return s; });
+    var m2 = caja(0.4, 1.5, 1.2, 1.1, 7.1, 4, "mat-t");
+    var techo = '<g class="techo">' + caja(-0.4, -0.4, 7, 13, 10, 0.7, "mat-p") + "</g>";
+    var g = '<g transform="translate(112,82) scale(7.2)">' + losa + m1 + m2 + techo + "</g>";
+    var p1 = P(0, 9 + 1.6, 0), p2 = P(12, 9 + 1.6, 0);
+    var X1 = 112 + p1[0] * 7.2, Y1 = 82 + p1[1] * 7.2 + 8, X2 = 112 + p2[0] * 7.2, Y2 = 82 + p2[1] * 7.2 + 8;
+    var cotaS = '<g stroke="#fff" stroke-width="1.6" stroke-linecap="round" fill="none"><line class="trazo-cota" x1="' + X1.toFixed(1) + '" y1="' + Y1.toFixed(1) + '" x2="' + X2.toFixed(1) + '" y2="' + Y2.toFixed(1) + '" pathLength="1" style="stroke-dasharray:1;stroke-dashoffset:' + (reduce() ? 0 : 1) + '"/></g><rect x="' + ((X1 + X2) / 2 - 26).toFixed(1) + '" y="' + ((Y1 + Y2) / 2 - 2).toFixed(1) + '" width="52" height="18" rx="9" fill="var(--terracota)"/><text x="' + ((X1 + X2) / 2).toFixed(1) + '" y="' + ((Y1 + Y2) / 2 + 8).toFixed(1) + '" text-anchor="middle" dominant-baseline="central" fill="#fff" font-size="10" font-weight="700" font-family="Inter, sans-serif">12.40 m</text>';
+    svg.innerHTML = g + cotaS;
+    if (!reduce()) {
+      var t = $(".techo", svg);
+      t.animate([{ transform: "translateY(-14px)", opacity: 0 }, { transform: "none", opacity: 1 }], { duration: 650, easing: "cubic-bezier(.2,.8,.2,1)", delay: 150, fill: "backwards" });
+      var tr = $(".trazo-cota", svg);
+      tr.animate([{ strokeDashoffset: 1 }, { strokeDashoffset: 0 }], { duration: 700, delay: 600, fill: "forwards", easing: "ease-out" });
+    }
+  }
+
+  /* ---------- Trabajo ---------- */
+  function pintarTrabajo() {
+    var cont = $("#opciones");
+    cont.innerHTML = Object.keys(TRABAJOS).map(function (k) {
+      var t = TRABAJOS[k];
+      return '<button type="button" class="opcion" role="radio" aria-checked="' + (borrador.trabajo === k) + '" data-k="' + k + '">' + ilustracion(k, "ilu") +
+        '<span class="txt"><strong>' + t.nombre + '</strong><span class="d">' + t.d + '</span><span class="pide"><span>' + t.pide + '</span></span></span>' +
+        '<span class="marca-sel"><svg width="16" height="16"><use href="#i-check"/></svg></span></button>';
+    }).join("");
+    $$(".opcion", cont).forEach(function (b) {
+      pulsable(b);
+      b.addEventListener("click", function () { borrador.trabajo = b.getAttribute("data-k"); borrador.secs = [{ largo: "", ancho: "", alto: "" }]; borrador.act = 0; borrador.tocado = {}; estadoTrabajo(); });
+    });
+    estadoTrabajo();
+  }
+  function estadoTrabajo() {
+    $$(".opcion").forEach(function (b) { b.setAttribute("aria-checked", String(b.getAttribute("data-k") === borrador.trabajo)); });
+    var ok = !!borrador.trabajo, btn = $("#seguir-trabajo");
+    btn.setAttribute("aria-disabled", String(!ok));
+    btn.textContent = ok ? "Continuar con " + (TRABAJOS[borrador.trabajo].nombre.toLowerCase()) : "Continuar";
+    $("#viv-trabajo").textContent = ok ? TRABAJOS[borrador.trabajo].nombre + " elegida" : "Elige una opción para continuar";
+  }
+
+  /* ---------- Medidas ---------- */
+  var disp = { largo: 6, ancho: 4, alto: 0.12 }, animId = 0, ultAct = null;
+  function efectivas() {
+    var t = TRABAJOS[borrador.trabajo], s = borrador.secs[borrador.act], r = {}, falta = {};
+    ["largo", "ancho", "alto"].forEach(function (k) {
+      var st = estadoCampo(s[k]);
+      r[k] = st === "ok" ? num(s[k]) : t.def[k]; falta[k] = st;
+    });
+    return { v: r, st: falta };
+  }
+  function pintarMedidas() {
+    var t = TRABAJOS[borrador.trabajo]; if (!t) { ir("trabajo", "a"); return; }
+    $("#tit-med").textContent = "Medidas de " + t.articulo;
+    pintarSecciones(); pintarCampos(); actualizar(true);
+  }
+  function pintarSecciones() {
+    var c = $("#secciones");
+    c.innerHTML = borrador.secs.map(function (s, i) { return '<button type="button" class="sec-chip" aria-pressed="' + (i === borrador.act) + '" data-i="' + i + '">Sección ' + (i + 1) + "</button>"; }).join("") +
+      (borrador.secs.length < 3 ? '<button type="button" class="sec-chip" id="mas-sec" aria-label="Agregar sección">+ Agregar</button>' : "") +
+      (borrador.secs.length > 1 ? '<button type="button" class="enlace-s" id="quita-sec" style="width:auto">Quitar la última</button>' : "");
+    $$("[data-i]", c).forEach(function (b) { b.addEventListener("click", function () { borrador.act = +b.getAttribute("data-i"); borrador.activo = null; pintarSecciones(); pintarCampos(); actualizar(false); }); });
+    var m = $("#mas-sec", c); if (m) m.addEventListener("click", function () { borrador.secs.push({ largo: "", ancho: "", alto: "" }); borrador.act = borrador.secs.length - 1; pintarSecciones(); pintarCampos(); actualizar(false); });
+    var q = $("#quita-sec", c); if (q) q.addEventListener("click", function () { borrador.secs.pop(); borrador.act = Math.min(borrador.act, borrador.secs.length - 1); pintarSecciones(); pintarCampos(); actualizar(false); });
+  }
+  function pintarCampos() {
+    var t = TRABAJOS[borrador.trabajo], s = borrador.secs[borrador.act], c = $("#campos");
+    c.innerHTML = t.campos.map(function (k) {
+      var et = (ETQ[borrador.trabajo] && ETQ[borrador.trabajo][k]) || DIM[k].et, ay = (AYU[borrador.trabajo] && AYU[borrador.trabajo][k]) || DIM[k].ayuda;
+      return '<div class="campo" data-k="' + k + '" style="--col:' + DIM[k].col + '"><label for="f-' + k + '"><i></i>' + et + '</label><div class="entrada"><input id="f-' + k + '" inputmode="decimal" autocomplete="off" value="' + (s[k] || "") + '" placeholder="0.00" aria-describedby="a-' + k + '"><span class="u">m</span></div>' +
+        '<div class="msg-inv" id="e-' + k + '" role="alert"><svg width="16" height="16"><use href="#i-alerta"/></svg>Escribe un número mayor que 0, por ejemplo 6.50</div><span class="ayuda" id="a-' + k + '">' + ay + "</span></div>";
+    }).join("");
+    $$("input", c).forEach(function (inp) {
+      var k = inp.id.slice(2);
+      inp.addEventListener("focus", function () { borrador.activo = k; $("#p-medidas").classList.add("teclado"); actualizar(false); });
+      inp.addEventListener("blur", function () { borrador.tocado[borrador.act + k] = true; setTimeout(function () { if (!document.activeElement || document.activeElement.tagName !== "INPUT") { $("#p-medidas").classList.remove("teclado"); borrador.activo = null; } actualizar(false); }, 60); });
+      inp.addEventListener("input", function () { borrador.secs[borrador.act][k] = inp.value; actualizar(false, true); });
+    });
+  }
+  function mensajes() {
+    var t = TRABAJOS[borrador.trabajo], pend = 0, inv = 0;
+    borrador.secs.forEach(function (s) { t.campos.forEach(function (k) { var e = estadoCampo(s[k]); if (e === "pend") pend++; if (e === "inv") inv++; }); });
+    return { pend: pend, inv: inv, ok: pend === 0 && inv === 0 };
+  }
+  function actualizar(inicial, tipeo) {
+    var t = TRABAJOS[borrador.trabajo], s = borrador.secs[borrador.act];
+    $$(".campo").forEach(function (c) {
+      var k = c.getAttribute("data-k"), e = estadoCampo(s[k]);
+      c.classList.toggle("inv", e === "inv" && (borrador.tocado[borrador.act + k] || tipeo));
+    });
+    var m = mensajes(), btn = $("#calcular");
+    btn.setAttribute("aria-disabled", String(!m.ok));
+    $("#viv-med").textContent = m.ok ? "Todo listo para calcular" : (m.inv ? "Revisa " + m.inv + (m.inv === 1 ? " medida con error" : " medidas con error") : "Faltan " + m.pend + (m.pend === 1 ? " medida" : " medidas"));
+    var tot = 0;
+    borrador.secs.forEach(function (x) { var l = num(x.largo), a = num(x.ancho), h = num(x.alto), v = 0; if (estadoCampo(x.largo) === "ok") { if (borrador.trabajo === "cubierta" && estadoCampo(x.ancho) === "ok") v = l * a; if (borrador.trabajo === "losa" && estadoCampo(x.ancho) === "ok" && estadoCampo(x.alto) === "ok") v = l * a * h; if (borrador.trabajo === "muro" && estadoCampo(x.alto) === "ok") v = l * h; } tot += v; });
+    $("#total-sec").innerHTML = "<span>Cantidad total (" + borrador.secs.length + (borrador.secs.length === 1 ? " sección" : " secciones") + ")</span><b>" + (tot > 0 ? fm(tot, 2) + " " + t.unidad : "Por completar") + "</b>";
+    var ef = efectivas();
+    mover(ef.v, inicial);
+  }
+  function mover(destino, inmediato) {
+    cancelAnimationFrame(animId);
+    if (inmediato || reduce()) { disp = { largo: destino.largo, ancho: destino.ancho, alto: destino.alto }; dibujar(); return; }
+    var ini = { largo: disp.largo, ancho: disp.ancho, alto: disp.alto }, t0 = performance.now(), dur = 240;
+    (function paso(now) {
+      var f = Math.min(1, (now - t0) / dur), e = 1 - Math.pow(1 - f, 3);
+      ["largo", "ancho", "alto"].forEach(function (k) { disp[k] = ini[k] + (destino[k] - ini[k]) * e; });
+      dibujar();
+      if (f < 1) animId = requestAnimationFrame(paso);
+    })(t0);
+  }
+  function dibujar() {
+    var tipo = borrador.trabajo; if (!tipo) return;
+    var ef = efectivas(), st = ef.st, d = disp, s, zpx, dxpx, dypx, extra, mat = "mat-c";
+    var l = d.largo, w = d.ancho || 1, h = d.alto;
+    var fant = TRABAJOS[tipo].campos.some(function (k) { return st[k] !== "ok"; });
+    if (tipo === "muro") {
+      var gro = Math.max(l, h) * 0.07;
+      s = Math.min(230 / ((l + gro) * K), 118 / ((l + gro) * 0.5 + h)); dxpx = l * s; dypx = gro * s; zpx = h * s; mat = "mat-t";
+    } else {
+      zpx = tipo === "losa" ? 10 + Math.min(h, 0.5) * 40 : 7;
+      s = Math.min(230 / ((l + w) * K), (118 - zpx) / ((l + w) * 0.5)); dxpx = l * s; dypx = w * s; mat = tipo === "cubierta" ? "mat-t" : "mat-c";
+    }
+    var minX = -dypx * K, maxX = dxpx * K, minY = -zpx, maxY = (dxpx + dypx) * 0.5;
+    var ox = 180 - (minX + maxX) / 2 - 8, oy = 108 - (minY + maxY) / 2 - 6;
+    var Q = function (x, y, z) { var p = P(x, y, z); return [p[0] + ox, p[1] + oy]; };
+    var detalle = function (q) {
+      var r = "";
+      if (tipo === "cubierta") r = lineas(dxpx, dypx, Math.max(4, Math.round(l)), function (x, y, z) { return q(x, y, z); }, zpx, "y");
+      if (tipo === "losa") r = lineas(dxpx, dypx, 6, q, zpx, "y") + lineas(dxpx, dypx, 5, q, zpx, "x");
+      if (tipo === "muro") { for (var i = 1; i < Math.max(3, Math.round(h * 2)); i++) { var a = q(0, dypx, i * zpx / Math.max(3, Math.round(h * 2))), b = q(dxpx, dypx, i * zpx / Math.max(3, Math.round(h * 2))); r += '<line class="det" x1="' + a[0].toFixed(1) + '" y1="' + a[1].toFixed(1) + '" x2="' + b[0].toFixed(1) + '" y2="' + b[1].toFixed(1) + '"/>'; } }
+      return r;
+    };
+    var qq = function (x, y, z) { return Q(x, y, z); };
+    var topP = pt([qq(0, 0, zpx), qq(dxpx, 0, zpx), qq(dxpx, dypx, zpx), qq(0, dypx, zpx)]);
+    var izqP = pt([qq(0, dypx, 0), qq(dxpx, dypx, 0), qq(dxpx, dypx, zpx), qq(0, dypx, zpx)]);
+    var derP = pt([qq(dxpx, 0, 0), qq(dxpx, dypx, 0), qq(dxpx, dypx, zpx), qq(dxpx, 0, zpx)]);
+    var sombra = pt([qq(2, 2, 0), qq(dxpx + 6, 4, 0), qq(dxpx + 6, dypx + 6, 0), qq(2, dypx + 6, 0)]);
+    var out = '<polygon points="' + sombra + '" fill="var(--sombra-suave)" opacity=".5"/>' +
+      '<g class="' + mat + ' sol ' + (fant ? "fantasma" : "") + '"><polygon class="izq-f" points="' + izqP + '"/><polygon class="der-f" points="' + derP + '"/><polygon class="sup-f" points="' + topP + '"/>' + detalle(qq) + "</g>";
+
+    function cota(k, a, b, mid, desv, txt) {
+      var act = borrador.activo === k, ent = act && ultAct !== k, e = st[k], col = e === "inv" ? "var(--rojo)" : DIM[k].col;
+      var texto = e === "ok" ? fm(num(borrador.secs[borrador.act][k]), 2) + " m" : (e === "inv" ? "!" : "?");
+      var w2 = e === "ok" ? 56 : 26, cx = mid[0] + desv[0], cy = mid[1] + desv[1];
+      var relleno = act || e === "inv" ? col : "var(--papel)", tcol = (act || e === "inv") ? (e === "inv" ? "var(--papel)" : "#fff") : col;
+      return '<g class="dim ' + (act ? "act " : "") + (ent ? "ent " : "") + (e === "pend" ? "pend" : "") + '" data-dim="' + k + '" tabindex="0" role="button" aria-label="' + txt + '"><line class="l" x1="' + a[0].toFixed(1) + '" y1="' + a[1].toFixed(1) + '" x2="' + b[0].toFixed(1) + '" y2="' + b[1].toFixed(1) + '" stroke="' + col + '"/><circle cx="' + a[0].toFixed(1) + '" cy="' + a[1].toFixed(1) + '" r="3.5" fill="' + col + '"/><circle cx="' + b[0].toFixed(1) + '" cy="' + b[1].toFixed(1) + '" r="3.5" fill="' + col + '"/>' +
+        '<g class="chipd"><rect x="' + (cx - w2 / 2).toFixed(1) + '" y="' + (cy - 11).toFixed(1) + '" width="' + w2 + '" height="22" rx="11" fill="' + relleno + '" stroke="' + col + '" stroke-width="1.6"/><text x="' + cx.toFixed(1) + '" y="' + cy.toFixed(1) + '" fill="' + tcol + '">' + texto + "</text></g></g>";
+    }
+    var off = 16;
+    var etA = (ETQ[tipo] && ETQ[tipo].alto) || "Alto";
+    var a1 = Q(0, dypx + off, 0), b1 = Q(dxpx, dypx + off, 0);
+    out += cota("largo", a1, b1, [(a1[0] + b1[0]) / 2, (a1[1] + b1[1]) / 2], [-6, 14], "Largo");
+    if (tipo !== "muro") { var a2 = Q(dxpx + off, 0, 0), b2 = Q(dxpx + off, dypx, 0); out += cota("ancho", a2, b2, [(a2[0] + b2[0]) / 2, (a2[1] + b2[1]) / 2], [18, 12], "Ancho"); }
+    if (tipo !== "cubierta") { var base0 = Q(dxpx, 0, 0), top0 = Q(dxpx, 0, zpx); var a3 = [base0[0] + 20, base0[1]], b3 = [top0[0] + 20, top0[1]]; out += cota("alto", a3, b3, [a3[0], (a3[1] + b3[1]) / 2], [tipo === "losa" ? 4 : 0, tipo === "losa" ? 26 : 0], etA); }
+    if (fant) out += '<text x="180" y="18" text-anchor="middle" font-size="11" fill="var(--suave)" font-family="Inter, sans-serif" font-weight="600">Faltan medidas: el dibujo usa valores de referencia</text>';
+    $("#croquis").innerHTML = out;
+    ultAct = borrador.activo;
+    $$(".dim", $("#croquis")).forEach(function (g) {
+      var go = function () { var i = $("#f-" + g.getAttribute("data-dim")); if (i) i.focus(); };
+      g.onclick = go; g.onkeydown = function (e) { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); go(); } };
+    });
+  }
+
+  /* ---------- Resultado ---------- */
+  function pintarResultado() {
+    var t = TRABAJOS[borrador.trabajo], sin = $("#k-sin").checked, c = $("#res-cuerpo"), pie = $("#res-pie");
+    var tot = 0, cant = "";
+    borrador.secs.forEach(function (x) { var l = num(x.largo), a = num(x.ancho), h = num(x.alto); if (borrador.trabajo === "cubierta") tot += l * a; if (borrador.trabajo === "losa") tot += l * a * h; if (borrador.trabajo === "muro") tot += l * h; });
+    cant = fm(tot, 2) + " " + t.unidad;
+    var resumen = '<div class="trabajo-res rev" style="--d:.28s">' + ilustracion(borrador.trabajo, "ilu") + '<div style="flex:1"><strong>' + t.nombre + " · Casa Tlalpan</strong><div class=\"s\">" + cant + " · " + borrador.secs.length + (borrador.secs.length === 1 ? " sección" : " secciones") + '</div></div><button type="button" class="enlace" id="edita" style="min-height:44px">Editar</button></div>';
+    if (!sin) {
+      c.innerHTML = '<div class="rev"><span class="sello">Estimación preliminar</span><div class="no-formal">No es una cotización formal. No equivale a una aprobación ni a una emisión.</div></div>' +
+        '<div class="rev" style="--d:.12s"><div class="importe">$' + t.tot + '<small>MXN · IVA incluido</small></div></div>' + resumen +
+        '<div class="rev" style="--d:.4s"><button type="button" class="acordeon" id="ac" aria-expanded="false" aria-controls="desg">Ver desglose comercial<svg><use href="#i-abajo"/></svg></button><div class="desglose" id="desg"><div><dl><dt>Subtotal</dt><dd>$' + t.sub + '</dd><dt>IVA 16 %</dt><dd>$' + t.iva + '</dd><dt class="tot">Total estimado</dt><dd class="tot">$' + t.tot + '</dd></dl><p>Calculada el 24 oct con precios de referencia. El equipo confirmará materiales y precios al preparar tu cotización formal.</p></div></div></div>';
+      pie.innerHTML = '<button type="button" class="btn3d" id="enviar">Enviar solicitud al equipo</button><div class="estado-vivo">Calcular no envía nada. Tú decides cuándo enviar.</div>';
+    } else {
+      c.innerHTML = '<div class="rev"><span class="sello">Estimación preliminar</span><div class="no-formal">No es una cotización formal.</div></div>' +
+        '<div class="sin-est rev" style="--d:.12s"><strong>El equipo completará la valoración</strong><span class="lamina-sin">Todavía no tenemos un precio de referencia para algún material de este trabajo, así que no podemos darte un importe. Puedes enviar tu solicitud igual: el equipo la valorará.</span></div>' + resumen;
+      pie.innerHTML = '<button type="button" class="btn3d" id="enviar">Enviar solicitud al equipo</button><div class="estado-vivo">Tus medidas y elecciones llegan completas al equipo.</div>';
+    }
+    $$(".btn3d", pie).forEach(pulsable);
+    var ac = $("#ac"); if (ac) ac.addEventListener("click", function () { var a = ac.getAttribute("aria-expanded") === "true"; ac.setAttribute("aria-expanded", String(!a)); $("#desg").classList.toggle("abierto", !a); });
+    $("#edita").addEventListener("click", function () { ir("medidas", "a"); });
+    $("#enviar").addEventListener("click", function () {
+      $("#velo").hidden = false; $("#ver-mias").focus();
+      var t = TRABAJOS[borrador.trabajo];
+      lista = lista.filter(function (x) { return x.id !== "n"; });
+      lista.unshift({ id: "n", nueva: true, titulo: t.nombre + " · Casa Tlalpan", sub: "Casa Tlalpan", chip: "ch-env", etq: "Enviada, en revisión del equipo", imp: sin ? "Sin estimar" : "$" + t.tot, nota: sin ? "" : "Estimación" });
+    });
+  }
+
+  /* ---------- Controles ---------- */
+  function conectar() {
+    pulsable($("#nueva"));
+    $("#nueva").addEventListener("click", function () { borrador = base(); setTimeout(function () { ir("trabajo", "d"); }, reduce() ? 0 : 160); });
+    $("#retomar").addEventListener("click", function () { borrador = base(); borrador.trabajo = "cubierta"; borrador.secs = [{ largo: "12.4", ancho: "", alto: "" }]; ir("medidas", "d"); });
+    $$("[data-aviso]").forEach(function (b) { b.addEventListener("click", function () { aviso(b.getAttribute("data-aviso")); }); });
+    $$("[data-ir]").forEach(function (b) { pulsable(b); b.addEventListener("click", function () { var d = b.getAttribute("data-ir"); setTimeout(function () { ir(d, b.getAttribute("data-dir") || "d"); }, reduce() ? 0 : 90); }); });
+    var st = $("#seguir-trabajo"); pulsable(st);
+    st.addEventListener("click", function () { if (st.getAttribute("aria-disabled") === "true") { $("#viv-trabajo").textContent = "Primero elige un tipo de trabajo"; return; } ir("medidas", "d"); });
+    var ca = $("#calcular"); pulsable(ca);
+    ca.addEventListener("click", function () {
+      if (ca.getAttribute("aria-disabled") === "true") { var m = mensajes(); $("#viv-med").textContent = m.inv ? "Corrige las medidas marcadas antes de calcular" : "Completa las medidas que faltan para calcular"; return; }
+      ca.classList.add("cargando"); $("#t-calc").textContent = "Calculando…";
+      setTimeout(function () { ca.classList.remove("cargando"); $("#t-calc").textContent = "Calcular estimación"; ir("resultado", "d"); }, reduce() ? 100 : 900);
+    });
+    $("#ejemplo").addEventListener("click", function () {
+      var t = borrador.trabajo, ej = { cubierta: { largo: "10", ancho: "4.5", alto: "" }, losa: { largo: "6", ancho: "5", alto: "0.12" }, muro: { largo: "9", ancho: "", alto: "2.4" } }[t];
+      borrador.secs[borrador.act] = ej; pintarCampos(); actualizar(false, true); aviso("Medidas de ejemplo cargadas. Puedes cambiarlas.");
+    });
+    pulsable($("#ver-mias"));
+    $("#ver-mias").addEventListener("click", function () { $("#velo").hidden = true; ir("mias", "d"); });
+    $("#b-app").addEventListener("click", function () { superficie("app"); });
+    $("#b-panel").addEventListener("click", function () { superficie("panel"); });
+    $("#c-pet").addEventListener("click", function () { comp("pet"); });
+    $("#c-azu").addEventListener("click", function () { comp("azu"); });
+    $("#k-grande").addEventListener("change", function (e) { $("#marco").style.setProperty("--escala", e.target.checked ? "1.25" : "1"); });
+    $("#k-mov").addEventListener("change", function (e) { if (e.target.checked) raiz.setAttribute("data-mov", "no"); else raiz.removeAttribute("data-mov"); });
+    $("#b-reiniciar").addEventListener("click", reiniciar);
+    document.addEventListener("keydown", function (e) { if (e.key === "Escape") { $("#velo").hidden = true; cerrarCajon(); } });
+  }
+  function superficie(s) {
+    $("#sup-app").hidden = s !== "app"; $("#sup-panel").hidden = s !== "panel";
+    $("#b-app").setAttribute("aria-pressed", String(s === "app")); $("#b-panel").setAttribute("aria-pressed", String(s === "panel"));
+    $(".escenario").style.gridTemplateColumns = s === "panel" ? "minmax(0,1fr)" : "";
+    if (s === "panel") panel();
+  }
+  function comp(c) {
+    if (c === "azu") raiz.setAttribute("data-comp", "azul"); else raiz.removeAttribute("data-comp");
+    $("#c-pet").setAttribute("aria-pressed", String(c === "pet")); $("#c-azu").setAttribute("aria-pressed", String(c === "azu"));
+    if (pantalla === "inicio") escena(); if (pantalla === "medidas") dibujar();
+  }
+  function reiniciar() {
+    borrador = base(); lista = lista.filter(function (x) { return x.id !== "n"; }); pantalla = "x"; $("#velo").hidden = true; ir("inicio", "a");
+    estadoPanel = null; if (!$("#sup-panel").hidden) panel();
+  }
+
+  /* ---------- Panel ---------- */
+  var ROLES = {
+    prep: { nombre: "Preparador", saludo: "Buenos días, Luis", titulo: "Lo que necesita tu atención",
+      nav: [["Bandeja", "i-bandeja", 0], ["Solicitudes", "i-gente", 3], ["Cotizaciones", "i-doc", 0], ["Clientes", "i-gente", 0]],
+      franja: [["3", "Solicitudes nuevas de clientes", true], ["2", "Devueltas por revisión", false], ["1", "Emitida que vence en 3 días", false]],
+      tabs: [["Nuevas", 3], ["En preparación", 1], ["Todas", 4]],
+      perm: "Como Preparador puedes atender solicitudes, preparar cotizaciones y enviarlas a revisión. Catálogo, precios y personas no aparecen porque no son de tu función." },
+    rev: { nombre: "Revisor", saludo: "Buenos días, Ana", titulo: "Revisiones pendientes",
+      nav: [["Bandeja", "i-bandeja", 0], ["Revisiones", "i-doc", 4], ["Cotizaciones", "i-doc", 0]],
+      franja: [["4", "Cotizaciones por revisar", true], ["1", "Con más de 2 días de espera", false], ["6", "Aprobadas este mes", false]],
+      tabs: [["Por revisar", 4], ["Aprobadas", 6]], perm: "Como Revisor decides sobre cotizaciones que prepara otra persona." },
+    cat: { nombre: "Administrador del catálogo", saludo: "Buenos días, Marta", titulo: "Catálogo por completar",
+      nav: [["Bandeja", "i-bandeja", 0], ["Insumos y precios", "i-precio", 5], ["Referencias de estimación", "i-caja", 0], ["Trabajos para clientes", "i-caja", 0]],
+      franja: [["5", "Insumos sin precio de referencia", true], ["3", "Precios por vencer", false], ["1", "Concepto por aprobar", false]],
+      tabs: [["Sin referencia", 5], ["Por vencer", 3]], perm: "Como Administrador del catálogo designas los precios de referencia con motivo y bitácora." }
+  };
+  var FILAS = {
+    prep: [
+      { id: "s1", t: "Laura Méndez", s: "Losa · Casa Tlalpan", e: "$43,312.16", r: "hace 2 h", chip: "Nueva", g: "n", med: "Sección 1: 6.00 × 5.00 × 0.12 m" },
+      { id: "s2", t: "Grupo Ríos", s: "Muro perimetral · Nave 2", e: "Sin estimar", r: "hace 1 día", chip: "Nueva", g: "n", med: "Sección 1: 18.00 × 2.50 m", sin: true },
+      { id: "s3", t: "Despacho Aranda", s: "Cubierta · Bodega Ixtapaluca", e: "$54,190.68", r: "hace 1 día", chip: "Nueva", g: "n", med: "Sección 1: 10.00 × 4.50 m · Sección 2: 10.00 × 4.50 m" },
+      { id: "s4", t: "Marta Villaseñor", s: "Muro · Patio trasero", e: "$22,405.28", r: "hace 3 días", chip: "En preparación", g: "p", med: "Sección 1: 9.00 × 2.40 m" }
+    ],
+    rev: [
+      { id: "r1", t: "COT-2026-00071 · Casa Tlalpan", s: "Preparó Luis Mora", e: "$43,312.16", r: "hace 3 h", chip: "Por revisar", g: "n" },
+      { id: "r2", t: "COT-2026-00069 · Nave 2", s: "Preparó Luis Mora", e: "$22,405.28", r: "hace 2 días", chip: "Espera 2 días", g: "n" }
+    ],
+    cat: [
+      { id: "c1", t: "Lámina pintro cal. 26", s: "Cubierta · 2 productos con precio vigente", e: "Sin referencia", r: "—", chip: "Designar", g: "n", sin: true },
+      { id: "c2", t: "Cemento gris 50 kg", s: "Losa · 3 productos con precio vigente", e: "Sin referencia", r: "—", chip: "Designar", g: "n", sin: true }
+    ]
+  };
+  var rol = "prep", tabSel = 0, estadoPanel = null, filaSel = null;
+  function panel() {
+    var R = ROLES[rol];
+    $("#p-saludo").textContent = R.saludo; $("#p-titulo").textContent = R.titulo; $("#rol-chip").textContent = R.nombre;
+    $("#riel-nav").innerHTML = R.nav.map(function (n, i) { return '<button type="button"' + (i === 0 ? ' aria-current="page"' : "") + ' data-pn="' + n[0] + '"><svg><use href="#' + n[1] + '"/></svg>' + n[0] + (n[2] ? '<span class="n">' + n[2] + "</span>" : "") + "</button>"; }).join("");
+    $$("[data-pn]").forEach(function (b) { b.addEventListener("click", function () { $$("[data-pn]").forEach(function (x) { x.removeAttribute("aria-current"); }); b.setAttribute("aria-current", "page"); if (b.getAttribute("data-pn") !== "Bandeja") toastP("«" + b.getAttribute("data-pn") + "» no está dibujada en este prototipo."); }); });
+    $("#riel-quien").textContent = R.nombre + " · Demostración";
+    $("#franja").innerHTML = R.franja.map(function (f) { return '<div class="' + (f[2] ? "u" : "") + '"><b>' + f[0] + "</b><span>" + f[1] + "</span></div>"; }).join("");
+    $("#tabs").innerHTML = R.tabs.map(function (t, i) { return '<button type="button" role="tab" aria-selected="' + (i === tabSel) + '" data-t="' + i + '">' + t[0] + " (" + t[1] + ")</button>"; }).join("");
+    $$("[data-t]").forEach(function (b) { b.addEventListener("click", function () { tabSel = +b.getAttribute("data-t"); filas(); $$("[data-t]").forEach(function (x, i) { x.setAttribute("aria-selected", String(i === tabSel)); }); }); });
+    filas(); cerrarCajon();
+  }
+  function filas() {
+    var data = FILAS[rol].map(function (f) { return Object.assign({}, f, estadoPanel && estadoPanel[f.id] ? estadoPanel[f.id] : {}); });
+    if (rol === "prep") { if (tabSel === 0) data = data.filter(function (f) { return f.g === "n"; }); if (tabSel === 1) data = data.filter(function (f) { return f.g === "p"; }); }
+    $("#tabla").innerHTML = data.map(function (f) {
+      var ch = f.g === "p" ? "ch-env" : "ch-bor";
+      return '<button type="button" class="fila-p" role="listitem" data-f="' + f.id + '" aria-selected="' + (filaSel === f.id) + '"><span><strong>' + f.t + '</strong><span class="s">' + f.s + '</span></span><span><span class="est' + (f.sin ? " sin" : "") + '">' + f.e + '</span><span class="s" style="display:block">' + (f.sin && rol === "prep" ? "Falta referencia de precio" : f.r) + '</span></span><span class="s">' + f.r + '</span><span><span class="chip ' + ch + '" style="margin:0">' + f.chip + "</span></span></button>";
+    }).join("");
+    $$("[data-f]").forEach(function (b) { b.addEventListener("click", function () { if (rol !== "prep") { toastP("El detalle de esta bandeja no está dibujado en el prototipo."); return; } abrirCajon(b.getAttribute("data-f")); }); });
+  }
+  function abrirCajon(id) {
+    filaSel = id; filas();
+    var f = FILAS.prep.filter(function (x) { return x.id === id; })[0], ya = estadoPanel && estadoPanel[id];
+    var c = $("#cajon");
+    c.innerHTML = '<button type="button" class="cerrar" aria-label="Cerrar detalle" id="cerrar-c">×</button><div><div class="etiqueta">Solicitud de cliente</div><h4>' + f.t + '</h4><div class="s" style="color:var(--suave)">' + f.s + "</div></div>" +
+      '<div class="est-box"><span class="etiqueta">Estimación preliminar del cliente</span>' + (f.sin ? '<span class="grande" style="font-size:20px">No se pudo estimar</span><span style="font-size:13px">Falta un precio de referencia. El cliente envió la solicitud sin importe.</span>' : '<span class="grande">' + f.e + '</span><span style="font-size:13px">No es una cotización. Los precios de referencia no pasan a la cotización formal.</span>') + "</div>" +
+      '<div><div class="etiqueta" style="margin-bottom:4px">Medidas del cliente</div><div style="font-size:14px">' + f.med + "</div></div>" +
+      '<div><div class="etiqueta" style="margin-bottom:6px">Para emitir la cotización formal</div><ul><li class="' + (ya ? "ok" : "") + '"><i></i>Crear la cotización a partir de la solicitud</li><li><i></i>Confirmar insumo por insumo el producto y el precio</li><li><i></i>Enviar a revisión de otra persona</li><li><i></i>Emitir y notificar al cliente en su app</li></ul></div>' +
+      (ya ? '<div class="est-box" style="background:var(--verde-tinte)"><strong>Cotización creada en borrador</strong><span style="font-size:13px">Sin precios elegidos. Confirma cada uno en el editor.</span></div>' : '<button type="button" class="btn-p" id="atender" style="padding:12px 16px">Atender solicitud</button>') +
+      '<div class="perm">' + ROLES.prep.perm + " (Simulación: en este prototipo «Atender» solo cambia el estado de la fila.)</div>";
+    c.classList.add("abierto");
+    $("#cerrar-c").addEventListener("click", cerrarCajon);
+    var a = $("#atender"); if (a) a.addEventListener("click", function () { estadoPanel = estadoPanel || {}; estadoPanel[id] = { g: "p", chip: "En preparación" }; abrirCajon(id); toastP("Cotización creada en borrador (simulación)."); });
+  }
+  function cerrarCajon() { filaSel = null; $("#cajon").classList.remove("abierto"); if ($("#tabla")) $$("[data-f]").forEach(function (b) { b.setAttribute("aria-selected", "false"); }); }
+  function toastP(t) { var e = $("#toast-p"); e.textContent = t; e.hidden = false; clearTimeout(toastP.t); toastP.t = setTimeout(function () { e.hidden = true; }, 2800); }
+  document.addEventListener("click", function (e) { var b = e.target.closest ? e.target.closest("[data-rol]") : null; if (b) { rol = b.getAttribute("data-rol"); tabSel = 0; $$("[data-rol]").forEach(function (x) { x.setAttribute("aria-pressed", String(x === b)); }); panel(); } });
+
+  /* ---------- Arranque ---------- */
+  conectar(); pantalla = "x"; ir("inicio", "d");
+})();
+</script>
