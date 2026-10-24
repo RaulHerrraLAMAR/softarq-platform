@@ -26,9 +26,14 @@ $ErrorActionPreference = 'Stop'
 $api = Resolve-Path (Join-Path $PSScriptRoot '..\..')
 $archivoRespaldo = Join-Path $api '.env.respaldo'
 $sql = Join-Path $PSScriptRoot 'aprovisionar-respaldo.sql'
-$psql = 'D:\Postgres18\bin\psql.exe'
+# psql: SOFTARQ_PG_BIN, la instalación estándar de PostgreSQL 18 o la del equipo original.
+$psql = @(
+    $(if ($env:SOFTARQ_PG_BIN) { Join-Path $env:SOFTARQ_PG_BIN 'psql.exe' }),
+    (Join-Path $env:ProgramFiles 'PostgreSQL\18\bin\psql.exe'),
+    'D:\Postgres18\bin\psql.exe'
+) | Where-Object { $_ -and (Test-Path $_) } | Select-Object -First 1
 
-if (-not (Test-Path $psql)) { throw "No se encontró $psql." }
+if (-not $psql) { throw "No se encontró psql.exe (defina SOFTARQ_PG_BIN)." }
 
 # 1. Credencial local del rol de respaldo (solo si falta; nunca se sobrescribe).
 if (-not (Test-Path $archivoRespaldo)) {

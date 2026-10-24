@@ -23,6 +23,7 @@
     "respaldo:probar-concurrencia": "pnpm run build && node scripts/respaldo/probar-concurrencia.mjs",
     "respaldo:verificar": "node scripts/respaldo/verificar.mjs",
     "respaldo:restaurar": "node scripts/respaldo/restaurar.mjs",
+    "respaldo:inicializar-desarrollo": "node scripts/respaldo/inicializar-desarrollo.mjs",
     "respaldo:probar-restauracion": "pnpm run build && node scripts/respaldo/probar-restauracion.mjs",
     "start": "node dist/main.js",
     "openapi:generar": "pnpm run build && node dist/http/generar-openapi.js",

@@ -28,8 +28,11 @@ const SALIDA = join(RAIZ, "graphify-out");
 const ESTADO = join(SALIDA, "softarq-estado.json");
 const CANDADO = join(SALIDA, ".actualizando");
 const CANDADO_CADUCA_MS = 15 * 60 * 1000;
-const GRAPHIFY = process.env.GRAPHIFY_EXE || "graphify";
-const PYTHON = process.env.GRAPHIFY_PYTHON || "python";
+/** Entorno virtual del proyecto (../_work/graphify-venv), si existe; si no, `graphify` y `python` del PATH. */
+const VENV = join(RAIZ, "..", "_work", "graphify-venv", "Scripts");
+const delVenv = (exe) => (existsSync(join(VENV, exe)) ? join(VENV, exe) : null);
+const GRAPHIFY = process.env.GRAPHIFY_EXE || delVenv("graphify.exe") || "graphify";
+const PYTHON = process.env.GRAPHIFY_PYTHON || delVenv("python.exe") || "python";
 /** Menos archivos que esto indica una configuración rota (raíz equivocada, exclusiones excesivas). */
 const MINIMO_ARCHIVOS = 50;
 /** Extensiones que Graphify 0.8.5 trata como código (subconjunto presente en este repositorio). */

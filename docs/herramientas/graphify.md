@@ -170,6 +170,12 @@ pnpm grafo:actualizar
 
 Si el entorno no puede leer esas rutas (acceso denegado), no hay alternativa en el repositorio. Se trabaja con `rg` y el grafo se actualiza después desde el entorno del propietario. El procedimiento de reconstrucción limpia de la §6.1 no cambia.
 
+## 7.2 Laptop actual (24/10/2026)
+
+- **Entorno propio del proyecto:** Python 3.14.6 con un venv en `_work\graphify-venv` (`pip install graphifyy==0.8.5`, caché en `_work\pip-cache`). `grafo.mjs` lo usa por omisión si existe (`GRAPHIFY_EXE`/`GRAPHIFY_PYTHON` siguen teniendo prioridad); si no, `graphify` y `python` del PATH. No se instaló nada en el perfil global.
+- **Al trasladar el proyecto, borrar `graphify-out/` antes de reconstruir:** la caché AST copiada conserva en los nodos la ruta de origen (`D:/...`) aunque `pnpm grafo:actualizar` reconstruya. Es salida regenerable e ignorada por Git. Tras borrarla y reconstruir: 294 archivos, 3.855 nodos, 8.342 aristas, 0 rutas `D:`, `grafo:estado` VIGENTE.
+- Se comprobaron consultas sobre cálculo, permisos, revisión y PDF. SQL, `schema.prisma` y los `tokens.ts` siguen fuera del grafo y necesitan lectura dirigida (§3).
+
 ## 8. Desinstalar del proyecto
 
 1. Borrar `graphify-out/`.

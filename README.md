@@ -41,7 +41,9 @@ Principio: **los clientes solo comparten contratos**. Toda regla de negocio vive
 | pnpm | 11.1.3 |
 | PostgreSQL | 18.6 (servicio local, datos en `D:\Postgres18\data`) |
 
-Cachés y almacenes de paquetes van a `D:\Proyecto_SoftArq\_work` (configurado en `pnpm-workspace.yaml` y `.npmrc`).
+Laptop actual (verificado el 24/10/2026): Git 2.55.0, Node.js 24.11.1, npm 11.6.2, pnpm 11.1.3, PostgreSQL 18.6 (servicio `postgresql-x64-18`, `C:\Program Files\PostgreSQL\18`), Python 3.14.6 con Graphify 0.8.5 en `_work\graphify-venv`. Detalle en `HANDOFF.md` §25.
+
+Cachés y almacenes de paquetes van a `<raíz>\_work` (configurado con rutas relativas en `pnpm-workspace.yaml` y `.npmrc`).
 
 ## Configuración
 

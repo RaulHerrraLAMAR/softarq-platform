@@ -25,7 +25,11 @@ export const DIR_WORK = join(RAIZ_PROYECTO, "_work");
 export const DIR_RESPALDOS_POR_OMISION = join(RAIZ_PROYECTO, "respaldos", "softarq_dev");
 /** Carpeta de documentos del destino de prueba de restauración (desechable, en _work). */
 export const DIR_DOCUMENTOS_RESTAURACION_POR_OMISION = join(DIR_WORK, "restauracion", "softarq_restauracion", "documentos");
-export const PG_BIN = process.env.SOFTARQ_PG_BIN ?? "D:\\Postgres18\\bin";
+/** SOFTARQ_PG_BIN, o el primer `bin` de PostgreSQL 18 que exista (instalación estándar; luego el equipo original). */
+export const PG_BIN =
+  process.env.SOFTARQ_PG_BIN ??
+  [join(process.env.ProgramFiles ?? "C:\\Program Files", "PostgreSQL", "18", "bin"), "D:\\Postgres18\\bin"].find((d) => existsSync(join(d, "psql.exe"))) ??
+  "D:\\Postgres18\\bin";
 
 export const BASE_ORIGEN = "softarq_dev";
 /** Única base que acepta la restauración de prueba. */

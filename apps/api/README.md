@@ -81,6 +81,8 @@ pnpm install --frozen-lockfile
    cd apps/api && node scripts/db/comprobar-conexion.mjs
    ```
 
+   **Instalación nueva con un respaldo existente (laptop):** en lugar de los pasos 4 a 6, inicialice `softarq_dev` vacía con `pnpm --filter @softarq/api respaldo:inicializar-desarrollo <respaldo> --confirmar softarq_dev` ([`respaldo-y-restauracion.md`](../../docs/operacion/respaldo-y-restauracion.md) §5.1). Conserva cuentas, funciones y contraseñas restauradas; no ejecute `db:cargar-demo` ni `db:cargar-usuarios-demo` sobre ella.
+
 4. **Esquema y permisos en `softarq_dev`:**
 
    ```

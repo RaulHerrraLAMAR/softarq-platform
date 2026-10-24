@@ -23,9 +23,14 @@ $ErrorActionPreference = 'Stop'
 $api = Resolve-Path (Join-Path $PSScriptRoot '..\..')
 $archivoEnv = Join-Path $api '.env'
 $sql = Join-Path $PSScriptRoot 'aprovisionar.sql'
-$psql = 'D:\Postgres18\bin\psql.exe'
+# psql: SOFTARQ_PG_BIN, la instalación estándar de PostgreSQL 18 o la del equipo original.
+$psql = @(
+    $(if ($env:SOFTARQ_PG_BIN) { Join-Path $env:SOFTARQ_PG_BIN 'psql.exe' }),
+    (Join-Path $env:ProgramFiles 'PostgreSQL\18\bin\psql.exe'),
+    'D:\Postgres18\bin\psql.exe'
+) | Where-Object { $_ -and (Test-Path $_) } | Select-Object -First 1
 
-if (-not (Test-Path $psql)) { throw "No se encontró $psql." }
+if (-not $psql) { throw "No se encontró psql.exe (defina SOFTARQ_PG_BIN)." }
 
 $diagnostico = @"
 SELECT 'rol' AS tipo, rolname AS nombre, rolsuper AS superusuario, rolcreatedb AS crea_bases, rolcreaterole AS crea_roles, rolcanlogin AS login

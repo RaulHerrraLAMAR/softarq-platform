@@ -103,6 +103,21 @@ D:\Proyecto_SoftArq\respaldos\softarq_dev\
 
 Es una decisión manual y documentada, fuera de este alcance.
 
+### 5.1 Inicialización de una instalación nueva (laptop, 24/10/2026)
+
+Procedimiento **separado** y acotado, para una instalación en la que `softarq_dev` acaba de crearse vacía. No sustituye a `respaldo:restaurar` (que sigue admitiendo solo `softarq_restauracion`) ni reemplaza una base existente:
+
+```
+pnpm --filter @softarq/api build
+pnpm --filter @softarq/api respaldo:inicializar-desarrollo <carpeta del respaldo> --confirmar softarq_dev
+```
+
+- Destino fijo `softarq_dev`; sin la confirmación literal no hace nada. Verifica el respaldo, comprueba base y propietario (`softarq_migrator`) en el cliente y en el servidor y **rechaza si `public` contiene cualquier objeto** (no hace `DROP SCHEMA`).
+- Restaura con `pg_restore --no-owner --single-transaction`, reaplica `permisos-app.sql`, revoca las sesiones (`RESTAURACION`) y comprueba que el historial de `_prisma_migrations` coincide con el manifiesto y con `prisma/migrations` (no aplica migraciones).
+- Documentos: los de `SOFTARQ_DIR_DOCUMENTOS` deben coincidir con el manifiesto; los que falten se copian sin sobrescribir; uno distinto detiene el proceso. Termina con `documentos:revisar`.
+- Código: `apps/api/scripts/respaldo/inicializar-desarrollo.mjs`; guardas probadas en `__tests__/inicializar-desarrollo.test.mjs`.
+- **Herramientas de PostgreSQL:** `comun.mjs` y los `aprovisionar*.ps1` usan `SOFTARQ_PG_BIN`, si no `%ProgramFiles%\PostgreSQL\18\bin` y, si no, `D:\Postgres18\bin` (equipo original).
+
 ## 6. Política de conservación
 
 - **Cuándo respaldar:** antes de cada cambio de esquema (`db:migrar`), antes de cargas o borrados manuales, al cerrar cada módulo y, en uso continuo, una vez al día.

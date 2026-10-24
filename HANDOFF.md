@@ -2,9 +2,11 @@
 
 > Léelo al empezar. Actualízalo al terminar cada tarea (sección por sección, sin borrar el historial de la tabla 4). Reglas de trabajo: [`AGENTS.md`](AGENTS.md).
 
-**Última actualización:** 19/10/2026 · Claude Code (Claude Opus 5.5) · módulo 15, duplicar, modo de precios y vista previa BORRADOR (§24), sobre `edf4cd8` (módulo 14). Anterior: módulo 14 (§23).
+**Última actualización:** 24/10/2026 · Claude Code · **traslado a la laptop** (§25), sobre `31cf626` (módulo 15, §24). Sin cambios de reglas de negocio ni del módulo 15.
 
 ## 1. Estado actual
+
+- **Entorno actual (24/10/2026):** el proyecto se trasladó a `C:\Proyecto_SoftArq\Proyecto_SoftArq` (repositorio en `...\softarq-platform`; la doble carpeta es intencionada). `softarq_dev` se inicializó desde el respaldo `softarq_dev-20261023T224027Z-22f32d` y las validaciones se repitieron en esta máquina. Las rutas `D:` del resto de este documento describen el equipo original. Detalle y resultados en §25.
 
 - **Módulo 15:** implementado (ADR-0019).
   - **Duplicar** (B-35, Preparador): desde una versión concreta o desde el borrador guardado, a un proyecto activo. Folio nuevo, sin precios elegidos ni excepciones, con el origen registrado.
@@ -589,6 +591,7 @@ En los cuatro, el resultado completo es idéntico al calculado con los fixtures 
 
 ## 7. Siguiente tarea
 
+0. **Laptop (§25):** entorno listo. Siguiente paso acordado: definir el alcance de la app Expo (punto 3) antes de instalar nada.
 1. **Recompilar y reiniciar** la API y la web del propietario si están en marcha con código anterior: `softarq_dev` ya tiene la migración del módulo 15 (§24).
 2. **Regularizar los conceptos heredados** de `softarq_dev` cuando el propietario lo decida, con el mapeo documentado (ADR-0016 §2.3): completar tipo y regla vuelve el concepto a Borrador y exige una nueva aprobación. No se ejecuta automáticamente.
 3. **Siguiente módulo:** fijar con el propietario el alcance de la app Expo (bloque 6 de `docs/cobertura-demo.md`: consulta, revisión y decisión, o también captura) antes de instalar nada; si se pospone, el cierre integral (bloque 7). Pendientes aparte:
@@ -639,6 +642,8 @@ Alternativas más cortas:
 - Módulo 14: commit «Módulo 14: salidas internas de solo lectura (compras, detalle e indicadores)» (§23); consultar `git log -1 --oneline` para su hash. MD5 del libro al cerrar: `b60debc121957b8d8e3f2c2edd9a5b4f` (sin cambios).
 - `edf4cd8`: Módulo 14.
 - Módulo 15: commit «Módulo 15: duplicar cotización, modo de precios y vista previa PDF BORRADOR» (§24); consultar `git log -1 --oneline` para su hash. MD5 del libro al cerrar: `b60debc121957b8d8e3f2c2edd9a5b4f` (sin cambios).
+
+- Traslado a la laptop: commit local «Traslado a la laptop: rutas portables, inicialización de softarq_dev y documentación» (§25); consultar `git log -1 --oneline` para su hash. Sobre `31cf626`.
 
 Rama `main`. Sin remoto ni push.
 
@@ -1407,3 +1412,79 @@ Decisiones y reglas: [ADR-0019](docs/adr/0019-duplicar-modo-precios-vista-previa
 - La guía manual (D1–D10) no se ha ejecutado formalmente. La revisión personal sigue registrada solo como declaración y no cuenta como PR-41 ni PR-44, que siguen pendientes.
 - Los cinco conceptos heredados siguen sin regularizar; P3 sigue pendiente con el cliente. Contadores de 00 INICIO, RF-26 y exportación de informes: sin cambios (la exportación es una mejora opcional fuera del alcance).
 - Si el propietario tiene una API o una web en marcha con código anterior, debe recompilar y reiniciar: `softarq_dev` ya tiene la migración, y la API anterior no puede guardar borradores emitidos sin el ciclo.
+
+## 25. Traslado a la laptop (24/10/2026)
+
+Historial del equipo original (disco `D:`, §1–§24) conservado. Esta sección describe el entorno actual. Sin cambios de reglas de negocio, de Prisma (PostgreSQL) ni del módulo 15.
+
+**Rutas**
+
+| Elemento | Ruta |
+|---|---|
+| Raíz trasladada | `C:\Proyecto_SoftArq\Proyecto_SoftArq` (la doble carpeta es intencionada) |
+| Repositorio | `C:\Proyecto_SoftArq\Proyecto_SoftArq\softarq-platform` |
+| Temporales, cachés, almacén de pnpm, evidencias | `<raíz>\_work` (relativas en `pnpm-workspace.yaml` y `.npmrc`) |
+| Documentos originales (`SOFTARQ_DIR_DOCUMENTOS`) | `<raíz>\datos\softarq_dev\documentos` |
+| Respaldos | `<raíz>\respaldos\softarq_dev` |
+| PostgreSQL | `C:\Program Files\PostgreSQL\18` (servicio `postgresql-x64-18`, puerto 5432) |
+| Graphify | venv `_work\graphify-venv` |
+
+**Versiones realmente usadas:** Git 2.55.0 (reutilizado), Node 24.11.1 y pnpm 11.1.3 (instalados con winget y `npm i -g pnpm@11.1.3`), PostgreSQL 18.6 (winget `PostgreSQL.PostgreSQL.18` 18.6-5, mismo servidor y `pg_dump` que el origen), Python 3.14.6 (reutilizado), Graphify `graphifyy` 0.8.5, Edge 156 (reutilizado; canal `msedge` de Playwright). MySQL 8.0 (puerto 3306) está instalado y no se usó ni se tocó. No se instalaron Docker, Android Studio, emuladores ni Expo. Dependencias: `node_modules` reconstruido con `pnpm install --frozen-lockfile` desde el almacén copiado (los enlaces y shims apuntaban a `D:`).
+
+**Git:** `main`, árbol limpio al llegar, sin remoto; sin aviso de propiedad dudosa (no hizo falta `safe.directory`).
+
+**Cambios versionados de portabilidad**
+- `apps/api/scripts/respaldo/comun.mjs`, `scripts/db/aprovisionar.ps1`, `aprovisionar-respaldo.ps1`: herramientas de PostgreSQL desde `SOFTARQ_PG_BIN`, `%ProgramFiles%\PostgreSQL\18\bin` o, por último, `D:\Postgres18\bin`.
+- `scripts/grafo/grafo.mjs`: usa `_work\graphify-venv` si existe.
+- Nuevo `apps/api/scripts/respaldo/inicializar-desarrollo.mjs` (+ prueba y script `respaldo:inicializar-desarrollo`): ver `docs/operacion/respaldo-y-restauracion.md` §5.1. `restaurar.mjs` y sus guardas no se modificaron.
+- Documentación: `AGENTS.md` §1, `CLAUDE.md`, `README.md`, `apps/api/README.md`, `docs/herramientas/graphify.md` §7.2. Las menciones `D:` en informes, ADR, manifiestos y este historial son históricas y se conservan.
+
+**Credenciales (ubicación, nunca valores)**
+- `apps/api/.env`, `.env.test` y `.env.respaldo`: generados en esta laptop (contraseñas nuevas de `softarq_migrator`, `softarq_app` y `softarq_respaldo`); fuera de Git.
+- Los `.env` del equipo original se apartaron sin leerlos en `_work\secrets\equipo-original\`.
+- Cuentas DEMO de la aplicación: `_work\secrets\accesos-demo-softarq_dev.json` (copiado del origen; sus hashes se restauraron sin cambios y las contraseñas siguen vigentes). No se restableció ninguna.
+- La contraseña de `postgres` no se guardó: se capturó con DPAPI (`_work\secrets\postgres-admin.dpapi`) y el archivo se eliminó al terminar (comprobado).
+
+**Aprovisionamiento y restauración ejecutados**
+1. Diagnóstico de solo lectura: ningún rol ni base `softarq_*` previos.
+2. `aprovisionar.ps1`: roles `softarq_migrator`, `softarq_app`; bases `softarq_dev`, `softarq_test`, `softarq_shadow`. `aprovisionar-respaldo.ps1`: rol `softarq_respaldo` y base `softarq_restauracion`. `comprobar-conexion.mjs`: 5/5 conexiones OK, sin privilegios especiales. `pg_hba.conf` y `postgresql.conf` sin tocar (por defecto: solo conexiones locales con scram-sha-256).
+3. `pnpm respaldo:verificar` sobre `respaldos\softarq_dev\softarq_dev-20261023T224027Z-22f32d`: VÁLIDO, código 0 (`base.dump` 522.278 B y SHA-256 coinciden; 8 PDF, 190.761 B, coinciden; commit `31cf626`). El manifiesto no se editó: `origen.carpetaDocumentos` conserva `D:` como procedencia; la verificación resuelve los PDF relativos a la carpeta del respaldo. La carpeta `...072724Z-2fbd68.en-curso` no se usó ni se borró.
+4. `respaldo:inicializar-desarrollo`: `softarq_dev` restaurada en una base nueva y vacía; 13 migraciones iguales al repositorio (última `20261021120000_duplicar_modo_vista_previa`); 37 sesiones revocadas; 8 PDF comprobados (0 copiados). Un segundo intento se rechazó (420 objetos en `public`) y sin `--confirmar` también.
+5. Estado de `softarq_dev` (consultas de solo lectura): las 30 tablas del manifiesto con los mismos conteos (54 cotizaciones, 8 emisiones, 4 usuarios con hash Argon2id…); `softarq_app` sin UPDATE/DELETE en `emision`, sin UPDATE en `cotizacion_version`, sin acceso a `_prisma_migrations`, sin DELETE/TRUNCATE en ninguna tabla; `softarq_respaldo` con SELECT en las 31 tablas y sin escritura; 2 disparadores de inmutabilidad en `emision`; 0 sesiones activas; tablas del migrador. `softarq_test` y `softarq_shadow` no recibieron datos de desarrollo. No se ejecutó ninguna carga DEMO.
+
+**Pruebas realmente ejecutadas en esta laptop (24/10/2026)**
+
+| Comprobación | Resultado |
+|---|---|
+| `pnpm verificar` (build, tipos, unitarias) | Final: API **502/502** (487 de referencia + 15 de la inicialización) y web **281/281**; build y tipos sin errores. Dos corridas intermedias fallaron por **tiempo/carga**, no por lógica: la prueba que copia y verifica el último respaldo real superó 5 s en frío (aislada: 1,3 s) y una aserción síncrona de `salidas-internas.test.tsx` falló una vez (aislada 3/3). No se modificaron pruebas ni expectativas; repetidas, pasan. Las dos son sensibles a carga en este equipo |
+| Integración (un worker, solo `softarq_test`) | **350/350**, 21 archivos, 369 s |
+| E2E (Edge, un worker) | **71/71**, 9,3 min |
+| `respaldo:probar-restauracion` | **57/57**. Creó el primer respaldo real de la laptop (`softarq_dev-20261024T023130Z-d11892`, COMPLETO) y comprobó `softarq_dev` y sus documentos intactos |
+| Guardas del respaldo e inicialización | 36/36 (dentro de las 502) |
+| Humo de solo lectura con la API real en `softarq_dev` (127.0.0.1:3000) | `/health` OK; inicio de sesión de Preparador, Revisor y Administrador (funciones y capacidades esperadas); el Preparador lista las 54 cotizaciones; **descarga autenticada de `COT-2026-00004-v1`: 24.178 B, mismos bytes y SHA-256 que el respaldo**; sin sesión 401; Revisor no puede calcular (403) y consulta la bandeja; Administrador consulta parámetros. Sesiones cerradas |
+| Web | `http://localhost:5173` respondió 200 («SoftArq · Cotizador DEMO») |
+| Cuatro totales de referencia | Cubiertos por la integración y las unitarias con fecha controlada (`RelojFijo`); no se alteró la fecha del sistema ni datos. El cálculo con la fecha real de hoy depende de las vigencias del catálogo y no se forzó |
+| Cotizaciones nuevas | Ninguna en `softarq_dev` (siguen 54). Los recorridos de escritura se validaron solo en `softarq_test` |
+
+**Documentos (8 PDF):** `datos\softarq_dev\documentos\emisiones\<org>\` coincide con el manifiesto y con el respaldo (16/16 tamaños y SHA-256). `documentos:revisar` sin ausentes ni dañados. No se regeneró ni modificó ningún registro. Las rutas absolutas guardadas son claves relativas (`emisiones/<org>/<emisión>.pdf`) resueltas contra `SOFTARQ_DIR_DOCUMENTOS`, así que no hubo que ajustar la base.
+
+**Cómo iniciar el proyecto** (desde `softarq-platform`, con `node` y `pnpm` en el PATH; en una terminal nueva o recargando el PATH)
+```
+# Terminal 1: API (127.0.0.1:3000, softarq_dev)
+pnpm --filter @softarq/contracts build; pnpm --filter @softarq/api build; pnpm --filter @softarq/api start
+# Terminal 2: web → http://localhost:5173
+pnpm --filter @softarq/web dev
+```
+Cuentas: `_work\secrets\accesos-demo-softarq_dev.json`. Respaldo antes de migrar o cargar datos: `pnpm --filter @softarq/api respaldo:crear` y `respaldo:verificar <carpeta>`.
+
+**Ajustes para 8 GB (i7-4500U):** un agente; build/tipos/unitarias, integración y E2E en secuencia y con un worker; no ejecutar API, web y pruebas a la vez; `TEMP`/`TMP` apuntan a `_work\tmp`; el motor de Prisma se descarga en `%APPDATA%\Prisma` (limitación conocida, §6.1). La suite completa de unidades tarda ~4 min; la integración ~6 min y la E2E ~9 min.
+
+**Graphify y skills:** Graphify 0.8.5 en el venv; el grafo se reconstruyó desde cero (294 archivos, 3.855 nodos, 8.342 aristas, 0 rutas `D:`; `grafo:estado` VIGENTE). **Al trasladar el proyecto, borrar `graphify-out/` antes de `pnpm grafo:actualizar`** (la caché copiada arrastra rutas viejas; `docs/herramientas/graphify.md` §7.2). SQL, `schema.prisma` y los `tokens.ts` siguen necesitando lectura dirigida. Skills de proyecto (`.claude/skills`, `.agents/skills`: ui-ux-pro-max, caveman, grill-me, grilling) presentes y reconocidas; no se reinstalaron ni se tocaron comandos personales (esta laptop no tiene `~/.claude/commands`).
+
+**Limitaciones y pendientes**
+- Conservados: conceptos heredados (CON-00001, 00002, 00007–00009), P3 con el cliente, guía manual formal (A1…D10), contadores de 00 INICIO, RF-26, identidad de las funciones SQL (ADR-0017 §4/ADR-0018 §7), exportación de informes (opcional). **PR-41 a PR-44 del Excel siguen pendientes**; la fase Excel no se modificó.
+- `softarq_dev` conserva las 40 cotizaciones DEMO del humo del módulo 15 (`COT-2026-00015` a `00054`), tal como estaban en el origen.
+- `listen_addresses = '*'` es el valor por omisión del instalador, pero `pg_hba.conf` solo admite conexiones locales; no se modificó. Revisar si algún día se expone el equipo.
+- Copia externa de `respaldos` sigue pendiente (mismo disco que la base).
+- Dos pruebas unitarias son sensibles a carga en este equipo (arriba): conviene correr `pnpm verificar` sin otros procesos pesados.
+- Expo no se ha instalado ni planificado: es el siguiente paso (§7).

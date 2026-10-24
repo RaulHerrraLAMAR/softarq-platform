@@ -4,15 +4,15 @@ Fuente breve y obligatoria de reglas de trabajo en `softarq-platform`. El estado
 
 ## 1. Ubicación y entorno
 
-- Trabaja solo en `D:\Proyecto_SoftArq`. El repositorio es `D:\Proyecto_SoftArq\softarq-platform`.
-- Temporales, cachés, salidas de pruebas y almacenes de paquetes van en `D:\Proyecto_SoftArq\_work` (fuera de Git). pnpm y npm ya están configurados así en `pnpm-workspace.yaml` y `.npmrc`.
-- `C:` tiene poco espacio libre. Antes de instalar una herramienta o lanzar un proceso pesado, comprueba dónde escribe; si obligatoriamente usa `C:`, avísalo antes.
+- Trabaja solo en la raíz del proyecto. **Laptop actual (desde el 24/10/2026):** raíz `C:\Proyecto_SoftArq\Proyecto_SoftArq`, repositorio `C:\Proyecto_SoftArq\Proyecto_SoftArq\softarq-platform`. (Equipo original: `D:\Proyecto_SoftArq`; las rutas `D:` que quedan en informes, ADR y `HANDOFF.md` son históricas.) Deriva las rutas de la raíz; no añadas rutas absolutas de un perfil de usuario.
+- Temporales, cachés, salidas de pruebas y almacenes de paquetes van en `<raíz>\_work` (fuera de Git). pnpm y npm ya están configurados así, con rutas relativas, en `pnpm-workspace.yaml` y `.npmrc`. Documentos originales en `<raíz>\datos\softarq_dev\documentos`; respaldos en `<raíz>\respaldos\softarq_dev`.
+- En esta laptop `C:` es el único disco y está autorizado (la restricción de no escribir en `C:` era del equipo original). El equipo tiene 8 GB de RAM: un agente, sin procesos pesados simultáneos, y pruebas de integración y E2E en secuencia con un worker.
 - Gestor de paquetes: **pnpm** (no npm ni yarn). No instales dependencias sin necesidad del cambio en curso.
 - No despliegues servicios, no crees repositorios remotos y no hagas `push` sin petición explícita.
 
 ## 2. Fase 1 (Excel): solo lectura
 
-- `D:\Proyecto_SoftArq\entrega\` es la entrega de la fase 1. **No se modifica** desde este repositorio. Para analizar el libro, trabaja sobre una copia en `_work`.
+- `<raíz>\entrega\` es la entrega de la fase 1. **No se modifica** desde este repositorio. Para analizar el libro, trabaja sobre una copia en `_work`.
 - Libro oficial: `entrega\Cotizador_Estructuras_F1.xlsm`. Referencia funcional: `entrega\Documentacion_maestra_Cotizador_Estructuras_F1.docx` (v1.3).
 - No copies al repositorio el Excel, el Word, respaldos, PDF ni datos personales sin revisarlos antes y sin que el usuario lo apruebe.
 
