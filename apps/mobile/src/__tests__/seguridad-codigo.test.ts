@@ -28,7 +28,14 @@ describe("código de la app", () => {
 
   it("no persiste en AsyncStorage, archivos ni almacenamiento web (la sesión solo va en SecureStore)", () => {
     for (const f of FUENTES) {
-      expect(sinComentarios(f.texto), f.nombre).not.toMatch(/AsyncStorage|localStorage|sessionStorage|expo-file-system|react-native-mmkv|expo-sqlite/);
+      expect(sinComentarios(f.texto), f.nombre).not.toMatch(/AsyncStorage|localStorage|sessionStorage|react-native-mmkv|expo-sqlite/);
+    }
+  });
+
+  it("solo el módulo de documentos escribe archivos (el PDF emitido, en la caché privada de la app)", () => {
+    for (const f of FUENTES) {
+      if (f.nombre.startsWith("src/documentos/")) continue;
+      expect(sinComentarios(f.texto), f.nombre).not.toMatch(/expo-file-system/);
     }
   });
 
@@ -42,7 +49,8 @@ describe("código de la app", () => {
     for (const f of FUENTES) {
       const codigo = sinComentarios(f.texto);
       expect(codigo, f.nombre).not.toMatch(prohibido);
-      for (const m of codigo.matchAll(/from\s+["'](@softarq\/[^"']+)["']/g)) expect(m[1], f.nombre).toBe("@softarq/contracts/movil");
+      // Solo el subpath del cliente: nunca el índice completo ni los contratos del equipo (`cliente-equipo`).
+      for (const m of codigo.matchAll(/from\s+["'](@softarq\/[^"']+)["']/g)) expect(m[1], f.nombre).toBe("@softarq/contracts/cliente");
     }
   });
 

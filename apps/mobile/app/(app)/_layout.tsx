@@ -1,23 +1,21 @@
 import { Stack } from "expo-router";
+import { useMovimientoReducido } from "../../src/ui/movimiento";
 import { useTema } from "../../src/ui/tema";
 
-/** Pantallas de detalle sobre las pestañas: encabezado nativo con «Atrás» (el botón Atrás de Android funciona igual). */
+/**
+ * Pantallas del cliente sobre las pestañas. Cada pantalla pone su propio encabezado («Obra cálida»); el botón Atrás de
+ * Android y el gesto de volver funcionan con la pila nativa. Con movimiento reducido no hay transición.
+ */
 export default function LayoutApp() {
   const t = useTema();
+  const reducido = useMovimientoReducido();
   return (
-    <Stack
-      screenOptions={{
-        headerStyle: { backgroundColor: t.tarjeta },
-        headerTintColor: t.texto,
-        headerTitleStyle: { fontWeight: "600" },
-        contentStyle: { backgroundColor: t.fondo },
-      }}
-    >
-      <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-      <Stack.Screen name="cliente/[id]" options={{ title: "Cliente" }} />
-      <Stack.Screen name="proyecto/[id]" options={{ title: "Proyecto" }} />
-      <Stack.Screen name="cotizacion/[id]/index" options={{ title: "Cotización" }} />
-      <Stack.Screen name="cotizacion/[id]/version/[numero]" options={{ title: "Versión" }} />
+    <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: t.fondo }, animation: reducido ? "none" : "slide_from_right" }}>
+      <Stack.Screen name="(tabs)" />
+      <Stack.Screen name="nueva" />
+      <Stack.Screen name="solicitud/[id]" />
+      <Stack.Screen name="cotizacion/[id]" />
+      <Stack.Screen name="contrasena" />
     </Stack>
   );
 }

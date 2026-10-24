@@ -1,12 +1,17 @@
 /**
- * Piezas de interfaz reutilizables (React Native; no se reutilizan componentes DOM de la web).
- * Etiquetas visibles, objetivos táctiles ≥ 48 dp, retroalimentación al tocar (ripple) y roles de
- * accesibilidad. El texto escala con el tamaño de fuente del sistema.
+ * Piezas de interfaz reutilizables de «Obra cálida» (ADR-0022). React Native; no se reutilizan componentes DOM de la web.
+ *
+ * - Objetivos táctiles ≥ 48 dp, etiquetas visibles, roles de accesibilidad y texto que escala con el sistema.
+ * - Profundidad con capas sólidas (`Relieve`): una cara que se hunde al tocar sobre un borde inferior. Con movimiento
+ *   reducido el cambio es directo, sin animar.
  */
-import { useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import {
   ActivityIndicator,
+  Animated,
+  Easing,
   KeyboardAvoidingView,
+  Modal,
   Platform,
   Pressable,
   RefreshControl,
@@ -17,108 +22,201 @@ import {
   type KeyboardTypeOptions,
   type TextInputProps,
 } from "react-native";
-import { SafeAreaView, type Edge } from "react-native-safe-area-context";
+import { SafeAreaView, useSafeAreaInsets, type Edge } from "react-native-safe-area-context";
 import { mensajeDeFallo, type FalloApi } from "../api/errores";
-import type { Tono } from "./etiquetas";
-import { ESP, OBJETIVO_MINIMO, RADIO, TEXTO, useTema, type Paleta } from "./tema";
+import { Icono, type NombreIcono } from "./iconos";
+import { useMovimientoReducido } from "./movimiento";
+import { coloresDe, ESP, FUENTE, OBJETIVO_MINIMO, RADIO, TEXTO, useTema, type Tono } from "./tema";
 
 // --- Estructura ---------------------------------------------------------------------------------
 
 interface PropsPantalla {
   children: ReactNode;
-  /** Bordes con área segura. Las pantallas con encabezado nativo no necesitan el superior. */
+  /** Bordes con área segura. Las pantallas con encabezado propio no necesitan el superior. */
   bordes?: readonly Edge[];
-  /** Desplazable y con teclado (formularios). */
+  /** Pantalla con teclado (formularios): se desplaza para no tapar el campo. */
   formulario?: boolean;
   refrescando?: boolean;
   alRefrescar?: () => void;
+  /** `false` para pantallas con bandas a sangre (el inicio); cada banda pone su propio margen. */
+  relleno?: boolean;
+  /** Barra fija al pie (acciones de la pantalla). */
+  pie?: ReactNode;
+  /** Encabezado fijo arriba (volver, título y avance); con él la pantalla respeta el área segura superior. */
+  encabezado?: ReactNode;
+  /** Distancia entre bloques. */
+  separacion?: number;
 }
 
-export function Pantalla({ children, bordes = ["left", "right", "bottom"], formulario = false, refrescando, alRefrescar }: PropsPantalla) {
+export function Pantalla({ children, bordes = ["left", "right", "bottom"], formulario = false, refrescando, alRefrescar, relleno = true, pie, encabezado, separacion = ESP[4] }: PropsPantalla) {
   const t = useTema();
   const contenido = (
     <ScrollView
       keyboardShouldPersistTaps="handled"
-      contentContainerStyle={{ padding: ESP[4], gap: ESP[3], flexGrow: 1 }}
-      {...(alRefrescar ? { refreshControl: <RefreshControl refreshing={refrescando ?? false} onRefresh={alRefrescar} colors={[t.accion]} /> } : {})}
+      contentContainerStyle={{ ...(relleno ? { padding: ESP[4], gap: separacion } : {}), flexGrow: 1 }}
+      {...(alRefrescar ? { refreshControl: <RefreshControl refreshing={refrescando ?? false} onRefresh={alRefrescar} colors={[t.terracota]} progressBackgroundColor={t.papel} /> } : {})}
     >
       {children}
     </ScrollView>
   );
+  const cuerpo = formulario ? (
+    <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === "ios" ? "padding" : undefined}>
+      {contenido}
+    </KeyboardAvoidingView>
+  ) : (
+    contenido
+  );
   return (
-    <SafeAreaView edges={bordes} style={{ flex: 1, backgroundColor: t.fondo }}>
-      {formulario ? (
-        <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === "ios" ? "padding" : undefined}>
-          {contenido}
-        </KeyboardAvoidingView>
-      ) : (
-        contenido
-      )}
+    <SafeAreaView edges={encabezado && !bordes.includes("top") ? [...bordes, "top"] : bordes} style={{ flex: 1, backgroundColor: t.fondo }}>
+      {encabezado}
+      <View style={{ flex: 1 }}>{cuerpo}</View>
+      {pie}
     </SafeAreaView>
+  );
+}
+
+/** Barra fija al pie con las acciones de la pantalla. */
+export function BarraAccion({ children }: { children: ReactNode }) {
+  const t = useTema();
+  const { bottom } = useSafeAreaInsets();
+  return (
+    <View style={{ backgroundColor: t.fondo, borderTopWidth: 1, borderTopColor: t.linea, paddingHorizontal: ESP[4], paddingTop: ESP[3], paddingBottom: Math.max(bottom, ESP[3]), gap: ESP[2] }}>{children}</View>
   );
 }
 
 // --- Texto --------------------------------------------------------------------------------------
 
-type Variante = "titulo" | "subtitulo" | "cuerpo" | "atenuado" | "etiqueta" | "codigo";
+type Variante = "titulo" | "subtitulo" | "cuerpo" | "atenuado" | "etiqueta" | "codigo" | "importe" | "cifra" | "pequeno";
 
-export function Texto({ variante = "cuerpo", children, color, ...resto }: { variante?: Variante; children: ReactNode; color?: string } & Omit<React.ComponentProps<typeof Text>, "style">) {
+export function Texto({ variante = "cuerpo", children, color, centrado = false, ...resto }: { variante?: Variante; children: ReactNode; color?: string; centrado?: boolean } & Omit<React.ComponentProps<typeof Text>, "style">) {
   const t = useTema();
-  const estilo = {
-    titulo: { fontSize: TEXTO.xl, fontWeight: "700" as const, color: t.texto },
-    subtitulo: { fontSize: TEXTO.lg, fontWeight: "600" as const, color: t.texto },
-    cuerpo: { fontSize: TEXTO.md, color: t.texto },
-    atenuado: { fontSize: TEXTO.sm, color: t.atenuado },
-    etiqueta: { fontSize: TEXTO.sm, fontWeight: "600" as const, color: t.atenuado },
-    codigo: { fontSize: TEXTO.sm, fontFamily: Platform.OS === "android" ? "monospace" : "Menlo", color: t.texto },
+  const base = {
+    titulo: { fontFamily: FUENTE.tituloFuerte, fontSize: TEXTO.xl, lineHeight: TEXTO.xl * 1.12, letterSpacing: -0.6, color: t.tinta },
+    subtitulo: { fontFamily: FUENTE.titulo, fontSize: TEXTO.lg, lineHeight: TEXTO.lg * 1.2, letterSpacing: -0.3, color: t.tinta },
+    cuerpo: { fontFamily: FUENTE.texto, fontSize: TEXTO.md, lineHeight: TEXTO.md * 1.45, color: t.tinta },
+    atenuado: { fontFamily: FUENTE.texto, fontSize: TEXTO.sm, lineHeight: TEXTO.sm * 1.45, color: t.suave },
+    pequeno: { fontFamily: FUENTE.texto, fontSize: TEXTO.xs, lineHeight: TEXTO.xs * 1.4, color: t.suave },
+    etiqueta: { fontFamily: FUENTE.textoFuerte, fontSize: TEXTO.xs, lineHeight: TEXTO.xs * 1.4, letterSpacing: 1.1, textTransform: "uppercase" as const, color: t.suave },
+    codigo: { fontFamily: Platform.OS === "android" ? "monospace" : "Menlo", fontSize: TEXTO.sm, color: t.tinta },
+    importe: { fontFamily: FUENTE.tituloFuerte, fontSize: TEXTO.importe, lineHeight: TEXTO.importe * 1.05, letterSpacing: -1.4, color: t.tinta, fontVariant: ["tabular-nums" as const] },
+    cifra: { fontFamily: FUENTE.textoFuerte, fontSize: TEXTO.md, color: t.tinta, fontVariant: ["tabular-nums" as const] },
   }[variante];
+  const estilo = { ...base, ...(color ? { color } : {}), ...(centrado ? { textAlign: "center" as const } : {}) };
   return (
-    <Text {...resto} style={color ? { ...estilo, color } : estilo} {...(variante === "titulo" || variante === "subtitulo" ? { accessibilityRole: "header" as const } : {})}>
+    <Text {...resto} style={estilo} {...(variante === "titulo" || variante === "subtitulo" ? { accessibilityRole: "header" as const } : {})}>
       {children}
     </Text>
   );
 }
 
-// --- Acciones -----------------------------------------------------------------------------------
+// --- Relieve y acciones -------------------------------------------------------------------------
+
+/**
+ * Cara sobre un borde sólido: al «hundir» la cara baja `profundidad` y cubre el borde. `hundimiento` es el
+ * desplazamiento actual (0 = relieve completo).
+ */
+export function Relieve({ children, colorBase, profundidad, radio, hundimiento }: { children: ReactNode; colorBase: string; profundidad: number; radio: number; hundimiento: Animated.Value | number }) {
+  return (
+    <View style={{ paddingBottom: profundidad }}>
+      <View style={{ position: "absolute", left: 0, right: 0, top: profundidad, bottom: 0, borderRadius: radio, backgroundColor: colorBase }} />
+      <Animated.View style={{ transform: [{ translateY: hundimiento }] }}>{children}</Animated.View>
+    </View>
+  );
+}
+
+/** Hunde y suelta una cara con animación nativa (o directo con movimiento reducido). */
+export function useHundimiento(profundidad: number) {
+  const reducido = useMovimientoReducido();
+  const y = useRef(new Animated.Value(0)).current;
+  const hundir = (abajo: boolean) => {
+    const destino = abajo ? profundidad * 0.8 : 0;
+    if (reducido) {
+      y.setValue(destino);
+      return;
+    }
+    Animated.timing(y, { toValue: destino, duration: abajo ? 60 : 200, easing: abajo ? Easing.out(Easing.quad) : Easing.out(Easing.back(2)), useNativeDriver: true }).start();
+  };
+  return { y, hundir };
+}
 
 interface PropsBoton {
   texto: string;
   alPulsar: () => void;
-  variante?: "primario" | "secundario";
+  variante?: "primario" | "petroleo" | "secundario";
+  subtitulo?: string;
+  icono?: NombreIcono;
   deshabilitado?: boolean;
   cargando?: boolean;
   ayuda?: string;
 }
 
-export function Boton({ texto, alPulsar, variante = "primario", deshabilitado = false, cargando = false, ayuda }: PropsBoton) {
+const PROFUNDIDAD_BOTON = 6;
+
+/** Botón con volumen: cara de color sobre un borde sólido que se hunde al tocar. */
+export function Boton({ texto, alPulsar, variante = "primario", subtitulo, icono, deshabilitado = false, cargando = false, ayuda }: PropsBoton) {
   const t = useTema();
   const inactivo = deshabilitado || cargando;
-  const primario = variante === "primario";
+  const { y, hundir } = useHundimiento(PROFUNDIDAD_BOTON);
+  const p = inactivo
+    ? { cara: t.hundido, base: t.linea, texto: t.suave, borde: "transparent" }
+    : variante === "primario"
+      ? { cara: t.terracota, base: t.terracotaBorde, texto: t.sobreTerracota, borde: "transparent" }
+      : variante === "petroleo"
+        ? { cara: t.petroleoFondo, base: t.petroleoBorde, texto: t.sobrePetroleo, borde: "transparent" }
+        : { cara: t.papel, base: t.tinta, texto: t.tinta, borde: t.tinta };
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={subtitulo ? `${texto}. ${subtitulo}` : texto}
+      {...(ayuda ? { accessibilityHint: ayuda } : {})}
+      accessibilityState={{ disabled: inactivo, busy: cargando }}
+      disabled={inactivo}
+      onPress={alPulsar}
+      onPressIn={() => hundir(true)}
+      onPressOut={() => hundir(false)}
+    >
+      <Relieve colorBase={p.base} profundidad={PROFUNDIDAD_BOTON} radio={RADIO.medio} hundimiento={y}>
+        <View
+          style={{
+            minHeight: 56,
+            borderRadius: RADIO.medio,
+            backgroundColor: p.cara,
+            borderWidth: variante === "secundario" && !inactivo ? 2 : 0,
+            borderColor: p.borde,
+            paddingHorizontal: ESP[5],
+            paddingVertical: ESP[3],
+            flexDirection: "row",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: ESP[2],
+          }}
+        >
+          {cargando ? <ActivityIndicator color={t.suave} /> : icono ? <Icono nombre={icono} color={p.texto} tam={20} grosor={2.6} /> : null}
+          <View style={{ flexShrink: 1 }}>
+            <Text style={{ fontFamily: FUENTE.titulo, fontSize: TEXTO.md + 1, color: p.texto, textAlign: "center" }}>{texto}</Text>
+            {subtitulo ? <Text style={{ fontFamily: FUENTE.texto, fontSize: TEXTO.xs, color: p.texto, textAlign: "center", opacity: 0.92 }}>{subtitulo}</Text> : null}
+          </View>
+        </View>
+      </Relieve>
+    </Pressable>
+  );
+}
+
+/** Acción de texto subrayada (acción secundaria dentro de un bloque). */
+export function Enlace({ texto, alPulsar, ayuda, deshabilitado = false }: { texto: string; alPulsar: () => void; ayuda?: string; deshabilitado?: boolean }) {
+  const t = useTema();
   return (
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={texto}
       {...(ayuda ? { accessibilityHint: ayuda } : {})}
-      accessibilityState={{ disabled: inactivo, busy: cargando }}
-      disabled={inactivo}
+      accessibilityState={{ disabled: deshabilitado }}
+      disabled={deshabilitado}
       onPress={alPulsar}
-      android_ripple={{ color: primario ? "#ffffff55" : `${t.accion}33` }}
-      style={({ pressed }) => ({
-        minHeight: OBJETIVO_MINIMO,
-        paddingHorizontal: ESP[4],
-        borderRadius: RADIO,
-        alignItems: "center",
-        justifyContent: "center",
-        flexDirection: "row",
-        gap: ESP[2],
-        backgroundColor: primario ? t.accion : t.tarjeta,
-        borderWidth: primario ? 0 : 1,
-        borderColor: t.accion,
-        opacity: inactivo ? 0.55 : pressed ? 0.85 : 1,
-      })}
+      hitSlop={6}
+      style={{ minHeight: 44, justifyContent: "center", alignSelf: "flex-start", paddingHorizontal: ESP[1] }}
     >
-      {cargando ? <ActivityIndicator color={primario ? t.sobreAccion : t.accion} /> : null}
-      <Text style={{ fontSize: TEXTO.md, fontWeight: "600", color: primario ? t.sobreAccion : t.enlace }}>{texto}</Text>
+      <Text style={{ fontFamily: FUENTE.textoFuerte, fontSize: TEXTO.md, color: deshabilitado ? t.suave : t.enlace, textDecorationLine: "underline" }}>{texto}</Text>
     </Pressable>
   );
 }
@@ -138,33 +236,51 @@ interface PropsCampo {
   alEnviar?: () => void;
   enterKey?: TextInputProps["returnKeyType"];
   editable?: boolean;
+  maximo?: number;
+  multilinea?: boolean;
+  /** Mayúsculas y autocorrección: desactivadas para correos y contraseñas, activas para texto libre. */
+  textoLibre?: boolean;
 }
 
 /** Campo con etiqueta VISIBLE (no solo marcador), error junto al campo y, si es secreto, «Mostrar/Ocultar». */
-export function Campo({ etiqueta, valor, alCambiar, error, ayuda, secreto = false, teclado, autoComplete, tipoContenido, alEnviar, enterKey, editable = true }: PropsCampo) {
+export function Campo({ etiqueta, valor, alCambiar, error, ayuda, secreto = false, teclado, autoComplete, tipoContenido, alEnviar, enterKey, editable = true, maximo, multilinea = false, textoLibre = false }: PropsCampo) {
   const t = useTema();
   const [visible, setVisible] = useState(false);
+  const [enfocado, setEnfocado] = useState(false);
   return (
     <View style={{ gap: ESP[1] }}>
-      <Text style={{ fontSize: TEXTO.sm, fontWeight: "600", color: t.texto }}>{etiqueta}</Text>
-      <View style={{ flexDirection: "row", alignItems: "center", borderWidth: 1, borderColor: error ? t.error : t.borde, borderRadius: RADIO, backgroundColor: t.tarjeta }}>
+      <Text style={{ fontFamily: FUENTE.textoFuerte, fontSize: TEXTO.sm, color: t.tinta }}>{etiqueta}</Text>
+      <View
+        style={{
+          flexDirection: "row",
+          alignItems: multilinea ? "flex-start" : "center",
+          borderWidth: 2,
+          borderColor: error ? t.rojo : enfocado ? t.petroleo : t.linea,
+          borderRadius: RADIO.chico + 4,
+          backgroundColor: error ? t.rojoTinte : t.papel,
+        }}
+      >
         <TextInput
           accessibilityLabel={etiqueta}
           {...(error ? { accessibilityHint: error } : ayuda ? { accessibilityHint: ayuda } : {})}
           value={valor}
           onChangeText={alCambiar}
+          onFocus={() => setEnfocado(true)}
+          onBlur={() => setEnfocado(false)}
           editable={editable}
           secureTextEntry={secreto && !visible}
-          autoCapitalize="none"
-          autoCorrect={false}
-          spellCheck={false}
+          autoCapitalize={textoLibre ? "sentences" : "none"}
+          autoCorrect={textoLibre}
+          spellCheck={textoLibre}
+          multiline={multilinea}
+          {...(maximo ? { maxLength: maximo } : {})}
           {...(teclado ? { keyboardType: teclado } : {})}
           {...(autoComplete ? { autoComplete } : {})}
           {...(tipoContenido ? { textContentType: tipoContenido } : {})}
           {...(alEnviar ? { onSubmitEditing: alEnviar } : {})}
           returnKeyType={enterKey ?? "next"}
-          placeholderTextColor={t.atenuado}
-          style={{ flex: 1, minHeight: OBJETIVO_MINIMO, paddingHorizontal: ESP[3], fontSize: TEXTO.md, color: t.texto }}
+          placeholderTextColor={t.suave}
+          style={{ flex: 1, minHeight: OBJETIVO_MINIMO + 4, paddingHorizontal: ESP[3], paddingVertical: multilinea ? ESP[3] : 0, fontFamily: FUENTE.textoMedio, fontSize: TEXTO.md, color: t.tinta, textAlignVertical: multilinea ? "top" : "center" }}
         />
         {secreto ? (
           <Pressable
@@ -172,38 +288,31 @@ export function Campo({ etiqueta, valor, alCambiar, error, ayuda, secreto = fals
             accessibilityLabel={visible ? `Ocultar ${etiqueta.toLowerCase()}` : `Mostrar ${etiqueta.toLowerCase()}`}
             onPress={() => setVisible((v) => !v)}
             hitSlop={8}
-            android_ripple={{ color: `${t.accion}33` }}
             style={{ minHeight: OBJETIVO_MINIMO, minWidth: OBJETIVO_MINIMO, alignItems: "center", justifyContent: "center", paddingHorizontal: ESP[2] }}
           >
-            <Text style={{ fontSize: TEXTO.sm, fontWeight: "600", color: t.enlace }}>{visible ? "Ocultar" : "Mostrar"}</Text>
+            <Text style={{ fontFamily: FUENTE.textoFuerte, fontSize: TEXTO.sm, color: t.enlace }}>{visible ? "Ocultar" : "Mostrar"}</Text>
           </Pressable>
         ) : null}
       </View>
       {error ? (
-        <Text accessibilityLiveRegion="polite" style={{ fontSize: TEXTO.sm, color: t.error }}>
+        <Text accessibilityLiveRegion="polite" style={{ fontFamily: FUENTE.textoMedio, fontSize: TEXTO.sm, color: t.rojo }}>
           {error}
         </Text>
       ) : ayuda ? (
-        <Text style={{ fontSize: TEXTO.sm, color: t.atenuado }}>{ayuda}</Text>
+        <Text style={{ fontFamily: FUENTE.texto, fontSize: TEXTO.sm, color: t.suave }}>{ayuda}</Text>
       ) : null}
     </View>
   );
 }
 
-// --- Tarjetas y filas ---------------------------------------------------------------------------
+// --- Tarjetas, filas y datos --------------------------------------------------------------------
 
 export function Tarjeta({ children, alPulsar, etiqueta }: { children: ReactNode; alPulsar?: () => void; etiqueta?: string }) {
   const t = useTema();
-  const base = { backgroundColor: t.tarjeta, borderRadius: RADIO, borderWidth: 1, borderColor: t.borde, padding: ESP[4], gap: ESP[1] };
+  const base = { backgroundColor: t.papel, borderRadius: RADIO.medio, borderWidth: 1, borderColor: t.linea, padding: ESP[4], gap: ESP[1] };
   if (!alPulsar) return <View style={base}>{children}</View>;
   return (
-    <Pressable
-      accessibilityRole="button"
-      {...(etiqueta ? { accessibilityLabel: etiqueta } : {})}
-      onPress={alPulsar}
-      android_ripple={{ color: `${t.accion}22` }}
-      style={({ pressed }) => ({ ...base, minHeight: OBJETIVO_MINIMO, opacity: pressed ? 0.9 : 1 })}
-    >
+    <Pressable accessibilityRole="button" {...(etiqueta ? { accessibilityLabel: etiqueta } : {})} onPress={alPulsar} android_ripple={{ color: `${t.terracota}22` }} style={({ pressed }) => ({ ...base, minHeight: OBJETIVO_MINIMO, opacity: pressed ? 0.92 : 1 })}>
       {children}
     </Pressable>
   );
@@ -212,7 +321,7 @@ export function Tarjeta({ children, alPulsar, etiqueta }: { children: ReactNode;
 export function Seccion({ titulo, children }: { titulo: string; children: ReactNode }) {
   return (
     <View style={{ gap: ESP[2] }}>
-      <Texto variante="subtitulo">{titulo}</Texto>
+      <Texto variante="etiqueta">{titulo}</Texto>
       {children}
     </View>
   );
@@ -227,29 +336,12 @@ export function Dato({ etiqueta, valor }: { etiqueta: string; valor: ReactNode }
   );
 }
 
-function coloresDe(t: Paleta, tono: Tono): { fondo: string; texto: string } {
-  switch (tono) {
-    case "info":
-      return { fondo: t.infoFondo, texto: t.info };
-    case "correcto":
-      return { fondo: t.correctoFondo, texto: t.correcto };
-    case "aviso":
-      return { fondo: t.avisoFondo, texto: t.aviso };
-    case "demo":
-      return { fondo: t.demoFondo, texto: t.demo };
-    case "error":
-      return { fondo: t.errorFondo, texto: t.error };
-    case "neutro":
-      return { fondo: t.suave, texto: t.atenuado };
-  }
-}
-
 export function Insignia({ texto, tono = "neutro" }: { texto: string; tono?: Tono }) {
   const t = useTema();
   const c = coloresDe(t, tono);
   return (
-    <View style={{ alignSelf: "flex-start", backgroundColor: c.fondo, borderRadius: 999, paddingHorizontal: ESP[3], paddingVertical: ESP[1] }}>
-      <Text style={{ fontSize: TEXTO.xs, fontWeight: "600", color: c.texto }}>{texto}</Text>
+    <View style={{ alignSelf: "flex-start", backgroundColor: c.fondo, borderRadius: RADIO.pildora, paddingHorizontal: ESP[3], paddingVertical: ESP[1] }}>
+      <Text style={{ fontFamily: FUENTE.textoFuerte, fontSize: TEXTO.xs, color: c.texto }}>{texto}</Text>
     </View>
   );
 }
@@ -265,26 +357,53 @@ export function Cargando({ texto = "Cargando…" }: { texto?: string }) {
   const t = useTema();
   return (
     <View accessibilityRole="progressbar" accessibilityLabel={texto} style={{ alignItems: "center", gap: ESP[3], padding: ESP[6] }}>
-      <ActivityIndicator size="large" color={t.accion} />
+      <ActivityIndicator size="large" color={t.terracota} />
       <Texto variante="atenuado">{texto}</Texto>
     </View>
   );
 }
 
-export function Vacio({ texto }: { texto: string }) {
+/** Bloque gris que late mientras llega el contenido (sin animar con movimiento reducido). */
+export function Esqueleto({ alto = 64, ancho }: { alto?: number; ancho?: number | `${number}%` }) {
+  const t = useTema();
+  const reducido = useMovimientoReducido();
+  const o = useRef(new Animated.Value(1)).current;
+  useEffect(() => {
+    if (reducido) {
+      o.setValue(1);
+      return;
+    }
+    const bucle = Animated.loop(Animated.sequence([Animated.timing(o, { toValue: 0.45, duration: 700, useNativeDriver: true }), Animated.timing(o, { toValue: 1, duration: 700, useNativeDriver: true })]));
+    bucle.start();
+    return () => bucle.stop();
+  }, [reducido, o]);
+  return <Animated.View accessibilityElementsHidden importantForAccessibility="no-hide-descendants" style={{ height: alto, ...(ancho !== undefined ? { width: ancho } : {}), borderRadius: RADIO.medio, backgroundColor: t.hundido, opacity: o }} />;
+}
+
+export function Vacio({ texto, titulo, ilustracion, accion }: { texto: string; titulo?: string; ilustracion?: ReactNode; accion?: ReactNode }) {
   return (
-    <View style={{ padding: ESP[6], alignItems: "center" }}>
-      <Texto variante="atenuado">{texto}</Texto>
+    <View style={{ padding: ESP[6], alignItems: "center", gap: ESP[3] }}>
+      {ilustracion}
+      {titulo ? <Texto variante="subtitulo" centrado>{titulo}</Texto> : null}
+      <Texto variante="atenuado" centrado>{texto}</Texto>
+      {accion}
     </View>
   );
 }
 
-export function Aviso({ texto, tono = "info" }: { texto: string; tono?: Tono }) {
+export function Aviso({ texto, tono = "info", titulo, icono }: { texto: string; tono?: Tono; titulo?: string; icono?: NombreIcono }) {
   const t = useTema();
   const c = coloresDe(t, tono);
+  const nombre = icono ?? (tono === "error" ? "alerta" : tono === "correcto" ? "check" : "info");
   return (
-    <View accessibilityLiveRegion="polite" style={{ backgroundColor: c.fondo, borderRadius: RADIO, padding: ESP[3] }}>
-      <Text style={{ fontSize: TEXTO.sm, color: c.texto }}>{texto}</Text>
+    <View accessibilityLiveRegion="polite" style={{ backgroundColor: c.fondo, borderRadius: RADIO.medio, padding: ESP[3], flexDirection: "row", gap: ESP[2], alignItems: "flex-start" }}>
+      <View style={{ marginTop: 2 }}>
+        <Icono nombre={nombre} tam={18} color={tono === "correcto" ? t.verde : c.texto} />
+      </View>
+      <View style={{ flex: 1, gap: 2 }}>
+        {titulo ? <Text style={{ fontFamily: FUENTE.textoFuerte, fontSize: TEXTO.sm, color: c.texto }}>{titulo}</Text> : null}
+        <Text style={{ fontFamily: FUENTE.texto, fontSize: TEXTO.sm, lineHeight: TEXTO.sm * 1.45, color: c.texto }}>{texto}</Text>
+      </View>
     </View>
   );
 }
@@ -296,5 +415,50 @@ export function ErrorConsulta({ fallo, alReintentar }: { fallo: FalloApi; alRein
       <Aviso tono="error" texto={mensajeDeFallo(fallo)} />
       {fallo.tipo === "sesion" || fallo.tipo === "sin_permiso" ? null : <Boton texto="Reintentar" alPulsar={alReintentar} variante="secundario" />}
     </View>
+  );
+}
+
+// --- Desplegable y hoja inferior ----------------------------------------------------------------
+
+/** Bloque que se abre y se cierra (detalles que no hacen falta de entrada). */
+export function Desplegable({ titulo, children }: { titulo: string; children: ReactNode }) {
+  const t = useTema();
+  const [abierto, setAbierto] = useState(false);
+  return (
+    <View>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={titulo}
+        accessibilityState={{ expanded: abierto }}
+        onPress={() => setAbierto((a) => !a)}
+        style={{ minHeight: OBJETIVO_MINIMO, flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}
+      >
+        <Text style={{ fontFamily: FUENTE.textoFuerte, fontSize: TEXTO.md, color: t.tinta }}>{titulo}</Text>
+        <View style={{ transform: [{ rotate: abierto ? "180deg" : "0deg" }] }}>
+          <Icono nombre="abajo" />
+        </View>
+      </Pressable>
+      {abierto ? <View style={{ paddingBottom: ESP[2] }}>{children}</View> : null}
+    </View>
+  );
+}
+
+/** Hoja que sube desde abajo (confirmaciones). Atrás de Android la cierra si `alCerrar` existe. */
+export function Hoja({ visible, children, alCerrar, etiqueta }: { visible: boolean; children: ReactNode; alCerrar?: () => void; etiqueta: string }) {
+  const t = useTema();
+  const reducido = useMovimientoReducido();
+  const { bottom } = useSafeAreaInsets();
+  return (
+    <Modal visible={visible} transparent animationType={reducido ? "none" : "slide"} onRequestClose={alCerrar ?? (() => {})} statusBarTranslucent navigationBarTranslucent>
+      <View style={{ flex: 1, backgroundColor: t.velo, justifyContent: "flex-end" }}>
+        <View
+          accessibilityViewIsModal
+          accessibilityLabel={etiqueta}
+          style={{ backgroundColor: t.papel, borderTopLeftRadius: RADIO.grande + 6, borderTopRightRadius: RADIO.grande + 6, paddingHorizontal: ESP[5], paddingTop: ESP[6], paddingBottom: Math.max(bottom, ESP[4]) + ESP[2], gap: ESP[3] }}
+        >
+          {children}
+        </View>
+      </View>
+    </Modal>
   );
 }

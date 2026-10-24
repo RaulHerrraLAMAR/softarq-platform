@@ -1,5 +1,7 @@
 /**
- * Gestor de la sesión móvil (ADR-0020). Sin React ni módulos nativos: se prueba en Node.
+ * Gestor de la sesión móvil (ADR-0020, ADR-0021). Sin React ni módulos nativos: se prueba en Node.
+ * La app es del CLIENTE: una sesión que no sea de la función `CLIENTE` (por ejemplo, un token de la etapa 1 que
+ * quedó en el teléfono) se cierra y se explica; el servidor sigue decidiendo qué puede hacer cada cuenta.
  *
  * Fases:
  * - `iniciando`: leyendo el almacén seguro y revalidando el token con la API.
@@ -16,14 +18,14 @@
  *   anterior llega a una pantalla) y se avisa a los oyentes para que vacíen sus cachés.
  * - El token solo se guarda en el almacén seguro y se conserva en memoria mientras dura la sesión.
  */
-import { EsquemaRespuestaAccesoMovil, EsquemaRespuestaSesionMovil, type RespuestaSesionMovil } from "@softarq/contracts/movil";
+import { EsquemaRespuestaAccesoMovil, EsquemaRespuestaSesionMovil, type RespuestaSesionMovil } from "@softarq/contracts/cliente";
 import { ClienteApi, type OpcionesCliente } from "../api/cliente";
 import { FalloApi, esFalloApi } from "../api/errores";
 import type { AlmacenToken } from "./almacen";
 
 export type FaseSesion = "iniciando" | "sin_conexion" | "anonima" | "cambio_contrasena" | "activa";
 
-export type AvisoSesion = { tipo: "vencida" | "sin_acceso" | "contrasena_cambiada"; mensaje: string };
+export type AvisoSesion = { tipo: "vencida" | "sin_acceso" | "cuenta_interna" | "contrasena_cambiada"; mensaje: string };
 
 export interface EstadoSesion {
   readonly fase: FaseSesion;
@@ -47,8 +49,9 @@ export interface OpcionesGestor {
 export const MINIMO_REVALIDAR_MS = 60_000;
 
 const AVISOS: Record<AvisoSesion["tipo"], string> = {
-  vencida: "La sesión venció o se cerró. Inicie sesión de nuevo.",
-  sin_acceso: "Su cuenta ya no tiene acceso. Si cree que es un error, consulte al Administrador del sistema.",
+  vencida: "Su sesión venció o se cerró. Inicie sesión de nuevo.",
+  sin_acceso: "Su cuenta ya no tiene acceso a la app. Si cree que es un error, consulte al equipo de SoftArq.",
+  cuenta_interna: "Esta cuenta es del equipo de SoftArq y no se usa en la app. Entre al panel web para trabajar con ella.",
   contrasena_cambiada: "Contraseña actualizada. Inicie sesión con la contraseña nueva.",
 };
 
@@ -123,8 +126,14 @@ export class GestorSesion {
     this.soltarCuenta();
     this.poner({ aviso: null }, true); // ya nada de la cuenta anterior sobrevive
     const r = await this.cliente.enviar("POST", "/api/v1/auth/movil/sesion", { correo, contrasena }, EsquemaRespuestaAccesoMovil, { conToken: false });
-    if (!r) throw new FalloApi("respuesta_invalida", "La respuesta del servidor no es la esperada.");
     const { tokenSesion, ...sesion } = r;
+    if (!sesion.funciones.includes("CLIENTE")) {
+      // La API no debería permitirlo; si ocurre, la sesión se revoca y no se guarda.
+      this.token = tokenSesion;
+      await this.cerrarEnServidor();
+      this.token = null;
+      throw new FalloApi("cuenta_interna", AVISOS.cuenta_interna);
+    }
     try {
       await this.opciones.almacen.guardar(tokenSesion);
     } catch {
@@ -147,11 +156,18 @@ export class GestorSesion {
     try {
       const sesion = await this.cliente.obtener("/api/v1/auth/movil/sesion", EsquemaRespuestaSesionMovil);
       if (generacion !== this.estado.generacion || this.token === null) return;
+      if (!sesion.funciones.includes("CLIENTE")) {
+        await this.cerrarEnServidor();
+        return void (await this.perderSesion("cuenta_interna"));
+      }
+      if (!sesion.cambioContrasenaRequerido && !sesion.capacidades.includes("cliente.solicitudes")) return void (await this.perderSesion("sin_acceso"));
       this.ultimaValidacion = this.ahora();
       this.poner({ fase: sesion.cambioContrasenaRequerido ? "cambio_contrasena" : "activa", sesion, aviso: null }, origen === "restaurar");
     } catch (e) {
       if (!esFalloApi(e) || e.tipo === "cancelada") return;
       if (e.tipo === "sesion") return void (await this.perderSesion("vencida"));
+      if (e.tipo === "cuenta_interna") return void (await this.perderSesion("cuenta_interna"));
+      if (e.tipo === "sin_permiso" && origen === "restaurar") return void (await this.perderSesion("sin_acceso"));
       if (e.tipo === "red" && origen === "restaurar") {
         this.poner({ fase: "sin_conexion" }, false);
         return;

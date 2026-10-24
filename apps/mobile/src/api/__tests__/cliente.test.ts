@@ -1,8 +1,8 @@
-import { EsquemaRespuestaSesionMovil } from "@softarq/contracts/movil";
+import { EsquemaRespuestaSesionMovil } from "@softarq/contracts/cliente";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { z } from "zod";
-import { crearFetchFalso, errorApi, sesionDe, CAPACIDADES_CONSULTA, TOKEN_A } from "../../pruebas/ayudas";
-import { ClienteApi } from "../cliente";
+import { crearFetchFalso, errorApi, sesionDe, CAPACIDADES_CLIENTE, TOKEN_A } from "../../pruebas/ayudas";
+import { ClienteApi, TAMANO_MAXIMO_DOCUMENTO } from "../cliente";
 import { FalloApi, mensajeDeFallo } from "../errores";
 
 const BASE = "http://localhost:3000";
@@ -25,9 +25,9 @@ afterEach(() => vi.useRealTimers());
 describe("solicitudes", () => {
   it("envía Authorization: Bearer, sin cookies ni Origin ni CSRF, y construye la consulta sin valores vacíos", async () => {
     const { cliente, peticiones } = montar(() => ({ estado: 200, cuerpo: { ok: true } }));
-    await cliente.obtener("/api/v1/clientes", Eco, { query: { buscar: "Casa", vacio: "", nada: undefined } });
+    await cliente.obtener("/api/v1/cliente/solicitudes", Eco, { query: { buscar: "Casa", vacio: "", nada: undefined } });
     const p = peticiones[0]!;
-    expect(p.url.toString()).toBe("http://localhost:3000/api/v1/clientes?buscar=Casa");
+    expect(p.url.toString()).toBe("http://localhost:3000/api/v1/cliente/solicitudes?buscar=Casa");
     expect(p.cabeceras["Authorization"]).toBe(`Bearer ${TOKEN_A}`);
     expect(p.credenciales).toBe("omit");
     const nombres = Object.keys(p.cabeceras).map((k) => k.toLowerCase());
@@ -47,8 +47,17 @@ describe("solicitudes", () => {
   it("valida la respuesta con el contrato: si no coincide, respuesta_invalida", async () => {
     const { cliente } = montar(() => ({ estado: 200, cuerpo: { ok: false } }));
     await expect(cliente.obtener("/x", Eco)).rejects.toMatchObject({ tipo: "respuesta_invalida" });
-    const sesion = montar(() => ({ estado: 200, cuerpo: { ...sesionDe(["PREPARADOR"], CAPACIDADES_CONSULTA), campoNuevo: 1 } }));
+    const sesion = montar(() => ({ estado: 200, cuerpo: { ...sesionDe(["CLIENTE"], CAPACIDADES_CLIENTE), campoNuevo: 1 } }));
     await expect(sesion.cliente.obtener("/x", EsquemaRespuestaSesionMovil)).rejects.toMatchObject({ tipo: "respuesta_invalida" });
+  });
+
+  it("PUT y POST envían JSON con la sesión; la respuesta se valida con el esquema", async () => {
+    const { cliente, peticiones } = montar(() => ({ estado: 200, cuerpo: { ok: true } }));
+    await cliente.enviar("PUT", "/api/v1/cliente/solicitudes/abc", { revision: 3, captura: { trabajos: [], notas: null } }, Eco);
+    const p = peticiones[0]!;
+    expect(p.metodo).toBe("PUT");
+    expect(p.cabeceras["Authorization"]).toBe(`Bearer ${TOKEN_A}`);
+    expect(p.cuerpo).toEqual({ revision: 3, captura: { trabajos: [], notas: null } });
   });
 
   it("204 sin esquema devuelve undefined", async () => {
@@ -67,6 +76,12 @@ describe("clasificación de fallos (la API decide)", () => {
     [403, "SIN_PERMISO", "sin_permiso"],
     [403, "RUTA_NO_DISPONIBLE_EN_MOVIL", "sin_permiso"],
     [403, "ACCESO_MOVIL_NO_PERMITIDO", "sin_permiso"],
+    [403, "CUENTA_INTERNA_USE_PANEL", "cuenta_interna"],
+    [409, "CONFLICTO_EDICION", "conflicto"],
+    [409, "SOLICITUD_NO_EDITABLE", "conflicto"],
+    [409, "ESTADO_SOLICITUD_NO_PERMITE", "conflicto"],
+    [422, "SOLICITUD_INCOMPLETA", "invalido"],
+    [422, "VALOR_INVALIDO", "invalido"],
     [404, "NO_ENCONTRADO", "no_encontrado"],
     [422, "CONTRASENA_ACTUAL_INCORRECTA", "invalido"],
     [400, "SOLICITUD_INVALIDA", "invalido"],
@@ -87,6 +102,22 @@ describe("clasificación de fallos (la API decide)", () => {
     await expect(cliente.obtener("/x", Eco)).rejects.toMatchObject({ tipo: "sin_permiso" });
     const sinCuerpo = montar(() => ({ estado: 502 }));
     await expect(sinCuerpo.cliente.obtener("/x", Eco)).rejects.toMatchObject({ tipo: "servidor" });
+  });
+
+  it("conserva la dirección del panel cuando una cuenta del equipo intenta entrar a la app", async () => {
+    const { cliente } = montar(() => ({ estado: 403, cuerpo: errorApi("CUENTA_INTERNA_USE_PANEL", "Esta aplicación es para clientes.", { panelUrl: "http://localhost:5173" }) }), { token: null });
+    const e = (await cliente.enviar("POST", "/api/v1/auth/movil/sesion", {}, Eco, { conToken: false }).catch((x: unknown) => x)) as FalloApi;
+    expect(e).toMatchObject({ tipo: "cuenta_interna", detalle: { estado: 403, codigo: "CUENTA_INTERNA_USE_PANEL", panelUrl: "http://localhost:5173" } });
+    expect(mensajeDeFallo(e)).toContain("equipo de SoftArq");
+  });
+
+  it("un conflicto de edición no cierra la sesión ni se confunde con un permiso retirado", async () => {
+    const vistos: string[] = [];
+    const { cliente } = montar(() => ({ estado: 409, cuerpo: errorApi("CONFLICTO_EDICION", "Hay cambios más recientes en tu solicitud; vuelve a abrirla.") }), { alFalloDeSesion: (f) => vistos.push(f.tipo) });
+    const e = (await cliente.enviar("PUT", "/x", {}, Eco).catch((x: unknown) => x)) as FalloApi;
+    expect(e.tipo).toBe("conflicto");
+    expect(mensajeDeFallo(e)).toBe("Hay cambios más recientes en tu solicitud; vuelve a abrirla.");
+    expect(vistos).toEqual([]);
   });
 
   it("conserva los campos de un 400/422 para mostrarlos junto al campo", async () => {
@@ -168,6 +199,60 @@ describe("red, tiempo y cancelación", () => {
     soltar();
     expect(await p).toMatchObject({ tipo: "cancelada" });
     expect(vistos).toEqual([]);
+  });
+});
+
+describe("descarga de documentos", () => {
+  const pdf = (n = 64) => {
+    const b = new Uint8Array(n);
+    b.set([0x25, 0x50, 0x44, 0x46, 0x2d, 0x31, 0x2e, 0x37]); // %PDF-1.7
+    for (let i = 8; i < n; i++) b[i] = (i * 31) % 256;
+    return b;
+  };
+
+  it("devuelve los mismos bytes, pide application/pdf y manda la sesión en la cabecera (nunca en la URL)", async () => {
+    const original = pdf(2048);
+    const { cliente, peticiones } = montar(() => ({ estado: 200, bytes: original }));
+    const bytes = await cliente.descargar("/api/v1/cliente/cotizaciones/abc/documento");
+    expect(Array.from(bytes)).toEqual(Array.from(original));
+    const p = peticiones[0]!;
+    expect(p.cabeceras["Accept"]).toBe("application/pdf");
+    expect(p.cabeceras["Authorization"]).toBe(`Bearer ${TOKEN_A}`);
+    expect(p.url.toString()).not.toContain(TOKEN_A);
+    expect(p.credenciales).toBe("omit");
+  });
+
+  it("rechaza lo que no es un PDF: otro tipo de contenido, sin la firma %PDF- o vacío", async () => {
+    const otroTipo = montar(() => ({ estado: 200, bytes: pdf(), cabeceras: { "content-type": "text/html" } }));
+    await expect(otroTipo.cliente.descargar("/x")).rejects.toMatchObject({ tipo: "respuesta_invalida" });
+    const sinFirma = montar(() => ({ estado: 200, bytes: new Uint8Array([1, 2, 3, 4, 5, 6, 7, 8]) }));
+    await expect(sinFirma.cliente.descargar("/x")).rejects.toMatchObject({ tipo: "respuesta_invalida" });
+    const vacio = montar(() => ({ estado: 200, bytes: new Uint8Array() }));
+    await expect(vacio.cliente.descargar("/x")).rejects.toMatchObject({ tipo: "respuesta_invalida" });
+  });
+
+  it("rechaza un documento mayor al tope", async () => {
+    const { cliente } = montar(() => ({ estado: 200, bytes: pdf(TAMANO_MAXIMO_DOCUMENTO + 1) }));
+    await expect(cliente.descargar("/x")).rejects.toMatchObject({ tipo: "respuesta_invalida", message: "El documento es demasiado grande." });
+  });
+
+  it("un error de la API en la descarga se clasifica como cualquier otro, y una sesión vencida avisa a la sesión", async () => {
+    const vistos: string[] = [];
+    const a = montar(() => ({ estado: 404, cuerpo: errorApi("NO_ENCONTRADO") }));
+    await expect(a.cliente.descargar("/x")).rejects.toMatchObject({ tipo: "no_encontrado" });
+    const b = montar(() => ({ estado: 401, cuerpo: errorApi("SESION_NO_VALIDA") }), { alFalloDeSesion: (f) => vistos.push(f.tipo) });
+    await expect(b.cliente.descargar("/x")).rejects.toMatchObject({ tipo: "sesion" });
+    expect(vistos).toEqual(["sesion"]);
+  });
+
+  it("cancelarTodo descarta una descarga que ya venía en camino", async () => {
+    let soltar!: () => void;
+    const espera = new Promise<void>((r) => (soltar = r));
+    const { cliente } = montar(() => ({ estado: 200, bytes: pdf(), espera }));
+    const p = cliente.descargar("/x").catch((x: unknown) => x);
+    cliente.cancelarTodo();
+    soltar();
+    expect(await p).toMatchObject({ tipo: "cancelada" });
   });
 });
 

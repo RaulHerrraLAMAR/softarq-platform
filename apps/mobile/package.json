@@ -2,7 +2,7 @@
   "name": "@softarq/mobile",
   "version": "0.0.0",
   "private": true,
-  "description": "App movil de SoftArq DEMO (React Native + Expo SDK 58). Etapa 1: acceso y consulta (ADR-0020).",
+  "description": "App movil del cliente de SoftArq DEMO (React Native + Expo SDK 58): cotizacion, estimacion y seguimiento (ADR-0021).",
   "main": "expo-router/entry",
   "scripts": {
     "contratos": "pnpm --filter @softarq/contracts run build",

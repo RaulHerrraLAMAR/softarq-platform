@@ -1,36 +1,35 @@
 /**
- * Navegación según las capacidades que entrega el servidor (ADR-0020 §4).
+ * Navegación según las capacidades que entrega el servidor (ADR-0020 §4, ADR-0021).
  *
- * La app no deduce permisos de las funciones: solo mira `capacidades` de la sesión. Ocultar una pestaña
- * es presentación; la API comprueba la capacidad en cada solicitud. Las funciones administrativas no
- * implican acciones del Preparador o del Revisor: cuentan únicamente las capacidades combinadas.
+ * La app no deduce permisos de las funciones: solo mira `capacidades` de la sesión. Ocultar una opción es
+ * presentación; la API comprueba la capacidad en cada solicitud.
  */
-import type { Capacidad, FuncionSesion } from "@softarq/contracts/movil";
+import type { Capacidad } from "@softarq/contracts/cliente";
 
 export interface Secciones {
-  /** Listado y detalle de clientes (`clientes.consultar`). */
-  readonly clientes: boolean;
-  /** Listado y detalle de proyectos (`clientes.consultar`). */
-  readonly proyectos: boolean;
-  /** Listado y detalle de cotizaciones, versiones e historial (`cotizaciones.consultar`). */
+  /** Crear, editar y enviar solicitudes (`cliente.solicitudes`). */
+  readonly solicitudes: boolean;
+  /** Ver las cotizaciones emitidas y su PDF (`cliente.cotizaciones`). */
   readonly cotizaciones: boolean;
 }
 
 export const tiene = (capacidades: readonly Capacidad[], c: Capacidad): boolean => capacidades.includes(c);
 
 export function seccionesDe(capacidades: readonly Capacidad[]): Secciones {
-  const clientes = tiene(capacidades, "clientes.consultar");
-  return { clientes, proyectos: clientes, cotizaciones: tiene(capacidades, "cotizaciones.consultar") };
+  return { solicitudes: tiene(capacidades, "cliente.solicitudes"), cotizaciones: tiene(capacidades, "cliente.cotizaciones") };
 }
 
-export const hayAlgoQueConsultar = (s: Secciones): boolean => s.clientes || s.proyectos || s.cotizaciones;
+/** Primer nombre para saludar («Laura Méndez» → «Laura»). */
+export function primerNombre(nombre: string): string {
+  const limpio = nombre.replace(/^\[DEMO\]\s*/i, "").trim();
+  return limpio.split(/\s+/)[0] ?? limpio;
+}
 
-const NOMBRE_FUNCION: Record<FuncionSesion, string> = {
-  PREPARADOR: "Preparador",
-  REVISOR: "Revisor",
-  ADMIN_CATALOGO: "Administrador del catálogo",
-  ADMIN_SISTEMA: "Administrador del sistema",
-  CLIENTE: "Cliente",
-};
-
-export const textoFunciones = (funciones: readonly FuncionSesion[]): string => funciones.map((f) => NOMBRE_FUNCION[f]).join(" · ");
+/** Iniciales para el avatar del perfil. */
+export function iniciales(nombre: string): string {
+  const partes = nombre.replace(/^\[DEMO\]\s*/i, "").trim().split(/\s+/).filter(Boolean);
+  if (partes.length === 0) return "?";
+  const primera = partes[0]!.charAt(0);
+  const ultima = partes.length > 1 ? partes[partes.length - 1]!.charAt(0) : "";
+  return `${primera}${ultima}`.toUpperCase();
+}

@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { z } from "zod";
 import { esFalloApi } from "../../api/errores";
-import { CAPACIDADES_CONSULTA, TOKEN_A, TOKEN_B, accesoDe, crearFetchFalso, errorApi, sesionDe, type Manejador, type Peticion } from "../../pruebas/ayudas";
+import { CAPACIDADES_CLIENTE, TOKEN_A, TOKEN_B, accesoDe, crearFetchFalso, errorApi, sesionDe, type Manejador, type Peticion } from "../../pruebas/ayudas";
 import { AlmacenMemoria, type AlmacenToken } from "../almacen";
 import { GestorSesion, MINIMO_REVALIDAR_MS } from "../gestor";
 
@@ -17,7 +17,7 @@ function montar(manejador: Manejador, opciones: { token?: string | null; almacen
 }
 
 const esRuta = (p: Peticion, metodo: string, ruta: string) => p.metodo === metodo && p.url.pathname === ruta;
-const SESION_OK = sesionDe(["PREPARADOR"], CAPACIDADES_CONSULTA);
+const SESION_OK = sesionDe(["CLIENTE"], CAPACIDADES_CLIENTE);
 
 describe("restaurar al abrir la app", () => {
   it("sin token guardado: anónima, sin llamar a la API", async () => {
@@ -32,7 +32,7 @@ describe("restaurar al abrir la app", () => {
     await m.gestor.restaurar();
     const e = m.gestor.obtenerEstado();
     expect(e.fase).toBe("activa");
-    expect(e.sesion?.capacidades).toEqual(CAPACIDADES_CONSULTA);
+    expect(e.sesion?.capacidades).toEqual(CAPACIDADES_CLIENTE);
     expect(m.peticiones).toHaveLength(1);
     expect(esRuta(m.peticiones[0]!, "GET", "/api/v1/auth/movil/sesion")).toBe(true);
     expect(m.peticiones[0]!.cabeceras["Authorization"]).toBe(`Bearer ${TOKEN_A}`);
@@ -62,7 +62,7 @@ describe("restaurar al abrir la app", () => {
   });
 
   it("contraseña temporal pendiente: fase de cambio obligatorio", async () => {
-    const m = montar(() => ({ estado: 200, cuerpo: sesionDe(["PREPARADOR"], ["sesion.propia"], { cambioContrasenaRequerido: true }) }), { token: TOKEN_A });
+    const m = montar(() => ({ estado: 200, cuerpo: sesionDe(["CLIENTE"], ["sesion.propia"], { cambioContrasenaRequerido: true }) }), { token: TOKEN_A });
     await m.gestor.restaurar();
     expect(m.gestor.obtenerEstado()).toMatchObject({ fase: "cambio_contrasena" });
   });
@@ -73,16 +73,16 @@ describe("inicio de sesión", () => {
 
   it("guarda solo el token en el almacén seguro; la contraseña y el token no quedan en el estado ni se reenvían", async () => {
     const m = montar(login);
-    await m.gestor.iniciarSesion("persona@softarq.test", "contraseña-secreta-123");
+    await m.gestor.iniciarSesion("laura@softarq.test", "contraseña-secreta-123");
     const e = m.gestor.obtenerEstado();
     expect(e).toMatchObject({ fase: "activa", aviso: null });
     expect(await m.almacen.leer()).toBe(TOKEN_A);
     expect(JSON.stringify(e)).not.toContain(TOKEN_A);
     expect(JSON.stringify(e)).not.toContain("contraseña-secreta-123");
     expect(m.peticiones[0]!.cabeceras["Authorization"]).toBeUndefined();
-    expect(m.peticiones[0]!.cuerpo).toEqual({ correo: "persona@softarq.test", contrasena: "contraseña-secreta-123" });
+    expect(m.peticiones[0]!.cuerpo).toEqual({ correo: "laura@softarq.test", contrasena: "contraseña-secreta-123" });
     // Después del acceso, ninguna petición vuelve a llevar la contraseña.
-    await m.gestor.cliente.obtener("/api/v1/clientes", Cualquiera).catch(() => {});
+    await m.gestor.cliente.obtener("/api/v1/cliente/solicitudes", Cualquiera).catch(() => {});
     expect(JSON.stringify(m.peticiones.slice(1))).not.toContain("contraseña-secreta-123");
   });
 
@@ -142,13 +142,13 @@ describe("cambio obligatorio de contraseña", () => {
   it("un 403 CAMBIO_CONTRASENA_REQUERIDO en cualquier consulta lleva a la pantalla de cambio (la API restringió la sesión)", async () => {
     let restringida = false;
     const m = montar((p) => {
-      if (esRuta(p, "GET", "/api/v1/auth/movil/sesion")) return { estado: 200, cuerpo: restringida ? sesionDe(["PREPARADOR"], ["sesion.propia"], { cambioContrasenaRequerido: true }) : SESION_OK };
+      if (esRuta(p, "GET", "/api/v1/auth/movil/sesion")) return { estado: 200, cuerpo: restringida ? sesionDe(["CLIENTE"], ["sesion.propia"], { cambioContrasenaRequerido: true }) : SESION_OK };
       if (restringida) return { estado: 403, cuerpo: errorApi("CAMBIO_CONTRASENA_REQUERIDO") };
       return { estado: 200, cuerpo: {} };
     }, { token: TOKEN_A });
     await m.gestor.restaurar();
     restringida = true; // un restablecimiento del Administrador del sistema
-    await m.gestor.cliente.obtener("/api/v1/clientes", Cualquiera).catch(() => {});
+    await m.gestor.cliente.obtener("/api/v1/cliente/solicitudes", Cualquiera).catch(() => {});
     await m.gestor.revalidarYaMismo();
     expect(m.gestor.obtenerEstado().fase).toBe("cambio_contrasena");
   });
@@ -183,7 +183,7 @@ describe("cierre, expiración y revocación", () => {
     const limpiar = vi.fn();
     m.gestor.alPerderSesion(limpiar);
     const generacion = m.gestor.obtenerEstado().generacion;
-    await m.gestor.cliente.obtener("/api/v1/cotizaciones", Cualquiera).catch(() => {});
+    await m.gestor.cliente.obtener("/api/v1/cliente/cotizaciones", Cualquiera).catch(() => {});
     await vi.waitFor(() => expect(m.gestor.obtenerEstado().fase).toBe("anonima"));
     expect(m.gestor.obtenerEstado()).toMatchObject({ aviso: { tipo: "vencida" }, sesion: null });
     expect(m.gestor.obtenerEstado().generacion).toBeGreaterThan(generacion);
@@ -198,20 +198,20 @@ describe("cambio de cuenta y respuestas tardías", () => {
     const espera = new Promise<void>((r) => (soltar = r));
     const m = montar((p) => {
       if (esRuta(p, "GET", "/api/v1/auth/movil/sesion")) return { estado: 200, cuerpo: SESION_OK };
-      if (esRuta(p, "GET", "/api/v1/clientes")) return { estado: 200, cuerpo: { clientes: ["de la cuenta A"] }, espera };
+      if (esRuta(p, "GET", "/api/v1/cliente/solicitudes")) return { estado: 200, cuerpo: { clientes: ["de la cuenta A"] }, espera };
       if (esRuta(p, "POST", "/api/v1/auth/movil/sesion")) return { estado: 200, cuerpo: accesoDe(TOKEN_B, { usuario: { nombre: "Otra", correo: "otra@softarq.test" } }) };
       if (esRuta(p, "DELETE", "/api/v1/auth/sesion")) return { estado: 204 };
       return { estado: 500 };
     }, { token: TOKEN_A });
     await m.gestor.restaurar();
-    const pendiente = m.gestor.cliente.obtener("/api/v1/clientes", Cualquiera).catch((x: unknown) => x);
+    const pendiente = m.gestor.cliente.obtener("/api/v1/cliente/solicitudes", Cualquiera).catch((x: unknown) => x);
     await m.gestor.cerrarSesion();
     await m.gestor.iniciarSesion("otra@softarq.test", "x");
     soltar();
     expect(await pendiente).toMatchObject({ tipo: "cancelada" });
     expect(m.gestor.obtenerEstado().sesion?.usuario.correo).toBe("otra@softarq.test");
     // Y las solicitudes nuevas ya llevan el token de la cuenta nueva.
-    await m.gestor.cliente.obtener("/api/v1/clientes", Cualquiera).catch(() => {});
+    await m.gestor.cliente.obtener("/api/v1/cliente/solicitudes", Cualquiera).catch(() => {});
     expect(m.peticiones.at(-1)!.cabeceras["Authorization"]).toBe(`Bearer ${TOKEN_B}`);
   });
 
@@ -231,7 +231,7 @@ describe("revalidación al volver a primer plano", () => {
     const m = montar((p) => {
       if (!esRuta(p, "GET", "/api/v1/auth/movil/sesion")) return { estado: 500 };
       n++;
-      return { estado: 200, cuerpo: n >= 3 ? sesionDe(["REVISOR"], ["sesion.propia", "cotizaciones.consultar"]) : SESION_OK };
+      return { estado: 200, cuerpo: n >= 3 ? sesionDe(["CLIENTE"], ["sesion.propia", "cliente.solicitudes"]) : SESION_OK };
     }, { token: TOKEN_A });
     await m.gestor.restaurar(); // n = 1
     await m.gestor.alVolverAPrimerPlano();
@@ -241,7 +241,7 @@ describe("revalidación al volver a primer plano", () => {
     expect(n).toBe(2);
     m.avanzar(MINIMO_REVALIDAR_MS + 1);
     await m.gestor.alVolverAPrimerPlano(); // n = 3: el servidor cambió las funciones
-    expect(m.gestor.obtenerEstado().sesion).toMatchObject({ funciones: ["REVISOR"], capacidades: ["sesion.propia", "cotizaciones.consultar"] });
+    expect(m.gestor.obtenerEstado().sesion).toMatchObject({ funciones: ["CLIENTE"], capacidades: ["sesion.propia", "cliente.solicitudes"] });
   });
 
   it("si al volver la sesión ya no existe (401), se cierra con aviso", async () => {
@@ -277,14 +277,83 @@ describe("revalidación al volver a primer plano", () => {
   });
 
   it("un 403 SIN_PERMISO refresca las capacidades (pudieron cambiar en el servidor)", async () => {
-    let revisor = false;
+    let reducida = false;
     const m = montar((p) => {
-      if (esRuta(p, "GET", "/api/v1/auth/movil/sesion")) return { estado: 200, cuerpo: revisor ? sesionDe(["REVISOR"], ["sesion.propia"]) : SESION_OK };
+      if (esRuta(p, "GET", "/api/v1/auth/movil/sesion")) return { estado: 200, cuerpo: reducida ? sesionDe(["CLIENTE"], ["sesion.propia", "cliente.solicitudes"]) : SESION_OK };
       return { estado: 403, cuerpo: errorApi("SIN_PERMISO") };
     }, { token: TOKEN_A });
     await m.gestor.restaurar();
-    revisor = true;
-    await m.gestor.cliente.obtener("/api/v1/clientes", Cualquiera).catch(() => {});
-    await vi.waitFor(() => expect(m.gestor.obtenerEstado().sesion?.capacidades).toEqual(["sesion.propia"]));
+    reducida = true;
+    await m.gestor.cliente.obtener("/api/v1/cliente/cotizaciones", Cualquiera).catch(() => {});
+    await vi.waitFor(() => expect(m.gestor.obtenerEstado().sesion?.capacidades).toEqual(["sesion.propia", "cliente.solicitudes"]));
+    expect(m.gestor.obtenerEstado().fase).toBe("activa");
+  });
+
+  it("si el permiso de solicitudes se retira con la sesión abierta, se cierra con un aviso claro y se limpian las cachés", async () => {
+    let retirado = false;
+    const m = montar((p) => {
+      if (esRuta(p, "GET", "/api/v1/auth/movil/sesion")) return { estado: 200, cuerpo: retirado ? sesionDe(["CLIENTE"], ["sesion.propia"]) : SESION_OK };
+      return { estado: 403, cuerpo: errorApi("SIN_PERMISO") };
+    }, { token: TOKEN_A });
+    await m.gestor.restaurar();
+    const limpiar = vi.fn();
+    m.gestor.alPerderSesion(limpiar);
+    retirado = true;
+    await m.gestor.cliente.obtener("/api/v1/cliente/solicitudes", Cualquiera).catch(() => {});
+    await vi.waitFor(() => expect(m.gestor.obtenerEstado().fase).toBe("anonima"));
+    expect(m.gestor.obtenerEstado().aviso).toMatchObject({ tipo: "sin_acceso" });
+    expect(limpiar).toHaveBeenCalled();
+    expect(await m.almacen.leer()).toBeNull();
+  });
+});
+
+describe("la app es del cliente (ADR-0021)", () => {
+  const INTERNA = sesionDe(["PREPARADOR"], ["sesion.propia", "clientes.consultar", "cotizaciones.consultar"]);
+
+  it("una sesión interna que quedó guardada de la etapa 1 se revoca, se borra y se explica", async () => {
+    const m = montar((p) => (esRuta(p, "GET", "/api/v1/auth/movil/sesion") ? { estado: 200, cuerpo: INTERNA } : { estado: 204 }), { token: TOKEN_A });
+    await m.gestor.restaurar();
+    expect(m.gestor.obtenerEstado()).toMatchObject({ fase: "anonima", sesion: null, aviso: { tipo: "cuenta_interna" } });
+    expect(m.gestor.obtenerEstado().aviso?.mensaje).toContain("panel web");
+    expect(await m.almacen.leer()).toBeNull();
+    expect(m.peticiones.some((p) => esRuta(p, "DELETE", "/api/v1/auth/sesion"))).toBe(true);
+  });
+
+  it("si el servidor responde CUENTA_INTERNA_USE_PANEL al restaurar, también queda anónima con ese aviso", async () => {
+    const m = montar(() => ({ estado: 403, cuerpo: errorApi("CUENTA_INTERNA_USE_PANEL", "Tu cuenta es del equipo.", { panelUrl: "http://localhost:5173" }) }), { token: TOKEN_A });
+    await m.gestor.restaurar();
+    expect(m.gestor.obtenerEstado()).toMatchObject({ fase: "anonima", aviso: { tipo: "cuenta_interna" } });
+    expect(await m.almacen.leer()).toBeNull();
+  });
+
+  it("al iniciar sesión, una cuenta interna recibe la dirección del panel y no se guarda nada", async () => {
+    const m = montar(() => ({ estado: 403, cuerpo: errorApi("CUENTA_INTERNA_USE_PANEL", "Esta aplicación es para clientes.", { panelUrl: "http://localhost:5173" }) }));
+    await m.gestor.restaurar();
+    const e = await m.gestor.iniciarSesion("preparadora@softarq.test", "x").catch((x: unknown) => x);
+    expect(esFalloApi(e) && e.tipo).toBe("cuenta_interna");
+    expect(esFalloApi(e) && e.detalle.panelUrl).toBe("http://localhost:5173");
+    expect(m.gestor.obtenerEstado().fase).toBe("anonima");
+    expect(await m.almacen.leer()).toBeNull();
+  });
+
+  it("si la API entregara una sesión que no es de cliente, la app la revoca y no la guarda", async () => {
+    const m = montar((p) => (esRuta(p, "POST", "/api/v1/auth/movil/sesion") ? { estado: 200, cuerpo: { ...INTERNA, tokenSesion: TOKEN_A } } : { estado: 204 }));
+    const e = await m.gestor.iniciarSesion("preparadora@softarq.test", "x").catch((x: unknown) => x);
+    expect(esFalloApi(e) && e.tipo).toBe("cuenta_interna");
+    expect(await m.almacen.leer()).toBeNull();
+    expect(m.peticiones.some((p) => esRuta(p, "DELETE", "/api/v1/auth/sesion") && p.cabeceras["Authorization"] === `Bearer ${TOKEN_A}`)).toBe(true);
+  });
+
+  it("un 403 de permiso al restaurar (acceso retirado mientras la app estaba cerrada) deja anónima con aviso de acceso", async () => {
+    const m = montar(() => ({ estado: 403, cuerpo: errorApi("SIN_PERMISO") }), { token: TOKEN_A });
+    await m.gestor.restaurar();
+    expect(m.gestor.obtenerEstado()).toMatchObject({ fase: "anonima", aviso: { tipo: "sin_acceso" } });
+    expect(await m.almacen.leer()).toBeNull();
+  });
+
+  it("la contraseña temporal caducada se informa con el tipo de fallo correspondiente", async () => {
+    const m = montar(() => ({ estado: 401, cuerpo: errorApi("CONTRASENA_TEMPORAL_CADUCADA", "La contraseña temporal caducó.") }));
+    const e = await m.gestor.iniciarSesion("laura@softarq.test", "vieja").catch((x: unknown) => x);
+    expect(esFalloApi(e) && e.tipo).toBe("temporal_caducada");
   });
 });

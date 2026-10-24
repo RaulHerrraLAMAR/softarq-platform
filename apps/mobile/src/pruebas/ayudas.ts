@@ -2,7 +2,7 @@
  * Apoyo de las pruebas (Node): un `fetch` falso que registra lo que la app envía, y datos válidos según
  * los contratos. No es código de la app.
  */
-import { CAPACIDADES, type Capacidad, type FuncionSesion, type RespuestaAccesoMovil, type RespuestaSesionMovil } from "@softarq/contracts/movil";
+import { CAPACIDADES, type Capacidad, type FuncionSesion, type RespuestaAccesoMovil, type RespuestaSesionMovil } from "@softarq/contracts/cliente";
 
 export interface Peticion {
   metodo: string;
@@ -15,6 +15,8 @@ export interface Peticion {
 export interface RespuestaFalsa {
   estado: number;
   cuerpo?: unknown;
+  /** Cuerpo binario (un PDF): si se indica, `cuerpo` se ignora y el tipo de contenido por omisión es `application/pdf`. */
+  bytes?: Uint8Array;
   cabeceras?: Record<string, string>;
   /** Hasta que se resuelva, la respuesta no llega (para probar respuestas tardías). */
   espera?: Promise<void>;
@@ -46,6 +48,10 @@ export function crearFetchFalso(manejador: Manejador) {
       });
     }
     if (senal?.aborted) throw abortada();
+    if (r.bytes) {
+      const copia = new Uint8Array(r.bytes);
+      return new Response(copia, { status: r.estado, headers: { "content-type": "application/pdf", ...(r.cabeceras ?? {}) } });
+    }
     const texto = r.cuerpo === undefined ? "" : JSON.stringify(r.cuerpo);
     return new Response(r.estado === 204 ? null : texto, { status: r.estado, headers: { "content-type": "application/json", ...(r.cabeceras ?? {}) } });
   }) as unknown as typeof fetch;
@@ -57,7 +63,7 @@ export const TOKEN_B = "B".repeat(43);
 
 export function sesionDe(funciones: FuncionSesion[], capacidades: Capacidad[], extra: Partial<RespuestaSesionMovil> = {}): RespuestaSesionMovil {
   return {
-    usuario: { nombre: "[DEMO] Persona", correo: "persona@softarq.test" },
+    usuario: { nombre: "[DEMO] Cliente", correo: "cliente@softarq.test" },
     organizacion: { codigo: "DEMO", nombre: "[DEMO] Organización", esDemo: true },
     funciones,
     capacidades,
@@ -68,10 +74,11 @@ export function sesionDe(funciones: FuncionSesion[], capacidades: Capacidad[], e
   };
 }
 
-export const CAPACIDADES_CONSULTA: Capacidad[] = ["sesion.propia", "clientes.consultar", "cotizaciones.consultar"];
+/** Capacidades de una cuenta de cliente (ADR-0021): solo las suyas, ninguna interna. */
+export const CAPACIDADES_CLIENTE: Capacidad[] = ["sesion.propia", "cliente.solicitudes", "cliente.cotizaciones"];
 
 export function accesoDe(token: string, extra: Partial<RespuestaSesionMovil> = {}): RespuestaAccesoMovil {
-  return { ...sesionDe(["PREPARADOR"], CAPACIDADES_CONSULTA, extra), tokenSesion: token };
+  return { ...sesionDe(["CLIENTE"], CAPACIDADES_CLIENTE, extra), tokenSesion: token };
 }
 
 export const errorApi = (codigo: string, mensaje = "Mensaje de la API.", extra: Record<string, unknown> = {}) => ({

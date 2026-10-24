@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import type { RespuestaSesionMovil } from "@softarq/contracts/movil";
+import type { RespuestaSesionMovil } from "@softarq/contracts/cliente";
 import { useSesion } from "./uso";
 
 /**

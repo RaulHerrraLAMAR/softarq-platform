@@ -1,30 +1,34 @@
 import { describe, expect, it } from "vitest";
-import { TODAS_LAS_CAPACIDADES } from "../../pruebas/ayudas";
-import { hayAlgoQueConsultar, seccionesDe, textoFunciones } from "../capacidades";
+import { CAPACIDADES_CLIENTE } from "../../pruebas/ayudas";
+import { iniciales, primerNombre, seccionesDe, tiene } from "../capacidades";
 
-describe("navegación según las capacidades del servidor", () => {
-  it("clientes y proyectos dependen de clientes.consultar; cotizaciones de cotizaciones.consultar", () => {
-    expect(seccionesDe(["sesion.propia", "clientes.consultar"])).toEqual({ clientes: true, proyectos: true, cotizaciones: false });
-    expect(seccionesDe(["sesion.propia", "cotizaciones.consultar"])).toEqual({ clientes: false, proyectos: false, cotizaciones: true });
-    expect(seccionesDe(["sesion.propia"])).toEqual({ clientes: false, proyectos: false, cotizaciones: false });
+describe("secciones según las capacidades del servidor", () => {
+  it("una cuenta de cliente completa ve solicitudes y cotizaciones", () => {
+    expect(seccionesDe(CAPACIDADES_CLIENTE)).toEqual({ solicitudes: true, cotizaciones: true });
   });
 
-  it("las capacidades administrativas por sí solas no abren consultas de otra función", () => {
-    const soloAdmin = seccionesDe(["sesion.propia", "catalogos.administrar", "parametros.administrar", "personas.administrar", "emisor.configurar", "clientes.gestionar"]);
-    expect(hayAlgoQueConsultar(soloAdmin)).toBe(false);
+  it("sin la capacidad, la sección no se ofrece (la API vuelve a comprobarla en cada solicitud)", () => {
+    expect(seccionesDe(["sesion.propia"])).toEqual({ solicitudes: false, cotizaciones: false });
+    expect(seccionesDe(["sesion.propia", "cliente.cotizaciones"])).toEqual({ solicitudes: false, cotizaciones: true });
   });
 
-  it("las capacidades se combinan: quien tiene ambas ve todo; la matriz de funciones no se deduce en la app", () => {
-    expect(seccionesDe(["clientes.consultar", "cotizaciones.consultar"])).toEqual({ clientes: true, proyectos: true, cotizaciones: true });
-    expect(seccionesDe(TODAS_LAS_CAPACIDADES)).toEqual({ clientes: true, proyectos: true, cotizaciones: true });
+  it("las capacidades del equipo no abren nada en la app", () => {
+    expect(seccionesDe(["sesion.propia", "clientes.consultar", "cotizaciones.consultar", "solicitudes.atender"])).toEqual({ solicitudes: false, cotizaciones: false });
+    expect(tiene(["clientes.consultar"], "cliente.solicitudes")).toBe(false);
+  });
+});
+
+describe("nombre de la persona", () => {
+  it("saluda por el primer nombre y quita la marca de datos de demostración", () => {
+    expect(primerNombre("Laura Méndez")).toBe("Laura");
+    expect(primerNombre("[DEMO] Constructora Ríos y Asociados")).toBe("Constructora");
+    expect(primerNombre("  Raúl  ")).toBe("Raúl");
   });
 
-  it("la sesión restringida por contraseña temporal no muestra nada que consultar", () => {
-    expect(hayAlgoQueConsultar(seccionesDe(["sesion.propia"]))).toBe(false);
-  });
-
-  it("muestra las funciones con los nombres de la web", () => {
-    expect(textoFunciones(["ADMIN_CATALOGO", "ADMIN_SISTEMA"])).toBe("Administrador del catálogo · Administrador del sistema");
-    expect(textoFunciones(["PREPARADOR", "REVISOR"])).toBe("Preparador · Revisor");
+  it("las iniciales usan el primer nombre y el último apellido", () => {
+    expect(iniciales("Laura Méndez")).toBe("LM");
+    expect(iniciales("Despacho Aranda Arquitectos")).toBe("DA");
+    expect(iniciales("Raúl")).toBe("R");
+    expect(iniciales("   ")).toBe("?");
   });
 });
