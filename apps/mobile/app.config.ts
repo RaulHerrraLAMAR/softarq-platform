@@ -44,6 +44,8 @@ const config: ExpoConfig = {
     "./plugins/red-local.js",
   ],
   experiments: { typedRoutes: true },
+  // Proyecto «softarq-demo» de EAS (cuenta personal). El identificador no es secreto.
+  extra: { eas: { projectId: "69326c6d-44f9-4e72-83aa-53dbe4b70905" } },
 };
 
 export default config;
