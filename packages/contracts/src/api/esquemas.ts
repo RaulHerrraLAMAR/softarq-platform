@@ -395,6 +395,17 @@ export const EsquemaRespuestaSesion = z.strictObject({
 });
 export type RespuestaSesion = z.infer<typeof EsquemaRespuestaSesion>;
 
+/**
+ * Módulo 16 (ADR-0020), canal móvil. La sesión móvil se presenta como `Authorization: Bearer` (no es
+ * una credencial ambiental), así que no hay token CSRF. Es la misma identidad y contexto que la web.
+ */
+export const EsquemaRespuestaSesionMovil = EsquemaRespuestaSesion.omit({ csrfToken: true });
+export type RespuestaSesionMovil = z.infer<typeof EsquemaRespuestaSesionMovil>;
+
+/** POST /auth/movil/sesion: además del contexto, el token opaco que la app guarda en SecureStore. */
+export const EsquemaRespuestaAccesoMovil = EsquemaRespuestaSesionMovil.extend({ tokenSesion: EsquemaTokenOpaco });
+export type RespuestaAccesoMovil = z.infer<typeof EsquemaRespuestaAccesoMovil>;
+
 export const CODIGOS_ERROR_API = [
   "SOLICITUD_INVALIDA",
   "NO_ENCONTRADO",
@@ -410,6 +421,9 @@ export const CODIGOS_ERROR_API = [
   "SIN_PERMISO",
   "CSRF_NO_VALIDO",
   "ORIGEN_NO_PERMITIDO",
+  // Módulo 16 (ADR-0020): canal móvil.
+  "RUTA_NO_DISPONIBLE_EN_MOVIL",
+  "ACCESO_MOVIL_NO_PERMITIDO",
   // Módulo 6 (ADR-0008).
   "CONFLICTO_EDICION",
   "BORRADOR_DESACTUALIZADO",

@@ -521,6 +521,7 @@ model Membresia {
 /// PREVIA: anterior al acceso (protege el inicio de sesión con CSRF); USUARIO: autenticada.
 model Sesion {
   id                String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  /// PREVIA (formulario de acceso web), USUARIO (cookie web) o MOVIL (Bearer; módulo 16, ADR-0020). CHECK en la migración.
   tipo              String    @db.VarChar(10)
   tokenHash         Bytes     @unique @map("token_hash")
   organizacionId    String?   @map("organizacion_id") @db.Uuid

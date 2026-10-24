@@ -28,6 +28,7 @@ Las instrucciones equivalentes, en español y compatibles con las reglas, se int
 
 - **Incluido** (204 archivos al 04/10/2026; lista exacta con `pnpm grafo:archivos`):
   - `apps/api/src`, `apps/web/src`, `apps/web/e2e`, `packages/contracts/src`;
+  - `apps/mobile` (`app/`, `src/`, `plugins/`, `scripts/`; módulo 16, desde el 24/10/2026; se excluyen `.expo/`, `android/` e `ios/` generados);
   - `apps/api/scripts` (`.mjs`, `.ps1`), `scripts/grafo`, `scripts/http`;
   - `*.config.ts`.
 - **Excluido** en [`.graphifyignore`](../../.graphifyignore):

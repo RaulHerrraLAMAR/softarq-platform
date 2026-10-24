@@ -13,6 +13,7 @@
     "typecheck": "pnpm -r run typecheck",
     "test": "pnpm -r run test",
     "verificar": "pnpm run build && pnpm run typecheck && pnpm run test",
+    "verificar:secuencial": "pnpm -r --workspace-concurrency=1 run build && pnpm -r --workspace-concurrency=1 run typecheck && pnpm -r --workspace-concurrency=1 run test",
     "verificar:integracion": "pnpm --filter @softarq/api run test:integracion",
     "verificar:e2e": "pnpm --filter @softarq/contracts run build && pnpm --filter @softarq/api run build:e2e && pnpm --filter @softarq/web run e2e",
     "grafo:actualizar": "node scripts/grafo/grafo.mjs actualizar",

@@ -3,7 +3,7 @@
   "info": {
     "title": "SoftArq API (DEMO local)",
     "version": "1.0.0",
-    "description": "API local de SoftArq: catálogos DEMO y cálculo de cotizaciones con datos de PostgreSQL. Solo escucha en 127.0.0.1. Autenticación con sesión opaca en una cookie HttpOnly (`softarq_sesion`); la organización, la identidad y las funciones salen de la sesión (ADR-0007). Las solicitudes POST, PUT, PATCH y DELETE exigen la cabecera X-CSRF-Token de la sesión y un Origin permitido. Clientes, proyectos y cotizaciones con folio WEB DEMO, borrador con revisión y versiones inmutables calculadas en el servidor (ADR-0008); las altas exigen Idempotency-Key. Revisión y aprobación por otra persona (ADR-0009); emisión de versiones aprobadas con PDF DEMO, anulación de aprobaciones y descarte de cotizaciones (ADR-0010). Los importes y cantidades viajan como texto decimal. Todos los datos son DEMO y no tienen validez comercial."
+    "description": "API local de SoftArq: catálogos DEMO y cálculo de cotizaciones con datos de PostgreSQL. Solo escucha en 127.0.0.1. Autenticación con sesión opaca en una cookie HttpOnly (`softarq_sesion`); la organización, la identidad y las funciones salen de la sesión (ADR-0007). Las solicitudes POST, PUT, PATCH y DELETE exigen la cabecera X-CSRF-Token de la sesión y un Origin permitido. Clientes, proyectos y cotizaciones con folio WEB DEMO, borrador con revisión y versiones inmutables calculadas en el servidor (ADR-0008); las altas exigen Idempotency-Key. Revisión y aprobación por otra persona (ADR-0009); emisión de versiones aprobadas con PDF DEMO, anulación de aprobaciones y descarte de cotizaciones (ADR-0010). Canal móvil (módulo 16, ADR-0020): sesión de tipo MOVIL por `Authorization: Bearer` (sin cookie ni CSRF), solo en las rutas de consulta marcadas y en /auth/movil/sesion, DELETE /auth/sesion y POST /auth/contrasena; el resto responde 403 RUTA_NO_DISPONIBLE_EN_MOVIL. Los importes y cantidades viajan como texto decimal. Todos los datos son DEMO y no tienen validez comercial."
   },
   "servers": [
     {
@@ -398,6 +398,185 @@
         "responses": {
           "204": {
             "description": "Sesión cerrada."
+          },
+          "401": {
+            "description": "NO_AUTENTICADO (sin cookie de sesión) o SESION_NO_VALIDA (vencida, revocada o desconocida; se borra la cookie).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "SIN_PERMISO (la función no concede la capacidad), CSRF_NO_VALIDO u ORIGEN_NO_PERMITIDO.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "DEMASIADAS_SOLICITUDES (cabecera Retry-After).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "ERROR_INTERNO, DOCUMENTO_NO_GENERADO (no se generó o guardó el PDF; no hay emisión y se puede reintentar) o DOCUMENTO_NO_DISPONIBLE (el archivo emitido falta o no coincide con su registro; nunca se regenera).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "SERVICIO_NO_DISPONIBLE: PostgreSQL no disponible.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/movil/sesion": {
+      "post": {
+        "summary": "Inicio de sesión de la app móvil (ADR-0020)",
+        "description": "Sin cookie, sesión previa ni CSRF; se rechaza con 403 ACCESO_MOVIL_NO_PERMITIDO si la solicitud trae Origin (navegador) o Authorization. Mismo limitador, Argon2id y política de sesión que la web. Devuelve el token opaco (`tokenSesion`) una sola vez: la app lo guarda en SecureStore y lo presenta como `Authorization: Bearer`.",
+        "security": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SolicitudAcceso"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Sesión móvil iniciada.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaAccesoMovil"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "SOLICITUD_INVALIDA: no cumple el contrato (campos con su ruta) o JSON mal formado.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "NO_AUTENTICADO (sin cookie de sesión) o SESION_NO_VALIDA (vencida, revocada o desconocida; se borra la cookie).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "SIN_PERMISO (la función no concede la capacidad), CSRF_NO_VALIDO u ORIGEN_NO_PERMITIDO.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "CUERPO_DEMASIADO_GRANDE.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "TIPO_DE_CONTENIDO_NO_ADMITIDO: el cuerpo debe ser application/json.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "DEMASIADAS_SOLICITUDES (cabecera Retry-After).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "ERROR_INTERNO, DOCUMENTO_NO_GENERADO (no se generó o guardó el PDF; no hay emisión y se puede reintentar) o DOCUMENTO_NO_DISPONIBLE (el archivo emitido falta o no coincide con su registro; nunca se regenera).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "SERVICIO_NO_DISPONIBLE: PostgreSQL no disponible.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "summary": "Revalida la sesión móvil y devuelve identidad, funciones y capacidades vigentes",
+        "security": [
+          {
+            "tokenMovil": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Sesión vigente.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaSesionMovil"
+                }
+              }
+            }
           },
           "401": {
             "description": "NO_AUTENTICADO (sin cookie de sesión) o SESION_NO_VALIDA (vencida, revocada o desconocida; se borra la cookie).",
@@ -11432,6 +11611,11 @@
         "name": "softarq_sesion",
         "description": "Sesión opaca (HttpOnly, SameSite=Strict, Path=/api/v1, host-only)."
       },
+      "tokenMovil": {
+        "type": "http",
+        "scheme": "bearer",
+        "description": "Token opaco de una sesión de tipo MOVIL (POST /api/v1/auth/movil/sesion). Solo rutas marcadas para móvil."
+      },
       "tokenCsrf": {
         "type": "apiKey",
         "in": "header",
@@ -13833,6 +14017,211 @@
         ],
         "additionalProperties": false
       },
+      "RespuestaSesionMovil": {
+        "type": "object",
+        "properties": {
+          "usuario": {
+            "type": "object",
+            "properties": {
+              "nombre": {
+                "type": "string"
+              },
+              "correo": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "nombre",
+              "correo"
+            ],
+            "additionalProperties": false
+          },
+          "organizacion": {
+            "type": "object",
+            "properties": {
+              "codigo": {
+                "type": "string"
+              },
+              "nombre": {
+                "type": "string"
+              },
+              "esDemo": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "codigo",
+              "nombre",
+              "esDemo"
+            ],
+            "additionalProperties": false
+          },
+          "funciones": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "PREPARADOR",
+                "REVISOR",
+                "ADMIN_CATALOGO",
+                "ADMIN_SISTEMA"
+              ]
+            }
+          },
+          "capacidades": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "sesion.propia",
+                "catalogos.consultar",
+                "calculo.ejecutar",
+                "clientes.consultar",
+                "clientes.gestionar",
+                "cotizaciones.consultar",
+                "cotizaciones.preparar",
+                "revisiones.enviar",
+                "revisiones.decidir",
+                "emisiones.emitir",
+                "emisor.configurar",
+                "respuestas.registrar",
+                "respuestas.corregir",
+                "excepciones.consultar",
+                "catalogos.administrar",
+                "parametros.administrar",
+                "personas.administrar",
+                "salidas.consultar"
+              ]
+            }
+          },
+          "expiraEn": {
+            "type": "string"
+          },
+          "inactividadMinutos": {
+            "type": "integer",
+            "exclusiveMinimum": 0,
+            "maximum": 9007199254740991
+          },
+          "cambioContrasenaRequerido": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "usuario",
+          "organizacion",
+          "funciones",
+          "capacidades",
+          "expiraEn",
+          "inactividadMinutos",
+          "cambioContrasenaRequerido"
+        ],
+        "additionalProperties": false
+      },
+      "RespuestaAccesoMovil": {
+        "type": "object",
+        "properties": {
+          "usuario": {
+            "type": "object",
+            "properties": {
+              "nombre": {
+                "type": "string"
+              },
+              "correo": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "nombre",
+              "correo"
+            ],
+            "additionalProperties": false
+          },
+          "organizacion": {
+            "type": "object",
+            "properties": {
+              "codigo": {
+                "type": "string"
+              },
+              "nombre": {
+                "type": "string"
+              },
+              "esDemo": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "codigo",
+              "nombre",
+              "esDemo"
+            ],
+            "additionalProperties": false
+          },
+          "funciones": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "PREPARADOR",
+                "REVISOR",
+                "ADMIN_CATALOGO",
+                "ADMIN_SISTEMA"
+              ]
+            }
+          },
+          "capacidades": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "sesion.propia",
+                "catalogos.consultar",
+                "calculo.ejecutar",
+                "clientes.consultar",
+                "clientes.gestionar",
+                "cotizaciones.consultar",
+                "cotizaciones.preparar",
+                "revisiones.enviar",
+                "revisiones.decidir",
+                "emisiones.emitir",
+                "emisor.configurar",
+                "respuestas.registrar",
+                "respuestas.corregir",
+                "excepciones.consultar",
+                "catalogos.administrar",
+                "parametros.administrar",
+                "personas.administrar",
+                "salidas.consultar"
+              ]
+            }
+          },
+          "expiraEn": {
+            "type": "string"
+          },
+          "inactividadMinutos": {
+            "type": "integer",
+            "exclusiveMinimum": 0,
+            "maximum": 9007199254740991
+          },
+          "cambioContrasenaRequerido": {
+            "type": "boolean"
+          },
+          "tokenSesion": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]{43}$"
+          }
+        },
+        "required": [
+          "usuario",
+          "organizacion",
+          "funciones",
+          "capacidades",
+          "expiraEn",
+          "inactividadMinutos",
+          "cambioContrasenaRequerido",
+          "tokenSesion"
+        ],
+        "additionalProperties": false
+      },
       "CambioContrasena": {
         "type": "object",
         "properties": {
@@ -15274,6 +15663,8 @@
                   "SIN_PERMISO",
                   "CSRF_NO_VALIDO",
                   "ORIGEN_NO_PERMITIDO",
+                  "RUTA_NO_DISPONIBLE_EN_MOVIL",
+                  "ACCESO_MOVIL_NO_PERMITIDO",
                   "CONFLICTO_EDICION",
                   "BORRADOR_DESACTUALIZADO",
                   "CAPTURA_INCOMPLETA",

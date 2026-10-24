@@ -3,6 +3,8 @@
 Plataforma de **cotización de estructuras de construcción** (fase 2 del proyecto SoftArq). Sucede al libro de Excel de la fase 1 (`Cotizador_Estructuras_F1.xlsm`, versión 1.0.0-F1), que sigue siendo la referencia funcional.
 
 > **Estado (19/10/2026):** módulos 1 a 15: cálculo, catálogos, API local, web, sesiones, cotizaciones/versiones, revisión, emisión/PDF, [seguimiento interno de respuestas y vigencia](docs/cotizaciones/seguimiento-respuestas.md), [excepciones B-22](docs/adr/0014-excepciones.md) (registradas por el Preparador en el borrador, autorizadas o rechazadas por un Revisor distinto; AV-04) y [administración de proveedores, productos, precios y tarifas](docs/adr/0015-administracion-catalogos.md) (Administrador del catálogo; sin borrado, con historial y sin alterar versiones ni PDF) y [catálogo técnico con aprobación de conceptos](docs/adr/0016-catalogo-tecnico-aprobacion-conceptos.md) (tipos de estructura, insumos, conversiones, conceptos y componentes; BL-05 de trazabilidad; conceptos personalizados) y [parámetros y personas](docs/adr/0017-parametros-personas-permisos.md) (Administrador del sistema: recargo, impuesto, vigencia y plantillas de textos con motivo; altas, funciones, desactivación y contraseña temporal con cambio obligatorio; `db:migrar` solo tras un respaldo verificado) y [salidas internas de solo lectura](docs/adr/0018-salidas-internas.md) (Preparador y Revisor: compras calculadas, detalle del cálculo e indicadores de una versión concreta, con lo congelado en ella) y [duplicar, modo de precios y vista previa BORRADOR](docs/adr/0019-duplicar-modo-precios-vista-previa.md) (folio nuevo desde una versión o el borrador guardado; tras emitir, preparar la versión nueva conservando o eligiendo de nuevo los precios, con motivo; PDF BORRADOR sin guardar, con auditoría). Cobertura frente al Excel y lo que falta: [`docs/cobertura-demo.md`](docs/cobertura-demo.md). Resultados reales y continuidad en [`HANDOFF.md`](HANDOFF.md) §24. Todo dato de ejemplo es **DEMO** y no tiene validez comercial.
+>
+> **Módulo 16 (24/10/2026): [app móvil Android](docs/adr/0020-app-movil-expo-conexion-y-sesion-movil.md), etapa 1** (acceso y consulta; sin captura, cálculo ni revisión): proyecto Expo en `apps/mobile`, sesión móvil por `Authorization: Bearer` (tipo de sesión propio `MOVIL`; la web no cambia), el teléfono llega a la API local por USB (`adb reverse`) y la APK se compila con EAS Build. Detalle en [`HANDOFF.md`](HANDOFF.md) §26.
 
 ## Estructura
 
@@ -10,7 +12,7 @@ Plataforma de **cotización de estructuras de construcción** (fase 2 del proyec
 |---|---|---|
 | `apps/api` | API: cálculos, permisos, reglas de negocio y validación. Hoy: dominio de cálculo, catálogos, sesiones, clientes, proyectos y cotizaciones con versiones, por HTTP local | NestJS 12, decimal.js, Prisma 7.10 + PostgreSQL 18, Zod 4 y Vitest |
 | `apps/web` | Cliente web DEMO: calculadora, clientes, proyectos, cotizaciones con borrador, versiones e historial | React 19 + Vite 8, TypeScript 7, Playwright |
-| `apps/mobile` | App móvil | React Native con Expo |
+| `apps/mobile` | App Android DEMO, etapa 1 (módulo 16): acceso y consulta de clientes, proyectos y cotizaciones; [guía del teléfono](docs/movil/guia-instalacion-y-pruebas.md) | React Native + Expo SDK 58, `expo-router`, EAS Build (APK) |
 | `packages/contracts` | Contratos compartidos sin lógica: tipos del cálculo y esquemas Zod de la API HTTP (definición única) | TypeScript (ESM), Zod 4 |
 | `docs` | Decisiones de arquitectura y referencias a la fase 1 | Markdown |
 
@@ -43,6 +45,8 @@ Principio: **los clientes solo comparten contratos**. Toda regla de negocio vive
 
 Laptop actual (verificado el 24/10/2026): Git 2.55.0, Node.js 24.11.1, npm 11.6.2, pnpm 11.1.3, PostgreSQL 18.6 (servicio `postgresql-x64-18`, `C:\Program Files\PostgreSQL\18`), Python 3.14.6 con Graphify 0.8.5 en `_work\graphify-venv`. Detalle en `HANDOFF.md` §25.
 
+App móvil (módulo 16): Expo SDK 58 (React Native 0.88, React 19.3.0), TypeScript 6.0.3 solo en `apps/mobile` (la versión que valida Expo; API y web siguen en 7.0.2), `eas-cli` 25.2.0 vía `pnpm dlx` y Android Platform Tools 37.0.1 (solo `adb`) en `_work\tools`. Sin Android Studio, SDK completo, emuladores ni Docker.
+
 Cachés y almacenes de paquetes van a `<raíz>\_work` (configurado con rutas relativas en `pnpm-workspace.yaml` y `.npmrc`).
 
 ## Configuración
@@ -52,6 +56,7 @@ Cachés y almacenes de paquetes van a `<raíz>\_work` (configurado con rutas rel
 ```
 pnpm install --frozen-lockfile
 pnpm verificar          # build + typecheck + test de todos los paquetes
+pnpm verificar:secuencial  # lo mismo, un paquete a la vez (equipos de 2 núcleos y 8 GB: evita fallos de tiempo por carga)
 ```
 
 2. Prepara PostgreSQL local (credenciales locales, roles, bases, migraciones y catálogo DEMO): sigue [`apps/api/README.md`](apps/api/README.md#preparar-el-entorno-desde-cero). Después:

@@ -7,6 +7,15 @@
 - `node`, `pnpm` y `psql` pueden no estar en el PATH de una sesión abierta antes de instalarlos: abre una terminal nueva o recarga el PATH. PostgreSQL 18 está en `C:\Program Files\PostgreSQL\18\bin` (`SOFTARQ_PG_BIN` lo sobrescribe).
 - Al ejecutar Python para inspeccionar archivos, usa `PYTHONDONTWRITEBYTECODE=1` para no dejar `__pycache__`.
 
+## App móvil (`apps/mobile`, módulo 16)
+
+Reglas en `AGENTS.md` §13; guía del teléfono en `docs/movil/guia-instalacion-y-pruebas.md`.
+
+- **Android Platform Tools** (solo `adb`): `_work\tools\platform-tools\adb.exe`. Para que el teléfono llegue a la API local por USB: `adb reverse tcp:3000 tcp:3000` (y `tcp:8081` con la *development build*).
+- **EAS CLI** sin instalación global: `pnpm --filter @softarq/mobile eas <comando>` (versión fijada). El inicio de sesión de EAS y la primera compilación (keystore) son interactivos: pídeselos al usuario con `!`; nunca pidas contraseñas ni tokens por el chat.
+- Procesos que lances (API de desarrollo en 3000, servidor de pruebas en 3101, Metro en 8081): detén solo los tuyos. Con 8 GB no mantengas Metro, web y E2E abiertos a la vez.
+- `pnpm verificar:secuencial` en lugar de `pnpm verificar` si aparecen fallos de tiempo por carga (equipo de 2 núcleos).
+
 ## Skills en Claude Code
 
 Las reglas de uso están en `AGENTS.md` §11; aquí solo lo propio de Claude Code.

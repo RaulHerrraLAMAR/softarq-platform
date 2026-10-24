@@ -2,10 +2,14 @@
 
 > Léelo al empezar. Actualízalo al terminar cada tarea (sección por sección, sin borrar el historial de la tabla 4). Reglas de trabajo: [`AGENTS.md`](AGENTS.md).
 
-**Última actualización:** 24/10/2026 · Claude Code · **traslado a la laptop** (§25), sobre `31cf626` (módulo 15, §24). Sin cambios de reglas de negocio ni del módulo 15.
+**Última actualización:** 24/10/2026 · Claude Code · **módulo 16, app móvil Android (etapa 1: acceso y consulta)** (§26), sobre `f1367de` (traslado a la laptop, §25) y `31cf626` (módulo 15, §24). Sin cambios de reglas de negocio ni del motor.
 
 ## 1. Estado actual
 
+- **Módulo 16 (24/10/2026), etapa 1 de la app móvil:** implementado y verificado con pruebas automatizadas (ADR-0020, §26). Proyecto Expo SDK 58 en `apps/mobile`: acceso, recuperación y cierre de sesión, cambio obligatorio de la contraseña temporal, navegación por capacidades y **consulta comercial** de clientes, proyectos y cotizaciones (versiones, estados, revisiones y eventos). Solo lectura.
+  - **API:** sesión de tipo `MOVIL` por `Authorization: Bearer` (migración aditiva `20261024120000_sesion_movil`), con lista blanca de rutas; la web (cookie, CSRF, `Origin`, CORS) no cambió.
+  - **Conexión:** la API sigue en `127.0.0.1`; el teléfono llega por USB (`adb reverse`).
+  - **Teléfono:** la instalación y el recorrido se registran en `docs/movil/guia-instalacion-y-pruebas.md` §10 solo cuando se ejecutan en el dispositivo (ver §26).
 - **Entorno actual (24/10/2026):** el proyecto se trasladó a `C:\Proyecto_SoftArq\Proyecto_SoftArq` (repositorio en `...\softarq-platform`; la doble carpeta es intencionada). `softarq_dev` se inicializó desde el respaldo `softarq_dev-20261023T224027Z-22f32d` y las validaciones se repitieron en esta máquina. Las rutas `D:` del resto de este documento describen el equipo original. Detalle y resultados en §25.
 
 - **Módulo 15:** implementado (ADR-0019).
@@ -588,10 +592,16 @@ En los cuatro, el resultado completo es idéntico al calculado con los fixtures 
     - la vista previa se entrega sin guardarse, con el limitador de cálculo (30 por minuto por defecto);
     - en `softarq_dev` quedan 40 cotizaciones DEMO del humo (`COT-2026-00015` a `00054`) y una carpeta de respaldo incompleta `….en-curso` (§24);
     - las funciones nuevas confían en `p_usuario` como las demás (ADR-0019 §7).
+26. **App móvil, etapa 1 (ADR-0020):**
+    - solo consulta; sin TLS (el token viaja por el túnel USB en loopback);
+    - un token móvil robado del teléfono sirve hasta que venza (8 h / 30 min de inactividad) o se revoque;
+    - una API distinta de la que sirvió la APK (cambio de contratos) puede devolver `respuesta_invalida`: hace falta una APK nueva;
+    - `adb reverse` se pierde al reconectar el cable;
+    - el límite de identidad de las funciones SQL (ADR-0017 §4) sigue pendiente: no hay escrituras móviles.
 
 ## 7. Siguiente tarea
 
-0. **Laptop (§25):** entorno listo. Siguiente paso acordado: definir el alcance de la app Expo (punto 3) antes de instalar nada.
+0. **App móvil (§26):** siguiente etapa a acordar con el propietario: captura y cálculo; revisión y decisión; emisión y documentos; salidas internas; operación sin conexión; y TLS antes de exponer la API en red. Antes: completar el registro de la guía del teléfono (`docs/movil/guia-instalacion-y-pruebas.md` §10).
 1. **Recompilar y reiniciar** la API y la web del propietario si están en marcha con código anterior: `softarq_dev` ya tiene la migración del módulo 15 (§24).
 2. **Regularizar los conceptos heredados** de `softarq_dev` cuando el propietario lo decida, con el mapeo documentado (ADR-0016 §2.3): completar tipo y regla vuelve el concepto a Borrador y exige una nueva aprobación. No se ejecuta automáticamente.
 3. **Siguiente módulo:** fijar con el propietario el alcance de la app Expo (bloque 6 de `docs/cobertura-demo.md`: consulta, revisión y decisión, o también captura) antes de instalar nada; si se pospone, el cierre integral (bloque 7). Pendientes aparte:
@@ -643,7 +653,8 @@ Alternativas más cortas:
 - `edf4cd8`: Módulo 14.
 - Módulo 15: commit «Módulo 15: duplicar cotización, modo de precios y vista previa PDF BORRADOR» (§24); consultar `git log -1 --oneline` para su hash. MD5 del libro al cerrar: `b60debc121957b8d8e3f2c2edd9a5b4f` (sin cambios).
 
-- Traslado a la laptop: commit local «Traslado a la laptop: rutas portables, inicialización de softarq_dev y documentación» (§25); consultar `git log -1 --oneline` para su hash. Sobre `31cf626`.
+- `f1367de`: traslado a la laptop (§25), sobre `31cf626`.
+- Módulo 16: commit local «Módulo 16: app móvil Android, etapa 1 (acceso y consulta)» (§26); consultar `git log -1 --oneline` para su hash. Sobre `f1367de`.
 
 Rama `main`. Sin remoto ni push.
 
@@ -1487,4 +1498,53 @@ Cuentas: `_work\secrets\accesos-demo-softarq_dev.json`. Respaldo antes de migrar
 - `listen_addresses = '*'` es el valor por omisión del instalador, pero `pg_hba.conf` solo admite conexiones locales; no se modificó. Revisar si algún día se expone el equipo.
 - Copia externa de `respaldos` sigue pendiente (mismo disco que la base).
 - Dos pruebas unitarias son sensibles a carga en este equipo (arriba): conviene correr `pnpm verificar` sin otros procesos pesados.
-- Expo no se ha instalado ni planificado: es el siguiente paso (§7).
+- Expo no se había instalado al cerrar esta sección: se inició en el módulo 16 (§26).
+
+## 26. App móvil Android con Expo, etapa 1: acceso y consulta (módulo 16)
+
+Decisiones: [ADR-0020](docs/adr/0020-app-movil-expo-conexion-y-sesion-movil.md). Guía de instalación y pruebas: [`docs/movil/guia-instalacion-y-pruebas.md`](docs/movil/guia-instalacion-y-pruebas.md). Sobre `f1367de`. Sin cambios de reglas de negocio ni del motor; los cuatro totales de referencia y sus pruebas siguen iguales.
+
+**Alcance realmente implementado:** acceso, recuperación al abrir la app y cierre de sesión; sesión vencida, revocada o sin acceso; cambio obligatorio de la contraseña temporal; navegación por capacidades del servidor (Clientes y Proyectos con `clientes.consultar`, Cotizaciones con `cotizaciones.consultar`); clientes, proyectos, cotizaciones, versiones comerciales, estados, revisiones y eventos; estados de carga, vacío, error con reintento, pérdida de conexión y datos desactualizados. Sin botones de funciones pendientes.
+
+**Versiones:** Expo SDK 58 (`expo` 58.0.17, React Native 0.88.0, React 19.3.0, `expo-router` 58.0.25, `expo-secure-store` 58.0.2, `expo-dev-client` 58.0.14); TypeScript 6.0.3 **solo** en `apps/mobile` (API y web siguen en 7.0.2); `eas-cli` 25.2.0 (`pnpm dlx`); Android Platform Tools 37.0.1 en `_work\tools\platform-tools`. `expo install` propuso excepciones de `minimumReleaseAge` para cinco paquetes de horas de antigüedad: **no se aceptaron** (`pnpm-workspace.yaml` sin cambios); `expo-doctor` queda en 19/20 por diferencias de parche (58.0.19/58.0.15/58.0.26 esperadas), que se corrigen con `expo install --fix` al madurar.
+
+**Conexión y autenticación (resumen):**
+- USB con `adb reverse tcp:3000 tcp:3000` (y `tcp:8081` para Metro): la API **sigue en `127.0.0.1`**, sin cambios de `API_HOST`, CORS ni firewall. Wi-Fi quedó documentado como alternativa no aplicada (exige TLS).
+- HTTP en claro acotado a `localhost` y `127.0.0.1` con `network_security_config` (plugin `plugins/red-local.js`), comprobado en una prebuild local (en `development`, Android ignora el `usesCleartextTraffic` de la variante de depuración porque existe la configuración de red). Permisos bloqueados: almacenamiento externo y `SYSTEM_ALERT_WINDOW`.
+- Sesión móvil: mismo token opaco y misma tabla, **tipo `MOVIL`**, `Authorization: Bearer`, token solo en SecureStore; `POST/GET /auth/movil/sesion` y lista blanca `@PermitidaEnMovil()` (con Bearer, cualquier otra ruta → 403). CSRF, CORS y cookie de la web no cambiaron.
+- `softarq_dev` migrada con `db:migrar` **tras un respaldo verificado** (`softarq_dev-20261024T050453Z-c3d38d`): solo se ampliaron dos CHECK de `sesion`; permisos sin cambios; 54 cotizaciones, 8 emisiones y las cuentas intactas.
+
+**Pruebas realmente ejecutadas en esta laptop (24/10/2026):**
+
+| Comprobación | Resultado |
+|---|---|
+| `pnpm verificar:secuencial` (build, tipos y unitarias, un paquete a la vez) | API **540/540** (28 archivos), app móvil **103/103** (9), web **281/281** (21); sin errores de tipos |
+| `pnpm verificar` (paquetes en paralelo) | Falló por **tiempo/carga** (3 pruebas: la copia del respaldo real en la API, `sesion.test.tsx` de la web y un listado de rutas de OpenAPI que sí exigía actualizarse). Las dos de tiempo pasan aisladas (1,3 s) y con `verificar:secuencial`; causa demostrada: `pnpm -r` ejecuta API, web y móvil a la vez en un equipo de 2 núcleos. No se subieron tiempos de espera ni se tocaron expectativas; se añadió `verificar:secuencial` |
+| Integración (un worker, solo `softarq_test`) | **373/373** (22 archivos): 350 previas + 23 del canal móvil (acceso, tokens cruzados, lista blanca, organizaciones, revocación, desactivación, temporal, expiración) |
+| E2E (Edge, un worker) | **71/71** |
+| `respaldo:probar-restauracion` (con la migración nueva) | **57/57** |
+| Comprobación del bundle (`comprobar:bundle`) | Limpio: sin `@prisma`, Nest, argon2, `decimal.js`, cadenas de conexión, rutas de la laptop, tokens, cookie web ni contratos internos |
+| Empaquetado Metro local (`expo export`) | 1279 módulos; Hermes 3,4 MB |
+| Recorrido real con la API sobre `softarq_dev` (solo lectura) | Las 3 cuentas DEMO: acceso móvil sin `Set-Cookie`, revalidación, consultas (50 de 54 cotizaciones por el límite por omisión; ahora la app pide 100), versión de `COT-2026-00004` ($54,190.68), escritura → 403, cierre y token revocado |
+
+Cuatro totales de referencia: cubiertos por las pruebas con fecha controlada (sin cambios en el motor). Ninguna cotización de humo creada en `softarq_dev`.
+
+**Archivos revisados para la subida a EAS:** `.easignore` (lista blanca). Simulación local: **65 archivos, 760 KB** (raíz de pnpm, `apps/mobile`, `packages/contracts`); `pnpm install --frozen-lockfile`, `eas-build-post-install` y Metro funcionan con solo esos archivos.
+
+**EAS Build y teléfono (estado):** ver el registro al final de esta sección.
+
+**Procesos:** los que se lanzaron durante el trabajo (API de desarrollo en 3000, servidor de pruebas en 3101, Metro) se detuvieron. Para probar con el teléfono hay que dejar abiertos la API (y Metro solo con la *development build*): guía §4–§5.
+
+**Comandos exactos:**
+```
+pnpm --filter @softarq/mobile typecheck | test | comprobar:bundle | export:android | doctor | start
+pnpm --filter @softarq/mobile eas login | whoami | init
+pnpm --filter @softarq/mobile eas build --platform android --profile development
+pnpm --filter @softarq/mobile eas build --platform android --profile preview
+& 'C:\Proyecto_SoftArq\Proyecto_SoftArq\_work\tools\platform-tools\adb.exe' reverse tcp:3000 tcp:3000
+pnpm --filter @softarq/api e2e:servidor      # softarq_test:3101, con una cuenta de contraseña temporal para el teléfono (guía §9)
+```
+
+**Pendientes (sin cambios):** conceptos heredados, P3, guía manual formal, contadores de 00 INICIO, RF-26, identidad de las funciones SQL. **PR-41 a PR-44 del Excel siguen pendientes** (la prueba en el teléfono no los cuenta).
+
+**Siguiente etapa móvil:** captura y cálculo; revisión y decisión; emisión y documentos; salidas internas; administración; operación sin conexión; TLS.

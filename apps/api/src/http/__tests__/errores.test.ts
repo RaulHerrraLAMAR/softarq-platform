@@ -94,6 +94,7 @@ describe("OpenAPI", () => {
       "/api/v1/admin/unidades",
       "/api/v1/auth/contrasena",
       "/api/v1/auth/csrf",
+      "/api/v1/auth/movil/sesion",
       "/api/v1/auth/sesion",
       "/api/v1/calculos/demo",
       "/api/v1/catalogos/conceptos",
@@ -201,6 +202,19 @@ describe("OpenAPI", () => {
     expect(d.paths["/api/v1/auth/csrf"]?.["get"]?.security).toEqual([]);
     expect(d.paths["/api/v1/calculos/demo"]?.["post"]?.security).toEqual([{ cookieSesion: [], tokenCsrf: [] }]);
     expect(JSON.stringify(doc.components.schemas["RespuestaSesion"])).not.toMatch(/token_hash|hashContrasena|tokenSesion/);
+  });
+
+  it("canal móvil (ADR-0020): Bearer sin CSRF; el token solo en la respuesta del acceso y nunca un CSRF ni un hash", () => {
+    const d = doc as unknown as {
+      paths: Record<string, Record<string, { security?: unknown }>>;
+      components: { securitySchemes: Record<string, unknown>; schemas: Record<string, unknown> };
+    };
+    expect(d.components.securitySchemes["tokenMovil"]).toMatchObject({ type: "http", scheme: "bearer" });
+    expect(d.paths["/api/v1/auth/movil/sesion"]?.["post"]?.security).toEqual([]);
+    expect(d.paths["/api/v1/auth/movil/sesion"]?.["get"]?.security).toEqual([{ tokenMovil: [] }]);
+    expect(JSON.stringify(d.components.schemas["RespuestaAccesoMovil"])).toContain("tokenSesion");
+    expect(JSON.stringify(d.components.schemas["RespuestaSesionMovil"])).not.toMatch(/tokenSesion|csrfToken|token_hash|hashContrasena/);
+    expect(JSON.stringify(d.components.schemas["RespuestaAccesoMovil"])).not.toMatch(/csrfToken|token_hash|hashContrasena/);
   });
 
   it("cotizaciones (ADR-0008): escrituras con CSRF, altas con Idempotency-Key y versiones sin datos internos", () => {

@@ -120,6 +120,9 @@ describe("permisos del rol de la aplicación (softarq_app)", () => {
         ).rejects.toThrow(/usuario_correo_normalizado_ck/);
         await expect(app.sesion.create({ data: { ...sesionPrevia(), tokenHash: new Uint8Array(16) } })).rejects.toThrow(/sesion_token_hash_ck/);
         await expect(app.sesion.create({ data: { ...sesionPrevia(), tipo: "USUARIO" } })).rejects.toThrow(/sesion_tipo_titular_ck/);
+        // Módulo 16 (ADR-0020): el tipo MOVIL existe y, como USUARIO, exige titular; cualquier otro tipo se rechaza.
+        await expect(app.sesion.create({ data: { ...sesionPrevia(), tipo: "MOVIL" } })).rejects.toThrow(/sesion_tipo_titular_ck/);
+        await expect(app.sesion.create({ data: { ...sesionPrevia(), tipo: "OTRO" } })).rejects.toThrow(/sesion_tipo_ck/);
       } finally {
         await migrador.$disconnect();
       }

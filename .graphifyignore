@@ -17,6 +17,9 @@ service-account*.json
 
 # --- Dependencias, compilaciones, cobertura, cachés y registros ---
 node_modules/
+.expo/
+android/
+ios/
 dist/
 dist-e2e/
 build/
@@ -74,7 +77,6 @@ scripts/skills/
 # --- Documentación: se consulta con lectura dirigida, no se procesa en el grafo ---
 docs/
 *.md
-apps/mobile/
 
 # --- JSON de configuración y datos sin relaciones de código útiles ---
 *.json

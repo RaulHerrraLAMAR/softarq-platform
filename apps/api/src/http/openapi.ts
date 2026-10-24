@@ -59,6 +59,8 @@ import {
   EsquemaRespuestaOpcionesPrecio,
   EsquemaRespuestaSalud,
   EsquemaRespuestaSesion,
+  EsquemaRespuestaSesionMovil,
+  EsquemaRespuestaAccesoMovil,
   EsquemaRespuestaTiposAdicional,
   EsquemaSolicitudAcceso,
   EsquemaSolicitudCalculoDemo,
@@ -233,6 +235,9 @@ export function construirDocumentoOpenApi(): Record<string, unknown> {
         "WEB DEMO, borrador con revisión y versiones inmutables calculadas en el servidor (ADR-0008); las altas exigen " +
         "Idempotency-Key. Revisión y aprobación por otra persona (ADR-0009); emisión de versiones aprobadas con PDF DEMO, " +
         "anulación de aprobaciones y descarte de cotizaciones (ADR-0010). " +
+        "Canal móvil (módulo 16, ADR-0020): sesión de tipo MOVIL por `Authorization: Bearer` (sin cookie ni CSRF), solo en " +
+        "las rutas de consulta marcadas y en /auth/movil/sesion, DELETE /auth/sesion y POST /auth/contrasena; el resto responde 403 " +
+        "RUTA_NO_DISPONIBLE_EN_MOVIL. " +
         "Los importes y cantidades viajan como texto decimal. Todos los datos son DEMO y no tienen validez comercial.",
     },
     servers: [{ url: "http://localhost:3000", description: "API local (escucha en 127.0.0.1; el navegador usa localhost)." }],
@@ -287,6 +292,21 @@ export function construirDocumentoOpenApi(): Record<string, unknown> {
           summary: "Cierra la sesión (revocación en el servidor) y borra la cookie",
           security: [{ cookieSesion: [], tokenCsrf: [] }],
           responses: { "204": { description: "Sesión cerrada." }, ...errores(401, 403, 429, 503, 500) },
+        },
+      },
+      "/api/v1/auth/movil/sesion": {
+        post: {
+          summary: "Inicio de sesión de la app móvil (ADR-0020)",
+          description:
+            "Sin cookie, sesión previa ni CSRF; se rechaza con 403 ACCESO_MOVIL_NO_PERMITIDO si la solicitud trae Origin (navegador) o Authorization. Mismo limitador, Argon2id y política de sesión que la web. Devuelve el token opaco (`tokenSesion`) una sola vez: la app lo guarda en SecureStore y lo presenta como `Authorization: Bearer`.",
+          security: [],
+          requestBody: cuerpo("SolicitudAcceso"),
+          responses: { "200": ok("RespuestaAccesoMovil", "Sesión móvil iniciada."), ...errores(400, 401, 403, 413, 415, 429, 503, 500) },
+        },
+        get: {
+          summary: "Revalida la sesión móvil y devuelve identidad, funciones y capacidades vigentes",
+          security: [{ tokenMovil: [] }],
+          responses: { "200": ok("RespuestaSesionMovil", "Sesión vigente."), ...errores(401, 403, 429, 503, 500) },
         },
       },
       "/api/v1/catalogos/conceptos": {
@@ -1071,6 +1091,11 @@ export function construirDocumentoOpenApi(): Record<string, unknown> {
           name: "softarq_sesion",
           description: "Sesión opaca (HttpOnly, SameSite=Strict, Path=/api/v1, host-only).",
         },
+        tokenMovil: {
+          type: "http",
+          scheme: "bearer",
+          description: "Token opaco de una sesión de tipo MOVIL (POST /api/v1/auth/movil/sesion). Solo rutas marcadas para móvil.",
+        },
         tokenCsrf: {
           type: "apiKey",
           in: "header",
@@ -1090,6 +1115,8 @@ export function construirDocumentoOpenApi(): Record<string, unknown> {
         SolicitudAcceso: json(EsquemaSolicitudAcceso, "input"),
         RespuestaCsrf: json(EsquemaRespuestaCsrf, "output"),
         RespuestaSesion: json(EsquemaRespuestaSesion, "output"),
+        RespuestaSesionMovil: json(EsquemaRespuestaSesionMovil, "output"),
+        RespuestaAccesoMovil: json(EsquemaRespuestaAccesoMovil, "output"),
         CambioContrasena: json(EsquemaCambioContrasena, "input"),
         DetalleParametros: json(EsquemaDetalleParametros, "output"),
         EdicionParametros: json(EsquemaEdicionParametros, "input"),

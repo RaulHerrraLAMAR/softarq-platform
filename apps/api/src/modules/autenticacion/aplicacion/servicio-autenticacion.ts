@@ -111,6 +111,19 @@ export class ServicioAutenticacion {
    * Devuelve un resultado genérico ante cualquier fallo de credenciales.
    */
   async iniciarSesion(previa: SesionPrevia, correo: string, contrasena: string, ip: string): Promise<ResultadoAcceso> {
+    return this.iniciar(previa.sesionId, "USUARIO", correo, contrasena, ip);
+  }
+
+  /**
+   * Inicio de sesión del canal móvil (ADR-0020): mismas comprobaciones, limitador y política que el
+   * web, pero sin sesión previa ni CSRF (la credencial viaja como Bearer, no es ambiental) y con una
+   * sesión de tipo MOVIL que la cookie no acepta.
+   */
+  async iniciarSesionMovil(correo: string, contrasena: string, ip: string): Promise<ResultadoAcceso> {
+    return this.iniciar(null, "MOVIL", correo, contrasena, ip);
+  }
+
+  private async iniciar(previaId: string | null, tipo: "USUARIO" | "MOVIL", correo: string, contrasena: string, ip: string): Promise<ResultadoAcceso> {
     const cuenta = normalizarCorreo(correo);
     const limite = this.limitador.comprobar(cuenta, ip);
     if (!limite.permitido) return { estado: "LIMITE", reintentarEnSegundos: limite.reintentarEnSegundos };
@@ -136,10 +149,10 @@ export class ServicioAutenticacion {
     const sesion = generarToken();
     const expiraEn = new Date(ahora.getTime() + POLITICA_SESION.absolutaMs);
     const id = await this.repo.reemplazar(
-      previa.sesionId,
+      previaId,
       "AUTENTICADA",
       {
-        tipo: "USUARIO",
+        tipo,
         tokenHash: sesion.hash,
         titular: { usuarioId: datos.usuarioId, organizacionId: membresia.organizacionId },
         creadaEn: ahora,
@@ -148,7 +161,7 @@ export class ServicioAutenticacion {
       ahora,
     );
     this.limitador.registrarExito(cuenta, ip);
-    const resuelta = await this.resolver(sesion.token);
+    const resuelta = await this.resolverTipo(sesion.token, tipo);
     if (resuelta.estado !== "VIGENTE") return { estado: "CREDENCIALES_INVALIDAS" }; // la cuenta cambió a la vez
     return {
       estado: "CORRECTO",
@@ -162,10 +175,22 @@ export class ServicioAutenticacion {
    * el usuario y su pertenencia sigan activos; registra la actividad (como mucho una vez por minuto).
    */
   async resolver(token: string | undefined): Promise<ResultadoResolucion<ContextoSesion>> {
+    return this.resolverTipo(token, "USUARIO");
+  }
+
+  /**
+   * Sesión móvil del Bearer (ADR-0020). Las mismas comprobaciones que `resolver`; solo acepta sesiones
+   * de tipo MOVIL, así que un token de cookie web no sirve aquí (ni uno móvil como cookie).
+   */
+  async resolverMovil(token: string | undefined): Promise<ResultadoResolucion<ContextoSesion>> {
+    return this.resolverTipo(token, "MOVIL");
+  }
+
+  private async resolverTipo(token: string | undefined, tipo: "USUARIO" | "MOVIL"): Promise<ResultadoResolucion<ContextoSesion>> {
     if (token === undefined) return { estado: "SIN_COOKIE" };
     if (!tieneFormaDeToken(token)) return { estado: "NO_VALIDA", motivo: "FORMATO" };
     const s = await this.repo.sesionPorHash(hashDeToken(token));
-    if (!s || s.tipo !== "USUARIO" || !s.titular) return { estado: "NO_VALIDA", motivo: "DESCONOCIDA" };
+    if (!s || s.tipo !== tipo || !s.titular) return { estado: "NO_VALIDA", motivo: "DESCONOCIDA" };
     const ahora = this.reloj.ahora();
     const estado = estadoTemporal(s, ahora);
     if (estado !== "VIGENTE") return { estado: "NO_VALIDA", motivo: estado };

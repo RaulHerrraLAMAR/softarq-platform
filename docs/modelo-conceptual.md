@@ -96,7 +96,7 @@ Toda relación entre datos propios es una FK compuesta con `organizacion_id`, de
 
 | Capacidad | Endpoints | Preparador | Revisor | Adm. catálogo | Adm. sistema | Fuente en el libro |
 |---|---|---|---|---|---|---|
-| `sesion.propia` | `GET` y `DELETE /api/v1/auth/sesion`; módulo 13: `POST /api/v1/auth/contrasena` (cambio propio) | ✓ | ✓ | ✓ | ✓ | — ⁴ |
+| `sesion.propia` | `GET` y `DELETE /api/v1/auth/sesion`; módulo 13: `POST /api/v1/auth/contrasena` (cambio propio); módulo 16: `POST` y `GET /api/v1/auth/movil/sesion` | ✓ | ✓ | ✓ | ✓ | — ⁴ |
 | `catalogos.consultar` | `GET /api/v1/catalogos/*` | ✓ | ✓ | ✓ | ✓ | Las hojas de catálogo se abren sin función |
 | `calculo.ejecutar` | `POST /api/v1/calculos/demo` | ✓ | ✗ | ✗ | ✗ | `BTN_Calcular` exige `Req_Funcion FN_PREP` (`modMotor.bas`) |
 | `clientes.consultar` | `GET /clientes`, `/clientes/{id}`, `/proyectos`, `/proyectos/{id}` | ✓ | ✓ | ✓ | ✓ | Las hojas 01 CLIENTES y 02 PROYECTOS se abren sin función |
@@ -142,6 +142,8 @@ Toda relación entre datos propios es una FK compuesta con `organizacion_id`, de
 Desde el módulo 14, `salidas.consultar` solo da lectura: no concede calcular, aprobar ni emitir, y los administradores no la reciben salvo que tengan además la función Preparador o Revisor.
 
 Desde el módulo 13, cada función queda con su propia administración: el Administrador del catálogo no administra parámetros ni personas, y el Administrador del sistema no administra el catálogo. Una persona puede tener ambas funciones.
+
+**Canal móvil (módulo 16, ADR-0020).** La matriz de capacidades **no cambia**: la app móvil no es una función ni concede accesos. Una sesión de tipo `MOVIL` tiene las mismas capacidades que la misma persona en la web, pero solo puede usar las rutas de consulta marcadas (`@PermitidaEnMovil()`; etapa 1: sesión, clientes, proyectos y cotizaciones con su versión); el resto responde 403 aunque la persona tenga la capacidad. Entidad `sesion`: `tipo` ∈ {`PREVIA`, `USUARIO`, `MOVIL`}.
 
 ## 7. Clientes, proyectos y cotizaciones (módulo 6, ADR-0008)
 

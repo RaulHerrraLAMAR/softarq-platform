@@ -111,3 +111,15 @@ Grafo estructural local del código propio, solo AST, sin modelos ni servicios e
 - Tras cambiar de rama o integrar cambios, los hooks de Git (`pnpm grafo:instalar-hooks`) lanzan una actualización en segundo plano. Mientras corre, `estado` dice PENDIENTE.
 - No uses `graphify extract`, `/graphify`, `graphify add` ni `graphify watch`, ni los instaladores `graphify install`, `claude install` o `codex install`: invocan modelos, dejan procesos permanentes o reescriben estas reglas.
 - No afirmes que el grafo está actualizado si `pnpm grafo:estado` no dice VIGENTE.
+
+## 13. App móvil (Expo, módulo 16)
+
+Decisión y límites: [ADR-0020](docs/adr/0020-app-movil-expo-conexion-y-sesion-movil.md). Guía: [`docs/movil/guia-instalacion-y-pruebas.md`](docs/movil/guia-instalacion-y-pruebas.md).
+
+- **La app solo muestra.** No calcula, no decide permisos ni contiene reglas de negocio; importa únicamente `@softarq/contracts/movil` (nunca el motor, Prisma, credenciales ni código de Node del servidor).
+- **Sesión móvil aparte de la web:** `Authorization: Bearer` con una sesión de tipo `MOVIL`, solo en rutas marcadas `@PermitidaEnMovil()` (lista blanca). Una ruta nueva para el móvil se marca de forma explícita, con su prueba de integración; no se relajan CSRF, CORS ni `Origin` de la web.
+- **Secretos:** el token solo en `expo-secure-store`; nada en AsyncStorage, archivos, URLs, registros ni `EXPO_PUBLIC_*` (son públicas: solo la URL de la API). No subas `.env`, APK, keystores ni `credentials.json`.
+- **Conexión:** la API sigue en `127.0.0.1`; el teléfono llega por USB (`adb reverse`). No abras la API ni PostgreSQL a la red, no uses túneles públicos y no actives `usesCleartextTraffic` global: el HTTP en claro está acotado a `localhost` y `127.0.0.1` (`plugins/red-local.js`).
+- **EAS Build:** se sube el repositorio `softarq-platform` filtrado por `.easignore` (lista blanca: raíz de pnpm, `apps/mobile` y `packages/contracts`). Si añades archivos que la compilación necesita, inclúyelos de forma explícita y comprueba la lista (guía §6). Sin EAS Update, tiendas ni compras.
+- **pnpm:** respeta `minimumReleaseAge` y `allowBuilds`; no añadas excepciones por rutina (`expo install` puede proponerlas: resuelve versiones maduras).
+- **Datos:** las escrituras se validan en `softarq_test` (nunca crees datos de humo en `softarq_dev`). Informa como «verificado en el teléfono» solo lo que se ejecutó en el dispositivo.

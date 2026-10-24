@@ -20,9 +20,12 @@ export interface CuentaParaAcceso {
   readonly membresiasActivas: readonly { organizacionId: string }[];
 }
 
+/** PREVIA: formulario de acceso web. USUARIO: cookie web. MOVIL: Bearer del canal móvil (ADR-0020). */
+export type TipoSesion = "PREVIA" | "USUARIO" | "MOVIL";
+
 export interface SesionCompleta {
   readonly id: string;
-  readonly tipo: "PREVIA" | "USUARIO";
+  readonly tipo: TipoSesion;
   readonly creadaEn: Date;
   readonly ultimaActividadEn: Date;
   readonly expiraEn: Date;
@@ -42,7 +45,7 @@ export interface SesionCompleta {
 }
 
 export interface NuevaSesion {
-  readonly tipo: "PREVIA" | "USUARIO";
+  readonly tipo: TipoSesion;
   readonly tokenHash: Buffer;
   readonly titular: { usuarioId: string; organizacionId: string } | null;
   readonly creadaEn: Date;
@@ -111,7 +114,7 @@ export class RepositorioSesiones {
     const m = s.membresia;
     return {
       id: s.id,
-      tipo: s.tipo === "USUARIO" ? "USUARIO" : "PREVIA",
+      tipo: s.tipo === "USUARIO" || s.tipo === "MOVIL" ? s.tipo : "PREVIA",
       creadaEn: s.creadaEn,
       ultimaActividadEn: s.ultimaActividadEn,
       expiraEn: s.expiraEn,

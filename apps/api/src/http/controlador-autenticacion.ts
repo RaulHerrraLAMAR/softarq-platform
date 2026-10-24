@@ -15,8 +15,10 @@ import {
   EsquemaCambioContrasena,
   EsquemaSolicitudAcceso,
   type CambioContrasena,
+  type RespuestaAccesoMovil,
   type RespuestaCsrf,
   type RespuestaSesion,
+  type RespuestaSesionMovil,
   type SolicitudAcceso,
 } from "@softarq/contracts";
 import type { Request, Response } from "express";
@@ -30,10 +32,20 @@ import type {
 import { sesionDe } from "./contexto.js";
 import { borrarCookieSesion, escribirCookieSesion, leerCookieSesion } from "./cookies.js";
 import { ErrorApi, solicitudIdDe } from "./errores.js";
-import { ConSesionPrevia, PermitidaConCambioPendiente, Publico, Requiere, sesionPreviaDe } from "./guardia-sesion.js";
+import {
+  AccesoMovil,
+  ConSesionPrevia,
+  PermitidaConCambioPendiente,
+  PermitidaEnMovil,
+  Publico,
+  Requiere,
+  leerBearer,
+  sesionPreviaDe,
+} from "./guardia-sesion.js";
 import { CONFIGURACION, RELOJ_SESIONES, SERVICIO_AUTENTICACION } from "./tokens.js";
 
-export function presentarSesion(s: ContextoSesion, csrfToken: string): RespuestaSesion {
+/** Identidad y contexto de la sesión, comunes a los canales web y móvil (sin token alguno). */
+export function presentarSesionMovil(s: ContextoSesion): RespuestaSesionMovil {
   return {
     usuario: { nombre: s.usuario.nombre, correo: s.usuario.correo },
     organizacion: { codigo: s.organizacion.codigo, nombre: s.organizacion.nombre, esDemo: s.organizacion.esDemo },
@@ -41,9 +53,12 @@ export function presentarSesion(s: ContextoSesion, csrfToken: string): Respuesta
     capacidades: [...s.capacidades],
     expiraEn: s.expiraEn.toISOString(),
     inactividadMinutos: POLITICA_SESION.inactividadMs / 60_000,
-    csrfToken,
     cambioContrasenaRequerido: s.cambioContrasenaRequerido,
   };
+}
+
+export function presentarSesion(s: ContextoSesion, csrfToken: string): RespuestaSesion {
+  return { ...presentarSesionMovil(s), csrfToken };
 }
 
 /** IP del socket (sin trust proxy: X-Forwarded-For se ignora). */
@@ -112,6 +127,7 @@ export class AutenticacionController {
   @HttpCode(204)
   @Requiere("sesion.propia")
   @PermitidaConCambioPendiente()
+  @PermitidaEnMovil()
   async cerrar(@Req() req: Request, @Res({ passthrough: true }) res: Response): Promise<void> {
     await this.servicio.cerrarSesion(sesionDe(req).sesionId);
     borrarCookieSesion(res);
@@ -126,6 +142,7 @@ export class AutenticacionController {
   @HttpCode(204)
   @Requiere("sesion.propia")
   @PermitidaConCambioPendiente()
+  @PermitidaEnMovil()
   async cambiarContrasena(
     @Req() req: Request,
     @Res({ passthrough: true }) res: Response,
@@ -148,5 +165,62 @@ export class AutenticacionController {
         borrarCookieSesion(res);
         this.registro?.log(`[${id}] CAMBIO_CONTRASENA`);
     }
+  }
+}
+
+/**
+ * Canal móvil (módulo 16, ADR-0020): sesión por `Authorization: Bearer`, sin cookie ni CSRF.
+ * - `POST /api/v1/auth/movil/sesion`: inicio de sesión; devuelve el token opaco una sola vez.
+ * - `GET  /api/v1/auth/movil/sesion`: revalida la sesión y devuelve identidad y capacidades vigentes.
+ * El cierre y el cambio de contraseña reutilizan `DELETE /auth/sesion` y `POST /auth/contrasena`.
+ * Nunca se registran el cuerpo, el correo, la contraseña ni el token.
+ */
+@Controller("auth/movil")
+@SkipThrottle({ calculo: true })
+export class AutenticacionMovilController {
+  private readonly registro: Logger | null;
+
+  constructor(
+    @Inject(SERVICIO_AUTENTICACION) private readonly servicio: ServicioAutenticacion,
+    @Inject(CONFIGURACION) config: ConfiguracionApi,
+  ) {
+    this.registro = config.registro === "ninguno" ? null : new Logger("Seguridad");
+  }
+
+  @Post("sesion")
+  @HttpCode(200)
+  @AccesoMovil()
+  async iniciar(
+    @Req() req: Request,
+    @Res({ passthrough: true }) res: Response,
+    @Body({ schema: EsquemaSolicitudAcceso }) solicitud: SolicitudAcceso,
+  ): Promise<RespuestaAccesoMovil> {
+    const r = await this.servicio.iniciarSesionMovil(solicitud.correo, solicitud.contrasena, ipDe(req));
+    const id = solicitudIdDe(res);
+    switch (r.estado) {
+      case "LIMITE":
+        this.registro?.log(`[${id}] ACCESO_MOVIL_LIMITE`);
+        res.setHeader("Retry-After", String(r.reintentarEnSegundos));
+        throw new ErrorApi(429, "DEMASIADAS_SOLICITUDES", "Demasiados intentos de acceso; espere antes de volver a intentarlo.");
+      case "CREDENCIALES_INVALIDAS":
+        this.registro?.log(`[${id}] ACCESO_MOVIL_FALLO`);
+        throw new ErrorApi(401, "CREDENCIALES_INVALIDAS", "Correo o contraseña incorrectos.");
+      case "TEMPORAL_CADUCADA":
+        this.registro?.log(`[${id}] ACCESO_MOVIL_TEMPORAL_CADUCADA`);
+        throw new ErrorApi(401, "CONTRASENA_TEMPORAL_CADUCADA", "La contraseña temporal caducó. Pida al Administrador del sistema un restablecimiento.");
+      case "CORRECTO":
+        this.registro?.log(`[${id}] ACCESO_MOVIL_OK`);
+        return { ...presentarSesionMovil(r.contexto), tokenSesion: r.tokens.tokenSesion };
+    }
+  }
+
+  @Get("sesion")
+  @Requiere("sesion.propia")
+  @PermitidaConCambioPendiente()
+  @PermitidaEnMovil()
+  consultar(@Req() req: Request): RespuestaSesionMovil {
+    // Este canal es solo para sesiones móviles: una cookie web no lo usa.
+    if (leerBearer(req) === undefined) throw new ErrorApi(403, "ACCESO_MOVIL_NO_PERMITIDO", "Esta consulta es solo para la app móvil.");
+    return presentarSesionMovil(sesionDe(req));
   }
 }

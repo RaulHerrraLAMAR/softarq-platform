@@ -1,0 +1,51 @@
+# Archivos que EAS Build sube a Expo para compilar la app móvil (ADR-0020 §6).
+#
+# Al existir este archivo, EAS ya NO usa .gitignore: por eso es una LISTA BLANCA. Primero se excluye todo
+# y después se vuelve a incluir solo lo necesario para construir apps/mobile con sus contratos compartidos.
+# Se sube el repositorio softarq-platform, nunca la carpeta superior (_work, respaldos, datos, PDF, Excel…).
+# Comprobar el resultado antes de compilar: docs/movil/guia-instalacion-y-pruebas.md §6.
+
+# 1. Todo fuera…
+/*
+
+# 2. …menos lo que pnpm necesita en la raíz del monorepo (lockfile congelado y reglas de instalación)…
+!/package.json
+!/pnpm-lock.yaml
+!/pnpm-workspace.yaml
+!/.npmrc
+
+# 3. …la app móvil y los contratos compartidos (nada de API, web, documentación, skills ni grafo).
+!/apps
+/apps/*
+!/apps/mobile
+!/packages
+/packages/*
+!/packages/contracts
+
+# 4. Dentro de lo incluido: nada regenerable, local, secreto ni de pruebas.
+node_modules/
+dist/
+build/
+android/
+ios/
+.expo/
+web-build/
+*.tsbuildinfo
+*.log
+.env
+.env.*
+!/apps/mobile/.env.example
+credentials.json
+*.jks
+*.keystore
+*.p12
+*.pem
+*.mobileprovision
+*.apk
+*.aab
+__tests__/
+/apps/mobile/scripts/
+/apps/mobile/src/pruebas/
+/apps/mobile/vitest.config.mts
+/apps/mobile/README.md
+/packages/contracts/README.md

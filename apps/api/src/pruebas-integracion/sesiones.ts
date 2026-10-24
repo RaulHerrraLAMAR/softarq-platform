@@ -65,6 +65,60 @@ export interface OpcionesSolicitud {
   cookie?: string | null;
 }
 
+/**
+ * Cliente del canal móvil (módulo 16, ADR-0020): como la app, sin cookie, sin `Origin` y sin CSRF;
+ * la sesión viaja como `Authorization: Bearer`. `token` puede fijarse para probar tokens ajenos.
+ */
+export class ClienteMovil {
+  token: string | null = null;
+
+  constructor(readonly url: string) {}
+
+  async solicitar(metodo: string, ruta: string, o: { cuerpo?: unknown; cabeceras?: Record<string, string>; token?: string | null } = {}): Promise<Respuesta> {
+    const cabeceras: Record<string, string> = { ...(o.cabeceras ?? {}) };
+    const token = o.token === undefined ? this.token : o.token;
+    if (token) cabeceras["Authorization"] = `Bearer ${token}`;
+    if (o.cuerpo !== undefined && !("Content-Type" in cabeceras)) cabeceras["Content-Type"] = "application/json";
+    const r = await fetch(`${this.url}${ruta}`, {
+      method: metodo,
+      headers: cabeceras,
+      ...(o.cuerpo !== undefined ? { body: typeof o.cuerpo === "string" ? o.cuerpo : JSON.stringify(o.cuerpo) } : {}),
+    });
+    const texto = await r.text();
+    let cuerpo: any = null;
+    try {
+      cuerpo = texto ? JSON.parse(texto) : null;
+    } catch {
+      cuerpo = texto;
+    }
+    return { status: r.status, headers: r.headers, texto, cuerpo, setCookie: r.headers.getSetCookie() };
+  }
+
+  get(ruta: string, o: { cabeceras?: Record<string, string>; token?: string | null } = {}) {
+    return this.solicitar("GET", ruta, o);
+  }
+  post(ruta: string, cuerpo: unknown, o: { cabeceras?: Record<string, string>; token?: string | null } = {}) {
+    return this.solicitar("POST", ruta, { ...o, cuerpo });
+  }
+  delete(ruta: string, o: { cabeceras?: Record<string, string>; token?: string | null } = {}) {
+    return this.solicitar("DELETE", ruta, o);
+  }
+
+  /** `POST /auth/movil/sesion`; si es correcto, guarda el token. No lanza. */
+  async iniciarSesion(c: Credencial, cabeceras: Record<string, string> = {}): Promise<Respuesta> {
+    const r = await this.post("/api/v1/auth/movil/sesion", { correo: c.correo, contrasena: c.contrasena }, { cabeceras, token: null });
+    if (r.status === 200) this.token = r.cuerpo.tokenSesion;
+    return r;
+  }
+
+  /** Como `iniciarSesion`, pero exige el éxito. */
+  async entrar(c: Credencial): Promise<this> {
+    const r = await this.iniciarSesion(c);
+    if (r.status !== 200) throw new Error(`Acceso móvil fallido (${r.status}): ${r.texto}`);
+    return this;
+  }
+}
+
 /** Cliente HTTP que conserva la cookie de sesión y el token CSRF, como el navegador. */
 export class ClienteHttp {
   cookie: string | null = null;

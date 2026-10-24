@@ -44,7 +44,9 @@ Variables (con sus valores por omisión) en [`.env.example`](../../.env.example)
 | GET | `/api/v1/auth/csrf` | Público | Crea la sesión previa (cookie) y devuelve `{ csrfToken }` para el acceso |
 | POST | `/api/v1/auth/sesion` | Sesión previa + `X-CSRF-Token` + `Origin` | Inicio de sesión `{ correo, contrasena }`. Devuelve identidad, organización, funciones, capacidades, `expiraEn`, `inactividadMinutos` y un `csrfToken` nuevo; cookie nueva |
 | GET | `/api/v1/auth/sesion` | Sesión | La misma respuesta (restaurar la sesión tras recargar la página) |
-| DELETE | `/api/v1/auth/sesion` | Sesión + `X-CSRF-Token` + `Origin` | Cierra la sesión (revocación en el servidor); `204` |
+| DELETE | `/api/v1/auth/sesion` | Sesión + `X-CSRF-Token` + `Origin` (web) o Bearer (móvil) | Cierra la sesión (revocación en el servidor); `204` |
+| POST | `/api/v1/auth/movil/sesion` | Público, **sin** cookie, `Origin` ni `Authorization` | Módulo 16 (ADR-0020): inicio de sesión de la app móvil `{ correo, contrasena }`. Devuelve identidad, organización, funciones, capacidades, `expiraEn`, `inactividadMinutos`, `cambioContrasenaRequerido` y el `tokenSesion` opaco (una sola vez); **sin** `csrfToken` ni cookie. Con `Origin` o `Authorization`: 403 `ACCESO_MOVIL_NO_PERMITIDO`. Mismo limitador y política que la web |
+| GET | `/api/v1/auth/movil/sesion` | Bearer (sesión `MOVIL`) | Revalida la sesión móvil: la misma respuesta sin token. Con una cookie web: 403 `ACCESO_MOVIL_NO_PERMITIDO` |
 | GET | `/api/v1/catalogos/conceptos?buscar=&limite=` | `catalogos.consultar` | Conceptos activos y aprobados (y personalizados activos, que exigen excepción; módulo 10): código, `clase`, descripción, unidad, fórmula, si admite descuento e insumos que requieren precio. Sin rendimientos, desperdicios, tarifas ni costos. `limite` de 1 a 100 (50 por omisión); `buscar` ≤ 60 caracteres |
 | GET | `/api/v1/catalogos/opciones-precio?conceptos=CON-00007,CON-00009` | `catalogos.consultar` | Para cada insumo de los conceptos (de 1 a 20), las opciones vigentes a la fecha del servidor: código de precio, producto, presentación, proveedor, vigencia y `esMenorPrecio`. **Sin precio ni contenido** |
 | GET | `/api/v1/catalogos/tipos-adicional?limite=` | `catalogos.consultar` | Tipos de costo adicional (CAD-…) |
@@ -85,6 +87,14 @@ Variables (con sus valores por omisión) en [`.env.example`](../../.env.example)
 - **Administrador del sistema:** configura el emisor.
 
 **Escrituras:** toda solicitud `POST`, `PUT`, `PATCH` o `DELETE` exige `X-CSRF-Token` y un `Origin` permitido. Las altas exigen además `Idempotency-Key` (UUID por intención): repetirla con el mismo contenido devuelve el recurso creado con `Idempotent-Replayed: true`; con otra operación u otro contenido, 422. Las claves duran 24 h (ADR-0008 §6).
+
+### Canal móvil (módulo 16, ADR-0020)
+
+La app móvil se autentica con una sesión opaca de tipo **`MOVIL`** presentada como `Authorization: Bearer <tokenSesion>` (sin cookie, sin CSRF y sin `Origin`: no es una credencial ambiental). La web (cookie, CSRF, `Origin`, CORS) no cambia y **un token de un canal no sirve en el otro**.
+
+- **Lista blanca:** con Bearer solo responden las rutas marcadas `@PermitidaEnMovil()`. En la etapa 1: `POST/GET /auth/movil/sesion`, `DELETE /auth/sesion`, `POST /auth/contrasena`, `GET /clientes`, `/clientes/{id}`, `/proyectos`, `/proyectos/{id}`, `/cotizaciones`, `/cotizaciones/{id}` y `/cotizaciones/{id}/versiones/{n}`. Cualquier otra ruta (escrituras, cálculo, catálogos, revisiones, administración, PDF, salidas internas) responde **403 `RUTA_NO_DISPONIBLE_EN_MOVIL`** antes de resolver la sesión.
+- Las capacidades de la sesión siguen exigiéndose en cada solicitud; la contraseña temporal restringe la sesión (`403 CAMBIO_CONTRASENA_REQUERIDO`); desactivar, restablecer o cambiar la contraseña revoca también las sesiones móviles.
+- `Authorization` no está en las cabeceras que permite CORS: un navegador no puede usarla desde el origen web.
 
 ### Cuerpo de `POST /api/v1/calculos/demo`
 
@@ -135,6 +145,8 @@ Según el error, el sobre lleva además `campos` (400, 422 `CAPTURA_INCOMPLETA` 
 | 403 | `SIN_PERMISO` | La función no permite la operación (p. ej., Revisor al calcular) |
 | 403 | `CSRF_NO_VALIDO` | `X-CSRF-Token` ausente o de otra sesión |
 | 403 | `ORIGEN_NO_PERMITIDO` | `POST`, `PUT`, `PATCH` o `DELETE` sin `Origin` permitido |
+| 403 | `RUTA_NO_DISPONIBLE_EN_MOVIL` | Una sesión móvil (Bearer) pide una ruta fuera de la lista blanca del canal móvil |
+| 403 | `ACCESO_MOVIL_NO_PERMITIDO` | El acceso móvil llega con `Origin` o `Authorization` (navegador), o `GET /auth/movil/sesion` con una cookie web |
 | 404 | `NO_ENCONTRADO` | Ruta, id o códigos inexistentes en la organización de la sesión (los de otra organización responden igual) |
 | 409 | `CONFLICTO_EDICION` | Revisión obsoleta de borrador, cliente o proyecto: no se sobrescribió nada |
 | 409 | `BORRADOR_DESACTUALIZADO` | El borrador cambió después de la revisión indicada al guardar versión: no se guardó ninguna versión |

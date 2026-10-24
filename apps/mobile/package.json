@@ -2,6 +2,40 @@
   "name": "@softarq/mobile",
   "version": "0.0.0",
   "private": true,
-  "description": "App movil de SoftArq (React Native + Expo). Pendiente de inicializar.",
-  "scripts": {}
+  "description": "App movil de SoftArq DEMO (React Native + Expo SDK 58). Etapa 1: acceso y consulta (ADR-0020).",
+  "main": "expo-router/entry",
+  "scripts": {
+    "contratos": "pnpm --filter @softarq/contracts run build",
+    "start": "pnpm run contratos && expo start --dev-client --localhost",
+    "typecheck": "pnpm run contratos && tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "doctor": "pnpm dlx expo-doctor",
+    "eas": "pnpm dlx eas-cli@25.2.0",
+    "comprobar:bundle": "pnpm run contratos && node scripts/comprobar-bundle.mjs",
+    "export:android": "pnpm run contratos && expo export --platform android --output-dir ../../../_work/mobile-export",
+    "eas-build-post-install": "pnpm --filter @softarq/contracts run build"
+  },
+  "dependencies": {
+    "@softarq/contracts": "workspace:*",
+    "expo": "^58.0.17",
+    "expo-build-properties": "~58.0.11",
+    "expo-constants": "~58.0.13",
+    "expo-dev-client": "~58.0.0",
+    "expo-linking": "~58.0.14",
+    "expo-router": "~58.0.0",
+    "expo-secure-store": "~58.0.2",
+    "expo-status-bar": "~58.0.4",
+    "expo-system-ui": "~58.0.6",
+    "react": "19.3.0",
+    "react-native": "0.88.0",
+    "react-native-safe-area-context": "~5.10.1",
+    "react-native-screens": "~4.30.0",
+    "zod": "4.6.5"
+  },
+  "devDependencies": {
+    "@types/node": "24.19.0",
+    "@types/react": "19.3.0",
+    "typescript": "6.0.3",
+    "vitest": "5.0.3"
+  }
 }

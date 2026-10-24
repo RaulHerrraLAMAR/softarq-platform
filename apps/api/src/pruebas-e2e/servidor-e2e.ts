@@ -58,8 +58,12 @@ async function principal(): Promise<void> {
         { correo: "ambas.e2e@softarq.test", nombre: "[DEMO] Preparador y revisor E2E", funciones: ["PREPARADOR", "REVISOR"] },
         // Módulo 14: Revisor al que se le retira la función con la pantalla abierta (no se usa en otras pruebas).
         { correo: "retiro.e2e@softarq.test", nombre: "[DEMO] Revisor con función retirada E2E", funciones: ["REVISOR"] },
+        // Módulo 16 (ADR-0020): cuenta con la contraseña vigente marcada como TEMPORAL, para probar en el
+        // teléfono el cambio obligatorio sin tocar softarq_dev (`adb reverse tcp:3000 tcp:3101`).
+        { correo: "temporal.e2e@softarq.test", nombre: "[DEMO] Contraseña temporal E2E", funciones: ["PREPARADOR"] },
       ],
     });
+    await migrador.$executeRaw`UPDATE usuario SET contrasena_temporal_expira_en = now() + interval '72 hours' WHERE correo = 'temporal.e2e@softarq.test'`;
     const cuenta = (correo: string) => {
       const c = [...r.creadas, ...ambas.creadas].find((x) => x.correo === correo);
       if (!c) throw new Error(`No se creó la cuenta de prueba ${correo}.`);
@@ -75,6 +79,7 @@ async function principal(): Promise<void> {
           revisor: cuenta(CUENTAS_DEMO[1]!.correo),
           ambas: cuenta("ambas.e2e@softarq.test"),
           retiro: cuenta("retiro.e2e@softarq.test"),
+          temporal: cuenta("temporal.e2e@softarq.test"),
           administrador: cuenta(CUENTAS_DEMO[2]!.correo),
         },
         null,

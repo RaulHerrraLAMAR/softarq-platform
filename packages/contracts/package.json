@@ -8,6 +8,10 @@
     ".": {
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
+    },
+    "./movil": {
+      "types": "./dist/movil.d.ts",
+      "default": "./dist/movil.js"
     }
   },
   "files": [

@@ -1,9 +1,9 @@
 # Cobertura del DEMO local frente al Excel y al alcance documentado
 
-- Fecha: 19/10/2026, al cerrar el módulo 15 (antes: 18/10/2026, módulo 14).
+- Fecha: 24/10/2026, al cerrar la etapa 1 del módulo 16 (app móvil; antes: 19/10/2026, módulo 15).
 - **Fuentes:**
   - Word maestro v1.3: §1.3 incluido, §1.4 excluido, §1.6 funciones, §3 reglas y §5 uso;
-  - ADR-0001 a ADR-0019;
+  - ADR-0001 a ADR-0020;
   - código comprobado con búsquedas dirigidas, sin suponer lo que no se ve en él.
 - **Leyenda:**
   - **V**: implementado y verificado con pruebas automatizadas;
@@ -56,7 +56,7 @@
 | Maestro sin datos DEMO | — | Se resolverá con la carga de datos reales (capítulo 8 del Word) |
 | Recorrido guiado con «Siguiente paso» (W §4.12) | P | La web ofrece los tres ejemplos y la guía manual; no tiene un asistente paso a paso |
 | Autenticación, sesiones, organizaciones y permisos reales | V | Módulo 5 (no existían en el Excel) |
-| App móvil con React Native y Expo | — | Ni instalada ni iniciada |
+| App móvil con React Native y Expo | P | **Módulo 16, etapa 1 (ADR-0020):** proyecto Expo SDK 58 en `apps/mobile`; acceso con sesión móvil (`Authorization: Bearer`, tipo `MOVIL`), recuperación y cierre de sesión, cambio obligatorio de la contraseña temporal, navegación según capacidades y **consulta comercial** de clientes, proyectos, cotizaciones, versiones, estados e historial. Solo lectura. **Pendiente en el móvil:** crear/editar y calcular, revisión y decisión, emisión y documentos, salidas internas, administración, operación sin conexión y TLS. Pruebas automatizadas (API, integración y app) verificadas; la instalación y el recorrido en el teléfono se registran en `docs/movil/guia-instalacion-y-pruebas.md` §10 |
 | Facturación, contabilidad, órdenes de compra, inventario y control de obra | F | W §1.4. «Compras» del libro es solo el cálculo de presentaciones (12 COMPRAS), que pertenece al detalle interno |
 | Portal del cliente, correo, firma | F | ADR-0010 y ADR-0013 |
 | Cálculo estructural, planos | F | W §1.4 |
@@ -77,7 +77,7 @@ Hipótesis inicial: excepciones; administración de catálogos y parámetros; co
 | 3 | ~~Parámetros restringidos con motivo, personas y funciones (Administrador del sistema)~~ | Hecho (módulo 13) |
 | 4 | ~~Salidas internas de solo lectura (compras calculadas, detalle e indicadores), con permiso propio~~ | Hecho (módulo 14) |
 | 5 | ~~Duplicar, modo de precios y vista previa del PDF BORRADOR~~ | Hecho (módulo 15) |
-| 6 | App Expo: alcance por decidir (consulta, revisión y decisión; captura) | 2 a 3 módulos |
+| 6 | App Expo: **etapa 1 hecha (módulo 16): acceso y consulta**. Siguen: captura y cálculo; revisión y decisión; emisión y documentos; salidas internas; operación sin conexión | 1 a 2 módulos más |
 | 7 | Cierre integral del DEMO: ejecución formal de la guía, recorrido completo y documentación | 1 módulo |
 
 **Total restante para el DEMO local completo:** de 3 a 4 módulos (antes 4 a 5). La preparación para Railway (TLS, cookie `Secure`/`__Host-`, proxy, limitadores y documentos compartidos, variables y respaldo remoto) es aparte: de 1 a 2 módulos.

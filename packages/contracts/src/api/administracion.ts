@@ -14,6 +14,7 @@ import { z } from "zod";
 import { PATRON_DECIMAL_TEXTO } from "../decimal.js";
 import { EsquemaEventoCatalogo, EsquemaImpactoVersiones, PIEZAS_CATALOGO } from "./catalogos-admin.js";
 import { BASES_IMPUESTO } from "../calculo.js";
+import { CONTRASENA_MINIMA } from "./contrasena.js";
 import { FUNCIONES_USUARIO, LIMITES_API } from "./esquemas.js";
 
 const { textoObligatorio, motivo, buscar, limite, booleanoTexto, revision, alMenosUnCambio, EsquemaInstante } = PIEZAS_CATALOGO;
@@ -25,7 +26,7 @@ export const LIMITES_ADMINISTRACION = {
   vigenciaMaximaDias: 3650,
   longitudNombrePersona: 200,
   /** Contraseña nueva (alta, restablecimiento y cambio propio): longitud, sin reglas de composición. */
-  contrasenaMinima: 12,
+  contrasenaMinima: CONTRASENA_MINIMA,
   /** Horas de validez de una contraseña temporal. */
   horasContrasenaTemporal: 72,
 } as const;
@@ -126,11 +127,7 @@ const correo = z
   .max(LIMITES_API.longitudCorreo, { error: "El correo es demasiado largo." })
   .refine((t) => z.email().safeParse(t).success, { error: "Correo: formato inválido." });
 
-/** Contraseña nueva: longitud mínima, sin reglas de composición (NIST SP 800-63B). */
-export const EsquemaContrasenaNueva = z
-  .string({ error: "La contraseña debe ser un texto." })
-  .min(LIMITES_ADMINISTRACION.contrasenaMinima, { error: `La contraseña nueva debe tener al menos ${LIMITES_ADMINISTRACION.contrasenaMinima} caracteres.` })
-  .max(LIMITES_API.longitudContrasena, { error: "La contraseña es demasiado larga." });
+// La contraseña nueva (`EsquemaContrasenaNueva`) y el cambio propio (`EsquemaCambioContrasena`) viven en `contrasena.ts`.
 
 export const EsquemaSolicitudPersona = z.strictObject({ correo, nombre: nombrePersona, funciones, motivo });
 export type SolicitudPersona = z.infer<typeof EsquemaSolicitudPersona>;
@@ -190,13 +187,3 @@ export const EsquemaRespuestaCredencialTemporal = z.strictObject({
 });
 export type RespuestaCredencialTemporal = z.infer<typeof EsquemaRespuestaCredencialTemporal>;
 
-/** Cambio propio (obligatorio con una contraseña temporal). */
-export const EsquemaCambioContrasena = z
-  .strictObject({
-    actual: z.string().min(1, { error: "Indique la contraseña actual." }).max(LIMITES_API.longitudContrasena),
-    nueva: EsquemaContrasenaNueva,
-    confirmacion: z.string().max(LIMITES_API.longitudContrasena),
-  })
-  .refine((c) => c.confirmacion === c.nueva, { error: "La confirmación no coincide con la contraseña nueva.", path: ["confirmacion"] })
-  .refine((c) => c.nueva !== c.actual, { error: "La contraseña nueva debe ser distinta de la actual.", path: ["nueva"] });
-export type CambioContrasena = z.infer<typeof EsquemaCambioContrasena>;

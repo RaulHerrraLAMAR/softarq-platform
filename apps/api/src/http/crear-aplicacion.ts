@@ -62,7 +62,7 @@ import {
 import { RepositorioCotizaciones } from "../modules/cotizaciones/infraestructura/repositorio-cotizaciones.js";
 import { ServicioBaseDeDatos } from "./base-de-datos.js";
 import { comprobarRolAplicacion } from "./contexto.js";
-import { AutenticacionController } from "./controlador-autenticacion.js";
+import { AutenticacionController, AutenticacionMovilController } from "./controlador-autenticacion.js";
 import { CalculosController, CatalogosController, OpenApiController, SaludController } from "./controladores.js";
 import {
   ClientesController,
@@ -152,6 +152,7 @@ function moduloRaiz(config: ConfiguracionApi, opciones: OpcionesAplicacion): Dyn
     controllers: [
       SaludController,
       AutenticacionController,
+      AutenticacionMovilController,
       CatalogosController,
       CalculosController,
       ClientesController,
