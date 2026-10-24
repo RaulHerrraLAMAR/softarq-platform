@@ -60,7 +60,7 @@ La *development build* es la APK con el cliente de desarrollo: carga el JavaScri
    & $adb reverse tcp:8081 tcp:8081
    ```
 
-2. **Laptop:** `pnpm --filter @softarq/mobile start` (compila los contratos y ejecuta `expo start --dev-client --localhost`; Metro escucha solo en loopback).
+2. **Laptop:** `pnpm --filter @softarq/mobile start` (compila los contratos y ejecuta `scripts/iniciar-metro.mjs`, que lanza `expo start --dev-client --localhost --port 8081` con `NODE_OPTIONS=--dns-result-order=ipv4first`; Metro escucha solo en loopback). Con Node 24, `localhost` se resolvía a `::1` y `adb reverse tcp:8081` reenvía hacia IPv4, por lo que el teléfono no alcanzaba Metro; la prioridad IPv4 lo corrige. No exporte la variable a mano: el script la añade conservando las opciones que ya existan. Comprobación en la laptop: `curl http://127.0.0.1:8081/status` debe responder `packager-status:running`.
 3. **Teléfono:** abrir la app de desarrollo → *Enter URL manually* → `http://localhost:8081` (o el enlace `exp+softarq-demo://…` que muestra la terminal).
 4. Recargar con el menú de desarrollo (agitar el teléfono) → *Reload*.
 
@@ -147,6 +147,6 @@ Registre cada caso **solo** cuando lo ejecute en el teléfono (fecha, versión d
 
 - **`adb devices` vacío o `unauthorized`:** cable solo de carga, depuración USB desactivada o falta aceptar la clave en el teléfono. `& $adb kill-server; & $adb devices`.
 - **La app dice «Sin conexión»:** falta `adb reverse tcp:3000 tcp:3000` (se pierde al desconectar el cable) o la API no está en marcha (`http://127.0.0.1:3000/health` en la laptop).
-- **Metro no conecta:** falta `adb reverse tcp:8081 tcp:8081` o Metro no usa `--localhost` (use el script `start`).
+- **Metro no conecta:** falta `adb reverse tcp:8081 tcp:8081`, Metro no usa `--localhost` o no se arrancó con prioridad IPv4 (use siempre `pnpm --filter @softarq/mobile start`, no `expo start` directo).
 - **«Correo o contraseña incorrectos»:** las contraseñas están en `_work\secrets\accesos-demo-softarq_dev.json`. Tras cinco fallos en 15 minutos desde la misma cuenta, la API pide esperar (429).
 - **Pantalla «No hay conexión» solo en la APK `preview`:** recuerde que necesita la API y el túnel USB igual que la de desarrollo.

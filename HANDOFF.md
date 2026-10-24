@@ -10,6 +10,7 @@
   - **API:** sesión de tipo `MOVIL` por `Authorization: Bearer` (migración aditiva `20261024120000_sesion_movil`), con lista blanca de rutas; la web (cookie, CSRF, `Origin`, CORS) no cambió.
   - **Conexión:** la API sigue en `127.0.0.1`; el teléfono llega por USB (`adb reverse`).
   - **Teléfono:** la instalación y el recorrido se registran en `docs/movil/guia-instalacion-y-pruebas.md` §10 solo cuando se ejecutan en el dispositivo (ver §26).
+- **Replanteamiento del producto (24/10/2026, §27):** la app móvil pasa a ser **del cliente** (solicitud, estimación preliminar y seguimiento) y el panel web es **del equipo**. Plan aprobado por etapas E0–E4; **solo E0 hecha** (decisiones, Metro IPv4 y muestra visual); nada del servidor, la app ni el panel está implementado todavía. ADR-0021 y ADR-0022.
 - **App móvil, estado de EAS (24/10/2026):** proyecto `@raulherrera09/softarq-demo` (ID `69326c6d-44f9-4e72-83aa-53dbe4b70905`) vinculado en `app.config.ts` (commit «Módulo 16: vincular la app móvil con el proyecto EAS softarq-demo», `419d953` tras la reescritura de mensajes; antes `7a7b9b3`). **La compilación `development` sigue PENDIENTE** (la primera genera la keystore y es interactiva); las pruebas T1–T10 del teléfono siguen en «Pendiente». Detalle en §26.
 - **Entorno actual (24/10/2026):** el proyecto se trasladó a `C:\Proyecto_SoftArq\Proyecto_SoftArq` (repositorio en `...\softarq-platform`; la doble carpeta es intencionada). `softarq_dev` se inicializó desde el respaldo `softarq_dev-20261023T224027Z-22f32d` y las validaciones se repitieron en esta máquina. Las rutas `D:` del resto de este documento describen el equipo original. Detalle y resultados en §25.
 
@@ -602,7 +603,7 @@ En los cuatro, el resultado completo es idéntico al calculado con los fixtures 
 
 ## 7. Siguiente tarea
 
-0. **App móvil (§26):** siguiente etapa a acordar con el propietario: captura y cálculo; revisión y decisión; emisión y documentos; salidas internas; operación sin conexión; y TLS antes de exponer la API en red. Antes: completar el registro de la guía del teléfono (`docs/movil/guia-instalacion-y-pruebas.md` §10).
+0. **Rediseño centrado en el cliente (§27):** revisar con el propietario la muestra visual (E0) y seguir con E1 (servidor del cliente). Lo siguiente de esta línea sustituye a la lista de etapas móviles de abajo, que queda como referencia histórica: siguiente etapa a acordar con el propietario: captura y cálculo; revisión y decisión; emisión y documentos; salidas internas; operación sin conexión; y TLS antes de exponer la API en red. Antes: completar el registro de la guía del teléfono (`docs/movil/guia-instalacion-y-pruebas.md` §10).
 1. **Recompilar y reiniciar** la API y la web del propietario si están en marcha con código anterior: `softarq_dev` ya tiene la migración del módulo 15 (§24).
 2. **Regularizar los conceptos heredados** de `softarq_dev` cuando el propietario lo decida, con el mapeo documentado (ADR-0016 §2.3): completar tipo y regla vuelve el concepto a Borrador y exige una nueva aprobación. No se ejecuta automáticamente.
 3. **Siguiente módulo:** fijar con el propietario el alcance de la app Expo (bloque 6 de `docs/cobertura-demo.md`: consulta, revisión y decisión, o también captura) antes de instalar nada; si se pospone, el cierre integral (bloque 7). Pendientes aparte:
@@ -1560,3 +1561,28 @@ pnpm --filter @softarq/api e2e:servidor      # softarq_test:3101, con una cuenta
 - **`dist` de contracts:** `exports` apunta a `dist`, así que Metro consume lo compilado; el `dist` vacío no impide el build porque EAS ejecuta `eas-build-post-install` (compila `@softarq/contracts`) tras `pnpm install` y antes del empaquetado.
 - **Perfil `development` resuelto** (`eas config`): APK interna, `developmentClient`, Node 24.11.1, pnpm 11.1.3, `EXPO_PUBLIC_API_URL=http://localhost:3000`, credenciales remotas.
 - **Pendiente:** `eas build --platform android --profile development` (interactivo, lo ejecuta el propietario con `!`); luego instalar por enlace/QR y recorrer T1–T10 en el teléfono (§10 de la guía). No se registró ninguna prueba en el teléfono. No se repitió la suite por la vinculación (solo cambió una línea de configuración).
+
+## 27. Replanteamiento: app del cliente, panel del equipo e identidad «Obra cálida» (24/10/2026)
+
+Decisiones: [ADR-0021](docs/adr/0021-cliente-externo-solicitud-y-estimacion-preliminar.md) (cliente externo, solicitud, estimación preliminar) y [ADR-0022](docs/adr/0022-identidad-visual-obra-calida-y-paquete-de-presentacion.md) (identidad visual y paquete de presentación). El plan completo se aprobó el 24/10/2026; esta sección registra lo realmente hecho.
+
+**Motivo.** La app de la etapa 1 parecía una consulta de registros internos y el panel una barra plana. El producto es otro: el cliente crea su cotización desde el teléfono y el equipo la atiende desde el panel.
+
+**Decisiones del propietario (24/10/2026):**
+- **Estimación:** precio de referencia por insumo, designado explícitamente por el Administrador del catálogo (con permisos y bitácora). Se usa el motor existente; no se elimina BL-08 ni se elige el precio menor. Se rotula «Estimación preliminar, no es una cotización». Sin referencia válida no hay importe: «el equipo completará la valoración». «Calcular» nunca envía; la solicitud se puede enviar sin estimación. Las referencias no se heredan a la cotización formal.
+- **Acceso:** por invitación del Administrador del sistema (contraseña temporal de 72 h y cambio obligatorio), sin autorregistro; 2 o 3 clientes ficticios con carga idempotente que no restablece contraseñas; credenciales fuera de Git. La cuenta de administración y la del cliente simulado son separadas.
+- **App solo para clientes:** se retiran las pantallas internas; una cuenta interna recibe una explicación y la dirección del panel.
+- **Dirección visual:** «Obra cálida» (concreto, terracota, grafito; Manrope e Inter).
+- Railway: publicación futura con cuentas individuales; los requisitos pendientes están en ADR-0021 (no incluidos aquí).
+
+**Etapas.** E0 decisiones y muestra; E1 servidor del cliente; E2 app; E3 panel por tareas; E4 datos de presentación y continuidad. Criterios de aceptación en el plan aprobado.
+
+**E0, hecho en esta sesión:**
+- ADR-0021 y ADR-0022; ADR-0020, `docs/modelo-conceptual.md` y `docs/cobertura-demo.md` actualizados con el cambio de producto.
+- **Metro por USB reproducible:** `pnpm --filter @softarq/mobile start` ejecuta `apps/mobile/scripts/iniciar-metro.mjs`, que añade `NODE_OPTIONS=--dns-result-order=ipv4first` (con Node 24, `localhost` resolvía a `::1` y `adb reverse` reenvía hacia IPv4) y lanza `expo start --dev-client --localhost --port 8081`. Pruebas unitarias en `scripts/__tests__/opciones-metro.test.ts`. Probado arrancándolo en el puerto 8089: respondió `packager-status:running` en `127.0.0.1` y se detuvo. La API (3000) y el Metro (8081) que el propietario tenía en marcha no se tocaron. Guía §5 y §11 actualizadas.
+- `apps/mobile/.gitignore` (lo genera `expo start`; ignora `expo-env.d.ts`).
+- Muestra visual de cuatro pantallas (inicio, medidas, resultado y bandeja del panel) como artefacto privado de Claude; pendiente de revisión del propietario.
+
+**No hecho:** migraciones, API, contratos, app, panel, datos de presentación, compilación EAS nueva (se hará una sola en E2, por las dependencias nativas). La APK `development` actual sigue sin compilar y T1–T10 en «Pendiente»; el recorrido de la guía §10 se sustituirá por el del cliente.
+
+**Convención de commits:** mensajes que describen el cambio, sin menciones de autoría de IA ni trailers `Co-Authored-By`.

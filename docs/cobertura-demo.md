@@ -58,7 +58,7 @@
 | Autenticación, sesiones, organizaciones y permisos reales | V | Módulo 5 (no existían en el Excel) |
 | App móvil con React Native y Expo | P | **Módulo 16, etapa 1 (ADR-0020):** proyecto Expo SDK 58 en `apps/mobile`; acceso con sesión móvil (`Authorization: Bearer`, tipo `MOVIL`), recuperación y cierre de sesión, cambio obligatorio de la contraseña temporal, navegación según capacidades y **consulta comercial** de clientes, proyectos, cotizaciones, versiones, estados e historial. Solo lectura. **Pendiente en el móvil:** crear/editar y calcular, revisión y decisión, emisión y documentos, salidas internas, administración, operación sin conexión y TLS. Pruebas automatizadas (API, integración y app) verificadas; la instalación y el recorrido en el teléfono se registran en `docs/movil/guia-instalacion-y-pruebas.md` §10 |
 | Facturación, contabilidad, órdenes de compra, inventario y control de obra | F | W §1.4. «Compras» del libro es solo el cálculo de presentaciones (12 COMPRAS), que pertenece al detalle interno |
-| Portal del cliente, correo, firma | F | ADR-0010 y ADR-0013 |
+| Portal del cliente, correo, firma | F | ADR-0010 y ADR-0013. **Matiz (ADR-0021):** la app móvil del cliente (solicitud, estimación preliminar y seguimiento) entra en el alcance por etapas; correo, firma y portal web siguen fuera |
 | Cálculo estructural, planos | F | W §1.4 |
 | Despliegue en Railway, TLS, almacén compartido | F | Fuera del DEMO local; preparación aparte |
 

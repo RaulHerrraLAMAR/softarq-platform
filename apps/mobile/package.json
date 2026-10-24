@@ -6,7 +6,7 @@
   "main": "expo-router/entry",
   "scripts": {
     "contratos": "pnpm --filter @softarq/contracts run build",
-    "start": "pnpm run contratos && expo start --dev-client --localhost",
+    "start": "pnpm run contratos && node scripts/iniciar-metro.mjs",
     "typecheck": "pnpm run contratos && tsc -p tsconfig.json --noEmit",
     "test": "vitest run",
     "doctor": "pnpm dlx expo-doctor",

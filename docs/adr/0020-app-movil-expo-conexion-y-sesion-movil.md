@@ -1,7 +1,7 @@
 # ADR-0020 — App móvil Android con Expo (etapa 1): conexión local y sesión móvil
 
 - **Fecha:** 24/10/2026
-- **Estado:** aceptada (módulo 16, etapa 1: acceso y consulta)
+- **Estado:** aceptada (módulo 16, etapa 1: acceso y consulta). **Reorientada por [ADR-0021](0021-cliente-externo-solicitud-y-estimacion-preliminar.md):** la app pasa a ser exclusivamente del cliente y las rutas internas de consulta dejarán de estar disponibles en móvil al implementar E1. Conexión, sesión `MOVIL`, EAS y seguridad siguen vigentes
 - **Ámbito:**
   - `apps/mobile` (nuevo proyecto Expo), `.easignore` y `eas.json`;
   - `apps/api`: sesión de tipo MOVIL (`modules/autenticacion`, `http/guardia-sesion.ts`, `http/controlador-autenticacion.ts`), migración `20261024120000_sesion_movil`;
@@ -42,13 +42,14 @@ Falta la app móvil del bloque 6 de `docs/cobertura-demo.md`. Esta primera etapa
 |---|---|---|
 | **Descargar la APK** | Enlace o QR de EAS (Internet del teléfono; no pasa por la laptop) | Ninguno |
 | **Teléfono ↔ API** | **USB con `adb reverse tcp:3000 tcp:3000`**: el `localhost:3000` del teléfono es la laptop | **Ninguno**: la API sigue en `127.0.0.1`, sin firewall ni exposición de red |
-| **Teléfono ↔ Metro** (solo development build) | `adb reverse tcp:8081 tcp:8081` y `expo start --dev-client --localhost` (Metro solo en loopback) | Ninguno |
+| **Teléfono ↔ Metro** (solo development build) | `adb reverse tcp:8081 tcp:8081` y `expo start --dev-client --localhost` (Metro solo en loopback), arrancado con `scripts/iniciar-metro.mjs` | Ninguno |
 
 - **Por qué USB y no Wi-Fi:** conserva el aislamiento de ADR-0005/0007. Wi-Fi exigiría ampliar `API_HOST` (hoy el arranque lo rechaza), abrir el puerto en el firewall de Windows, HTTP en claro dentro de la LAN, revisar el limitador por IP y los orígenes, y no tendría TLS. Queda como alternativa **no aplicada**, para una etapa con TLS (la que prepara Railway).
 - No hay ngrok, túneles ni servicios de alojamiento; PostgreSQL no se expone: la app solo habla con la API.
 - La APK `preview` no necesita Metro, pero sí la API (y por tanto `adb reverse tcp:3000`) para datos y sesión.
 - **HTTP en Android:** Android 9+ bloquea el HTTP en claro. El plugin `plugins/red-local.js` añade un `network_security_config.xml` con `cleartextTrafficPermitted="false"` por omisión y **solo** `localhost` y `127.0.0.1` (sin subdominios) permitidos en claro; no se usa `usesCleartextTraffic` global ni se relaja la validación TLS. La variante de depuración (development) declara `usesCleartextTraffic`, pero Android lo **ignora** cuando existe `networkSecurityConfig` (API ≥ 24): comprobado en la prebuild local. `EXPO_PUBLIC_API_URL` se valida al arrancar (solo `http://localhost|127.0.0.1:PUERTO` o `https://…`); una IP de la red o un host remoto por http hace fallar el arranque.
 - No se reemplazan las restricciones de arranque de la API por una aceptación general de cualquier dirección.
+- **Metro e IPv4 (24/10/2026):** con Node 24, `localhost` se resolvía a `::1` y `adb reverse` reenvía hacia IPv4, así que el teléfono no alcanzaba Metro. `pnpm --filter @softarq/mobile start` ejecuta `scripts/iniciar-metro.mjs`, que añade `NODE_OPTIONS=--dns-result-order=ipv4first` (sin duplicarla ni perder opciones previas) y lanza `expo start --dev-client --localhost --port 8081`. Probado en el puerto 8089: Metro responde `packager-status:running` en `127.0.0.1` y escucha solo en loopback.
 
 ### 3. Autenticación móvil
 

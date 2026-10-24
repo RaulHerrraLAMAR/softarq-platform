@@ -15,7 +15,7 @@
 ```
 Organización N ── N Usuario        (por Membresía, con funciones; hoy una activa por usuario)
 Usuario      1 ── N Sesión         (opaca; solo el hash del token)
-Organización 1 ── N Cliente        (recibe la cotización; no tiene cuenta)
+Organización 1 ── N Cliente        (recibe la cotización; con la app del cliente puede tener acceso propio, ADR-0021)
 Cliente      1 ── N Proyecto
 Organización 1 ── N Catálogo       (insumos, productos, proveedores, precios, tarifas, conceptos)
 Cotización (folio) N ── 1 Cliente
@@ -36,7 +36,7 @@ Versión      1 ── N Excepción      (rendimiento, precio vencido, concepto 
 - **Usuario:** persona que prepara o revisa. Sustituye a la «persona en turno» del Excel, que era un registro operativo sin autenticación (D-20). Es global: la organización la aporta la pertenencia.
 - **Membresía (pertenencia):** une un usuario con una organización y guarda sus funciones del libro (Preparador, Revisor, Administrador del catálogo, Administrador del sistema), que la API traduce a capacidades en cada solicitud. El modelo admite varias pertenencias; en esta etapa el acceso exige una sola activa.
 - **Sesión:** sesión opaca en PostgreSQL ligada a una pertenencia (FK compuesta, sin mezclar organizaciones). Expira por inactividad (30 min) y de forma absoluta (8 h) y se revoca al cerrar.
-- **Cliente:** quien recibe la cotización. **No requiere cuenta** ni accede al sistema.
+- **Cliente:** quien recibe la cotización. En el panel es un registro; **desde el ADR-0021** puede tener un acceso propio a la app móvil (invitación del equipo, sin funciones internas), limitado a sus propios proyectos, solicitudes y cotizaciones emitidas. Hasta implementarlo (E1) sigue sin cuenta.
 - **Proyecto:** trabajo de un cliente; pertenece a uno solo y no cambia de cliente.
 - **Cotización:** folio `COT-AAAA-NNNNN` con origen WEB DEMO, reservado al crearla; fija cliente y proyecto.
 - **Borrador:** la captura editable de la cotización (medidas, códigos y selecciones; sin resultados). Puede estar incompleto. Lleva un número de revisión para detectar ediciones simultáneas.
