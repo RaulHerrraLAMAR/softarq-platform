@@ -13,3 +13,4 @@ export * from "./api/contrasena.js";
 export * from "./api/administracion.js";
 export * from "./api/salidas-internas.js";
 export * from "./api/cliente.js";
+export * from "./api/cliente-equipo.js";

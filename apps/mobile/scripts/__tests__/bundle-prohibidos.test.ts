@@ -23,4 +23,8 @@ describe("detector de contenido prohibido en el bundle", () => {
   it("detecta contratos internos de costos y márgenes", () => {
     expect(hay('costoProrrateado:z.string(),recargoSobreCosto:z.string()')).toContain("interno");
   });
+  it("detecta contratos del equipo y la administración", () => {
+    expect(hay("contrasenaTemporal:z.string().nullable(),temporalExpiraEn:z.string()")).toContain("equipo");
+    expect(hay("designadaEn:z.string(),motivo:z.string()")).toContain("equipo");
+  });
 });
