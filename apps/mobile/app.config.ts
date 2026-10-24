@@ -25,7 +25,8 @@ const config: ExpoConfig = {
     versionCode: 1,
     allowBackup: false,
     softwareKeyboardLayoutMode: "resize",
-    // La app solo consulta la API: no necesita almacenamiento externo ni ventanas superpuestas.
+    // La app del cliente solo habla con la API: no necesita almacenamiento externo ni ventanas superpuestas.
+    // El PDF se guarda en la caché privada de la app (no en almacenamiento compartido).
     // (La variante de depuración vuelve a declarar SYSTEM_ALERT_WINDOW para el menú de desarrollo.)
     blockedPermissions: ["android.permission.READ_EXTERNAL_STORAGE", "android.permission.WRITE_EXTERNAL_STORAGE", "android.permission.SYSTEM_ALERT_WINDOW"],
     adaptiveIcon: {
@@ -38,6 +39,20 @@ const config: ExpoConfig = {
     "expo-secure-store",
     "expo-dev-client",
     ["expo-system-ui", {}],
+    // Fuentes de «Obra cálida» incluidas en la app (licencias OFL en assets/fonts): sin descargas ni CDN.
+    [
+      "expo-font",
+      {
+        fonts: [
+          "./assets/fonts/BricolageGrotesque_600SemiBold.ttf",
+          "./assets/fonts/BricolageGrotesque_700Bold.ttf",
+          "./assets/fonts/BricolageGrotesque_800ExtraBold.ttf",
+          "./assets/fonts/Inter_400Regular.ttf",
+          "./assets/fonts/Inter_500Medium.ttf",
+          "./assets/fonts/Inter_600SemiBold.ttf",
+        ],
+      },
+    ],
     // Solo arm64-v8a (los teléfonos Android actuales): APK más pequeña y compilación remota más corta.
     // Para un teléfono de 32 bits, añadir "armeabi-v7a".
     ["expo-build-properties", { android: { buildArchs: ["arm64-v8a"] } }],
