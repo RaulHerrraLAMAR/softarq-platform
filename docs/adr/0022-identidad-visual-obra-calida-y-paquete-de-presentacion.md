@@ -1,7 +1,7 @@
 # ADR-0022 — Identidad visual «Obra cálida» y paquete de presentación compartido
 
 - **Fecha:** 24/10/2026 (iteración 2 el mismo día)
-- **Estado:** **propuesta en revisión.** La dirección «Obra cálida» fue elegida por el propietario como punto de partida; la iteración 2 (esta versión) **no está aprobada**. No se extiende a la aplicación hasta que el propietario la apruebe.
+- **Estado:** **aprobada por el propietario** (iteración 2, 24/10/2026) y **aplicada a la app del cliente** en E2. El panel web (`packages/presentacion`, E3) sigue pendiente. La comprobación en el teléfono (contraste real, texto ampliado, movimiento reducido, rendimiento) sigue abierta.
 - **Ámbito:** `apps/mobile`, `apps/web` y el nuevo `packages/presentacion` (tokens y etiquetas, sin lógica de negocio).
 - **Prototipo revisable:** https://claude.ai/artifact/FJMrePv1dTRoJzTZkWivfU (copia en [`docs/movil/prototipo/obra-calida-iteracion-2.html`](../movil/prototipo/obra-calida-iteracion-2.html)). Datos ficticios; los importes son constantes de ejemplo.
 - **Relacionada con:** [ADR-0006](0006-cliente-web-demo.md) y `docs/web/sistema-visual.md` (estilo «Minimalism & Swiss», Fira), que esta decisión sustituiría de forma gradual.
@@ -50,3 +50,12 @@ Tokens de diseño y **diccionario único de etiquetas** (estados, eventos de bit
 - Cualquier dependencia nativa nueva exige una compilación `development` nueva, justificada y única para la etapa E2.
 - `.easignore` y AGENTS §13 deberán incluir `packages/presentacion` cuando exista.
 - Los contrastes y la comparación petróleo/azul deben revisarse en el teléfono real antes de fijar la paleta.
+
+## Implementación en la app (E2, 24/10/2026)
+
+- **Tokens:** `apps/mobile/src/ui/paletas.ts` (valores puros) y `tema.ts` (elige claro u oscuro según el teléfono). Los contrastes se comprueban con `ui/__tests__/contraste.test.ts` en ambos temas (texto ≥ 4.5:1, interfaz ≥ 3:1). Esa prueba detectó dos usos que no llegaban y se corrigieron en el diseño: el texto de los avisos «correcto» pasa a tinta (el verde queda como indicador) y las medidas se rotulan en tinta con la terracota como marca (no como texto).
+- **Fuentes:** Bricolage Grotesque (600/700/800) e Inter (400/500/600), TTF estáticos de `@expo-google-fonts` incluidos en la app mediante el plugin `expo-font`, con sus textos OFL y su procedencia en `assets/fonts/`. No se añadió `@expo-google-fonts` como dependencia ni se descarga nada en tiempo de ejecución.
+- **Iconos e ilustraciones:** propios, en `react-native-svg` (`ui/iconos.tsx`, `ui/ilustraciones.tsx`); la geometría isométrica es una función pura probada (`croquis/geometria.ts`). Sin `@expo/vector-icons`, sin reanimated y sin 3D.
+- **Movimiento:** `Animated` con controlador nativo (botón y tarjetas hunden una cara sobre un borde sólido, progreso, hoja inferior, palomita); con «Quitar animaciones» del sistema (`AccessibilityInfo`) todo cambia de estado sin animar.
+- **Croquis y rendimiento:** el número de caras, líneas de detalle y cotas **no depende de las medidas** (prueba con valores de 0.01 a 500). En el prototipo, las líneas de detalle crecían con la medida (519 nodos con largo 500 en la cubierta y 1018 con alto 500 en el muro, medido el 24/10/2026). Medición en Edge de escritorio con Playwright, también con la CPU ralentizada 6 veces: el peor marco fue de unos 67 ms al escribir 500, y la mayor demora fue de 100–230 ms en la **primera** escritura tras abrir las medidas, no por la cantidad de elementos. **No se reprodujo el congelamiento de varios segundos** observado en el teléfono; su causa sigue sin determinar (no se atribuye a ningún elemento sin evidencia) y las mediciones de escritorio no sustituyen a las del dispositivo (guía §10, C7).
+- **Fuera de lo prototipado:** la barra inferior no lleva la muesca superior; el croquis se redibuja al asentarse lo escrito (~120 ms) en vez de interpolar; las cotas son botones nativos accesibles.

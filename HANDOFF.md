@@ -2,7 +2,7 @@
 
 > Léelo al empezar. Actualízalo al terminar cada tarea (sección por sección, sin borrar el historial de la tabla 4). Reglas de trabajo: [`AGENTS.md`](AGENTS.md).
 
-**Última actualización:** 24/10/2026 · Claude Code · **módulo 16, app móvil Android (etapa 1: acceso y consulta)** (§26), sobre `f1367de` (traslado a la laptop, §25) y `31cf626` (módulo 15, §24). Sin cambios de reglas de negocio ni del motor.
+**Última actualización:** 24/10/2026 · Claude Code · **E2, app del cliente** (§29), sobre E1 (§28, `b8b9b83`) y el replanteamiento del producto (§27). Sin cambios de reglas de negocio ni del motor; migraciones: ninguna en E2.
 
 ## 1. Estado actual
 
@@ -10,7 +10,8 @@
   - **API:** sesión de tipo `MOVIL` por `Authorization: Bearer` (migración aditiva `20261024120000_sesion_movil`), con lista blanca de rutas; la web (cookie, CSRF, `Origin`, CORS) no cambió.
   - **Conexión:** la API sigue en `127.0.0.1`; el teléfono llega por USB (`adb reverse`).
   - **Teléfono:** la instalación y el recorrido se registran en `docs/movil/guia-instalacion-y-pruebas.md` §10 solo cuando se ejecutan en el dispositivo (ver §26).
-- **E1, servidor del cliente (24/10/2026, §28): implementada y verificada** (migración aplicada a `softarq_dev` con respaldo previo). La app del cliente (E2) y el panel por tareas (E3) siguen sin implementar; la app de la etapa 1 ya no funciona contra la API.
+- **E2, app del cliente (24/10/2026, §29): implementada y verificada con pruebas automatizadas; NO compilada ni probada en el teléfono.** Recorrido completo (acceso → proyecto → trabajo → medidas → resumen → estimación → envío → seguimiento → cotización formal y PDF) con el tema «Obra cálida», contratos del cliente separados de los del equipo y una prueba de integración que ejecuta el código de la app contra la API real. Falta lanzar **una** compilación `development` (la lanza el propietario) y recorrer la lista C1–C20 de la guía del teléfono; todas siguen «Pendiente». Integración completa final: 424/424.
+- **E1, servidor del cliente (24/10/2026, §28): implementada y verificada** (migración aplicada a `softarq_dev` con respaldo previo). El panel por tareas (E3) sigue sin implementar; la app de la etapa 1 ya no funciona contra la API y fue reemplazada en E2.
 - **Replanteamiento del producto (24/10/2026, §27):** la app móvil pasa a ser **del cliente** (solicitud, estimación preliminar y seguimiento) y el panel web es **del equipo**. Plan aprobado por etapas E0–E4; **solo E0 hecha** (decisiones, Metro IPv4 y muestra visual); nada del servidor, la app ni el panel está implementado todavía. ADR-0021 y ADR-0022.
 - **App móvil, estado de EAS (24/10/2026):** proyecto `@raulherrera09/softarq-demo` (ID `69326c6d-44f9-4e72-83aa-53dbe4b70905`) vinculado en `app.config.ts` (commit «Módulo 16: vincular la app móvil con el proyecto EAS softarq-demo», `419d953` tras la reescritura de mensajes; antes `7a7b9b3`). **La compilación `development` sigue PENDIENTE** (la primera genera la keystore y es interactiva); las pruebas T1–T10 del teléfono siguen en «Pendiente». Detalle en §26.
 - **Entorno actual (24/10/2026):** el proyecto se trasladó a `C:\Proyecto_SoftArq\Proyecto_SoftArq` (repositorio en `...\softarq-platform`; la doble carpeta es intencionada). `softarq_dev` se inicializó desde el respaldo `softarq_dev-20261023T224027Z-22f32d` y las validaciones se repitieron en esta máquina. Las rutas `D:` del resto de este documento describen el equipo original. Detalle y resultados en §25.
@@ -604,7 +605,7 @@ En los cuatro, el resultado completo es idéntico al calculado con los fixtures 
 
 ## 7. Siguiente tarea
 
-0. **Rediseño centrado en el cliente (§27):** revisar con el propietario la muestra visual (E0) y seguir con E1 (servidor del cliente). Lo siguiente de esta línea sustituye a la lista de etapas móviles de abajo, que queda como referencia histórica: siguiente etapa a acordar con el propietario: captura y cálculo; revisión y decisión; emisión y documentos; salidas internas; operación sin conexión; y TLS antes de exponer la API en red. Antes: completar el registro de la guía del teléfono (`docs/movil/guia-instalacion-y-pruebas.md` §10).
+0. **Rediseño centrado en el cliente (§27–§29):** (a) el propietario reinicia la API con el código actual y lanza **una** compilación `development` (`pnpm --filter @softarq/mobile eas build --platform android --profile development`, en su ventana); (b) recorre la lista C1–C20 de la guía del teléfono y se anota el resultado **real** (en especial C7, el posible congelamiento al abrir las medidas, y C15, el PDF); (c) con eso, E3 (panel por tareas con la bandeja «Solicitudes», accesos de clientes en pantalla, referencias y trabajos) y E4 (carga de presentación, separación de datos de humo). Antes del 27/10/2026 22:29 hay que probar con las contraseñas temporales de los accesos demo o restablecerlas por la API (§29). Lo que sigue de este punto en versiones anteriores es histórico.
 1. **Recompilar y reiniciar** la API y la web del propietario si están en marcha con código anterior: `softarq_dev` ya tiene la migración del módulo 15 (§24).
 2. **Regularizar los conceptos heredados** de `softarq_dev` cuando el propietario lo decida, con el mapeo documentado (ADR-0016 §2.3): completar tipo y regla vuelve el concepto a Borrador y exige una nueva aprobación. No se ejecuta automáticamente.
 3. **Siguiente módulo:** fijar con el propietario el alcance de la app Expo (bloque 6 de `docs/cobertura-demo.md`: consulta, revisión y decisión, o también captura) antes de instalar nada; si se pospone, el cierre integral (bloque 7). Pendientes aparte:
@@ -660,6 +661,8 @@ Alternativas más cortas:
 
 - `f1367de`: traslado a la laptop (§25), sobre `31cf626`.
 - Módulo 16: commit local «Módulo 16: app móvil Android, etapa 1 (acceso y consulta)» (§26); consultar `git log -1 --oneline` para su hash. Sobre `f1367de`.
+
+- Rediseño del cliente: E0 `9356b24`/`b81d95f` (ADR-0021/0022, muestra visual, Metro IPv4), E1 `b8b9b83` (servidor del cliente). **E2:** `5616722` (contratos del equipo separados), `cb8e073` (dependencias nativas y fuentes), `c7bd759` (app del cliente), `c3ee3f1` (prueba de integración de la app) y el commit de documentación de E2 (`git log -1 --oneline`).
 
 Rama `main`. Sin remoto ni push. Último commit de código: `419d953` (vinculación EAS), sobre `4d37676` (etapa 1 del módulo 16, antes `953ebbe`); el HEAD vigente es `git log -1 --oneline`.
 
@@ -1624,3 +1627,39 @@ Decisiones: [ADR-0021](docs/adr/0021-cliente-externo-solicitud-y-estimacion-prel
 - **Registrado para E2:** el prototipo se congeló brevemente (unos segundos) al abrir por primera vez la pantalla de medidas; hay que investigar la causa y medir el comportamiento en Android antes de darlo por resuelto. También quedan abiertos: tema claro, texto ampliado, movimiento reducido, teclado, botón Atrás y contraste en el teléfono real.
 - Panel por tareas (E3), carga de presentación en `softarq_dev` (E4) y separación de datos de presentación frente a los de humo (`registro_de_pruebas`). Aceptar o rechazar desde la app (etapa posterior).
 - Requisitos para publicar en Railway: ADR-0021, «Consecuencias». No se desplegó nada.
+
+
+## 29. Rediseño centrado en el cliente, etapa E2: app del cliente (24/10/2026)
+
+Decisiones y notas de implementación: [ADR-0021](docs/adr/0021-cliente-externo-solicitud-y-estimacion-preliminar.md) (recorrido y reglas del controlador), [ADR-0022](docs/adr/0022-identidad-visual-obra-calida-y-paquete-de-presentacion.md) (identidad visual y rendimiento) y [ADR-0020](docs/adr/0020-app-movil-expo-conexion-y-sesion-movil.md) (contratos, cliente HTTP, PDF). Guía del teléfono con la **nueva lista C1–C20**: [`docs/movil/guia-instalacion-y-pruebas.md`](docs/movil/guia-instalacion-y-pruebas.md). Reglas: AGENTS §13.
+
+**Qué se implementó (`apps/mobile`, contratos y una prueba de integración nueva; el servidor de E1 no cambió):**
+- **Recorrido del cliente:** acceso, cambio de contraseña temporal y voluntario, inicio (encabezado petróleo, «Nueva cotización», borrador por retomar, cotización lista, solicitudes recientes), mis cotizaciones, perfil; nueva cotización → proyecto (propio o obra nueva, con descripción) → trabajo (tarjetas ilustradas) → medidas (croquis acotado, secciones, huecos solo donde se admiten, opciones) → resumen editable → estimación → envío → seguimiento → cotización formal y PDF. Las cuentas del equipo ven «Esta cuenta es del equipo…» con la dirección del panel; una sesión interna que dejó la etapa 1 en el teléfono se revoca y se borra.
+- **Núcleo probado en Node:** modelo de captura (medidas con coma o punto, conversión al contrato, validación de apoyo), controlador de la solicitud (autoguardado de un solo vuelo, conflicto sin sobrescribir en silencio, estimación válida solo para su captura, descarte de respuestas tardías, envío con una sola acción y recuperación si se pierde la respuesta), resúmenes, geometría del croquis con tope fijo de elementos, cliente HTTP con `PUT` y descarga binaria, gestor de sesión para cuentas de cliente.
+- **Contratos:** los esquemas del equipo y la administración pasaron a `api/cliente-equipo.ts` (fuera de `@softarq/contracts/cliente`); frontera fijada por prueba y por el detector del bundle.
+- **Nativo (una sola compilación `development` nueva):** `react-native-svg` 15.16.0, `expo-font` 58.0.9 con seis fuentes OFL incluidas, `expo-file-system` 58.0.10 y `expo-sharing` 58.0.20; sin excepciones de pnpm.
+- **Retirado:** las pantallas y consultas internas de la etapa 1, `etiquetas` internas y `capacidades` del equipo.
+
+**Pruebas realmente ejecutadas en esta laptop (24/10/2026):**
+- **Punto de partida (antes de E2):** integración completa, 24 archivos, **411/411** (un worker, `softarq_test`, ~9.6 min). Cierra el pendiente de E1 («falta una corrida completa correcta»).
+- **`pnpm verificar:secuencial`** (build, tipos y unitarias, un paquete a la vez): API **543/543**, app **258/258**, sin errores de tipos; web **280/281**: falló por tiempo `sesion.test.tsx` «cambio propio» (5027 ms frente a su límite de 5 s, en una ejecución cargada; sola tarda 3.5–3.9 s en tres corridas y pasa). No se tocó la web ni el límite; la suite web repetida en reposo dio **281/281**. Es una prueba que ya consumía ~75 % de su límite en esta laptop de 2 núcleos.
+- **Integración nueva `app-cliente.integracion` (13/13)** con el código de la app (gestor de sesión, cliente HTTP, servicios y controlador) contra la API Nest y PostgreSQL real: acceso con temporal y cambio obligatorio, cuenta interna con `panelUrl`, restauración, catálogo y proyectos, autoguardado, estimación igual a la calculadora del Preparador (mismas referencias), recálculo al cambiar una medida, conflicto con las dos salidas, envío por doble pulsación y reintento (un solo evento de bitácora), solicitud enviada de solo lectura, «sin referencia = sin importe» y envío igual, emisión por el equipo, solicitud cotizada, cotización con la misma proyección comercial, **PDF con los mismos bytes (huella SHA-256 que publica la API)**, aislamiento entre clientes y pérdida de acceso con la app abierta.
+- **Integración completa final:** **25 archivos, 424/424** (un worker, `softarq_test`, ~11.6 min): los 411 anteriores más los 13 de la app. Sin cambios de expectativas.
+- **`comprobar:bundle`:** paquete de 2.33 MB, limpio. **Tipos:** contratos, API (`tsconfig.json` y `tsconfig.app-cliente.json`), web y app sin errores.
+- **Mutación comprobada:** al quitar el descarte de respuestas tardías del controlador, su prueba falla; con el código original pasa.
+- **Archivo de subida de EAS (`eas build:inspect --stage archive`):** 100 archivos, ~2 MB; incluye las seis fuentes con sus licencias; sin secretos, datos, respaldos, documentos, API, web, pruebas ni scripts de la app. `expo install --check` solo señala parches más nuevos (58.0.11, etc.) publicados hace menos de la antigüedad mínima de pnpm; se dejan fijados.
+- **Medición del prototipo (Edge de escritorio con Playwright, también con CPU ralentizada 6×):** el número de nodos del dibujo del prototipo crecía con la medida (519 en la cubierta con largo 500; 1018 en el muro con alto 500); aun así el peor marco fue de ~67 ms al escribir 500 y la mayor demora, de 100–230 ms, ocurrió en la **primera** escritura. **No se reprodujo el congelamiento de segundos del teléfono; su causa sigue sin determinar.** Las mediciones web no sustituyen las nativas.
+- **No se ejecutó:** ninguna prueba en el teléfono (C1–C20 siguen «Pendiente»); la compilación EAS (no se lanzó); E2E del navegador (la web no cambió); `expo-doctor` completo.
+
+**Cambios respecto del prototipo aprobado:** el croquis se redibuja al asentarse lo escrito (~120 ms) en vez de interpolar; sus cotas son botones nativos; el detalle gráfico tiene un tope fijo; la barra inferior no lleva la muesca superior; el registro de una obra nueva exige descripción (la emisión del equipo la pide, BL-02); las ilustraciones no llevan la sombra proyectada del CSS.
+
+**Limitaciones y riesgos (abiertos):**
+- **`fetch` de React Native y bytes del PDF:** la descarga usa `Response.arrayBuffer()` (`whatwg-fetch` de RN lo soporta, no se probó en el dispositivo). Si en el teléfono el PDF llega dañado, la alternativa prevista es `File.downloadFileAsync` con la cabecera `Authorization`, nunca el token en la URL.
+- **Selector del sistema:** el PDF se abre con el selector de Android (`expo-sharing`); si ninguna aplicación lo muestra como «ver», habrá que añadir un visor. Sin probar (C15).
+- **Contraseñas temporales de los 3 accesos demo caducan el 27/10/2026 22:29 (hora local)** y, hasta E3, solo se restablecen por la API (`POST /api/v1/admin/accesos-cliente/{usuarioId}/contrasena`). Si hace falta antes, se puede añadir un script de restablecimiento.
+- **Los clientes demo no tienen cotizaciones emitidas** en `softarq_dev`: para ver la cotización formal y el PDF en la app hay que emitir una desde el panel actual (guía §9). El panel todavía no tiene la bandeja «Solicitudes» (E3); la API ya la ofrece.
+- **`@softarq/contracts/cliente` sigue reexportando `api/esquemas.ts`**, que contiene esquemas generales de cálculo y catálogo (ya viajaban en `/movil`); el detector del bundle no puede vigilar `proveedor` o `insumoCodigo` por eso (ver ADR-0020, notas E2).
+- La API del propietario debe **reiniciarse** con el código actual (sigue con el anterior a E1): `pnpm --filter @softarq/api build` y `start`.
+- Fuera de lo hecho: panel por tareas (E3), carga de presentación y separación de datos de humo (E4), aceptar o rechazar desde la app, operación sin conexión, TLS y requisitos de publicación (ADR-0021, «Consecuencias»).
+
+**Qué debe hacer el propietario para probar:** (1) reiniciar la API; (2) lanzar **una** compilación `development` en su ventana: `pnpm --filter @softarq/mobile eas build --platform android --profile development`; (3) instalarla; (4) `adb reverse tcp:3000` y `tcp:8081`, `pnpm --filter @softarq/mobile start`; (5) recorrer la lista C1–C20 de la guía y anotar el resultado real.

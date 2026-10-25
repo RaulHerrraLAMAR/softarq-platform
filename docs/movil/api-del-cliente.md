@@ -1,6 +1,6 @@
 # API del cliente (módulo 17, etapa E1)
 
-Referencia para quien construya la app del cliente (E2) y el panel (E3). Decisiones y motivos: [ADR-0021](../adr/0021-cliente-externo-solicitud-y-estimacion-preliminar.md). Contratos: `@softarq/contracts/cliente`. Especificación completa: `docs/api/openapi.json`.
+Referencia de la app del cliente (implementada en E2: `apps/mobile`, ver [guía del teléfono](guia-instalacion-y-pruebas.md)) y para el panel (E3). Decisiones y motivos: [ADR-0021](../adr/0021-cliente-externo-solicitud-y-estimacion-preliminar.md). Contratos: `@softarq/contracts/cliente` (solo lo del cliente; los de accesos, referencias, definición de trabajos y bandeja del equipo están en `api/cliente-equipo.ts`, solo en el índice completo). Especificación completa: `docs/api/openapi.json`.
 
 ## Reglas que no cambian
 

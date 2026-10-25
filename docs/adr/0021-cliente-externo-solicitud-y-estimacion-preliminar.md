@@ -1,7 +1,7 @@
 # ADR-0021 — Cliente externo en la app móvil: solicitud, estimación preliminar y cotización formal
 
 - **Fecha:** 24/10/2026
-- **Estado:** aceptada. **E1 (servidor) implementada** el 24/10/2026: migración `20261024200000_cliente_solicitudes`, API, contratos y pruebas. La app del cliente (E2) y las pantallas del panel (E3) **no** están implementadas: lo que sigue de este ADR sobre ellas es el diseño aprobado, no código existente.
+- **Estado:** aceptada. **E1 (servidor) y E2 (app del cliente) implementadas** el 24/10/2026: migración `20261024200000_cliente_solicitudes`, API, contratos, pruebas y la app (sin verificar aún en el teléfono). Las pantallas del panel (E3) **no** están implementadas: lo que sigue de este ADR sobre ellas es el diseño aprobado, no código existente.
 - **Ámbito:** `apps/api` (módulo `cliente`: identidad, solicitudes, estimación, atención, referencias y trabajos), `packages/contracts` (`@softarq/contracts/cliente`), y más adelante `apps/mobile` y `apps/web`.
 - **Sustituye en parte a:** ADR-0020 §3 (la app deja de ser una consulta interna de solo lectura), `docs/modelo-conceptual.md` («el cliente no tiene cuenta») y la fila «Portal del cliente» de `docs/cobertura-demo.md` (solo la app del cliente entra en el alcance; sin correo, firma ni portal web).
 - **Conserva:** ADR-0013 (el Preparador sigue registrando la respuesta del cliente a una cotización emitida), ADR-0008 a ADR-0010 (versiones, revisión, emisión) y el motor de cálculo (ADR-0003), que no cambió.
@@ -53,3 +53,19 @@ Cada trabajo (Cubierta, Losa, Muro) y opción apunta a **un** concepto aprobado 
 - La app de la etapa 1 (consulta interna) **ya no funciona** contra esta API (sus cuentas internas reciben 403); se reemplaza en E2.
 - **Pendiente para publicar en Railway (no incluido):** TLS, cookie `Secure`/`__Host-`, `EXPO_PUBLIC_API_URL` https y APK `preview` nueva, límites contra abuso (el alta de proyectos y solicitudes de un cliente no tiene tope por cuenta), restablecimiento de contraseña por el propio cliente (hoy solo por el Administrador), identidad de las funciones SQL (ADR-0017 §4: las funciones de cliente reciben el usuario desde la API; la base lo recomprueba pero no autentica por sí misma), respaldos y CORS. El acceso local no resuelve nada de esto.
 - Abierto: respuesta del cliente (aceptar o rechazar) desde la app, etapa posterior; separación de datos de presentación frente a los de humo (propuesta: `registro_de_pruebas` aditivo, E4); edición de un proyecto propio desde la app.
+
+## Implementación de la app del cliente (E2, 24/10/2026)
+
+**Recorrido:** acceso → inicio → nueva cotización (proyecto) → trabajo → medidas → resumen editable → estimación → envío → seguimiento → cotización formal y PDF. Cada solicitud es de **un proyecto** (se elige uno propio o se registra una obra nueva con su descripción) y de **varios trabajos** (Cubierta, Losa, Muro, tal como los ofrece el servidor); los huecos existen solo donde la opción los admite. El borrador se crea en el servidor al continuar del primer paso y se guarda solo.
+
+**Reglas que el controlador de la solicitud (`apps/mobile/src/captura/controlador.ts`) hace cumplir:**
+
+- **Autoguardado de un solo vuelo**, con pausa de ~800 ms y siempre con la revisión vigente; nunca hay dos guardados a la vez. Una medida mal escrita no se rechaza: viaja como «sin capturar» (el servidor la cuenta pendiente) y el campo conserva lo escrito.
+- **Conflicto (409 `CONFLICTO_EDICION`):** no se sobrescribe en silencio. La app detiene el guardado, trae la versión del servidor y la persona elige «usar la guardada» o «conservar mis cambios» (que se guardan sobre la versión más reciente). Si la versión del servidor ya es idéntica a la que se iba a guardar (respuesta perdida), se adopta sin preguntar.
+- **Estimación vigente solo para la captura que la produjo.** El importe lo calcula la API; la app no calcula nada. Si cambia algo que afecta al cálculo (o ya se guardó otra revisión), la estimación pasa a «hace falta recalcular» y **no se muestra el importe anterior**; una respuesta que llega tarde de otra captura se descarta. Sin referencia de precio no hay importe (`SIN_ESTIMACION`, nunca un cero) y la solicitud se puede enviar igual.
+- **Envío:** calcular y enviar son acciones separadas; una sola acción de envío en curso (doble toque); la hoja de confirmación explica que después ya no se edita. Si se pierde la respuesta, la app consulta la solicitud y, si ya está enviada, lo da por hecho; el reintento es idempotente en el servidor (`repetida`).
+- **Descripción de la obra obligatoria** al registrar un proyecto desde la app: la emisión del equipo la exige (BL-02) y el cliente no podría saberlo.
+
+**Diferencias con el prototipo aprobado (por rendimiento y accesibilidad):** el croquis ya no interpola las medidas cuadro a cuadro (se redibuja al asentarse lo escrito); las cotas son botones nativos encima del dibujo; el número de líneas de detalle tiene un tope fijo que no depende de la medida; la barra inferior no lleva la muesca superior. Detalle en [ADR-0022](0022-identidad-visual-obra-calida-y-paquete-de-presentacion.md).
+
+**Pendiente o abierto tras E2:** panel del equipo por tareas (E3), con la bandeja de solicitudes y el restablecimiento de contraseñas de cliente en pantalla; las contraseñas temporales de los tres accesos demo caducan el 27/10/2026 y hoy solo se restablecen por la API; verificación en el teléfono (guía §10); aceptar o rechazar la cotización desde la app (etapa posterior).
