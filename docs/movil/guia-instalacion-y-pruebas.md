@@ -2,7 +2,7 @@
 
 Guía práctica de la app móvil **del cliente** (módulo 16, conexión y sesión; módulo 17, cotización, estimación y seguimiento). Decisiones y motivos: [ADR-0020](../adr/0020-app-movil-expo-conexion-y-sesion-movil.md), [ADR-0021](../adr/0021-cliente-externo-solicitud-y-estimacion-preliminar.md) e [ADR-0022](../adr/0022-identidad-visual-obra-calida-y-paquete-de-presentacion.md). API que usa la app: [`api-del-cliente.md`](api-del-cliente.md). Trabajo en la laptop: `C:\Proyecto_SoftArq\Proyecto_SoftArq` (en PowerShell, desde `softarq-platform`).
 
-> **Estado de las pruebas en el teléfono:** consulte el registro de la §10. Una prueba en el teléfono se anota como realizada **solo** cuando se ejecutó en el dispositivo; las pruebas automatizadas no la sustituyen. Hoy **ninguna** está realizada.
+> **Estado de las pruebas en el teléfono:** consulte el registro de la §10. Una prueba en el teléfono se anota como realizada **solo** cuando se ejecutó en el dispositivo; las pruebas automatizadas no la sustituyen. Al 24/10/2026 hay **7 casos con resultado parcial o confirmado, declarados por el propietario** (Claude no observó el teléfono ni tiene evidencia visual); **ninguno está dado por aprobado en su totalidad** salvo lo que dice cada fila, y los demás siguen «Pendiente».
 
 > **La app de la etapa 1 (consulta interna) ya no funciona** contra esta API: las cuentas del equipo reciben 403 `CUENTA_INTERNA_USE_PANEL` y las rutas internas no están disponibles por Bearer. La app del cliente la reemplaza y **necesita una compilación `development` nueva** (§7 y §8): trae módulos nativos y fuentes que la anterior no tiene.
 
@@ -111,7 +111,7 @@ pnpm --filter @softarq/mobile eas build --platform android --profile development
 
 ## 9. Cuentas de cliente y datos de prueba
 
-- **Cuentas:** `_work\secrets\accesos-clientes-demo-softarq_dev.json` (tres clientes ficticios; correos `…@clientes.softarq.test`). Las contraseñas **temporales caducan el 27/10/2026 a las 22:29 (hora local)**. En el primer ingreso la app pide elegir una contraseña nueva (y vuelve al acceso); cada cuenta tiene una sola oportunidad de ver ese paso. Si la temporal caduca antes de probar, el Administrador del sistema debe restablecerla (`POST /api/v1/admin/accesos-cliente/{usuarioId}/contrasena`, sin pantalla en el panel todavía: llega en la etapa E3).
+- **Cuentas:** `_work\secrets\accesos-clientes-demo-softarq_dev.json` (tres clientes ficticios; correos `…@clientes.softarq.test`). **Laura Méndez ya cambió su contraseña temporal (24/10/2026): la que figura en el archivo para su cuenta ya NO sirve** y la nueva no se guarda en ningún archivo ni en Git (la conoce solo el propietario; si se pierde, el Administrador del sistema debe restablecerla). Las de Héctor Ríos y Silvia Aranda siguen siendo temporales y **caducan el 27/10/2026 a las 22:29 (hora local)**. En el primer ingreso la app pide elegir una contraseña nueva (y vuelve al acceso); cada cuenta tiene una sola oportunidad de ver ese paso. Si una temporal caduca antes de probar, el Administrador del sistema debe restablecerla (`POST /api/v1/admin/accesos-cliente/{usuarioId}/contrasena`, sin pantalla en el panel todavía: llega en la etapa E3).
 - **Solicitudes:** crear una desde la app es una **escritura en `softarq_dev`** (folio `SOL-2026-…`). Es el uso normal de la demostración y no toca cotizaciones, versiones, emisiones ni documentos existentes. Para probar sin tocar `softarq_dev`, las pruebas de integración (`app-cliente.integracion`) ya recorren el mismo flujo con el código de la app en `softarq_test`.
 - **Cotización formal y PDF:** Laura Méndez ya tiene una cotización emitida para probar el PDF: **COT-2026-00055** (ver el caso de presentación en la §10). Los otros dos clientes demo no tienen ninguna. Para crear otra: en el panel web, con el Preparador y el Revisor de `accesos-demo-softarq_dev.json`, prepare, revise, apruebe y emita una cotización para el cliente de esa cuenta; el cliente ve sus cotizaciones **emitidas** aunque se hayan preparado desde el panel. La bandeja «Solicitudes» del panel (para atender lo que el cliente envía desde la app) llega en la etapa E3; mientras tanto la API ya la ofrece (`api-del-cliente.md`).
 
@@ -123,19 +123,19 @@ Registre cada caso **solo** cuando lo ejecute en el teléfono (fecha, versión d
 |---|---|---|
 | C1 | Instalar la APK por enlace/QR y abrir **SoftArq DEMO** (icono, nombre, fuentes Bricolage Grotesque e Inter visibles en títulos y texto) | Pendiente |
 | C2 | Sin API: aparece «Sin conexión» con *Reintentar*; con la API, llega al acceso | Pendiente |
-| C3 | Acceso de cliente con contraseña temporal → elegir contraseña nueva → vuelve al acceso → entra con la nueva | Pendiente |
+| C3 | Acceso de cliente con contraseña temporal → elegir contraseña nueva → vuelve al acceso → entra con la nueva | **Parcial** · el propietario confirmó (24/10/2026) que cambió la contraseña temporal de Laura. No declaró la entrada posterior como caso aparte. Técnica (Claude, base): Laura ya no tiene contraseña temporal |
 | C4 | Una cuenta del equipo (Preparador) en la app: mensaje «Esta cuenta es del equipo…» con la dirección del panel; no queda sesión | Pendiente |
 | C5 | Inicio: encabezado petróleo con la escena animada, «Nueva cotización» flotando, marca DEMO; lista de solicitudes vacía o con las propias | Pendiente |
-| C6 | Nueva cotización: registrar una obra nueva (con descripción) o elegir un proyecto propio → elegir trabajo (tarjetas ilustradas Cubierta, Losa, Muro; respuesta al toque y marca de elección) | Pendiente |
-| C7 | **Medidas — apertura y escritura:** abrir la pantalla de medidas por primera vez sin congelamientos; escribir valores (incluidos 500 y valores inválidos) sin tirones; las cotas del croquis resaltan la medida activa, tocar una cota lleva a su campo, los datos pendientes y los inválidos se marcan; rótulo «orientativo, fuera de escala y sin validación estructural» | Pendiente |
+| C6 | Nueva cotización: registrar una obra nueva (con descripción) o elegir un proyecto propio → elegir trabajo (tarjetas ilustradas Cubierta, Losa, Muro; respuesta al toque y marca de elección) | **Parcial** · el propietario confirmó que eligió proyecto y trabajo. No declaró el registro de una obra nueva |
+| C7 | **Medidas — apertura y escritura:** abrir la pantalla de medidas por primera vez sin congelamientos; escribir valores (incluidos 500 y valores inválidos) sin tirones; las cotas del croquis resaltan la medida activa, tocar una cota lleva a su campo, los datos pendientes y los inválidos se marcan; rótulo «orientativo, fuera de escala y sin validación estructural» | **Parcial** · el propietario confirmó que capturó medidas. **Sin resultado** sobre la apertura sin congelamientos, los valores 500 y «abc», las cotas y los tirones: el punto del congelamiento sigue abierto |
 | C8 | Medidas: el teclado decimal no tapa los campos, el scroll funciona, el croquis se achica con el teclado y los botones «Atrás» y «Continuar al resumen» siguen visibles | Pendiente |
 | C9 | Secciones (agregar y quitar), huecos solo en Muro, opción en trabajos con varias; agregar un segundo trabajo sin perder el primero | Pendiente |
-| C10 | Resumen editable: corregir, quitar trabajo, notas; «Por completar» con acceso al campo; el indicador «Guardado» cambia solo | Pendiente |
-| C11 | Calcular estimación: importe real de la API (por ejemplo losa 6 × 5 × 0.12 coincide con la calculadora del equipo), rótulo «Estimación preliminar», desglose plegable; cambiar una medida marca «Hace falta recalcular» y oculta el importe anterior | Pendiente |
-| C12 | Enviar: confirmación que explica que ya no se edita; doble toque rápido no envía dos veces; confirmación con folio; seguimiento en solo lectura; retirar una solicitud enviada | Pendiente |
+| C10 | Resumen editable: corregir, quitar trabajo, notas; «Por completar» con acceso al campo; el indicador «Guardado» cambia solo | **Parcial** · el propietario confirmó que revisó el resumen. No declaró editar, quitar ni notas |
+| C11 | Calcular estimación: importe real de la API (por ejemplo losa 6 × 5 × 0.12 coincide con la calculadora del equipo), rótulo «Estimación preliminar», desglose plegable; cambiar una medida marca «Hace falta recalcular» y oculta el importe anterior | **Parcial** · el propietario confirmó que calculó una estimación de $82,142.94 (SOL-2026-00002, Losa 5 × 10 × 0.16). No declaró recalcular tras un cambio. Técnica (Claude, base): esa estimación existe para la revisión enviada; **falta compararla con la calculadora** |
+| C12 | Enviar: confirmación que explica que ya no se edita; doble toque rápido no envía dos veces; confirmación con folio; seguimiento en solo lectura; retirar una solicitud enviada | **Parcial** · el propietario confirmó que envió la solicitud y vio «Enviada». No declaró el doble toque ni el retiro. Técnica (Claude, base): un solo evento de envío por solicitud |
 | C13 | Modo avión durante el autoguardado y el envío: aviso «No se pudo guardar», datos conservados, reintentar; al volver la red, el envío no se duplica | Pendiente |
 | C14 | Conflicto: editar la misma solicitud desde dos teléfonos (o desde un teléfono y una reinstalación) y comprobar la hoja «Esta solicitud cambió en otro lugar» | Pendiente |
-| C15 | **PDF:** con una cotización emitida (§9), «Ver o descargar el PDF» abre el selector del sistema y el PDF se ve completo (esto comprueba que `fetch` de React Native entrega los bytes binarios sin alterarlos) | Pendiente |
+| C15 | **PDF:** con una cotización emitida (§9), «Ver o descargar el PDF» abre el selector del sistema y el PDF se ve completo (esto comprueba que `fetch` de React Native entrega los bytes binarios sin alterarlos) | **Confirmado por el propietario** (24/10/2026): consultó COT-2026-00055 y pudo compartir y abrir su PDF. Técnica (Claude, `adb`): el archivo de la caché de la app coincide byte a byte (SHA-256) con el registrado |
 | C16 | Cerrar la app sin cerrar sesión y reabrirla: restaura la sesión (SecureStore); cerrar sesión: pide acceso y no queda nada de la cuenta anterior | Pendiente |
 | C17 | Acceso desactivado por el Administrador del sistema con la app abierta: la siguiente acción vuelve al acceso con un aviso | Pendiente |
 | C18 | Botón Atrás de Android en cada paso; texto grande (Ajustes → Pantalla → Tamaño de fuente) sin cortes ni acciones ocultas | Pendiente |
@@ -144,7 +144,7 @@ Registre cada caso **solo** cuando lo ejecute en el teléfono (fecha, versión d
 
 ### Caso de presentación preparado (24/10/2026)
 
-Para comprobar el PDF (C15) hay una cotización **emitida** para el cliente DEMO **Laura Méndez** (proyecto «Casa Tlalpan»): folio **COT-2026-00055**, total **$54,190.68** MXN, duplicada de la versión 1 de COT-2026-00004 con las rutas normales de la API (duplicar → confirmar precios → calcular → enviar a revisión → aprobar el Revisor → emitir el Preparador). Huella SHA-256 del PDF registrado: `6348de579dce7626012feb14a75e86a5b8ddf321d383f1b371bb36b06d25c2e`. Aparece en «Mis cotizaciones» de Laura. No está vinculada a ninguna solicitud (se preparó desde el panel), así que no sustituye al seguimiento de **su propia** solicitud (C12), que se verá como «Enviada» hasta que el equipo la atienda (la bandeja del panel llega en E3; la API ya permite atenderla).
+Para comprobar el PDF (C15) hay una cotización **emitida** para el cliente DEMO **Laura Méndez** (proyecto «Casa Tlalpan»): folio **COT-2026-00055**, total **$54,190.68** MXN, duplicada de la versión 1 de COT-2026-00004 con las rutas normales de la API (duplicar → confirmar precios → calcular → enviar a revisión → aprobar el Revisor → emitir el Preparador). Huella SHA-256 del PDF registrado: `36348de579dce7626012feb14a75e86a5b8ddf321d383f1b371bb36b06d25c2e`. Aparece en «Mis cotizaciones» de Laura. No está vinculada a ninguna solicitud (se preparó desde el panel), así que no sustituye al seguimiento de **su propia** solicitud (C12), que se verá como «Enviada» hasta que el equipo la atienda (la bandeja del panel llega en E3; la API ya permite atenderla).
 
 ### Reparto: qué ejecuta cada quien, en orden de prioridad
 
@@ -166,13 +166,30 @@ Marcas: **T** = lo hace usted en el teléfono; **Y** = comprobación técnica qu
 | 2 | C14 | Solo si dispone de un segundo dispositivo con la misma cuenta | Está cubierto por `app-cliente.integracion`; sin segundo dispositivo queda «No ejecutable», no «Aprobado» |
 | 3 | C1, C18, C19, C20 | Fuentes visibles, Atrás en cada paso, texto grande, tema oscuro, sin animaciones | Cambio los ajustes por `adb` (`font_scale`, `cmd uimode night`, `animator_duration_scale`), los restauro después y capturo |
 
+### Resultados de la sesión del 24/10/2026
+
+**Confirmado por el propietario** (lo declaró en la conversación; Claude no observó el teléfono ni tiene vídeo ni capturas): cambió la contraseña temporal de Laura; seleccionó proyecto y trabajo, capturó medidas y revisó el resumen; calculó una estimación de $82,142.94 y envió la solicitud; consultó su estado «Enviada»; consultó COT-2026-00055 y pudo compartir y abrir su PDF.
+
+**Comprobaciones técnicas que ejecutó Claude** (lectura de la base y de `adb`; no sustituyen al teléfono):
+- **Sin duplicados:** hay dos solicitudes de Laura, SOL-2026-00001 (Muro, Bodega Ixtapaluca, enviada a las 19:36) y SOL-2026-00002 (Losa 5 × 10 × 0.16, Bodega Ixtapaluca, enviada a las 20:03). Cada una tiene **un solo** evento de envío y un solo borrador creado. El propietario describió solo la segunda; la primera existe y está «Enviada»: se registra como dato, no como caso aprobado.
+- **Estimación:** SOL-2026-00002 tiene una estimación, $82,142.94, de la misma revisión que se envió (6). SOL-2026-00001 tiene tres estimaciones (la última, $16,116.11, de su revisión final).
+- **PDF:** el archivo `COT-2026-00055.pdf` de la caché de la app (23 211 bytes, abierto a las 20:03) tiene el mismo SHA-256 que el registrado por la API (`36348de579dce7626012feb14a75e86a5b8ddf321d383f1b371bb36b06d25c2e`) y empieza con `%PDF-`. Esto confirma que `Response.arrayBuffer()` de React Native entregó los bytes sin alterarlos. (El PDF sigue en la caché hasta cerrar la sesión.)
+- **Contraseña de Laura:** ya no figura como temporal; Héctor y Silvia sí. Hay una sola sesión móvil activa de cliente (Laura) y ninguna de cuentas del equipo.
+- **Respaldo:** `softarq_dev-20261025T021749Z-dd2591` (esquema `20261024200000_cliente_solicitudes`, commit `c3a0525`, 9 documentos), creado y **verificado**.
+
+**Siguen pendientes (no ejecutados):**
+- **Rendimiento y congelamiento (C7):** no se tomó ninguna medición controlada (`dumpsys gfxinfo` no devolvió datos y no se registró `logcat`); el propietario no reportó el resultado de abrir y escribir medidas. El punto del congelamiento **sigue abierto**.
+- Comparar los $82,142.94 con la calculadora del equipo (mismos precios de referencia); revisar `logcat` en busca de errores de JavaScript.
+- Casos sin ejecutar o sin declarar: C1, C2, C4, C5, C8, C9, C13 (modo avión), C14 (segundo dispositivo), C16 (cerrar la app y la sesión; limpieza de la caché de PDF), C17 (acceso desactivado), C18–C20 (Atrás, texto grande, tema oscuro, movimiento reducido), y las partes no declaradas de C3, C6, C7, C10, C11 y C12.
+- Incidencias: el propietario **no reportó ninguna**.
+
 ### Registro de incidencias
 
 Se anota cada fallo en cuanto aparece y se corrige antes de pasar a E3. Una incidencia se cierra solo con una repetición del caso en el teléfono.
 
 | # | Caso | Qué ocurrió | Evidencia | Estado |
 |---|---|---|---|---|
-| — | — | (sin incidencias registradas: aún no se ejecutó ningún caso) | — | — |
+| — | — | Ninguna reportada por el propietario en la sesión del 24/10/2026 | — | — |
 
 ## 11. Problemas frecuentes
 
