@@ -7,7 +7,7 @@
   "scripts": {
     "prisma:generar": "node scripts/db/prisma-generar.mjs",
     "build": "pnpm run prisma:generar && tsc -p tsconfig.build.json",
-    "typecheck": "pnpm run prisma:generar && tsc -p tsconfig.json --noEmit",
+    "typecheck": "pnpm run prisma:generar && tsc -p tsconfig.json --noEmit && tsc -p tsconfig.app-cliente.json --noEmit",
     "test": "vitest run",
     "test:integracion": "pnpm run prisma:generar && vitest run --config vitest.integracion.config.ts",
     "db:credenciales": "node scripts/db/generar-credenciales.mjs",

@@ -54,6 +54,8 @@ export default function NuevaCotizacion() {
       if (valores.nombre.trim() === "") locales.nombre = "Escribe un nombre para la obra.";
       if (valores.municipio.trim() === "") locales.municipio = "Indica el municipio.";
       if (valores.entidadFederativa.trim() === "") locales.entidadFederativa = "Indica la entidad federativa.";
+      // El equipo necesita la descripción para emitir la cotización formal (BL-02); una frase basta.
+      if (valores.descripcion.trim() === "") locales.descripcion = "Describe la obra en una frase.";
       if (Object.keys(locales).length > 0) {
         setErrores(locales);
         return;
@@ -66,7 +68,7 @@ export default function NuevaCotizacion() {
     try {
       if (nueva) {
         if (!creado.current) {
-          creado.current = await servicios.crearProyecto({ nombre: valores.nombre.trim(), municipio: valores.municipio.trim(), entidadFederativa: valores.entidadFederativa.trim(), descripcion: valores.descripcion.trim() === "" ? null : valores.descripcion.trim() });
+          creado.current = await servicios.crearProyecto({ nombre: valores.nombre.trim(), municipio: valores.municipio.trim(), entidadFederativa: valores.entidadFederativa.trim(), descripcion: valores.descripcion.trim() });
         }
         proyectoId = creado.current.id;
       }
@@ -152,7 +154,7 @@ export default function NuevaCotizacion() {
           <Campo etiqueta="Nombre de la obra" valor={valores.nombre} alCambiar={poner("nombre")} textoLibre maximo={80} editable={!ocupado} error={errores.nombre} ayuda="Por ejemplo: Casa Tlalpan" />
           <Campo etiqueta="Municipio" valor={valores.municipio} alCambiar={poner("municipio")} textoLibre maximo={120} editable={!ocupado} error={errores.municipio} />
           <Campo etiqueta="Entidad federativa" valor={valores.entidadFederativa} alCambiar={poner("entidadFederativa")} textoLibre maximo={120} editable={!ocupado} error={errores.entidadFederativa} />
-          <Campo etiqueta="Descripción (opcional)" valor={valores.descripcion} alCambiar={poner("descripcion")} textoLibre multilinea maximo={500} editable={!ocupado} error={errores.descripcion} />
+          <Campo etiqueta="Descripción de la obra" valor={valores.descripcion} alCambiar={poner("descripcion")} textoLibre multilinea maximo={500} editable={!ocupado} error={errores.descripcion} ayuda="Una frase basta. Por ejemplo: casa de dos niveles." />
         </View>
       ) : null}
 
