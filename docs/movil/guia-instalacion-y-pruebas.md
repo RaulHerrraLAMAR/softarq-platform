@@ -39,7 +39,7 @@ Si Play Protect avisa de una aplicación no verificada, es esperable en una APK 
 
 ## 4. Probar con la APK `preview` (sin Metro)
 
-1. **Laptop:** arrancar la API contra `softarq_dev` **con el código actual** (la que está en marcha desde antes de E1 no tiene las rutas del cliente; deténgala y reiníciela):
+1. **Laptop:** arrancar la API contra `softarq_dev` **con el código actual** (la que está en marcha desde antes de E1 no tiene las rutas del cliente; deténgala y reiníciela). El código actual ya está compilado en `apps/api/dist` desde el 24/10/2026 19:07: si no cambió nada después, basta con `pnpm --filter @softarq/api start`:
 
    ```powershell
    pnpm --filter @softarq/contracts build
@@ -113,7 +113,7 @@ pnpm --filter @softarq/mobile eas build --platform android --profile development
 
 - **Cuentas:** `_work\secrets\accesos-clientes-demo-softarq_dev.json` (tres clientes ficticios; correos `…@clientes.softarq.test`). Las contraseñas **temporales caducan el 27/10/2026 a las 22:29 (hora local)**. En el primer ingreso la app pide elegir una contraseña nueva (y vuelve al acceso); cada cuenta tiene una sola oportunidad de ver ese paso. Si la temporal caduca antes de probar, el Administrador del sistema debe restablecerla (`POST /api/v1/admin/accesos-cliente/{usuarioId}/contrasena`, sin pantalla en el panel todavía: llega en la etapa E3).
 - **Solicitudes:** crear una desde la app es una **escritura en `softarq_dev`** (folio `SOL-2026-…`). Es el uso normal de la demostración y no toca cotizaciones, versiones, emisiones ni documentos existentes. Para probar sin tocar `softarq_dev`, las pruebas de integración (`app-cliente.integracion`) ya recorren el mismo flujo con el código de la app en `softarq_test`.
-- **Cotización formal y PDF:** los tres clientes demo **no tienen cotizaciones emitidas** todavía. Para ver una en la app: en el panel web, con el Preparador y el Revisor de `accesos-demo-softarq_dev.json`, prepare, revise, apruebe y emita una cotización para el cliente de esa cuenta (por ejemplo, «Laura Méndez», proyecto «Casa Tlalpan»); el cliente ve sus cotizaciones **emitidas** aunque se hayan preparado desde el panel. La bandeja «Solicitudes» del panel (para atender lo que el cliente envía desde la app) llega en la etapa E3; mientras tanto la API ya la ofrece (`api-del-cliente.md`).
+- **Cotización formal y PDF:** Laura Méndez ya tiene una cotización emitida para probar el PDF: **COT-2026-00055** (ver el caso de presentación en la §10). Los otros dos clientes demo no tienen ninguna. Para crear otra: en el panel web, con el Preparador y el Revisor de `accesos-demo-softarq_dev.json`, prepare, revise, apruebe y emita una cotización para el cliente de esa cuenta; el cliente ve sus cotizaciones **emitidas** aunque se hayan preparado desde el panel. La bandeja «Solicitudes» del panel (para atender lo que el cliente envía desde la app) llega en la etapa E3; mientras tanto la API ya la ofrece (`api-del-cliente.md`).
 
 ## 10. Lista de comprobación en el teléfono y registro
 
@@ -141,6 +141,38 @@ Registre cada caso **solo** cuando lo ejecute en el teléfono (fecha, versión d
 | C18 | Botón Atrás de Android en cada paso; texto grande (Ajustes → Pantalla → Tamaño de fuente) sin cortes ni acciones ocultas | Pendiente |
 | C19 | Tema claro y oscuro: legibilidad, contraste y que las ilustraciones y las cotas se vean bien | Pendiente |
 | C20 | Movimiento reducido (Ajustes → Accesibilidad → Quitar animaciones): sin animaciones y con los mismos estados | Pendiente |
+
+### Caso de presentación preparado (24/10/2026)
+
+Para comprobar el PDF (C15) hay una cotización **emitida** para el cliente DEMO **Laura Méndez** (proyecto «Casa Tlalpan»): folio **COT-2026-00055**, total **$54,190.68** MXN, duplicada de la versión 1 de COT-2026-00004 con las rutas normales de la API (duplicar → confirmar precios → calcular → enviar a revisión → aprobar el Revisor → emitir el Preparador). Huella SHA-256 del PDF registrado: `6348de579dce7626012feb14a75e86a5b8ddf321d383f1b371bb36b06d25c2e`. Aparece en «Mis cotizaciones» de Laura. No está vinculada a ninguna solicitud (se preparó desde el panel), así que no sustituye al seguimiento de **su propia** solicitud (C12), que se verá como «Enviada» hasta que el equipo la atienda (la bandeja del panel llega en E3; la API ya permite atenderla).
+
+### Reparto: qué ejecuta cada quien, en orden de prioridad
+
+Marcas: **T** = lo hace usted en el teléfono; **Y** = comprobación técnica que hace Claude (lectura de la base y de los registros, `adb`, capturas) mientras tanto. Ningún caso se marca aprobado hasta que usted confirme el resultado.
+
+| Prioridad | Caso | T (teléfono) | Y (comprobación técnica) |
+|---|---|---|---|
+| 1 · Acceso | C2 | Con la API detenida, abrir la app: «Sin conexión»; arrancarla y *Reintentar* | `/health` antes y después; registro de `adb logcat` |
+| 1 · Acceso | C3 | Entrar como Laura con la temporal, elegir contraseña nueva (anótela usted; no se comparte), volver a entrar | Solo lectura: la temporal deja de funcionar (401), `contrasena_temporal_expira_en` se limpia y la sesión anterior queda revocada; sin ver la contraseña nueva |
+| 1 · Acceso | C4 | Entrar en la app con la cuenta del Preparador | Registro de la API (`ACCESO_MOVIL_CUENTA_INTERNA`) y que no se creó ninguna sesión `MOVIL` |
+| 1 · Captura propia | C5, C6 | Ver el inicio; crear «Nueva cotización» con una obra nueva (con descripción) y elegir Losa | Capturas de pantalla; en la base, un solo proyecto y un solo borrador, del cliente correcto |
+| 1 · Medidas | C7 | Abrir medidas la primera vez; escribir 6, 5, 0.12, luego 500 y «abc»; anotar cualquier tirón o congelamiento | `dumpsys gfxinfo` (fotogramas lentos) antes y después, `logcat` de errores JS y de «Skipped frames», capturas |
+| 1 · Medidas | C8, C9 | Teclado, scroll y botones visibles; segunda sección; cambiar de opción; segundo trabajo; hueco en Muro | Capturas con el teclado abierto; la captura guardada en la base (trabajos, secciones, huecos) |
+| 1 · Estimación | C10, C11 | Corregir, quitar un trabajo, notas; calcular Losa 6 × 5 × 0.12; cambiar una medida y ver «Hace falta recalcular» | La misma captura en la calculadora del equipo: el importe debe coincidir; instantáneas de estimación numeradas |
+| 1 · Envío | C12 | Enviar con doble toque rápido; ver el seguimiento; retirar otra solicitud | Un solo evento `SOLICITUD_ENVIADA` por solicitud; estado y captura inmutable |
+| 1 · Recuperación | C13, C16 | Modo avión durante el guardado y el envío; cerrar la app (deslizar) y reabrirla; cerrar sesión | Sin duplicados en la base; tras cerrar sesión, `cache/documentos` vacío y sesión revocada (`adb run-as`) |
+| 1 · PDF | C15 | «Mis cotizaciones» → COT-2026-00055 → «Ver o descargar el PDF» y abrirlo/guardarlo | Si el cable sigue conectado: SHA-256 del PDF en la caché de la app (`adb exec-out run-as com.softarq.demo cat cache/documentos/COT-2026-00055.pdf`) frente a la huella de arriba |
+| 2 | C17 | Dejar la app abierta en el inicio y comprobar el aviso tras la siguiente acción | Con su visto bueno, desactivo y vuelvo a activar el acceso con la API (Administrador del sistema), sin tocar la contraseña |
+| 2 | C14 | Solo si dispone de un segundo dispositivo con la misma cuenta | Está cubierto por `app-cliente.integracion`; sin segundo dispositivo queda «No ejecutable», no «Aprobado» |
+| 3 | C1, C18, C19, C20 | Fuentes visibles, Atrás en cada paso, texto grande, tema oscuro, sin animaciones | Cambio los ajustes por `adb` (`font_scale`, `cmd uimode night`, `animator_duration_scale`), los restauro después y capturo |
+
+### Registro de incidencias
+
+Se anota cada fallo en cuanto aparece y se corrige antes de pasar a E3. Una incidencia se cierra solo con una repetición del caso en el teléfono.
+
+| # | Caso | Qué ocurrió | Evidencia | Estado |
+|---|---|---|---|---|
+| — | — | (sin incidencias registradas: aún no se ejecutó ningún caso) | — | — |
 
 ## 11. Problemas frecuentes
 
