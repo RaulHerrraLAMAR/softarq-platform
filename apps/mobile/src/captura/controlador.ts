@@ -308,11 +308,17 @@ export class ControladorSolicitud {
     if (this.estado.soloLectura) return;
     const v = this.faltantes;
     if (v.errores.length > 0 || v.pendientes.length > 0) return;
-    if (!(await this.guardarAhora())) return;
+    // Se muestra actividad desde el primer momento: guardar antes de calcular puede tardar o fallar (sin red).
+    this.poner({ estimacion: "calculando", errorEstimacion: null, camposServidor: [] });
+    if (!(await this.guardarAhora())) {
+      // Un conflicto, una solicitud ya no editable o una cancelación se resuelven en sus propias hojas; un fallo de guardado se dice aquí.
+      const fallo = this.estado.guardado === "error" ? this.estado.errorGuardado : null;
+      this.poner(fallo ? { estimacion: "error", errorEstimacion: fallo, camposServidor: [] } : { estimacion: "ninguna" });
+      return;
+    }
     const ficha = ++this.fichaEstimacion;
     const huella = huellaCalculo(this.estado.local, this.o.catalogo);
     const revision = this.revision;
-    this.poner({ estimacion: "calculando", errorEstimacion: null, camposServidor: [] });
     try {
       const e = await this.o.servicios.estimar(this.o.id, revision);
       // Respuesta de otra captura o de un cálculo anterior: se descarta.
@@ -357,8 +363,12 @@ export class ControladorSolicitud {
     if (this.estado.envio === "enviada" || this.estado.soloLectura) return;
     const v = this.faltantes;
     if (v.errores.length > 0 || v.pendientes.length > 0) return;
-    if (!(await this.guardarAhora())) return;
     this.poner({ envio: "enviando", errorEnvio: null, camposServidor: [] });
+    if (!(await this.guardarAhora())) {
+      const fallo = this.estado.guardado === "error" ? this.estado.errorGuardado : null;
+      this.poner(fallo ? { envio: "error", errorEnvio: fallo, camposServidor: [] } : { envio: "inactivo" });
+      return;
+    }
     try {
       const r = await this.o.servicios.enviar(this.o.id, this.revision);
       this.adoptar(r.solicitud);

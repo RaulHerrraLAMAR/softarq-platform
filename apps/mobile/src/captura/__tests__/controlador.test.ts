@@ -263,6 +263,23 @@ describe("estimación", () => {
     expect(c.obtenerEstado().estimacion).toBe("vigente");
   });
 
+  it("sin red al guardar, calcular lo dice (no se queda mudo), no pide el cálculo y se puede reintentar", async () => {
+    const { c, servidor } = await abrir();
+    escribirCubierta(c);
+    servidor.fallos.guardar = [sinRed()];
+    await c.estimar();
+    const e = c.obtenerEstado();
+    expect(e.estimacion).toBe("error");
+    expect(e.guardado).toBe("error");
+    expect(e.errorEstimacion?.tipo).toBe("red");
+    expect(servidor.contar("estimar")).toBe(0);
+    expect(c.haySinGuardar).toBe(true);
+    await c.estimar();
+    expect(c.obtenerEstado().estimacion).toBe("vigente");
+    expect(servidor.contar("guardar")).toBe(2);
+    expect(servidor.contar("estimar")).toBe(1);
+  });
+
   it("una estimación sin referencia no tiene importe y no se confunde con cero", async () => {
     const { c, servidor } = await abrir();
     escribirCubierta(c);
@@ -327,6 +344,24 @@ describe("envío", () => {
     await c.enviar();
     expect(c.obtenerEstado().envio).toBe("enviada");
     expect(servidor.contar("enviar")).toBe(2);
+  });
+
+  it("sin red al guardar antes de enviar, lo dice, no envía nada y el reintento envía una sola vez", async () => {
+    const { c, servidor } = await abrir();
+    escribirCubierta(c);
+    c.modificar((x) => cambiarNotas(x, "sin red 2"));
+    servidor.fallos.guardar = [sinRed()];
+    await c.enviar();
+    const e = c.obtenerEstado();
+    expect(e.envio).toBe("error");
+    expect(e.guardado).toBe("error");
+    expect(e.errorEnvio?.tipo).toBe("red");
+    expect(servidor.contar("enviar")).toBe(0);
+    expect(servidor.solicitud.estado).toBe("BORRADOR");
+    await c.enviar();
+    expect(c.obtenerEstado().envio).toBe("enviada");
+    expect(servidor.solicitud.captura.notas).toBe("sin red 2");
+    expect(servidor.contar("enviar")).toBe(1);
   });
 
   it("enviar guarda primero lo pendiente", async () => {

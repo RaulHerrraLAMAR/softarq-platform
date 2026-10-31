@@ -62,7 +62,11 @@ export default function Estimacion() {
 
       {!calculando && estado.estimacion === "error" && estado.errorEstimacion ? (
         <View style={{ gap: ESP[3] }}>
-          <Aviso tono="error" titulo="No pudimos calcular tu estimación" texto={mensajeDeFallo(estado.errorEstimacion)} />
+          {estado.guardado === "error" ? (
+            <Aviso tono="error" titulo="No se pudo guardar tu solicitud" texto={`${mensajeDeFallo(estado.errorEstimacion)} Tus cambios siguen en este teléfono; cuando vuelva la conexión, pulsa «Recalcular estimación» para reintentar.`} />
+          ) : (
+            <Aviso tono="error" titulo="No pudimos calcular tu estimación" texto={mensajeDeFallo(estado.errorEstimacion)} />
+          )}
           {estado.camposServidor.length > 0 ? <Aviso tono="aviso" texto={estado.camposServidor.map((c) => c.mensaje).join(" ")} /> : null}
         </View>
       ) : null}
@@ -136,7 +140,9 @@ export default function Estimacion() {
         </>
       ) : null}
 
-      {estado.errorEnvio && !confirmando ? <Aviso tono="error" texto={mensajeDeFallo(estado.errorEnvio)} /> : null}
+      {estado.errorEnvio && !confirmando ? (
+        <Aviso tono="error" titulo={estado.guardado === "error" ? "No se pudo guardar tu solicitud" : "No se pudo enviar"} texto={`${mensajeDeFallo(estado.errorEnvio)}${estado.guardado === "error" ? " Tus cambios siguen en este teléfono; no se envió nada. Reintenta cuando vuelva la conexión." : ""}`} />
+      ) : null}
 
       <HojaEnvio
         visible={confirmando}
