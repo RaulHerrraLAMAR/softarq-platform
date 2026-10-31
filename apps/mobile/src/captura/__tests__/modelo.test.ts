@@ -111,6 +111,15 @@ describe("validación de apoyo", () => {
     expect(v.pendientes.map((p) => p.ruta)).toEqual(["trabajos[0].secciones[0].ancho"]);
   });
 
+  it("una medida por encima del máximo (por ejemplo 2000) es un error que impide dar la captura por completa", () => {
+    let { c, id } = conCubierta();
+    c = cambiarRenglon(c, id, "secciones", 0, "largo", "2000");
+    c = cambiarRenglon(c, id, "secciones", 0, "ancho", "6");
+    const v = validarLocal(c, CATALOGO);
+    expect(v.errores.map((e) => e.ruta)).toEqual(["trabajos[0].secciones[0].largo"]);
+    expect(v.pendientes).toEqual([]);
+  });
+
   it("completa cuando todas las medidas que pide el trabajo son válidas", () => {
     let { c, id } = conCubierta();
     c = cambiarRenglon(c, id, "secciones", 0, "largo", "6");
