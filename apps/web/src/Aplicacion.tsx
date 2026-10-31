@@ -220,7 +220,7 @@ function Contenido({ sesion, servicios, cotizaciones, catalogoAdmin, administrac
       case "clientes":
         return <ListaClientes servicios={cotizaciones} puedeGestionar={puedeGestionar} />;
       case "cliente":
-        return <DetalleClientePantalla servicios={cotizaciones} id={ruta.id} puedeGestionar={puedeGestionar} puedePreparar={puedePreparar} />;
+        return <DetalleClientePantalla servicios={cotizaciones} id={ruta.id} puedeGestionar={puedeGestionar} puedePreparar={puedePreparar} {...(puedePersonas ? { accesos: solicitudes } : {})} />;
       case "proyectos":
         return <ListaProyectos servicios={cotizaciones} puedeGestionar={puedeGestionar} puedePreparar={puedePreparar} />;
       case "no-encontrada":

@@ -4,6 +4,8 @@
  * Los controles de alta y edición solo se muestran con la capacidad `clientes.gestionar`; la API
  * los rechaza de todos modos (403).
  */
+import { AccesoCliente } from "../solicitudes/AccesoCliente.tsx";
+import type { ServiciosSolicitudes } from "../solicitudes/servicios.ts";
 import { useState, type FormEvent } from "react";
 import type { Cliente, Proyecto } from "@softarq/contracts";
 import { mensajeDeFallo, type FalloApi } from "../api/cliente.ts";
@@ -142,11 +144,14 @@ export function DetalleClientePantalla({
   id,
   puedeGestionar,
   puedePreparar,
+  accesos,
 }: {
   servicios: ServiciosCotizaciones;
   id: string;
   puedeGestionar: boolean;
   puedePreparar: boolean;
+  /** Acceso del cliente a la app (módulo 17): solo con `personas.administrar`. */
+  accesos?: ServiciosSolicitudes;
 }) {
   const { estado, recargar } = useCarga((s) => servicios.detalleCliente(id, s), [id]);
   const [editando, setEditando] = useState(false);
@@ -255,6 +260,8 @@ export function DetalleClientePantalla({
         </>
       ) : null}
       </section>
+
+      {accesos ? <AccesoCliente servicios={accesos} clienteId={cliente.id} clienteNombre={cliente.contactoNombre ?? cliente.nombre} clienteActivo={cliente.activo} /> : null}
 
       <section className="seccion" aria-labelledby="titulo-proyectos-cliente">
         <h2 id="titulo-proyectos-cliente" className="seccion-titulo">
