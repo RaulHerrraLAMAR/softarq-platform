@@ -173,6 +173,7 @@ export function CampoMedida({
   unidad = "m",
   alEnviar,
   ultimo = false,
+  motivo,
 }: {
   clave: DimensionCliente;
   etiqueta: string;
@@ -186,17 +187,26 @@ export function CampoMedida({
   unidad?: string;
   alEnviar?: () => void;
   ultimo?: boolean;
+  /** Por qué se rechaza lo escrito; si falta, un texto general. */
+  motivo?: string | null;
 }) {
   const t = useTema();
   const marca = { terracota: t.terracota, petroleo: t.petroleo, espesor: t.espesor }[colorDeDimension(clave)];
   const invalido = estado === "inv";
-  const mensaje = "Escriba un número mayor que 0, por ejemplo 6.50";
+  const mensaje = motivo ?? "Escriba un número mayor que 0, por ejemplo 6.50.";
   return (
     <View style={{ gap: ESP[1] }}>
       <View style={{ flexDirection: "row", alignItems: "center", gap: ESP[2] }}>
         <View style={{ width: 12, height: 12, borderRadius: 3, backgroundColor: marca }} />
         <Text style={{ fontFamily: FUENTE.textoFuerte, fontSize: TEXTO.sm + 1, color: t.tinta }}>{etiqueta}</Text>
       </View>
+      {/* El motivo va encima del campo: al enfocarlo, Android desplaza solo el campo y lo que está debajo puede quedar tras la barra. */}
+      {invalido ? (
+        <View accessibilityLiveRegion="polite" style={{ flexDirection: "row", alignItems: "center", gap: ESP[1] }}>
+          <Icono nombre="alerta" tam={16} color={t.rojo} />
+          <Text style={{ flex: 1, fontFamily: FUENTE.textoFuerte, fontSize: TEXTO.sm, color: t.rojo }}>{mensaje}</Text>
+        </View>
+      ) : null}
       <View style={{ flexDirection: "row", alignItems: "center", borderRadius: RADIO.chico + 4, borderWidth: 2, borderColor: invalido ? t.rojo : t.linea, borderLeftWidth: 6, borderLeftColor: invalido ? t.rojo : marca, backgroundColor: invalido ? t.rojoTinte : t.papel, paddingHorizontal: ESP[3] }}>
         <TextInput
           {...(referencia ? { ref: referencia } : {})}
@@ -220,14 +230,7 @@ export function CampoMedida({
         />
         <Text style={{ fontFamily: FUENTE.textoFuerte, fontSize: TEXTO.md, color: t.suave }}>{unidad}</Text>
       </View>
-      {invalido ? (
-        <View accessibilityLiveRegion="polite" style={{ flexDirection: "row", alignItems: "center", gap: ESP[1] }}>
-          <Icono nombre="alerta" tam={16} color={t.rojo} />
-          <Text style={{ flex: 1, fontFamily: FUENTE.textoFuerte, fontSize: TEXTO.sm, color: t.rojo }}>{mensaje}</Text>
-        </View>
-      ) : (
-        <Text style={{ fontFamily: FUENTE.texto, fontSize: TEXTO.sm, color: t.suave }}>{ayuda}</Text>
-      )}
+      {invalido ? null : <Text style={{ fontFamily: FUENTE.texto, fontSize: TEXTO.sm, color: t.suave }}>{ayuda}</Text>}
     </View>
   );
 }

@@ -11,6 +11,7 @@ import {
   CAPTURA_LOCAL_VACIA,
   desdeContrato,
   huellaCalculo,
+  explicarMedida,
   leerMedida,
   leerPiezas,
   quitarRenglon,
@@ -185,5 +186,23 @@ describe("huella del cálculo", () => {
     expect(huellaCalculo(cambiarNotas(c, "una nota"), CATALOGO)).toBe(base);
     expect(huellaCalculo(cambiarRenglon(c, id, "secciones", 0, "largo", "6.1"), CATALOGO)).not.toBe(base);
     expect(huellaCalculo(cambiarRenglon(c, id, "secciones", 0, "largo", "6,0"), CATALOGO)).toBe(base);
+  });
+});
+
+describe("explicarMedida", () => {
+  it("no explica lo válido ni lo vacío", () => {
+    expect(explicarMedida("6.50")).toBeNull();
+    expect(explicarMedida("")).toBeNull();
+    expect(explicarMedida("500")).toBeNull();
+  });
+  it("dice el límite cuando el número es demasiado grande, sin cambiar lo que se acepta", () => {
+    expect(leerMedida("2000000").estado).toBe("inv");
+    expect(explicarMedida("2000000")).toContain("máximo es 500 m");
+    expect(explicarMedida("500.01")).toContain("máximo es 500 m");
+  });
+  it("distingue cero, texto y exceso de decimales", () => {
+    expect(explicarMedida("0")).toBe("Debe ser mayor que 0.");
+    expect(explicarMedida("abc")).toContain("solo números");
+    expect(explicarMedida("1.12345678901")).toContain("10 decimales");
   });
 });

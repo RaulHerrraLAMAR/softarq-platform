@@ -89,6 +89,26 @@ export function leerMedida(texto: string, maximo: number = LIMITES_CLIENTE.medid
   return { estado: "ok", valor: canonico };
 }
 
+/**
+ * Por qué se rechaza lo escrito (para decírselo a la persona), o `null` si es válido o está vacío. Mismas reglas que
+ * `leerMedida`: no cambia lo que se acepta, solo explica el motivo.
+ */
+export function explicarMedida(texto: string, maximo: number = LIMITES_CLIENTE.medidaMaxima): string | null {
+  const r = leerMedida(texto, maximo);
+  if (r.estado !== "inv") return null;
+  let t = texto.trim().replace(",", ".");
+  if (t.startsWith(".")) t = `0${t}`;
+  if (t.endsWith(".")) t = t.slice(0, -1);
+  const m = DECIMAL.exec(t);
+  if (!m) {
+    if (/^\d+(?:\.\d+)?$/.test(t)) return t.includes(".") && (t.split(".")[1] ?? "").length > 10 ? "Escribe hasta 10 decimales." : "Escribe menos dígitos.";
+    return "Escribe solo números, con punto o coma decimal. Por ejemplo 6.50.";
+  }
+  const n = Number(m[2] !== undefined ? `${m[1]}.${m[2]}` : m[1]);
+  if (n <= 0) return "Debe ser mayor que 0.";
+  return `Es demasiado grande: el máximo es ${maximo} m.`;
+}
+
 /** Piezas: obligatorias, mayor que 0 y de hasta 1000 (misma regla que el servidor). */
 export function leerPiezas(texto: string): MedidaLeida {
   const r = leerMedida(texto, 1000);
@@ -179,7 +199,7 @@ export function validarLocal(local: CapturaLocal, catalogo: readonly TrabajoClie
         for (const clave of opcion.medidas.map((m) => m.clave)) {
           const leida = leerMedida(r[clave]);
           if (leida.estado === "pend") pendientes.push({ ruta: rutaCampo(i, tipo, j, clave), mensaje: `Indique ${NOMBRE_DIMENSION[clave]}.` });
-          else if (leida.estado === "inv") errores.push({ ruta: rutaCampo(i, tipo, j, clave), mensaje: `Escriba ${NOMBRE_DIMENSION[clave]} como un número mayor que 0 y de hasta ${LIMITES_CLIENTE.medidaMaxima}, por ejemplo 6.50.` });
+          else if (leida.estado === "inv") errores.push({ ruta: rutaCampo(i, tipo, j, clave), mensaje: `Escriba ${NOMBRE_DIMENSION[clave]} como un número mayor que 0 y de hasta ${LIMITES_CLIENTE.medidaMaxima} m, por ejemplo 6.50.` });
         }
       });
     revisar("secciones");

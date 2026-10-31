@@ -3,7 +3,7 @@ import { Redirect, useLocalSearchParams, useRouter } from "expo-router";
 import { useRef, useState, type ElementRef } from "react";
 import { Pressable, Text, TextInput, View } from "react-native";
 import { useSolicitud } from "../../../../src/captura/ProveedorSolicitud";
-import { agregarRenglon, buscarOpcion, buscarTrabajo, cambiarOpcion, cambiarRenglon, estadoDeMedida, etiquetaDe, leerPiezas, quitarRenglon, type TipoRenglon } from "../../../../src/captura/modelo";
+import { agregarRenglon, buscarOpcion, buscarTrabajo, cambiarOpcion, cambiarRenglon, estadoDeMedida, etiquetaDe, explicarMedida, leerPiezas, quitarRenglon, type TipoRenglon } from "../../../../src/captura/modelo";
 import { textoDeFaltantes } from "../../../../src/captura/resumen";
 import { Croquis } from "../../../../src/croquis/Croquis";
 import { rutas } from "../../../../src/navegacion/rutas";
@@ -157,6 +157,7 @@ export default function Medidas() {
               ayuda={m.ayuda}
               valor={renglon[m.clave]}
               estado={estadoDeMedida(renglon, m.clave)}
+              motivo={explicarMedida(renglon[m.clave])}
               alCambiar={(v) => cambiar("secciones", indice, m.clave, v)}
               alEnfocar={() => setActiva(m.clave)}
               alDesenfocar={() => setActiva((a) => (a === m.clave ? null : a))}
@@ -187,7 +188,7 @@ export default function Medidas() {
                   <Enlace texto="Quitar" ayuda={`Quita el hueco ${i + 1}`} alPulsar={() => controlador.modificar((c) => quitarRenglon(c, tid, "huecos", i))} />
                 </View>
                 {opcion.medidas.map((m) => (
-                  <CampoMedida key={m.clave} clave={m.clave} etiqueta={etiquetaDe(opcion, m.clave)} ayuda={m.ayuda} valor={h[m.clave]} estado={estadoDeMedida(h, m.clave)} alCambiar={(v) => cambiar("huecos", i, m.clave, v)} />
+                  <CampoMedida key={m.clave} clave={m.clave} etiqueta={etiquetaDe(opcion, m.clave)} ayuda={m.ayuda} valor={h[m.clave]} estado={estadoDeMedida(h, m.clave)} motivo={explicarMedida(h[m.clave])} alCambiar={(v) => cambiar("huecos", i, m.clave, v)} />
                 ))}
                 <Campo etiqueta="Piezas iguales" valor={h.piezas} alCambiar={(v) => cambiar("huecos", i, "piezas", v)} teclado="number-pad" maximo={4} error={estadoPiezas(h.piezas)} />
               </View>

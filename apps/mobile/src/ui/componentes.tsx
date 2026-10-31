@@ -59,18 +59,24 @@ export function Pantalla({ children, bordes = ["left", "right", "bottom"], formu
       {children}
     </ScrollView>
   );
-  const cuerpo = formulario ? (
-    <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === "ios" ? "padding" : undefined}>
-      {contenido}
-    </KeyboardAvoidingView>
-  ) : (
-    contenido
+  const area = (
+    <>
+      <View style={{ flex: 1 }}>{contenido}</View>
+      {pie}
+    </>
   );
   return (
     <SafeAreaView edges={encabezado && !bordes.includes("top") ? [...bordes, "top"] : bordes} style={{ flex: 1, backgroundColor: t.fondo }}>
       {encabezado}
-      <View style={{ flex: 1 }}>{cuerpo}</View>
-      {pie}
+      {/* La app dibuja de borde a borde: en Android el teclado no reduce la ventana, así que el contenedor reserva su altura
+          (también bajo la barra de acciones, para que «Atrás» y «Continuar» sigan a la vista). */}
+      {formulario ? (
+        <KeyboardAvoidingView style={{ flex: 1 }} behavior="padding">
+          {area}
+        </KeyboardAvoidingView>
+      ) : (
+        area
+      )}
     </SafeAreaView>
   );
 }

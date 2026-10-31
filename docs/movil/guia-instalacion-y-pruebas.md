@@ -185,6 +185,25 @@ Marcas: **T** = lo hace usted en el teléfono; **Y** = comprobación técnica qu
 - Casos sin ejecutar o sin declarar: C1, C2, C4, C5, C8, C9, C13 (modo avión), C14 (segundo dispositivo), C16 (cerrar la app y la sesión; limpieza de la caché de PDF), C17 (acceso desactivado), C18–C20 (Atrás, texto grande, tema oscuro, movimiento reducido), y las partes no declaradas de C3, C6, C7, C10, C11 y C12.
 - Incidencias: el propietario **no reportó ninguna**.
 
+### Sesión del 31/10/2026 con la cuenta «[DEMO] Raul Herrera» (en curso)
+
+Equipo: SM-A346M (Android 13), *development build* de E2 con Metro, API en el puerto 3000 y `adb reverse` 3000/8081. Ajustes originales del teléfono, anotados antes de cualquier cambio: `font_scale` 1.1; escalas de animación 1.0 (la de `animator` sin definir); modo oscuro activo. Sigue sin cambiarse ninguno.
+
+**Declarado por el propietario** (resúmenes de grabaciones que revisó una herramienta externa; Claude **no** recibió los videos ni observó el teléfono):
+- **C3 completo (Raul):** cambió la contraseña temporal, volvió a entrar y vio el inicio sin solicitudes. *Técnica (Claude):* Raul sin temporal; la primera sesión móvil quedó revocada por `CAMBIO_CONTRASENA` y hay dos activas independientes (teléfono y segunda sesión); `estado` de la segunda sesión → HTTP 200.
+- **C6 (obra nueva):** registró «Casa» (Zapopan / Guadalajara / «Construccion de casa»), la app avanzó y mostró «Proyecto: Casa» y «Guardado». No se observó el intento con la descripción vacía: **esa validación no queda comprobada**.
+- **C7 (parcial):** croquis isométrico y campos; 6 × 5 × 0.12 con «.0.12» temporal marcado en rojo («1 medida por corregir») y «Todo listo» al corregir; croquis 6.00/5.00/0.12. 2 000 000 en largo se marca en rojo. **Sin comprobar:** largo 500, «abc», tocar una cota para enfocar su campo.
+- **C10–C12 (parcial):** resumen con un trabajo y medidas correctas, estimación preliminar de **$37,835.35** (3.6 m³, IVA incluido), Enviar → confirmación → SOL-2026-00003 «Enviada» y aparece en el inicio. Sin comprobar: editar/quitar/notas, recálculo tras un cambio, doble toque y retiro.
+- **C8 (parcial):** con el teclado, «Atrás» y «Continuar al resumen» quedan visibles (tras la corrección I-01); se llega al campo Espesor y el mensaje de validación se ve en varias posiciones.
+
+**Comprobaciones técnicas de Claude:**
+- SOL-2026-00003: ENVIADA, revisión 4, proyecto PRY-00048 «Casa» del cliente de Raul; captura LOSA 6 × 5 × 0.12 (concreto); un `SOLICITUD_CREADA`, **un** `SOLICITUD_ENVIADA`, un `ESTIMACION_REGISTRADA`, cuatro `SOLICITUD_GUARDADA`.
+- **Importe:** `db:verificar-estimacion -- SOL-2026-00003` reproduce con el motor la entrada congelada: subtotal 32,616.68, total **37,835.35**, idéntico a lo guardado (referencias INS-00007/8/9 → PRE-000012/13/14, fecha de cálculo 31/10/2026). Antes, SOL-2026-00002: $82,142.94 idéntico.
+- **Rendimiento (C7):** `dumpsys gfxinfo` falla en este equipo («Failure while dumping the app»): **no hay percentiles ni fotogramas lentos**. El `logcat` del proceso de la app (desde 12:23:01; el recorrido va de 12:25:19 a 12:26:27) no contiene errores de `ReactNativeJS`, `FATAL`, ANR ni «Skipped frames». Eso descarta bloqueos graves, **no certifica fluidez**; el punto del congelamiento al abrir Medidas sigue sin una medición.
+- Borrador reutilizable: SOL-2026-00004 (BORRADOR, Casa, LOSA 6 × 5 × 0.12 guardado).
+
+**C15 NO se verifica con Raul:** el PDF probado antes pertenecía a Laura. El caso de Raul (atender su solicitud y emitir su cotización) se comprueba cuando E3 lo permita.
+
 ### Registro de incidencias
 
 Se anota cada fallo en cuanto aparece y se corrige antes de pasar a E3. Una incidencia se cierra solo con una repetición del caso en el teléfono.
@@ -192,6 +211,9 @@ Se anota cada fallo en cuanto aparece y se corrige antes de pasar a E3. Una inci
 | # | Caso | Qué ocurrió | Evidencia | Estado |
 |---|---|---|---|---|
 | — | — | Ninguna reportada por el propietario en la sesión del 24/10/2026 | — | — |
+| I-01 | C8 | Con el teclado abierto en Medidas, «Atrás» y «Continuar» quedaban ocultos, había campos tapados y el mensaje de validación quedaba detrás de la barra | Resumen del propietario (31/10); causa en el código: sin `padding` en Android con dibujo de borde a borde y barra fuera del contenedor | **Parcial.** Corregido: el contenedor envuelve contenido y barra (botones visibles, comprobado por el propietario). Residual: la barra aún cubría el borde del campo y su mensaje. Segunda corrección: el motivo va encima del campo. Pendiente de repetir en el teléfono |
+| I-02 | C12 | Tras enviar, «Atrás» desde el seguimiento muestra «Trabajo» con Losa marcada y «Continuar» | Resumen del propietario (31/10) | Corregido en el código (`dismissTo(inicio)` antes de abrir el seguimiento). **Sin repetir:** se comprueba al enviar el siguiente borrador (SOL-2026-00004) |
+| I-03 | C7 | El mensaje de una medida inválida es genérico («Escriba un número mayor que 0…»): no explica que 2 000 000 supera el máximo de 500 m | Resumen del propietario (31/10); causa: `medidaMaxima` = 500 en `LIMITES_CLIENTE` | Corregido: `explicarMedida` dice el motivo (máximo 500 m, mayor que 0, solo números, hasta 10 decimales) sin cambiar lo que se acepta; 255/255 pruebas de la app. Pendiente de repetir en el teléfono |
 
 ## 11. Problemas frecuentes
 

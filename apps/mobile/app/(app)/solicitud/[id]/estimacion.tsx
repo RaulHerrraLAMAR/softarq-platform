@@ -144,7 +144,9 @@ export default function Estimacion() {
         alCerrar={() => setConfirmando(false)}
         alTerminar={() => {
           setConfirmando(false);
-          router.dismissAll();
+          // Se sale de todo el recorrido de captura (no solo de su pila): al volver desde el seguimiento no reaparecen las
+          // pantallas de edición de una solicitud que ya no se puede modificar.
+          router.dismissTo(rutas.inicio);
           router.push(rutas.seguimiento(id));
         }}
       />
