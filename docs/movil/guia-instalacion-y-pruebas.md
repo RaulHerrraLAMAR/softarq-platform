@@ -213,6 +213,10 @@ Equipo: SM-A346M (Android 13), *development build* de E2 con Metro, API en el pu
 
 **C15 NO se verifica con Raul:** el PDF probado antes pertenecía a Laura. El caso de Raul (atender su solicitud y emitir su cotización) se comprueba cuando E3 lo permita.
 
+**Grupo 5 (sin grabación), declarado por el propietario:** escribió «prueba» en «Notas para el equipo» y se guardó automáticamente; calculó con 6 × 5 × 0.12; cambió el espesor a 0.15 y la app pidió recalcular sin presentar el importe anterior como vigente; recalculó con 6 × 5 × 0.15; con largo 2000 apareció el error del máximo de 500 y no pudo calcular desde el resumen; recuperó los valores válidos y dejó guardada la captura y el cálculo. No envió y no vio incidencias.
+
+**Verificación técnica de Claude (base):** el trabajo volvió a hacerse sobre **SOL-2026-00005** (la app abre ese borrador; SOL-2026-00004 sigue sin cambios, revisión 15). Estado de SOL-2026-00005: BORRADOR, revisión 19, `notas` = «Prueba» (la app pone la mayúscula inicial: `autoCapitalize="sentences"`), una sección 6 × 5 × 0.15, nombre «Skere». Tres estimaciones, todas ESTIMADA con fecha de cálculo 31/10/2026: nº 1 (revisión 16, 6 × 5 × 0.12) subtotal 32,616.68 / **total 37,835.35**; nº 2 (revisión 17, espesor 0.15) subtotal 40,358.07 / **total 46,815.36**; nº 3 (revisión 19, captura final, misma entrada que la nº 2) 40,358.07 / 46,815.36. Eventos: 1 `SOLICITUD_CREADA`, 19 `SOLICITUD_GUARDADA`, 3 `ESTIMACION_REGISTRADA`. **Motor:** `db:verificar-estimacion -- SOL-2026-00005` reproduce la estimación nº 3 con su entrada congelada: idéntica (subtotal, total, partida e impuesto). El cambio de 0.12 a 0.15 no escala linealmente (+23.7 % en el total) porque hay costos que no dependen del volumen; lo valida el motor, no una regla de tres.
+
 ### Registro de incidencias
 
 Se anota cada fallo en cuanto aparece y se corrige antes de pasar a E3. Una incidencia se cierra solo con una repetición del caso en el teléfono.
