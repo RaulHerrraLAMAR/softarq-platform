@@ -207,6 +207,9 @@ describe("borrador: serialización y carga", () => {
 describe("rutas por hash", () => {
   it("cada pantalla tiene una URL estable; las anclas de la página no son rutas", () => {
     const rutas: Ruta[] = [
+      { pantalla: "inicio" },
+      { pantalla: "solicitudes" },
+      { pantalla: "solicitud", id: ID },
       { pantalla: "calculadora" },
       { pantalla: "cotizaciones" },
       { pantalla: "nueva-cotizacion", proyectoId: null },
@@ -218,7 +221,9 @@ describe("rutas por hash", () => {
       { pantalla: "proyectos" },
     ];
     for (const r of rutas) expect(interpretarHash(hashDe(r))).toEqual(r);
-    expect(interpretarHash("")).toEqual({ pantalla: "calculadora" });
+    // Desde E3.2 la dirección vacía abre «Mi trabajo» (la calculadora sigue en #/calculadora).
+    expect(interpretarHash("")).toEqual({ pantalla: "inicio" });
+    expect(interpretarHash("#/calculadora")).toEqual({ pantalla: "calculadora" });
     expect(interpretarHash("#seccion-resultado")).toBeNull();
     expect(interpretarHash("#/cotizaciones/no-es-uuid")).toEqual({ pantalla: "no-encontrada" });
   });

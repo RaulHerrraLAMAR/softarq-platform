@@ -95,6 +95,8 @@ function apiFalsa(inicial: RespuestaSesion | null = null) {
 }
 
 function montar(api: ReturnType<typeof apiFalsa>) {
+  // Estas pruebas recorren la calculadora; desde E3.2 la dirección vacía abre «Mi trabajo».
+  window.location.hash = "#/calculadora";
   return render(
     <ProveedorSesion urlApi="http://localhost:3000" hacerFetch={api.hacerFetch}>
       <Raiz />

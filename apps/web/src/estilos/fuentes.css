@@ -1,0 +1,10 @@
+/*
+ * Fuentes del panel (identidad «Obra cálida», ADR-0022): Bricolage Grotesque para títulos e Inter para texto.
+ * Archivos TTF locales con su licencia OFL (src/fuentes); sin CDN ni descargas en tiempo de ejecución.
+ * Fira Code se mantiene para códigos.
+ */
+@font-face { font-family: "Inter"; font-weight: 400; font-style: normal; font-display: swap; src: url("../fuentes/Inter_400Regular.ttf") format("truetype"); }
+@font-face { font-family: "Inter"; font-weight: 500; font-style: normal; font-display: swap; src: url("../fuentes/Inter_500Medium.ttf") format("truetype"); }
+@font-face { font-family: "Inter"; font-weight: 600; font-style: normal; font-display: swap; src: url("../fuentes/Inter_600SemiBold.ttf") format("truetype"); }
+@font-face { font-family: "Bricolage Grotesque"; font-weight: 700; font-style: normal; font-display: swap; src: url("../fuentes/BricolageGrotesque_700Bold.ttf") format("truetype"); }
+@font-face { font-family: "Bricolage Grotesque"; font-weight: 800; font-style: normal; font-display: swap; src: url("../fuentes/BricolageGrotesque_800ExtraBold.ttf") format("truetype"); }

@@ -10,6 +10,9 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type MouseEvent, type ReactNode } from "react";
 
 export type Ruta =
+  | { pantalla: "inicio" }
+  | { pantalla: "solicitudes" }
+  | { pantalla: "solicitud"; id: string }
   | { pantalla: "calculadora" }
   | { pantalla: "cotizaciones" }
   | { pantalla: "nueva-cotizacion"; proyectoId: string | null }
@@ -36,7 +39,7 @@ export const VISTAS_ADMINISTRACION_RUTA = ["parametros", "personas"] as const;
 export type VistaAdministracion = (typeof VISTAS_ADMINISTRACION_RUTA)[number];
 
 /** Vistas de la administración de catálogos (módulo 11). */
-export const VISTAS_CATALOGO_RUTA = ["proveedores", "productos", "precios", "mano-de-obra", "insumos", "tipos-estructura", "conceptos"] as const;
+export const VISTAS_CATALOGO_RUTA = ["proveedores", "productos", "precios", "mano-de-obra", "insumos", "tipos-estructura", "conceptos", "referencias"] as const;
 export type VistaCatalogo = (typeof VISTAS_CATALOGO_RUTA)[number];
 
 const UUID = "[0-9a-fA-F-]{36}";
@@ -44,11 +47,14 @@ const UUID = "[0-9a-fA-F-]{36}";
 /** `null` si el hash no es una ruta (p. ej., un ancla de la página). */
 export function interpretarHash(hash: string): Ruta | null {
   const h = hash.replace(/^#/, "");
-  if (h === "" || h === "/") return { pantalla: "calculadora" };
+  if (h === "" || h === "/") return { pantalla: "inicio" };
   if (!h.startsWith("/")) return null;
   const [camino = "", consulta = ""] = h.split("?");
   const parametros = new URLSearchParams(consulta);
   let m: RegExpExecArray | null;
+  if (camino === "/inicio") return { pantalla: "inicio" };
+  if (camino === "/solicitudes") return { pantalla: "solicitudes" };
+  if ((m = new RegExp(`^/solicitudes/(${UUID})$`).exec(camino))) return { pantalla: "solicitud", id: m[1]! };
   if (camino === "/calculadora") return { pantalla: "calculadora" };
   if (camino === "/cotizaciones") return { pantalla: "cotizaciones" };
   if (camino === "/cotizaciones/nueva") {
@@ -85,6 +91,12 @@ export function interpretarHash(hash: string): Ruta | null {
 
 export function hashDe(r: Ruta): string {
   switch (r.pantalla) {
+    case "inicio":
+      return "#/inicio";
+    case "solicitudes":
+      return "#/solicitudes";
+    case "solicitud":
+      return `#/solicitudes/${r.id}`;
     case "calculadora":
       return "#/calculadora";
     case "cotizaciones":
@@ -121,8 +133,13 @@ export function hashDe(r: Ruta): string {
 }
 
 /** Sección de la navegación principal a la que pertenece una ruta. */
-export function seccionDe(r: Ruta): "calculadora" | "cotizaciones" | "revisiones" | "clientes" | "proyectos" | "emisor" | "catalogo" | "administracion" | null {
+export function seccionDe(r: Ruta): "inicio" | "solicitudes" | "calculadora" | "cotizaciones" | "revisiones" | "clientes" | "proyectos" | "emisor" | "catalogo" | "administracion" | null {
   switch (r.pantalla) {
+    case "inicio":
+      return "inicio";
+    case "solicitudes":
+    case "solicitud":
+      return "solicitudes";
     case "calculadora":
       return "calculadora";
     case "cotizaciones":
@@ -181,7 +198,7 @@ function desplazarAAncla(id: string): void {
 }
 
 export function ProveedorRuta({ children }: { children: ReactNode }) {
-  const [ruta, setRuta] = useState<Ruta>(() => interpretarHash(window.location.hash) ?? { pantalla: "calculadora" });
+  const [ruta, setRuta] = useState<Ruta>(() => interpretarHash(window.location.hash) ?? { pantalla: "inicio" });
   const [pendiente, setPendiente] = useState<Ruta | null>(null);
   const guarda = useRef<Guarda | null>(null);
   const rutaActual = useRef(ruta);

@@ -2062,3 +2062,83 @@ textarea[aria-invalid="true"] {
 .panel-nueva-version .opcion-dato {
   white-space: normal;
 }
+
+/* ---------- Identidad «Obra cálida» (E3.1, ADR-0022) ---------- */
+/* Títulos en Bricolage Grotesque; texto en Inter. Profundidad con capas sólidas (borde inferior), no degradados. */
+h1,
+h2,
+h3,
+.marca,
+.pagina-titulo,
+.tarjeta-titulo {
+  font-family: var(--fuente-titulo);
+  letter-spacing: -0.01em;
+}
+
+.marca,
+.pagina-titulo {
+  font-weight: 800;
+}
+
+.encabezado {
+  border-bottom: 4px solid var(--color-terracota);
+}
+
+.boton-primario {
+  box-shadow: var(--profundidad-accion);
+}
+
+.boton-secundario {
+  box-shadow: var(--profundidad);
+}
+
+.boton-primario:active:not(:disabled),
+.boton-secundario:active:not(:disabled) {
+  transform: translateY(3px);
+  box-shadow: none;
+}
+
+.boton:disabled {
+  box-shadow: none;
+}
+
+.tarjeta {
+  box-shadow: var(--profundidad);
+}
+
+/* Sección actual: petróleo (estructura) con subrayado terracota; además del color, peso y subrayado. */
+.navegacion-enlace[aria-current="page"] {
+  color: var(--color-primario);
+  border-bottom-color: var(--color-terracota);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .boton,
+  .boton:active:not(:disabled) {
+    transition: none;
+    transform: none;
+  }
+}
+
+/* ---------- Mi trabajo y solicitudes (E3.2/E3.3) ---------- */
+.tarjeta-trabajo {
+  display: grid;
+  gap: var(--esp-2);
+  align-content: start;
+}
+
+.trabajo-numero {
+  margin: 0;
+  font-family: var(--fuente-titulo);
+  font-weight: 800;
+  font-size: var(--texto-2xl);
+  color: var(--color-primario);
+  font-variant-numeric: tabular-nums;
+}
+
+.lista-simple {
+  list-style: none;
+  padding-left: 0;
+  display: grid;
+  gap: var(--esp-3);
+}

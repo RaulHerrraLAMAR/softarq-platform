@@ -27,6 +27,9 @@ import { PantallaCotizacion } from "./cotizaciones/EditorCotizacion.tsx";
 import { PantallaEmisor } from "./cotizaciones/emision.tsx";
 import { ListaCotizaciones, NuevaCotizacion, VistaVersion } from "./cotizaciones/PantallasCotizaciones.tsx";
 import { BandejaRevisiones, PantallaRevision } from "./cotizaciones/revisiones.tsx";
+import { MiTrabajo } from "./inicio/MiTrabajo.tsx";
+import { BandejaSolicitudes, DetalleSolicitud } from "./solicitudes/PantallasSolicitudes.tsx";
+import type { ServiciosSolicitudes } from "./solicitudes/servicios.ts";
 import { PantallaSalidasInternas } from "./salidas-internas/PantallaSalidasInternas.tsx";
 import { Enlace, ProveedorRuta, hashDe, seccionDe, useRuta, type Ruta } from "./navegacion/ruta.tsx";
 
@@ -38,6 +41,8 @@ export interface PropsAplicacion {
   catalogoAdmin: ServiciosCatalogoAdmin;
   /** Parámetros y personas (módulo 13): solo con `parametros.administrar` / `personas.administrar`. */
   administracion: ServiciosAdministracion;
+  /** Atención de solicitudes de clientes, accesos y referencias de estimación (módulo 17). */
+  solicitudes: ServiciosSolicitudes;
   barraSesion: ReactNode;
   motivoSinCalculo: string | null;
   /** Vuelve a consultar la sesión (módulo 14): tras perder una función con la pantalla abierta. */
@@ -53,6 +58,7 @@ export function Aplicacion(props: PropsAplicacion) {
 }
 
 const SECCIONES: { ruta: Ruta; texto: string; seccion: NonNullable<ReturnType<typeof seccionDe>> }[] = [
+  { ruta: { pantalla: "inicio" }, texto: "Mi trabajo", seccion: "inicio" },
   { ruta: { pantalla: "calculadora" }, texto: "Calculadora DEMO", seccion: "calculadora" },
   { ruta: { pantalla: "cotizaciones" }, texto: "Cotizaciones", seccion: "cotizaciones" },
   { ruta: { pantalla: "revisiones" }, texto: "Revisiones", seccion: "revisiones" },
@@ -61,18 +67,21 @@ const SECCIONES: { ruta: Ruta; texto: string; seccion: NonNullable<ReturnType<ty
   { ruta: { pantalla: "emisor" }, texto: "Emisor", seccion: "emisor" },
 ];
 
+/** Solo con `solicitudes.atender` (Preparador, módulo 17); la API lo exige de todos modos. */
+const SECCION_SOLICITUDES = { ruta: { pantalla: "solicitudes" } as Ruta, texto: "Solicitudes", seccion: "solicitudes" as const };
+
 /** Solo con `catalogos.administrar` (Administrador del catálogo); la API lo exige de todos modos. */
 const SECCION_CATALOGO = { ruta: { pantalla: "catalogo", vista: "proveedores" } as Ruta, texto: "Catálogo", seccion: "catalogo" as const };
 
 /** Solo con `parametros.administrar` o `personas.administrar` (Administrador del sistema, módulo 13). */
 const SECCION_ADMINISTRACION = { ruta: { pantalla: "administracion", vista: "parametros" } as Ruta, texto: "Administración", seccion: "administracion" as const };
 
-function Navegacion({ ruta, puedeAdministrarCatalogo, puedeAdministrarSistema }: { ruta: Ruta; puedeAdministrarCatalogo: boolean; puedeAdministrarSistema: boolean }) {
+function Navegacion({ ruta, puedeAtender, puedeAdministrarCatalogo, puedeAdministrarSistema }: { ruta: Ruta; puedeAtender: boolean; puedeAdministrarCatalogo: boolean; puedeAdministrarSistema: boolean }) {
   const actual = seccionDe(ruta);
   return (
     <nav className="navegacion" aria-label="Secciones">
       <ul>
-        {[...SECCIONES, ...(puedeAdministrarCatalogo ? [SECCION_CATALOGO] : []), ...(puedeAdministrarSistema ? [SECCION_ADMINISTRACION] : [])].map((s) => (
+        {[SECCIONES[0]!, ...(puedeAtender ? [SECCION_SOLICITUDES] : []), ...SECCIONES.slice(1), ...(puedeAdministrarCatalogo ? [SECCION_CATALOGO] : []), ...(puedeAdministrarSistema ? [SECCION_ADMINISTRACION] : [])].map((s) => (
           <li key={s.seccion}>
             <Enlace a={s.ruta} className="navegacion-enlace" actual={actual === s.seccion}>
               {s.texto}
@@ -84,13 +93,14 @@ function Navegacion({ ruta, puedeAdministrarCatalogo, puedeAdministrarSistema }:
   );
 }
 
-function Contenido({ sesion, servicios, cotizaciones, catalogoAdmin, administracion, barraSesion, motivoSinCalculo, alRefrescarSesion }: PropsAplicacion) {
+function Contenido({ sesion, servicios, cotizaciones, catalogoAdmin, administracion, solicitudes, barraSesion, motivoSinCalculo, alRefrescarSesion }: PropsAplicacion) {
   const { ruta, pendiente, confirmarSalida, cancelarSalida, navegar } = useRuta();
   const puede = (c: Capacidad) => sesion.capacidades.includes(c);
   const puedePreparar = puede("cotizaciones.preparar");
   const puedeGestionar = puede("clientes.gestionar");
   const puedeEnviarRevision = puede("revisiones.enviar");
   const puedeEmitir = puede("emisiones.emitir");
+  const puedeAtender = puede("solicitudes.atender");
   const puedeVerExcepciones = puede("excepciones.consultar");
   const puedeVerSalidas = puede("salidas.consultar");
   const puedeAdministrarCatalogo = puede("catalogos.administrar");
@@ -118,6 +128,12 @@ function Contenido({ sesion, servicios, cotizaciones, catalogoAdmin, administrac
     switch (ruta.pantalla) {
       case "calculadora":
         return null;
+      case "inicio":
+        return <MiTrabajo nombre={sesion.usuario.nombre} capacidades={sesion.capacidades} solicitudes={solicitudes} cotizaciones={cotizaciones} />;
+      case "solicitudes":
+        return puedeAtender ? <BandejaSolicitudes servicios={solicitudes} /> : <SinPermisoSolicitudes />;
+      case "solicitud":
+        return puedeAtender ? <DetalleSolicitud servicios={solicitudes} id={ruta.id} puedeAtender={puedeAtender} /> : <SinPermisoSolicitudes />;
       case "cotizaciones":
         return <ListaCotizaciones servicios={cotizaciones} puedePreparar={puedePreparar} />;
       case "nueva-cotizacion":
@@ -152,7 +168,7 @@ function Contenido({ sesion, servicios, cotizaciones, catalogoAdmin, administrac
         return <PantallaEmisor cotizaciones={cotizaciones} />;
       case "catalogo":
         return puedeAdministrarCatalogo ? (
-          <PantallaCatalogo servicios={catalogoAdmin} vista={ruta.vista} />
+          <PantallaCatalogo servicios={catalogoAdmin} vista={ruta.vista} solicitudes={solicitudes} />
         ) : (
           <Pagina titulo="Sin permiso">
             <Aviso tono="info" titulo="Su función no administra el catálogo">
@@ -219,7 +235,7 @@ function Contenido({ sesion, servicios, cotizaciones, catalogoAdmin, administrac
   })();
 
   return (
-    <Marco barraSesion={barraSesion} navegacion={<Navegacion ruta={ruta} puedeAdministrarCatalogo={puedeAdministrarCatalogo} puedeAdministrarSistema={puedeParametros || puedePersonas} />} pie="SoftArq · entorno DEMO local. Datos ilustrativos, sin validez comercial.">
+    <Marco barraSesion={barraSesion} navegacion={<Navegacion ruta={ruta} puedeAtender={puedeAtender} puedeAdministrarCatalogo={puedeAdministrarCatalogo} puedeAdministrarSistema={puedeParametros || puedePersonas} />} pie="SoftArq · entorno DEMO local. Datos ilustrativos, sin validez comercial.">
       {pendiente ? (
         <div className="aviso-salida">
           <Aviso tono="aviso" titulo="Hay cambios sin guardar" rol="alert">
@@ -264,6 +280,16 @@ function SinPermiso() {
     <Pagina titulo="Sin permiso">
       <Aviso tono="info" titulo="Su función no permite crear cotizaciones">
         <p>En el libro de la fase 1, la cotización la prepara el Preparador. Puede consultar las cotizaciones existentes.</p>
+      </Aviso>
+    </Pagina>
+  );
+}
+
+function SinPermisoSolicitudes() {
+  return (
+    <Pagina titulo="Sin permiso">
+      <Aviso tono="info" titulo="Su función no atiende solicitudes de clientes">
+        <p>Las solicitudes enviadas desde la app las atiende el Preparador.</p>
       </Aviso>
     </Pagina>
   );

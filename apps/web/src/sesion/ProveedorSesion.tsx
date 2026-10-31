@@ -14,6 +14,7 @@ import { crearClienteApi, type FalloApi } from "../api/cliente.ts";
 import { crearServicios, type ServiciosApi } from "../api/servicios.ts";
 import { crearServiciosCotizaciones, type ServiciosCotizaciones } from "../api/servicios-cotizaciones.ts";
 import { crearServiciosAdministracion, type ServiciosAdministracion } from "../administracion/servicios.ts";
+import { crearServiciosSolicitudes, type ServiciosSolicitudes } from "../solicitudes/servicios.ts";
 import { crearServiciosCatalogoAdmin, type ServiciosCatalogoAdmin } from "../catalogo-admin/servicios.ts";
 import { crearServiciosSesion, type ServiciosSesion } from "./servicios.ts";
 
@@ -37,6 +38,7 @@ export interface ValorSesion {
   catalogoAdmin: ServiciosCatalogoAdmin;
   /** Parámetros y personas (módulo 13, mismo cliente). */
   administracion: ServiciosAdministracion;
+  solicitudes: ServiciosSolicitudes;
   iniciar(correo: string, contrasena: string): Promise<ResultadoInicio>;
   /** Cambio de la contraseña propia: al terminar, la sesión se cierra y hay que volver a entrar. */
   cambiarContrasena(datos: CambioContrasena): Promise<ResultadoInicio>;
@@ -72,7 +74,7 @@ export function ProveedorSesion({ urlApi, children, hacerFetch }: PropsProveedor
   const vencer = useRef<() => void>(() => {});
   const renovarCsrf = useRef<() => Promise<boolean>>(async () => false);
 
-  const { cliente, servicios, cotizaciones, catalogoAdmin, administracion, sesion } = useMemo(() => {
+  const { cliente, servicios, cotizaciones, catalogoAdmin, administracion, solicitudes, sesion } = useMemo(() => {
     const cliente = crearClienteApi(urlApi, hacerFetch, {
       csrf: () => csrf.current,
       alNoAutenticado: () => vencer.current(),
@@ -84,6 +86,7 @@ export function ProveedorSesion({ urlApi, children, hacerFetch }: PropsProveedor
       cotizaciones: crearServiciosCotizaciones(cliente),
       catalogoAdmin: crearServiciosCatalogoAdmin(cliente),
       administracion: crearServiciosAdministracion(cliente),
+      solicitudes: crearServiciosSolicitudes(cliente),
       sesion: crearServiciosSesion(cliente) as ServiciosSesion,
     };
   }, [urlApi, hacerFetch]);
@@ -193,13 +196,14 @@ export function ProveedorSesion({ urlApi, children, hacerFetch }: PropsProveedor
       cotizaciones,
       catalogoAdmin,
       administracion,
+      solicitudes,
       iniciar,
       cerrar,
       cambiarContrasena,
       reintentarVerificacion: () => setIntento((n) => n + 1),
       refrescar,
     }),
-    [estado, servicios, cotizaciones, catalogoAdmin, administracion, iniciar, cerrar, cambiarContrasena, refrescar],
+    [estado, servicios, cotizaciones, catalogoAdmin, administracion, solicitudes, iniciar, cerrar, cambiarContrasena, refrescar],
   );
   return <ContextoSesion.Provider value={valor}>{children}</ContextoSesion.Provider>;
 }

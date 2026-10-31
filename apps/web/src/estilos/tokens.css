@@ -1,39 +1,43 @@
 /*
- * Sistema visual SoftArq DEMO (docs/web/sistema-visual.md).
- * Estilo «Minimalism & Swiss» (UI UX Pro Max): sobrio, denso, alto contraste.
+ * Sistema visual del panel SoftArq DEMO (docs/web/sistema-visual.md, ADR-0022).
+ * Identidad «Obra cálida» adaptada al escritorio: cal y papel como base, verde petróleo para estructurar
+ * (encabezado, navegación, foco) y terracota para actuar (acciones y enlaces). Los valores son los de la app del cliente.
  * Cada par texto/fondo usado cumple contraste ≥ 4.5:1 (prueba: src/estilos/__tests__/contraste.test.ts).
  */
 :root {
   /* Color */
-  --color-primario: #0f172a;
-  --color-secundario: #334155;
-  --color-accion: #0369a1;
-  --color-accion-hover: #075985;
+  --color-primario: #14535a; /* petróleo: encabezado */
+  --color-secundario: #0c3a40; /* petróleo profundo: texto secundario y estados activos */
+  --color-accion: #a93a19; /* terracota para actuar (texto blanco encima) y para enlaces */
+  --color-accion-hover: #8e2d0f;
   --color-sobre-accion: #ffffff;
-  --color-fondo: #f8fafc;
-  --color-tarjeta: #ffffff;
-  --color-texto: #0f172a;
-  --color-texto-atenuado: #475569;
-  --color-borde: #cbd5e1;
-  --color-borde-fuerte: #64748b;
-  --color-superficie-suave: #f1f5f9;
-  --color-error: #b91c1c;
-  --color-error-fondo: #fef2f2;
-  --color-aviso: #92400e;
-  --color-aviso-fondo: #fef3c7;
-  --color-info: #075985;
-  --color-info-fondo: #e0f2fe;
-  --color-correcto: #166534;
-  --color-correcto-fondo: #dcfce7;
+  --color-terracota: #c8451e; /* acento decorativo (no para texto) */
+  --color-fondo: #efe8dc;
+  --color-tarjeta: #fffdf9;
+  --color-texto: #22201c;
+  --color-texto-atenuado: #5c554a;
+  --color-borde: #d3c9b7;
+  --color-borde-fuerte: #8a7f6c;
+  --color-superficie-suave: #e8dfcf;
+  --color-petroleo-tinte: #d3e5e3;
+  --color-error: #a8231b;
+  --color-error-fondo: #f6d6d2;
+  --color-aviso: #7a4a00;
+  --color-aviso-fondo: #f6e3b4;
+  --color-info: #0c3a40;
+  --color-info-fondo: #d3e5e3;
+  --color-correcto: #1d5f3a;
+  --color-correcto-fondo: #cde6d3;
   --color-demo: #7c2d12;
-  --color-demo-fondo: #ffedd5;
-  --color-foco: #0369a1;
-  /* Foco y texto secundario sobre el encabezado oscuro (sesión, módulo 5). */
-  --color-foco-sobre-oscuro: #7dd3fc;
-  --color-texto-sobre-oscuro: #e2e8f0;
+  --color-demo-fondo: #f7dcc6;
+  --color-foco: #14535a;
+  /* Foco y texto secundario sobre el encabezado petróleo (sesión, módulo 5). */
+  --color-foco-sobre-oscuro: #a9dad5;
+  --color-texto-sobre-oscuro: #e4efed;
 
   /* Tipografía */
-  --fuente-texto: "Fira Sans", system-ui, "Segoe UI", Arial, sans-serif;
+  --fuente-texto: "Inter", system-ui, "Segoe UI", Arial, sans-serif;
+  --fuente-titulo: "Bricolage Grotesque", "Inter", system-ui, "Segoe UI", Arial, sans-serif;
   --fuente-codigo: "Fira Code", ui-monospace, Consolas, monospace;
   --texto-xs: 0.8125rem; /* 13 px: solo etiquetas secundarias */
   --texto-sm: 0.875rem; /* 14 px */
@@ -50,9 +54,11 @@
   --esp-6: 1.5rem;
   --esp-8: 2rem;
 
-  /* Forma */
-  --radio: 6px;
-  --sombra: 0 1px 2px rgb(15 23 42 / 0.08);
+  /* Forma: capas sólidas (borde inferior) en lugar de degradados, como en la app */
+  --radio: 8px;
+  --sombra: 0 1px 2px rgb(34 32 28 / 0.1);
+  --profundidad: 0 3px 0 var(--color-borde);
+  --profundidad-accion: 0 3px 0 #8e2d0f;
   --objetivo-minimo: 44px;
   --transicion: 150ms ease-out;
 }

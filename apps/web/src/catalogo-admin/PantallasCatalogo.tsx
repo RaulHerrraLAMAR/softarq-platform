@@ -41,6 +41,8 @@ import type { ServiciosCatalogoAdmin } from "./servicios.ts";
 import { buscarInsumos, buscarProductos, buscarProveedores } from "./buscadores.ts";
 import { VistaConceptosTecnicos, VistaInsumos, VistaTiposEstructura } from "../catalogo-tecnico/PantallasTecnicas.tsx";
 import { Acciones, Busqueda, Confirmacion, FormularioAsignacion, Historial, mxn, opcional, TEXTO_MODALIDAD, textoImporteTarifa, textoImpactoVersiones, useEnvio, vigencia } from "./piezas.tsx";
+import { VistaReferencias } from "../solicitudes/VistaReferencias.tsx";
+import type { ServiciosSolicitudes } from "../solicitudes/servicios.ts";
 import { SelectorRegistro, type OpcionRegistro } from "./SelectorRegistro.tsx";
 
 const TITULOS: Record<VistaCatalogo, string> = {
@@ -51,6 +53,7 @@ const TITULOS: Record<VistaCatalogo, string> = {
   insumos: "Insumos y conversiones",
   "tipos-estructura": "Tipos de estructura",
   conceptos: "Conceptos y componentes",
+  referencias: "Precios de referencia",
 };
 
 const TEXTO_ESTADO_PRECIO: Record<EstadoPrecio, string> = {
@@ -60,7 +63,7 @@ const TEXTO_ESTADO_PRECIO: Record<EstadoPrecio, string> = {
   ANULADO: "Anulado",
 };
 
-export function PantallaCatalogo({ servicios, vista }: { servicios: ServiciosCatalogoAdmin; vista: VistaCatalogo }) {
+export function PantallaCatalogo({ servicios, vista, solicitudes }: { servicios: ServiciosCatalogoAdmin; vista: VistaCatalogo; /** Referencias de estimación (módulo 17). */ solicitudes?: ServiciosSolicitudes }) {
   return (
     <Pagina
       titulo="Catálogo"
@@ -84,6 +87,7 @@ export function PantallaCatalogo({ servicios, vista }: { servicios: ServiciosCat
       {vista === "insumos" ? <VistaInsumos servicios={servicios} /> : null}
       {vista === "tipos-estructura" ? <VistaTiposEstructura servicios={servicios} /> : null}
       {vista === "conceptos" ? <VistaConceptosTecnicos servicios={servicios} /> : null}
+      {vista === "referencias" && solicitudes ? <VistaReferencias servicios={solicitudes} catalogo={servicios} /> : null}
     </Pagina>
   );
 }
