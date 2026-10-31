@@ -9,7 +9,7 @@
  * Definición única: `EsquemaCotizacionComercial` (api/esquemas.ts).
  */
 import type { z } from "zod";
-import type { EsquemaCotizacionComercial } from "./api/esquemas.js";
+import type { EsquemaCotizacionComercial } from "./api/comunes.js";
 
 /** Marca obligatoria de toda salida en ambiente DEMO (Word maestro §3.13). */
 export const LEYENDA_DEMO = "DEMOSTRACIÓN — DATOS ILUSTRATIVOS, SIN VALIDEZ COMERCIAL";

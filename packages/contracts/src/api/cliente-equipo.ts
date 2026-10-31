@@ -6,7 +6,7 @@
  * definiciones de proveedor, producto, concepto o contraseña temporal (D-16, AGENTS §13).
  */
 import { z } from "zod";
-import { EsquemaCodigo, EsquemaDecimalTexto, EsquemaFechaISO } from "./esquemas.js";
+import { EsquemaCodigo, EsquemaDecimalTexto, EsquemaFechaISO } from "./comunes.js";
 import {
   ESTADOS_SOLICITUD,
   EsquemaCapturaSolicitud,

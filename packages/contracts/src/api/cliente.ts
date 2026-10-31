@@ -12,7 +12,7 @@
  *   bitácora técnica (D-16). La estimación expone solo la proyección comercial.
  */
 import { z } from "zod";
-import { EsquemaCodigo, EsquemaDecimalTexto, EsquemaFechaISO, EsquemaCotizacionComercial } from "./esquemas.js";
+import { EsquemaCodigo, EsquemaDecimalTexto, EsquemaFechaISO, EsquemaCotizacionComercial } from "./comunes.js";
 
 export const LIMITES_CLIENTE = {
   trabajosPorSolicitud: 10,

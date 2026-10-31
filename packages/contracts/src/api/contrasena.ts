@@ -3,7 +3,7 @@
  * Archivo aparte para que el cliente móvil no importe los contratos de administración.
  */
 import { z } from "zod";
-import { LIMITES_API } from "./esquemas.js";
+import { LIMITES_API } from "./comunes.js";
 
 /** Longitud mínima de una contraseña nueva (alta, restablecimiento y cambio propio): sin reglas de composición. */
 export const CONTRASENA_MINIMA = 12;

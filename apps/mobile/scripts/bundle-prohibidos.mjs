@@ -16,10 +16,11 @@ export const PROHIBIDOS = [
   // Contratos internos (costos, márgenes, proveedores de compra): no deben ni definirse en el teléfono
   { grupo: "interno", patron: /costoCompra|costoProrrateado|consumoBase|costoMateriales|costoDirectoRedondeado|recargoSobreCosto|referenciasInternas|resultadoInterno|SalidasInternas/ },
   // Contratos del equipo y la administración (accesos, referencias de estimación, definición de trabajos,
-  // bandeja): viven en `cliente-equipo.ts`, fuera de `@softarq/contracts/cliente`. Se buscan sus claves
-  // exclusivas; `proveedor`, `insumoCodigo` y similares también existen en los esquemas generales de
-  // `esquemas.ts` (límite conocido, ADR-0021), así que no pueden usarse como señal.
+  // bandeja): viven en `cliente-equipo.ts`, fuera de `@softarq/contracts/cliente`. Se buscan sus claves exclusivas.
   { grupo: "equipo", patron: /contrasenaTemporal|temporalExpiraEn|designadaEn|folioCotizacion|SolicitudEquipo|DefinicionTrabajo|ReferenciaEstimacion/ },
+  // Claves de los esquemas internos de cálculo, catálogo y precios (`esquemas.ts`). Desde que `/cliente` solo
+  // exporta `comunes.ts`, ninguna debe aparecer ni como clave de un esquema Zod (ADR-0020, notas de E2).
+  { grupo: "esquemas-internos", patron: /\b(?:proveedor|proveedorCodigo|insumoCodigo|precioCodigo|conceptoCodigo|consolidarCompras|registroVigente|excepcionesVigentes|seguimientoVigente|revisionVigente)\b/ },
 ];
 
 /** Devuelve los hallazgos (grupo + coincidencia) de un texto de bundle; vacío si está limpio. */

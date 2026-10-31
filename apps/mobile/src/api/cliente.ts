@@ -12,7 +12,7 @@
  * - `descargar` trae un documento binario (el PDF emitido) con el mismo control; nunca lleva el token en la URL.
  * - Nunca se registran cuerpos, cabeceras ni el token.
  */
-import { EsquemaRespuestaError } from "@softarq/contracts/cliente";
+import { EsquemaRespuestaErrorCliente } from "@softarq/contracts/cliente";
 import type { ZodType } from "zod";
 import { FalloApi, type CampoInvalido, type TipoFallo } from "./errores";
 
@@ -181,7 +181,7 @@ export class ClienteApi {
       }
 
       if (!r.ok) {
-        const e = EsquemaRespuestaError.safeParse(json);
+        const e = EsquemaRespuestaErrorCliente.safeParse(json);
         const codigo = e.success ? e.data.error.codigo : undefined;
         const tipo = clasificar(r.status, codigo);
         const reintento = Number(r.headers.get("retry-after"));

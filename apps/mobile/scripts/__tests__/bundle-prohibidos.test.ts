@@ -27,4 +27,12 @@ describe("detector de contenido prohibido en el bundle", () => {
     expect(hay("contrasenaTemporal:z.string().nullable(),temporalExpiraEn:z.string()")).toContain("equipo");
     expect(hay("designadaEn:z.string(),motivo:z.string()")).toContain("equipo");
   });
+  it("detecta claves de los esquemas internos de cálculo, catálogo y precios", () => {
+    for (const clave of ["proveedor", "proveedorCodigo", "insumoCodigo", "precioCodigo", "conceptoCodigo", "consolidarCompras", "registroVigente"]) {
+      expect(hay(`{${clave}:z.string()}`), clave).toContain("esquemas-internos");
+    }
+  });
+  it("no confunde una palabra común con una clave interna", () => {
+    expect(hay("elegir un proveedores o presupuestos")).toEqual([]);
+  });
 });
