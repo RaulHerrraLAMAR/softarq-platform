@@ -1229,7 +1229,7 @@ export function construirDocumentoOpenApi(): Record<string, unknown> {
       "/api/v1/solicitudes": {
         get: {
           summary: "Bandeja del equipo: solicitudes enviadas de los clientes (capacidad solicitudes.atender: Preparador)",
-          parameters: [{ name: "estado", in: "query", required: false, schema: { type: "string" }, description: "ENVIADA, EN_PREPARACION o RETIRADA separados por coma (por omisión ENVIADA,EN_PREPARACION)." }],
+          parameters: [{ name: "estado", in: "query", required: false, schema: { type: "string" }, description: "ENVIADA, EN_PREPARACION, COTIZADA o RETIRADA separados por coma (por omisión ENVIADA,EN_PREPARACION). COTIZADA se deriva: su cotización ya tiene una emisión; EN_PREPARACION solo trae las aún no emitidas." }],
           responses: { "200": ok("RespuestaSolicitudesEquipo", "Solicitudes."), ...errores(400, 401, 403, 429, 503, 500) },
         },
       },

@@ -2142,3 +2142,8 @@ h3,
   display: grid;
   gap: var(--esp-3);
 }
+
+/* Los botones dentro de tarjetas no se estiran a todo el ancho (E3.1). */
+.tarjeta > .boton {
+  justify-self: start;
+}

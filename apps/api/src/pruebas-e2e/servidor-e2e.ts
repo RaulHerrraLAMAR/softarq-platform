@@ -28,6 +28,7 @@ import { crearAplicacion } from "../http/crear-aplicacion.js";
 import { RelojFijo } from "../modules/calculo/aplicacion/reloj.js";
 import { cargarDemo } from "../modules/catalogos/demo/cargar-demo.js";
 import { cargarEmisorDemo } from "../modules/cotizaciones/demo/cargar-emisor-demo.js";
+import { cargarClientesDemo } from "../modules/cliente/demo/cargar-clientes-demo.js";
 import { generarPdf } from "../modules/cotizaciones/dominio/pdf/generador-pdf.js";
 import { confirmarBase, directorioDocumentosPrueba, prismaApp, vaciarDocumentosPrueba } from "../pruebas-integracion/entorno.js";
 import prepararBase from "../pruebas-integracion/preparar-base.js";
@@ -64,6 +65,9 @@ async function principal(): Promise<void> {
       ],
     });
     await migrador.$executeRaw`UPDATE usuario SET contrasena_temporal_expira_en = now() + interval '72 hours' WHERE correo = 'temporal.e2e@softarq.test'`;
+    // Módulo 17 (E3): trabajos para clientes (Cubierta, Losa, Muro) y precios de referencia, para que las pruebas del panel
+    // recorran solicitudes reales. Sus tres clientes ficticios y sus accesos no se usan (las contraseñas no se guardan).
+    await cargarClientesDemo(migrador, new ServicioContrasenas(), { organizacion: "DEMO", fecha: FECHA_E2E, dominioCorreo: "clientes-e2e.softarq.test" });
     const cuenta = (correo: string) => {
       const c = [...r.creadas, ...ambas.creadas].find((x) => x.correo === correo);
       if (!c) throw new Error(`No se creó la cuenta de prueba ${correo}.`);

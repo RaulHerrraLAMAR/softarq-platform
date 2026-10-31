@@ -69,6 +69,17 @@ export class RepositorioEquipo {
     return filas.map((f) => aFila(f as unknown as Fila));
   }
 
+  /** Cotizaciones (de las dadas) que ya tienen una emisión: la solicitud de la que nacieron figura como «cotizada». */
+  async cotizacionesEmitidas(ctx: ContextoOrganizacion, cotizacionIds: readonly string[]): Promise<Set<string>> {
+    if (cotizacionIds.length === 0) return new Set();
+    const filas = await this.db.emision.findMany({
+      where: { organizacionId: ctx.organizacionId, cotizacionId: { in: [...cotizacionIds] }, cotizacion: { estadoFolio: "ACTIVO" } },
+      select: { cotizacionId: true },
+      distinct: ["cotizacionId"],
+    });
+    return new Set(filas.map((f) => f.cotizacionId));
+  }
+
   async obtener(ctx: ContextoOrganizacion, id: string): Promise<SolicitudFila | null> {
     const f = await this.db.solicitudCliente.findFirst({ where: { organizacionId: ctx.organizacionId, id, estado: { not: "BORRADOR" } }, select: seleccion });
     return f ? aFila(f as unknown as Fila) : null;

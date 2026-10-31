@@ -671,6 +671,18 @@ describe("cotización formal emitida: el cliente la ve, con su PDF, y solo las s
     expect(pdf.headers.get("content-type")).toBe("application/pdf");
     const bytes = Buffer.from(await pdf.arrayBuffer());
     expect(bytes.subarray(0, 5).toString("latin1")).toBe("%PDF-");
+
+    // El equipo ve lo mismo que el cliente: tras emitir, la solicitud figura como cotizada (derivado, no guardado) y sale de «en preparación».
+    const enPreparacion = EsquemaRespuestaSolicitudesEquipo.parse((await p.get("/api/v1/solicitudes?estado=EN_PREPARACION")).cuerpo);
+    expect(enPreparacion.solicitudes.map((x) => x.id)).not.toContain(ids["solEnviada"]);
+    const cotizadas = EsquemaRespuestaSolicitudesEquipo.parse((await p.get("/api/v1/solicitudes?estado=COTIZADA")).cuerpo);
+    const suya = cotizadas.solicitudes.find((x) => x.id === ids["solEnviada"]);
+    expect(suya, "la solicitud cotizada aparece en el filtro COTIZADA").toBeTruthy();
+    expect(suya!.estado).toBe("COTIZADA");
+    expect(suya!.cotizacionId).toBe(ids["cotizacion"]);
+    const detalleEquipo = EsquemaDetalleSolicitudEquipo.parse((await p.get(`/api/v1/solicitudes/${ids["solEnviada"]}`)).cuerpo);
+    expect(detalleEquipo.estado).toBe("COTIZADA");
+    expect((await p.get("/api/v1/solicitudes?estado=NO_EXISTE")).status).toBe(400);
   });
 
   it("las cotizaciones de OTRO cliente o de otra organización no se ven ni se descargan, aunque se conozca el identificador de la emisión", async () => {

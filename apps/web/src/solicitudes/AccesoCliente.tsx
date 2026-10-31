@@ -117,7 +117,7 @@ export function AccesoCliente({ servicios, clienteId, clienteNombre, clienteActi
             <dt>Estado</dt>
             <dd>
               {acceso.activo ? <Insignia tono="estado">Activo</Insignia> : <Insignia tono="menor">Desactivado</Insignia>}{" "}
-              {acceso.contrasenaTemporal ? <Insignia tono="alerta">Contraseña temporal pendiente de cambio</Insignia> : null}
+              {acceso.contrasenaTemporal ? <Insignia tono="demo">Contraseña temporal pendiente de cambio</Insignia> : null}
             </dd>
           </div>
           <div>

@@ -42,8 +42,17 @@ export class ServicioEquipo {
     this.emisiones = new RepositorioEmisiones(db);
   }
 
-  async listar(ctx: ContextoOrganizacion, estados: readonly ("ENVIADA" | "EN_PREPARACION" | "RETIRADA")[], limite: number): Promise<RespuestaSolicitudesEquipo> {
-    const filas = await this.repo.listar(ctx, estados, limite);
+  /**
+   * `COTIZADA` no se guarda: se deriva (igual que ve el cliente) de que la cotización de la solicitud ya tenga una emisión.
+   * Pedir `EN_PREPARACION` devuelve solo las que todavía no se emitieron; `COTIZADA`, solo las emitidas.
+   */
+  async listar(ctx: ContextoOrganizacion, estados: readonly ("ENVIADA" | "EN_PREPARACION" | "COTIZADA" | "RETIRADA")[], limite: number): Promise<RespuestaSolicitudesEquipo> {
+    const deBase = [...new Set(estados.map((e) => (e === "COTIZADA" ? "EN_PREPARACION" : e)))];
+    const todas = await this.repo.listar(ctx, deBase, limite);
+    const emitidas = await this.repo.cotizacionesEmitidas(ctx, todas.flatMap((f) => (f.estado === "EN_PREPARACION" && f.cotizacionId ? [f.cotizacionId] : [])));
+    const visible = (f: (typeof todas)[number]): "ENVIADA" | "EN_PREPARACION" | "COTIZADA" | "RETIRADA" =>
+      f.estado === "EN_PREPARACION" && f.cotizacionId && emitidas.has(f.cotizacionId) ? "COTIZADA" : (f.estado as "ENVIADA" | "EN_PREPARACION" | "RETIRADA");
+    const filas = todas.filter((f) => (estados as readonly string[]).includes(visible(f)));
     const { mapa } = armarCatalogo(await this.cliente.trabajos(ctx, true), true);
     const ultimas = await this.cliente.ultimasEstimaciones(ctx, filas.map((f) => f.id));
     return {
@@ -53,7 +62,7 @@ export class ServicioEquipo {
         return {
           id: f.id,
           folio: f.folio,
-          estado: f.estado,
+          estado: visible(f),
           cliente: f.clienteNombre,
           proyecto: f.proyecto.nombre,
           trabajos: nombresDeTrabajos(f.captura, mapa),
@@ -71,10 +80,11 @@ export class ServicioEquipo {
     const { mapa } = armarCatalogo(await this.cliente.trabajos(ctx, true), true);
     const est = await this.cliente.ultimaEstimacion(ctx, f.id);
     const comercial = est?.estado === "ESTIMADA" ? EsquemaCotizacionComercial.nullable().safeParse(est.comercial) : null;
+    const emitida = f.estado === "EN_PREPARACION" && f.cotizacionId ? (await this.repo.cotizacionesEmitidas(ctx, [f.cotizacionId])).has(f.cotizacionId) : false;
     return {
       id: f.id,
       folio: f.folio,
-      estado: f.estado,
+      estado: emitida ? "COTIZADA" : f.estado,
       cliente: f.clienteNombre,
       proyecto: f.proyecto.nombre,
       trabajos: nombresDeTrabajos(f.captura, mapa),

@@ -13033,7 +13033,7 @@
             "schema": {
               "type": "string"
             },
-            "description": "ENVIADA, EN_PREPARACION o RETIRADA separados por coma (por omisión ENVIADA,EN_PREPARACION)."
+            "description": "ENVIADA, EN_PREPARACION, COTIZADA o RETIRADA separados por coma (por omisión ENVIADA,EN_PREPARACION). COTIZADA se deriva: su cotización ya tiene una emisión; EN_PREPARACION solo trae las aún no emitidas."
           }
         ],
         "responses": {

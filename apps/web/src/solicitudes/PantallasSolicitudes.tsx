@@ -157,7 +157,7 @@ function EstimacionPreliminar({ detalle }: { detalle: DetalleSolicitudEquipo }) 
         Estimación del cliente
       </h2>
       <p>
-        <Insignia tono="alerta">{ROTULO_ESTIMACION}</Insignia>
+        <Insignia tono="demo">{ROTULO_ESTIMACION}</Insignia>
       </p>
       {!e ? <p className="vacio">El cliente no calculó una estimación.</p> : null}
       {e?.comercial ? (
