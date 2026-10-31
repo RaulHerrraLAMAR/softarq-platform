@@ -7,7 +7,7 @@
 // de `_work\secrets` con permisos restringidos al usuario de Windows. Nunca se imprime.
 //
 // Uso (desde la raíz del repositorio, con la API local en marcha):
-//   node scripts/demo/acceso-presentacion.mjs --api http://127.0.0.1:3000
+//   node scripts/demo/acceso-presentacion.mjs --api http://127.0.0.1:3000 [--perfil raul|qa]
 //
 // Si el cliente, el proyecto o el acceso ya existen, no los duplica ni restablece contraseña alguna.
 import { execFileSync } from "node:child_process";
@@ -15,13 +15,32 @@ import { randomUUID } from "node:crypto";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 
-const NOMBRE_CLIENTE = "[DEMO] Raul Herrera";
-const NOMBRE_PROYECTO = "[DEMO] Casa Raul Herrera — ampliación de planta alta";
-const DESCRIPCION_PROYECTO = "Proyecto de presentación: ampliación de una planta alta con losa y muro de carga. Datos ficticios para la demostración.";
+// Perfiles: «raul» es la cuenta principal de la presentación; «qa» es una cuenta separada para pruebas automatizadas,
+// de modo que la automatización nunca toque ni reinicie la de Raul.
+const PERFILES = {
+  raul: {
+    cliente: "[DEMO] Raul Herrera",
+    contacto: "Raul Herrera",
+    busqueda: "Raul Herrera",
+    proyecto: "[DEMO] Casa Raul Herrera — ampliación de planta alta",
+    descripcion: "Proyecto de presentación: ampliación de una planta alta con losa y muro de carga. Datos ficticios para la demostración.",
+    correo: "raul.demo@clientes.softarq.test",
+    motivo: "Cuenta de presentación del propietario del proyecto (DEMO)",
+    archivo: "acceso-cliente-raul-softarq_dev.json",
+  },
+  qa: {
+    cliente: "[QA] Cuenta de pruebas automatizadas",
+    contacto: "Pruebas QA",
+    busqueda: "Cuenta de pruebas automatizadas",
+    proyecto: "[QA] Proyecto de pruebas automatizadas",
+    descripcion: "Proyecto de pruebas automatizadas del DEMO local. No es un dato de presentación.",
+    correo: "qa.cliente@clientes.softarq.test",
+    motivo: "Cuenta QA para pruebas automatizadas (no es de presentación)",
+    archivo: "acceso-cliente-qa-softarq_dev.json",
+  },
+};
 const MUNICIPIO = "Tlalnepantla de Baz";
 const ENTIDAD = "Estado de México";
-const CORREO = "raul.demo@clientes.softarq.test";
-const MOTIVO_ACCESO = "Cuenta de presentación del propietario del proyecto (DEMO)";
 
 const args = process.argv.slice(2);
 const opcion = (n, d) => {
@@ -35,7 +54,14 @@ const API = opcion("--api", "http://127.0.0.1:3000");
 const ORIGEN = opcion("--origen", "http://localhost:5173");
 const RAIZ_TRABAJO = resolve(import.meta.dirname, "..", "..", "..", "_work");
 const ARCHIVO_EQUIPO = opcion("--cuentas", resolve(RAIZ_TRABAJO, "secrets", "accesos-demo-softarq_dev.json"));
-const ARCHIVO_SALIDA = resolve(RAIZ_TRABAJO, "secrets", "acceso-cliente-raul-softarq_dev.json");
+const PERFIL = PERFILES[opcion("--perfil", "raul")];
+if (!PERFIL) throw new Error("Perfil no válido: use raul o qa.");
+const NOMBRE_CLIENTE = PERFIL.cliente;
+const NOMBRE_PROYECTO = PERFIL.proyecto;
+const DESCRIPCION_PROYECTO = PERFIL.descripcion;
+const CORREO = PERFIL.correo;
+const MOTIVO_ACCESO = PERFIL.motivo;
+const ARCHIVO_SALIDA = resolve(RAIZ_TRABAJO, "secrets", PERFIL.archivo);
 
 class Sesion {
   cookie = null;
@@ -95,11 +121,11 @@ async function principal() {
   const a = await new Sesion().entrar("administrador.demo@softarq.test", adm.contrasena);
   try {
     // 1) Cliente
-    const busqueda = esperar(await p.llamar("GET", `/api/v1/clientes?buscar=${encodeURIComponent("Raul Herrera")}&incluirInactivos=true&limite=50`), 200);
+    const busqueda = esperar(await p.llamar("GET", `/api/v1/clientes?buscar=${encodeURIComponent(PERFIL.busqueda)}&incluirInactivos=true&limite=50`), 200);
     let cliente = busqueda.clientes.find((c) => c.nombre === NOMBRE_CLIENTE);
     if (cliente) console.log(`Cliente ya existía: ${cliente.codigo} (no se duplica).`);
     else {
-      cliente = esperar(await p.llamar("POST", "/api/v1/clientes", { nombre: NOMBRE_CLIENTE, contactoNombre: "Raul Herrera" }), 201);
+      cliente = esperar(await p.llamar("POST", "/api/v1/clientes", { nombre: NOMBRE_CLIENTE, contactoNombre: PERFIL.contacto }), 201);
       console.log(`Cliente creado: ${cliente.codigo}.`);
     }
 
@@ -129,7 +155,7 @@ async function principal() {
       return;
     }
     if (existsSync(ARCHIVO_SALIDA)) throw new Error("Ya hay un archivo de acceso local pero el acceso no existe en la base: revísalo antes de continuar.");
-    const alta = esperar(await a.llamar("POST", `/api/v1/clientes/${cliente.id}/acceso`, { correo: CORREO, nombre: "Raul Herrera", motivo: MOTIVO_ACCESO }), 201);
+    const alta = esperar(await a.llamar("POST", `/api/v1/clientes/${cliente.id}/acceso`, { correo: CORREO, nombre: PERFIL.contacto, motivo: MOTIVO_ACCESO }), 201);
     if (!alta.contrasenaTemporal) throw new Error("La API no entregó la contraseña temporal (reintento idempotente): revisa el estado antes de repetir.");
     mkdirSync(dirname(ARCHIVO_SALIDA), { recursive: true });
     writeFileSync(

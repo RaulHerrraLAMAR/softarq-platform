@@ -63,7 +63,7 @@ export default function Estimacion() {
       {!calculando && estado.estimacion === "error" && estado.errorEstimacion ? (
         <View style={{ gap: ESP[3] }}>
           {estado.guardado === "error" ? (
-            <Aviso tono="error" titulo="No se pudo guardar tu solicitud" texto={`${mensajeDeFallo(estado.errorEstimacion)} Tus cambios siguen en este teléfono; cuando vuelva la conexión, pulsa «Recalcular estimación» para reintentar.`} />
+            <Aviso tono="error" titulo="No se pudo guardar tu solicitud" texto={`${mensajeDeFallo(estado.errorEstimacion)} Tus cambios siguen en este teléfono; cuando vuelva la conexión, vuelve a pulsar el botón de calcular para reintentar.`} />
           ) : (
             <Aviso tono="error" titulo="No pudimos calcular tu estimación" texto={mensajeDeFallo(estado.errorEstimacion)} />
           )}
