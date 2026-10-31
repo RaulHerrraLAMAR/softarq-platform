@@ -86,7 +86,7 @@ async function solicitudEnviadaPorUnCliente(nombre: string): Promise<{ folio: st
 async function abrirOtraPersona(browser: Browser, cuenta: CuentaE2E): Promise<Page> {
   const contexto = await browser.newContext({ baseURL: ORIGEN, locale: "es-MX", viewport: { width: 1440, height: 900 } });
   const p = await contexto.newPage();
-  await abrirConSesion(p, cuenta);
+  await abrirConSesion(p, cuenta, "calculadora");
   return p;
 }
 
@@ -95,7 +95,7 @@ const navegar = (p: Page, seccion: string) => p.getByRole("navigation", { name: 
 test.describe("panel del equipo: solicitudes de clientes", () => {
   test("recorrido completo: solicitud del cliente → atender → precios explícitos → calcular → otra persona aprueba → emisión → el cliente ve su PDF", async ({ page, browser }) => {
     const datos = await solicitudEnviadaPorUnCliente(sufijo());
-    await abrirConSesion(page, cuentasE2E().preparador);
+    await abrirConSesion(page, cuentasE2E().preparador, "inicio");
 
     // «Mi trabajo»: el Preparador ve su bandeja con el número de solicitudes por atender.
     await expect(page.getByRole("heading", { level: 1, name: "Mi trabajo" })).toBeVisible();
@@ -202,7 +202,7 @@ test.describe("panel del equipo: solicitudes de clientes", () => {
   });
 
   test("el Revisor no tiene la bandeja de solicitudes ni su ruta; ve sus revisiones en Mi trabajo", async ({ page }) => {
-    await abrirConSesion(page, cuentasE2E().revisor);
+    await abrirConSesion(page, cuentasE2E().revisor, "inicio");
     await expect(page.getByRole("heading", { level: 1, name: "Mi trabajo" })).toBeVisible();
     await expect(page.getByRole("region", { name: "Revisiones pendientes" })).toBeVisible();
     await evidencia(page, "05-mi-trabajo-revisor");

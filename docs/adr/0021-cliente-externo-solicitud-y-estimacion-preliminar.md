@@ -69,3 +69,11 @@ Cada trabajo (Cubierta, Losa, Muro) y opción apunta a **un** concepto aprobado 
 **Diferencias con el prototipo aprobado (por rendimiento y accesibilidad):** el croquis ya no interpola las medidas cuadro a cuadro (se redibuja al asentarse lo escrito); las cotas son botones nativos encima del dibujo; el número de líneas de detalle tiene un tope fijo que no depende de la medida; la barra inferior no lleva la muesca superior. Detalle en [ADR-0022](0022-identidad-visual-obra-calida-y-paquete-de-presentacion.md).
 
 **Pendiente o abierto tras E2:** panel del equipo por tareas (E3), con la bandeja de solicitudes y el restablecimiento de contraseñas de cliente en pantalla; las contraseñas temporales de los tres accesos demo caducan el 27/10/2026 y hoy solo se restablecen por la API; verificación en el teléfono (guía §10); aceptar o rechazar la cotización desde la app (etapa posterior).
+
+
+## Implementación del panel (E3, 31/10/2026)
+
+- **Panel:** `Mi trabajo` por función; `Solicitudes` (bandeja con filtros Por atender, En preparación, Cotizadas y Retiradas; detalle con lo capturado y la estimación rotulada «Estimación preliminar, no es una cotización»; «Atender» idempotente que lleva a la cotización en borrador **sin precios elegidos**); acceso del cliente a la app desde su ficha (`personas.administrar`: crear, desactivar o reactivar y restablecer, con motivo; la contraseña temporal se ve una sola vez); y «Precios de referencia» en el catálogo (`catalogos.administrar`: designar, reemplazar y retirar con motivo).
+- **Cambio de API:** `GET /solicitudes` admite `estado=COTIZADA` y `GET /solicitudes/{id}` la devuelve **derivada**, con la misma regla que ve el cliente (la cotización de la solicitud ya tiene una emisión). `EN_PREPARACION` solo trae las que aún no se emitieron. No se guarda ningún estado nuevo ni hay migración.
+- **Paso de precios:** el editor existente ya exige la elección explícita (indicador «Opciones disponibles — falta elegir N» y cálculo bloqueado); no se duplicó.
+- **Pendiente de E3:** definición de trabajos para clientes en pantalla (solo API), enlace desde la cotización hacia su solicitud de origen (hoy solo del lado de la solicitud), separación de datos de presentación frente a QA/humo (E3.8/E4: propuesta `registro_de_pruebas` aditivo).

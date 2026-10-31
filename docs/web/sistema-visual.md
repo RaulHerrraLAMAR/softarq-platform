@@ -1,5 +1,14 @@
 # Sistema visual de la web DEMO
 
+> **Actualización (31/10/2026, E3.1): el panel adopta la identidad «Obra cálida» de la app del cliente** ([ADR-0022](../adr/0022-identidad-visual-obra-calida-y-paquete-de-presentacion.md)). Lo que sigue describe el sistema original «Minimalism & Swiss»; lo vigente es esto:
+>
+> - **Color:** cal `#EFE8DC` de fondo, papel `#FFFDF9` en tarjetas, verde petróleo `#14535A` para estructurar (encabezado, textos secundarios, foco, estados activos) con un filo terracota `#C8451E` bajo el encabezado, y terracota `#A93A19` para actuar (botones primarios y enlaces; texto blanco encima). Contrastes comprobados por `contraste.test.ts` (31 pares).
+> - **Tipografía:** Bricolage Grotesque (títulos) e Inter (texto), incluidas en `src/fuentes` con su licencia OFL; sin CDN. Fira Code solo para códigos. Ya no se usa Fira Sans.
+> - **Forma:** capas sólidas con borde inferior (`--profundidad`) en botones y tarjetas, sin degradados; el botón primario se hunde al pulsarlo (desactivado con «reducir movimiento»).
+> - **Navegación por función:** `Mi trabajo` es el inicio; `Solicitudes` solo con `solicitudes.atender`; el resto de las secciones sigue igual y por capacidad.
+> - **Sin modo oscuro en el panel** (la app sí lo tiene): trabajo de escritorio en claro; queda como mejora opcional.
+> - **No comprobado:** vista en móvil del panel con la identidad nueva, ni revisión humana de la jerarquía visual; solo capturas propias del 31/10/2026 (`_work/evidencias/e3`).
+
 - **Fecha:** 02/10/2026
 - **Código:** `apps/web/src/estilos/tokens.css` (fuente única) y `base.css`.
 - **Decisiones:** [ADR-0006](../adr/0006-cliente-web-demo.md).

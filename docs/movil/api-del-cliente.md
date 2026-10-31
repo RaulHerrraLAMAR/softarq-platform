@@ -32,7 +32,7 @@ Errores propios: `SOLICITUD_NO_EDITABLE` (409, ya enviada), `SOLICITUD_INCOMPLET
 
 | Función | Ruta |
 |---|---|
-| Preparador (`solicitudes.atender`) | `GET /solicitudes`, `GET /solicitudes/{id}`, `POST /solicitudes/{id}/atencion` (crea la cotización en borrador **sin precios elegidos ni compras consolidadas**; idempotente: 201 la primera vez, 200 después). |
+| Preparador (`solicitudes.atender`) | `GET /solicitudes?estado=ENVIADA,EN_PREPARACION,COTIZADA,RETIRADA` (por omisión ENVIADA y EN_PREPARACION; `COTIZADA` se deriva de que la cotización ya tenga una emisión y `EN_PREPARACION` solo trae las aún no emitidas), `GET /solicitudes/{id}`, `POST /solicitudes/{id}/atencion` (crea la cotización en borrador **sin precios elegidos ni compras consolidadas**; idempotente: 201 la primera vez, 200 después). |
 | Administrador del sistema (`personas.administrar`) | `GET`/`POST /clientes/{id}/acceso` (la contraseña temporal de 72 h viaja solo en el alta), `PUT /admin/accesos-cliente/{usuarioId}/estado`, `POST /admin/accesos-cliente/{usuarioId}/contrasena` (idempotente). |
 | Administrador del catálogo (`catalogos.administrar`) | `GET /admin/referencias-estimacion` (con los insumos sin referencia), `PUT /admin/referencias-estimacion/{insumo}`, `POST …/{insumo}/retiro`, `GET`/`PUT /admin/trabajos-cliente`. |
 

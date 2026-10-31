@@ -1704,3 +1704,26 @@ Plan aprobado el 31/10/2026 (cierre de E2, contratos del cliente, panel E3). Est
 **Pruebas realmente ejecutadas (31/10/2026):** `pnpm verificar:secuencial` → API **543/543**, app **262/262** (+4), web **281/281**, sin errores de tipos; `comprobar:bundle` limpio (2.32 MB) con el grupo nuevo; `app-cliente.integracion` **13/13** (`softarq_test`); `docs/api/openapi.json` sin cambios (la prueba de deriva pasó). No se lanzó EAS ni se hizo ninguna prueba en el teléfono.
 
 **Pendiente inmediato:** sesión en el teléfono con Raul (C3 completo, C7 con `gfxinfo`/`logcat`, C8, C10–C14, C16–C20 según el plan), registrada en la guía §10; luego E3.1–E3.9. Siguen comprometidos (no hechos): RF-26, contadores de 00 INICIO, tipos de costo adicional, bitácora general, recorrido guiado, guía manual formal y PR-41–44 del Excel, conceptos heredados y P3, identidad de las funciones SQL.
+
+### Continuación autónoma del 31/10/2026 (E2 abierto, E3 implementado)
+
+El propietario cambió el método: Claude diagnostica, corrige y verifica de forma autónoma y el propietario hace una revisión final. Todo lo de abajo son comprobaciones **automatizadas o técnicas de Claude**, salvo lo marcado «declarado por el propietario».
+
+**E2 (app del cliente), hecho en esta sesión**
+- Incidencias corregidas (guía §10): I-01 teclado y barra de acciones (cerrada con la repetición del propietario), I-02 «Atrás» tras enviar (corregida; **sin repetir** en el teléfono), I-03 mensaje de medida inválida (cerrada), I-04 calcular y enviar sin conexión mudos (corregida y **verificada en el teléfono con automatización**).
+- **Automatización en Android sin instalar nada:** `scripts/qa/android.mjs` (`adb` + `uiautomator`, solo con SoftArq en primer plano) y cuenta QA separada (CLI-00048, PRY-00049, borrador SOL-2026-00006; `scripts/demo/acceso-presentacion.mjs --perfil qa`). La contraseña QA vive solo en `_work\secrets`. Raul no se tocó.
+- Ajuste temporal del teléfono pendiente de restaurar: `stay_on_while_plugged_in` 0 → 3 (`_work\tmp\ajustes-telefono.txt`).
+- Datos de uso hoy en `softarq_dev`: Raul tiene SOL-2026-00003 (enviada, $37,835.35, **reservada para el ensayo de E3**), SOL-2026-00004 y SOL-2026-00005 (borradores). Cuenta QA: SOL-2026-00006 (borrador). Nada histórico se tocó.
+
+**E3 (panel del equipo), implementado** (commits locales 36a3b54 y siguientes)
+- **E3.1** identidad «Obra cálida» en `tokens.css`/`base.css` y fuentes locales (Bricolage Grotesque e Inter, OFL); contrastes 31/31. **E3.2** `Mi trabajo` por función y navegación. **E3.3** bandeja `Solicitudes` y «Atender». **E3.6** acceso del cliente a la app desde su ficha. **E3.7** «Precios de referencia» en el catálogo (designar, reemplazar, retirar). **E3.4** el paso de precios ya existía en el editor (elección explícita, cálculo bloqueado). **E3.5** revisión, aprobación y emisión reutilizan las pantallas existentes.
+- **API:** «cotizada» derivada también para el equipo (`GET /solicitudes?estado=COTIZADA`, `GET /solicitudes/{id}`); sin migración. OpenAPI regenerado.
+- **Pruebas ejecutadas:** web unitarias (pantallas nuevas 19/19; el resto verde en las corridas anteriores), `cliente.integracion` + `cliente-administracion.integracion` **42/42**, Playwright `solicitudes.spec` **3/3** (incluye el recorrido completo en el navegador: solicitud real del cliente → Mi trabajo → bandeja → atender → precios explícitos → calcular → revisión por otra persona → aprobación → emisión → solicitud «cotizada» → el cliente ve su cotización y descarga un `%PDF-`). Capturas propias en `_work\evidencias\e3`.
+- **Cambio de comportamiento:** la dirección vacía del panel abre `Mi trabajo` (antes, la calculadora, que sigue en `#/calculadora`). Los ayudantes de E2E lo reflejan (`abrirConSesion(..., destino)`).
+
+**Pendiente (no hecho, sin marcar como terminado)**
+- **E3.8/E4:** separación de datos de presentación frente a QA y humo (`registro_de_pruebas`, migración aditiva con respaldo verificado previo): **no se hizo**. Hoy lo QA se distingue solo por el prefijo `[QA]` y los datos de Raul por `[DEMO]`.
+- Definición de trabajos para clientes en pantalla (solo API); enlace de la cotización hacia su solicitud de origen.
+- **RF-26 y contadores de 00 INICIO siguen pendientes** (decisión de negocio, ADR-0018 §2.2); «Mi trabajo» no los sustituye.
+- Teléfono: C2, C4, C9, C12 completo con I-02, C14 (segunda sesión), C16–C20, texto grande, temas, movimiento reducido y rendimiento del croquis (`gfxinfo` no funciona en este Samsung; solo `logcat`). El caso C15 de Raul se verificará con su propia solicitud (SOL-2026-00003) en la aceptación final.
+- Compilación EAS: **no se necesita** con los cambios de E2 hechos (solo JavaScript).

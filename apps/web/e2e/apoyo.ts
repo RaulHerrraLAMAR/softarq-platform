@@ -53,9 +53,12 @@ export async function iniciarSesion(pagina: Page, cuenta: CuentaE2E = cuentasE2E
   await expect(pagina.getByRole("group", { name: "Sesión actual" })).toContainText(cuenta.nombre);
 }
 
-/** Abre la web e inicia sesión (por omisión, como Preparador). */
-export async function abrirConSesion(pagina: Page, cuenta?: CuentaE2E): Promise<void> {
-  await pagina.goto("/");
+/**
+ * Abre la web e inicia sesión (por omisión, como Preparador). Desde E3.2 la dirección vacía abre «Mi trabajo»: las pruebas de la
+ * calculadora piden `destino = "calculadora"` (valor por omisión) y las del panel por tareas piden `"inicio"`.
+ */
+export async function abrirConSesion(pagina: Page, cuenta?: CuentaE2E, destino: "calculadora" | "inicio" = "calculadora"): Promise<void> {
+  await pagina.goto(destino === "calculadora" ? "/#/calculadora" : "/");
   await expect(pagina.getByRole("heading", { name: "Iniciar sesión" })).toBeVisible();
   await iniciarSesion(pagina, cuenta);
 }
