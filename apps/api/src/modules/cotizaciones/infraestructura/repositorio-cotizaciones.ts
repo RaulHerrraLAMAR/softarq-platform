@@ -12,9 +12,11 @@
  */
 import type {
   CapturaBorrador,
+  Clasificacion,
   Cliente,
   CotizacionComercial,
   Evento,
+  FiltroClasificacion,
   ModoPrecios,
   NuevaVersion,
   Proyecto,
@@ -49,6 +51,7 @@ const seleccionCliente = {
   creadoEn: true,
   modificadoEn: true,
   modificador: nombreDeAutor,
+  clasificacion: { select: { categoria: true, motivo: true } },
 } satisfies Prisma.ClienteSelect;
 
 const seleccionProyecto = {
@@ -91,9 +94,10 @@ const seleccionCotizacion = {
   creadoEn: true,
   autor: nombreDeAutor,
   proyecto: {
-    select: { id: true, codigo: true, nombre: true, activo: true, cliente: { select: { id: true, codigo: true, nombre: true, activo: true } } },
+    select: { id: true, codigo: true, nombre: true, activo: true, cliente: { select: { id: true, codigo: true, nombre: true, activo: true, clasificacion: { select: { categoria: true } } } } },
   },
   borrador: { select: { revision: true, actualizadoEn: true } },
+  solicitud: { select: { id: true, folio: true } },
 } satisfies Prisma.CotizacionSelect;
 
 type FilaCliente = Prisma.ClienteGetPayload<{ select: typeof seleccionCliente }>;
@@ -193,7 +197,15 @@ function aCliente(f: FilaCliente): Cliente {
     creadoEn: iso(f.creadoEn),
     modificadoEn: iso(f.modificadoEn),
     modificadoPor: f.modificador.usuario.nombre,
+    clasificacion: (f.clasificacion?.categoria as Clasificacion | undefined) ?? null,
+    clasificacionMotivo: f.clasificacion?.motivo ?? null,
   };
+}
+
+/** Filtro de Prisma para la clasificación del cliente (`SIN_CLASIFICAR` = sin fila). Sin filtro no se excluye nada. */
+function dondeClasificacion(f: FiltroClasificacion): { clasificacion?: { is: null } | { is: { categoria: string } } } {
+  if (f === undefined) return {};
+  return f === "SIN_CLASIFICAR" ? { clasificacion: { is: null } } : { clasificacion: { is: { categoria: f } } };
 }
 
 function aProyecto(f: FilaProyecto): Proyecto {
@@ -313,8 +325,15 @@ function aResumenCotizacion(
       f.estadoFolio === "DESCARTADO" && f.descartadaEn && f.descartador
         ? { por: f.descartador.usuario.nombre, en: iso(f.descartadaEn), motivo: f.motivoDescarte ?? "" }
         : null,
-    cliente: { ...f.proyecto.cliente },
+    cliente: {
+      id: f.proyecto.cliente.id,
+      codigo: f.proyecto.cliente.codigo,
+      nombre: f.proyecto.cliente.nombre,
+      activo: f.proyecto.cliente.activo,
+      clasificacion: (f.proyecto.cliente.clasificacion?.categoria as Clasificacion | undefined) ?? null,
+    },
     proyecto: { id: f.proyecto.id, codigo: f.proyecto.codigo, nombre: f.proyecto.nombre, activo: f.proyecto.activo },
+    solicitud: f.solicitud ? { id: f.solicitud.id, folio: f.solicitud.folio } : null,
     creadoEn: iso(f.creadoEn),
     creadoPor: f.autor.usuario.nombre,
     revisionBorrador: f.borrador?.revision ?? 0,
@@ -337,12 +356,13 @@ export class RepositorioCotizaciones {
 
   async listarClientes(
     ctx: ContextoOrganizacion,
-    filtro: { buscar?: string; incluirInactivos?: boolean; limite: number },
+    filtro: { buscar?: string; incluirInactivos?: boolean; clasificacion?: FiltroClasificacion; limite: number },
   ): Promise<Cliente[]> {
     const filas = await this.db.cliente.findMany({
       where: {
         organizacionId: ctx.organizacionId,
         ...(filtro.incluirInactivos ? {} : { activo: true }),
+        ...dondeClasificacion(filtro.clasificacion),
         ...(filtro.buscar ? { OR: [{ nombre: contiene(filtro.buscar) }, { codigo: contiene(filtro.buscar) }] } : {}),
       },
       select: seleccionCliente,
@@ -350,6 +370,19 @@ export class RepositorioCotizaciones {
       take: filtro.limite,
     });
     return filas.map(aCliente);
+  }
+
+  /** Precios no anulados cuya vigencia termina entre hoy y hoy + `dias` (aviso de renovación). */
+  async contarPreciosPorVencer(ctx: ContextoOrganizacion, hoy: string, dias: number): Promise<number> {
+    const desde = new Date(`${hoy}T00:00:00.000Z`);
+    const hasta = new Date(desde.getTime() + dias * 86_400_000);
+    return this.db.precio.count({ where: { organizacionId: ctx.organizacionId, anulado: false, vigenteHasta: { gte: desde, lte: hasta } } });
+  }
+
+  /** Clasifica (o retira la clasificación de) un cliente: única escritura, con la función protegida (exige ADMIN_SISTEMA). */
+  async clasificarCliente(ctx: ContextoOrganizacion, adminId: string, clienteId: string, categoria: Clasificacion | null, motivo: string): Promise<void> {
+    await this.db.$queryRaw`
+      SELECT softarq_clasificar_cliente(${ctx.organizacionId}::uuid, ${adminId}::uuid, ${clienteId}::uuid, ${categoria}, ${motivo})`;
   }
 
   async obtenerCliente(ctx: ContextoOrganizacion, id: string): Promise<Cliente | null> {
@@ -459,11 +492,12 @@ export class RepositorioCotizaciones {
 
   async listarCotizaciones(
     ctx: ContextoOrganizacion,
-    filtro: { buscar?: string; clienteId?: string; proyectoId?: string; limite: number },
+    filtro: { buscar?: string; clienteId?: string; proyectoId?: string; clasificacion?: FiltroClasificacion; limite: number },
   ): Promise<ResumenCotizacion[]> {
     const filas = await this.db.cotizacion.findMany({
       where: {
         organizacionId: ctx.organizacionId,
+        ...(filtro.clasificacion !== undefined ? { proyecto: { cliente: dondeClasificacion(filtro.clasificacion) } } : {}),
         ...(filtro.clienteId ? { clienteId: filtro.clienteId } : {}),
         ...(filtro.proyectoId ? { proyectoId: filtro.proyectoId } : {}),
         ...(filtro.buscar

@@ -72,6 +72,7 @@ const EsquemaConsultaSolicitudes = z.object({
     .optional()
     .transform((v) => (v ?? "ENVIADA,EN_PREPARACION").split(",").map((s) => s.trim()))
     .pipe(z.array(z.enum(["ENVIADA", "EN_PREPARACION", "COTIZADA", "RETIRADA"])).min(1).max(4)),
+  clasificacion: z.enum(["PRESENTACION", "QA", "HUMO", "SIN_CLASIFICAR"]).optional(),
 });
 const EsquemaClaveIdempotencia = z.uuid();
 
@@ -230,7 +231,7 @@ export class SolicitudesEquipoController {
   listar(@Req() req: Request, @Query() q: unknown): Promise<RespuestaSolicitudesEquipo> {
     const c = EsquemaConsultaSolicitudes.safeParse(q);
     if (!c.success) throw new ErrorApi(400, "SOLICITUD_INVALIDA", "Consulta no válida.", { campos: [{ ruta: "estado", mensaje: "Use ENVIADA, EN_PREPARACION, COTIZADA o RETIRADA separados por coma." }] });
-    return this.servicio.listar(organizacionDe(req), c.data.estado, 100);
+    return this.servicio.listar(organizacionDe(req), c.data.estado, 100, c.data.clasificacion);
   }
 
   @Get(":id")

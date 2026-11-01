@@ -12,6 +12,7 @@ import {
   EsquemaDetalleParametros,
   EsquemaDetallePersona,
   EsquemaPersonaAdmin,
+  EsquemaRespuestaExportaciones,
   EsquemaRespuestaCredencialTemporal,
   EsquemaRespuestaPersonas,
   type DetalleParametros,
@@ -20,6 +21,7 @@ import {
   type EdicionPersona,
   type PersonaAdmin,
   type RespuestaCredencialTemporal,
+  type RespuestaExportaciones,
   type RespuestaPersonas,
   type SolicitudPersona,
 } from "@softarq/contracts";
@@ -33,6 +35,9 @@ export interface ServiciosAdministracion {
   crearPersona(datos: SolicitudPersona, clave: string): Promise<ResultadoApi<RespuestaCredencialTemporal>>;
   editarPersona(id: string, cambios: EdicionPersona): Promise<ResultadoApi<PersonaAdmin>>;
   restablecerContrasena(id: string, motivo: string, clave: string): Promise<ResultadoApi<RespuestaCredencialTemporal>>;
+  /** Exportación CSV de tablas para migración (RF-26, ADR-0023): las tablas que la sesión puede exportar y su descarga. */
+  exportaciones(signal?: AbortSignal): Promise<ResultadoApi<RespuestaExportaciones>>;
+  descargarExportacion(tabla: string, signal?: AbortSignal): Promise<ResultadoApi<Blob>>;
 }
 
 const LIMITE = 50;
@@ -53,6 +58,8 @@ export function crearServiciosAdministracion(cliente: ClienteApi): ServiciosAdmi
     detallePersona: (id, signal) => cliente.obtener(persona(id), EsquemaDetallePersona, { signal }),
     crearPersona: (datos, clave) => cliente.enviar("/api/v1/admin/personas", EsquemaRespuestaCredencialTemporal, { cuerpo: datos, cabeceras: conClave(clave) }),
     editarPersona: (id, cambios) => cliente.enviar(persona(id), EsquemaPersonaAdmin, { metodo: "PATCH", cuerpo: cambios }),
+    exportaciones: (signal) => cliente.obtener("/api/v1/exportaciones", EsquemaRespuestaExportaciones, { signal }),
+    descargarExportacion: (tabla, signal) => cliente.descargar(`/api/v1/exportaciones/${encodeURIComponent(tabla)}`, "text/csv", { signal }),
     restablecerContrasena: (id, motivo, clave) =>
       cliente.enviar(persona(id, "/restablecimiento"), EsquemaRespuestaCredencialTemporal, { cuerpo: { motivo }, cabeceras: conClave(clave) }),
   };

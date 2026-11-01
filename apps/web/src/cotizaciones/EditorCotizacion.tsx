@@ -22,6 +22,7 @@
  * emite desde «Emisión» (Preparador, o Revisor distinto del autor); las emitidas se descargan. Una
  * cotización descartada se muestra en solo lectura.
  */
+import { EtiquetaClasificacion } from "../comunes/clasificacion.tsx";
 import { EsquemaCapturaBorrador, type CapturaBorrador, type DetalleCotizacion, type ResumenVersion, type Version } from "@softarq/contracts";
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { mensajeDeFallo, type FalloApi } from "../api/cliente.ts";
@@ -96,7 +97,7 @@ export function EncabezadoCotizacion({ detalle }: { detalle: DetalleCotizacion }
       <div>
         <dt>Cliente</dt>
         <dd>
-          <Enlace a={{ pantalla: "cliente", id: c.cliente.id }}>{c.cliente.nombre}</Enlace> <Codigo>{c.cliente.codigo}</Codigo>
+          <Enlace a={{ pantalla: "cliente", id: c.cliente.id }}>{c.cliente.nombre}</Enlace> <Codigo>{c.cliente.codigo}</Codigo> <EtiquetaClasificacion valor={c.cliente.clasificacion} />
           {c.cliente.activo ? null : (
             <>
               {" "}
@@ -117,6 +118,14 @@ export function EncabezadoCotizacion({ detalle }: { detalle: DetalleCotizacion }
           )}
         </dd>
       </div>
+      {c.solicitud ? (
+        <div>
+          <dt>Solicitud de origen</dt>
+          <dd>
+            <Enlace a={{ pantalla: "solicitud", id: c.solicitud.id }}>{c.solicitud.folio}</Enlace> <span className="ayuda">Enviada por el cliente desde la app</span>
+          </dd>
+        </div>
+      ) : null}
       <div>
         <dt>Estado del folio</dt>
         <dd>{c.estadoFolio === "ACTIVO" ? <Insignia tono="estado">Activo</Insignia> : <Insignia tono="neutra">Descartado</Insignia>}</dd>

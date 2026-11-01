@@ -6,6 +6,7 @@
 import {
   CABECERA_IDEMPOTENCIA,
   EsquemaCliente,
+  EsquemaContadoresInicio,
   EsquemaDetalleCliente,
   EsquemaDetalleCotizacion,
   EsquemaProyecto,
@@ -26,7 +27,10 @@ import {
   EsquemaRespuestaComponentesExcepcion,
   EsquemaVerificacionRevision,
   type VerificacionRevision,
+  type Clasificacion,
+  type ContadoresInicio,
   type DecisionExcepcion,
+  type FiltroClasificacion,
   type ExcepcionesVersion,
   type SalidasInternasVersion,
   type SolicitudDuplicado,
@@ -75,7 +79,7 @@ export interface ServiciosCotizaciones {
   seguimientoEmision(id: string, antesDe?: number, signal?: AbortSignal): Promise<ResultadoApi<SeguimientoEmision>>;
   registrarRespuesta(id: string, datos: RegistroRespuesta, clave: string): Promise<ResultadoApi<EventoRespuestaCliente>>;
   corregirRespuesta(id: string, eventoId: string, datos: CorreccionRespuesta, clave: string): Promise<ResultadoApi<EventoRespuestaCliente>>;
-  listarClientes(f: { buscar?: string; incluirInactivos?: boolean }, signal?: AbortSignal): Promise<ResultadoApi<RespuestaClientes>>;
+  listarClientes(f: { buscar?: string; incluirInactivos?: boolean; clasificacion?: FiltroClasificacion }, signal?: AbortSignal): Promise<ResultadoApi<RespuestaClientes>>;
   detalleCliente(id: string, signal?: AbortSignal): Promise<ResultadoApi<DetalleCliente>>;
   crearCliente(datos: { nombre: string } & Partial<DatosContacto>, clave: string): Promise<ResultadoApi<Cliente>>;
   editarCliente(
@@ -88,7 +92,11 @@ export interface ServiciosCotizaciones {
   ): Promise<ResultadoApi<RespuestaProyectos>>;
   crearProyecto(clienteId: string, datos: DatosProyecto, clave: string): Promise<ResultadoApi<Proyecto>>;
   editarProyecto(id: string, cambios: Partial<DatosProyecto> & { revision: number; activo?: boolean }): Promise<ResultadoApi<Proyecto>>;
-  listarCotizaciones(f: { buscar?: string }, signal?: AbortSignal): Promise<ResultadoApi<RespuestaCotizaciones>>;
+  listarCotizaciones(f: { buscar?: string; clasificacion?: FiltroClasificacion }, signal?: AbortSignal): Promise<ResultadoApi<RespuestaCotizaciones>>;
+  /** Clasifica (o, con `null`, retira la clasificación de) un cliente: solo el Administrador del sistema (la API lo exige). */
+  clasificarCliente(id: string, categoria: Clasificacion | null, motivo: string): Promise<ResultadoApi<Cliente>>;
+  /** Contadores de la hoja «00 INICIO» con las reglas que aplican (ADR-0023). */
+  contadoresInicio(signal?: AbortSignal): Promise<ResultadoApi<ContadoresInicio>>;
   crearCotizacion(proyectoId: string, captura: CapturaBorrador | null, clave: string): Promise<ResultadoApi<DetalleCotizacion>>;
   detalleCotizacion(id: string, signal?: AbortSignal): Promise<ResultadoApi<DetalleCotizacion>>;
   guardarBorrador(id: string, revision: number, captura: CapturaBorrador): Promise<ResultadoApi<RespuestaBorradorGuardado>>;
@@ -173,7 +181,7 @@ export function crearServiciosCotizaciones(cliente: ClienteApi): ServiciosCotiza
     corregirRespuesta: (id, eventoId, datos, clave) => cliente.enviar(`/api/v1/emisiones/${encodeURIComponent(id)}/respuestas/${encodeURIComponent(eventoId)}/correcciones`, EsquemaEventoRespuestaCliente, { cuerpo: datos, cabeceras: conClave(clave) }),
     listarClientes: (f, signal) =>
       cliente.obtener(
-        `/api/v1/clientes${consulta({ buscar: recortar(f.buscar), incluirInactivos: f.incluirInactivos })}`,
+        `/api/v1/clientes${consulta({ buscar: recortar(f.buscar), incluirInactivos: f.incluirInactivos, clasificacion: f.clasificacion })}`,
         EsquemaRespuestaClientes,
         { signal },
       ),
@@ -192,7 +200,10 @@ export function crearServiciosCotizaciones(cliente: ClienteApi): ServiciosCotiza
     editarProyecto: (id, cambios) =>
       cliente.enviar(`/api/v1/proyectos/${encodeURIComponent(id)}`, EsquemaProyecto, { metodo: "PATCH", cuerpo: cambios }),
     listarCotizaciones: (f, signal) =>
-      cliente.obtener(`/api/v1/cotizaciones${consulta({ buscar: recortar(f.buscar) })}`, EsquemaRespuestaCotizaciones, { signal }),
+      cliente.obtener(`/api/v1/cotizaciones${consulta({ buscar: recortar(f.buscar), clasificacion: f.clasificacion })}`, EsquemaRespuestaCotizaciones, { signal }),
+    clasificarCliente: (id, categoria, motivo) =>
+      cliente.enviar(`/api/v1/clientes/${encodeURIComponent(id)}/clasificacion`, EsquemaCliente, { metodo: "PUT", cuerpo: { categoria, motivo } }),
+    contadoresInicio: (signal) => cliente.obtener("/api/v1/cotizaciones/contadores", EsquemaContadoresInicio, { signal }),
     crearCotizacion: (proyectoId, captura, clave) =>
       cliente.enviar("/api/v1/cotizaciones", EsquemaDetalleCotizacion, {
         cuerpo: { proyectoId, ...(captura ? { captura } : {}) },

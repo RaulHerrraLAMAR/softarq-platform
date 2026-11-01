@@ -3,7 +3,8 @@
  * (módulo 6). Una versión se muestra tal como se almacenó: abrirla nunca recalcula.
  */
 import { useEffect, useState, type FormEvent } from "react";
-import type { CapturaBorrador, Cliente, Proyecto } from "@softarq/contracts";
+import type { CapturaBorrador, Cliente, FiltroClasificacion, Proyecto } from "@softarq/contracts";
+import { EtiquetaClasificacion, FiltroClasificacionCampo } from "../comunes/clasificacion.tsx";
 import { mensajeDeFallo, type FalloApi } from "../api/cliente.ts";
 import type { ServiciosCotizaciones } from "../api/servicios-cotizaciones.ts";
 import { Detalle, Resumen } from "../calculo/PanelResultado.tsx";
@@ -23,7 +24,8 @@ import { PanelRespuesta } from "./respuestas.tsx";
 export function ListaCotizaciones({ servicios, puedePreparar }: { servicios: ServiciosCotizaciones; puedePreparar: boolean }) {
   const [texto, setTexto] = useState("");
   const [buscar, setBuscar] = useState("");
-  const { estado, recargar } = useCarga((s) => servicios.listarCotizaciones({ buscar }, s), [buscar]);
+  const [clasificacion, setClasificacion] = useState<FiltroClasificacion | undefined>(undefined);
+  const { estado, recargar } = useCarga((s) => servicios.listarCotizaciones({ buscar, ...(clasificacion ? { clasificacion } : {}) }, s), [buscar, clasificacion]);
   const enviar = (e: FormEvent) => {
     e.preventDefault();
     setBuscar(texto);
@@ -49,6 +51,7 @@ export function ListaCotizaciones({ servicios, puedePreparar }: { servicios: Ser
           <Boton type="submit">Buscar</Boton>
         </div>
       </form>
+      <FiltroClasificacionCampo valor={clasificacion} alCambiar={setClasificacion} id="filtro-clasificacion-cotizaciones" />
       {estado.fase === "cargando" ? <Cargando etiqueta="Cargando cotizaciones…" /> : null}
       {estado.fase === "error" ? <CargaFallida fallo={estado.fallo} alReintentar={recargar} /> : null}
       {estado.fase === "listo" ? (
@@ -79,7 +82,7 @@ export function ListaCotizaciones({ servicios, puedePreparar }: { servicios: Ser
                       <Insignia tono="demo">WEB DEMO</Insignia>
                     </td>
                     <td data-etiqueta="Cliente y proyecto">
-                      {c.cliente.nombre}
+                      {c.cliente.nombre} <EtiquetaClasificacion valor={c.cliente.clasificacion} />
                       {c.cliente.activo ? null : <span className="ayuda"> (inactivo)</span>}
                       <span className="ayuda bloque">
                         {c.proyecto.nombre}

@@ -66,6 +66,8 @@ function servicios(s: Partial<ServiciosAdministracion> = {}): ServiciosAdministr
   return {
     parametros: () => ok(DETALLE),
     editarParametros: noUsar,
+    exportaciones: noUsar,
+    descargarExportacion: noUsar,
     listarPersonas: () => ok({ personas: [PERSONA], limite: 50, siguiente: null }),
     detallePersona: (id) => ok({ persona: id === PROPIA.id ? PROPIA : PERSONA, historial: [] }),
     crearPersona: noUsar,

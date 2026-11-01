@@ -43,6 +43,7 @@ import {
   EsquemaParametroNumeroVersion,
   EsquemaRetiroRevision,
   EsquemaSolicitudEnvioRevision,
+  EsquemaClasificarCliente,
   EsquemaEdicionCliente,
   EsquemaEdicionProyecto,
   EsquemaParametroId,
@@ -72,6 +73,8 @@ import {
   type SolicitudEnvioRevision,
   type DetalleCliente,
   type DetalleCotizacion,
+  type ClasificarCliente,
+  type ContadoresInicio,
   type EdicionCliente,
   type EdicionProyecto,
   type Proyecto,
@@ -194,6 +197,16 @@ export class ClientesController {
   editar(@Req() req: Request, @Param() params: unknown, @Body({ schema: EsquemaEdicionCliente }) e: EdicionCliente): Promise<Cliente> {
     return this.servicio.editarCliente(organizacionDe(req), autorDe(req), idDeRuta(params), e);
   }
+
+  /**
+   * Clasifica el cliente como presentación, QA o humo (o retira la clasificación) con un motivo. Solo el Administrador del sistema;
+   * la base lo vuelve a exigir. Es una decisión explícita y reversible: no oculta ni reclasifica nada por sí sola.
+   */
+  @Put(":id/clasificacion")
+  @Requiere("personas.administrar")
+  clasificar(@Req() req: Request, @Param() params: unknown, @Body({ schema: EsquemaClasificarCliente }) c: ClasificarCliente): Promise<Cliente> {
+    return this.servicio.clasificarCliente(organizacionDe(req), autorDe(req).usuarioId, idDeRuta(params), c);
+  }
 }
 
 @Controller("proyectos")
@@ -250,6 +263,13 @@ export class CotizacionesController {
     @Query({ schema: EsquemaConsultaCotizaciones }) c: ConsultaCotizaciones,
   ): Promise<RespuestaCotizaciones> {
     return this.servicio.listar(organizacionDe(req), c);
+  }
+
+  /** Contadores de la hoja «00 INICIO» (ADR-0023): la organización completa, con las reglas que aplican. Solo lectura. */
+  @Get("contadores")
+  @Requiere("cotizaciones.consultar")
+  contadores(@Req() req: Request): Promise<ContadoresInicio> {
+    return this.servicio.contadoresInicio(organizacionDe(req));
   }
 
   @Get(":id")

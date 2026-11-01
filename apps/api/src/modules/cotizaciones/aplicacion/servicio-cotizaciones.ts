@@ -16,10 +16,12 @@
  */
 import {
   CAPTURA_BORRADOR_VACIA,
+  DIAS_PRECIOS_POR_VENCER,
   LIMITES_API,
   LIMITES_COTIZACIONES,
   type CapturaBorrador,
   type ConsultaCotizaciones,
+  type ContadoresInicio,
   type DescarteCotizacion,
   type ReferenciasBorrador,
   type DetalleCotizacion,
@@ -97,6 +99,16 @@ export async function conceptosParaCaptura(
   );
 }
 
+/** Reglas de los contadores de inicio, tal como se muestran junto a las cifras. */
+const REGLAS_CONTADORES = [
+  "Cada cotización con folio activo (no descartada) cuenta una sola vez, según el estado de su ÚLTIMA versión.",
+  "Borradores: sin versión guardada o con la última versión aún sin enviar a revisión.",
+  "En revisión: la última versión espera la decisión del Revisor. Aprobadas por emitir: aprobada y todavía sin emisión.",
+  "Emitidas vigentes y vencidas: la última versión está emitida y su vigencia termina hoy o después, o ya terminó (fecha del servidor).",
+  `Precios por vencer: precios no anulados cuya vigencia termina en los próximos ${DIAS_PRECIOS_POR_VENCER} días.`,
+  "Último folio: el más alto asignado, incluidos los descartados (los folios no se reutilizan).",
+];
+
 export class ServicioCotizaciones {
   private readonly repo: RepositorioCotizaciones;
   private readonly catalogos: RepositorioCatalogos;
@@ -115,12 +127,45 @@ export class ServicioCotizaciones {
     this.emisiones = new RepositorioEmisiones(prisma);
   }
 
+  /**
+   * Contadores de la hoja «00 INICIO» (ADR-0023). Cuentan la organización completa con las reglas de `REGLAS_CONTADORES`; no
+   * dependen de quién consulta (cualquiera con `cotizaciones.consultar`) y no modifican nada.
+   */
+  async contadoresInicio(ctx: ContextoOrganizacion): Promise<ContadoresInicio> {
+    const hoy = this.reloj.hoy();
+    const todas = await this.repo.listarCotizaciones(ctx, { limite: 100_000 });
+    const activas = todas.filter((q) => q.estadoFolio === "ACTIVO");
+    const estado = (q: (typeof activas)[number]) => q.ultimaVersion?.estado ?? "BORRADOR";
+    const emitidas = activas.filter((q) => estado(q) === "EMITIDA");
+    const vigenteHasta = (q: (typeof activas)[number]): string => q.ultimaVersion?.emision?.vigenteHasta ?? "";
+    const vencidas = emitidas.filter((q) => vigenteHasta(q) < hoy).length;
+    const aprobadas = activas.filter((q) => estado(q) === "APROBADA").length;
+    const preciosPorVencer = await this.repo.contarPreciosPorVencer(ctx, hoy, DIAS_PRECIOS_POR_VENCER);
+    const avisos: ContadoresInicio["avisos"] = [];
+    if (aprobadas > 0) avisos.push({ codigo: "INI-01", mensaje: `${aprobadas} cotización(es) aprobada(s) esperan su emisión.` });
+    if (vencidas > 0) avisos.push({ codigo: "INI-02", mensaje: `${vencidas} cotización(es) emitida(s) ya vencieron su vigencia.` });
+    if (preciosPorVencer > 0) avisos.push({ codigo: "INI-03", mensaje: `${preciosPorVencer} precio(s) vencen en los próximos ${DIAS_PRECIOS_POR_VENCER} días: renuévelos antes de cotizar.` });
+    return {
+      fecha: hoy,
+      borradores: activas.filter((q) => estado(q) === "BORRADOR").length,
+      enRevision: activas.filter((q) => estado(q) === "EN_REVISION").length,
+      aprobadasPorEmitir: aprobadas,
+      emitidasVigentes: emitidas.length - vencidas,
+      vencidas,
+      preciosPorVencer,
+      ultimoFolio: todas.reduce<string | null>((m, q) => (m === null || q.folio > m ? q.folio : m), null),
+      avisos,
+      reglas: REGLAS_CONTADORES,
+    };
+  }
+
   async listar(ctx: ContextoOrganizacion, c: ConsultaCotizaciones): Promise<RespuestaCotizaciones> {
     const limite = c.limite ?? LIMITES_API.limiteListadoPorOmision;
     const cotizaciones = await this.repo.listarCotizaciones(ctx, {
       ...(c.buscar !== undefined ? { buscar: c.buscar } : {}),
       ...(c.clienteId !== undefined ? { clienteId: c.clienteId } : {}),
       ...(c.proyectoId !== undefined ? { proyectoId: c.proyectoId } : {}),
+      ...(c.clasificacion !== undefined ? { clasificacion: c.clasificacion } : {}),
       limite,
     });
     return { cotizaciones, limite };

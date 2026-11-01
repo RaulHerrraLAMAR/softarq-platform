@@ -57,6 +57,8 @@ import { AdministracionCatalogosController } from "./controladores-catalogos-adm
 import { CatalogoTecnicoController } from "./controladores-catalogo-tecnico.js";
 import { AdministracionSistemaController } from "./controladores-administracion.js";
 import { AdministracionClienteController, ClienteController, SolicitudesEquipoController } from "./controladores-cliente.js";
+import { ExportacionesController } from "./controladores-exportaciones.js";
+import { ServicioExportaciones } from "../modules/exportaciones/servicio-exportaciones.js";
 import { generarPdf, type GeneradorPdf } from "../modules/cotizaciones/dominio/pdf/generador-pdf.js";
 import {
   AlmacenArchivos,
@@ -109,6 +111,7 @@ import {
   SERVICIO_CLIENTE,
   SERVICIO_EQUIPO,
   SERVICIO_ADMINISTRACION_CLIENTE,
+  SERVICIO_EXPORTACIONES,
 } from "./tokens.js";
 
 const VENTANA_LIMITADOR_MS = 60_000;
@@ -163,6 +166,7 @@ function moduloRaiz(config: ConfiguracionApi, opciones: OpcionesAplicacion): Dyn
       CatalogosController,
       CalculosController,
       ClientesController,
+      ExportacionesController,
       ProyectosController,
       CotizacionesController,
       EnvioRevisionController,
@@ -290,6 +294,11 @@ function moduloRaiz(config: ConfiguracionApi, opciones: OpcionesAplicacion): Dyn
         provide: SERVICIO_EQUIPO,
         useFactory: (bd: ServicioBaseDeDatos, reloj: Reloj) => new ServicioEquipo(bd.cliente, reloj),
         inject: [BASE_DE_DATOS, RELOJ],
+      },
+      {
+        provide: SERVICIO_EXPORTACIONES,
+        useFactory: (bd: ServicioBaseDeDatos) => new ServicioExportaciones(bd.cliente),
+        inject: [BASE_DE_DATOS],
       },
       {
         provide: SERVICIO_ADMINISTRACION_CLIENTE,

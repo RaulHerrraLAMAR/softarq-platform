@@ -5,9 +5,11 @@
  * los rechaza de todos modos (403).
  */
 import { AccesoCliente } from "../solicitudes/AccesoCliente.tsx";
+import { ClasificarCliente } from "./ClasificarCliente.tsx";
 import type { ServiciosSolicitudes } from "../solicitudes/servicios.ts";
 import { useState, type FormEvent } from "react";
-import type { Cliente, Proyecto } from "@softarq/contracts";
+import type { Cliente, FiltroClasificacion, Proyecto } from "@softarq/contracts";
+import { EtiquetaClasificacion, FiltroClasificacionCampo } from "../comunes/clasificacion.tsx";
 import { mensajeDeFallo, type FalloApi } from "../api/cliente.ts";
 import type { ServiciosCotizaciones } from "../api/servicios-cotizaciones.ts";
 import { Aviso, Boton, Codigo } from "../comunes/componentes.tsx";
@@ -55,9 +57,10 @@ export function ListaClientes({ servicios, puedeGestionar }: { servicios: Servic
   const { navegar } = useRuta();
   const [buscar, setBuscar] = useState("");
   const [inactivos, setInactivos] = useState(false);
+  const [clasificacion, setClasificacion] = useState<FiltroClasificacion | undefined>(undefined);
   const [creando, setCreando] = useState(false);
   const intenciones = useIntenciones();
-  const { estado, recargar } = useCarga((s) => servicios.listarClientes({ buscar, incluirInactivos: inactivos }, s), [buscar, inactivos]);
+  const { estado, recargar } = useCarga((s) => servicios.listarClientes({ buscar, incluirInactivos: inactivos, ...(clasificacion ? { clasificacion } : {}) }, s), [buscar, inactivos, clasificacion]);
 
   return (
     <Pagina
@@ -87,6 +90,7 @@ export function ListaClientes({ servicios, puedeGestionar }: { servicios: Servic
         />
       ) : null}
       <Busqueda etiqueta="Buscar por nombre o código" alBuscar={setBuscar} inactivos={inactivos} alCambiarInactivos={setInactivos} />
+      <FiltroClasificacionCampo valor={clasificacion} alCambiar={setClasificacion} />
       {estado.fase === "cargando" ? <Cargando etiqueta="Cargando clientes…" /> : null}
       {estado.fase === "error" ? <CargaFallida fallo={estado.fallo} alReintentar={recargar} /> : null}
       {estado.fase === "listo" ? (
@@ -113,6 +117,7 @@ function TablaClientes({ clientes }: { clientes: Cliente[] }) {
             <th scope="col">Código</th>
             <th scope="col">Nombre o razón social</th>
             <th scope="col">Estado</th>
+            <th scope="col">Clasificación</th>
             <th scope="col">Última modificación</th>
           </tr>
         </thead>
@@ -127,6 +132,9 @@ function TablaClientes({ clientes }: { clientes: Cliente[] }) {
               </td>
               <td data-etiqueta="Estado">
                 <EstadoRegistro activo={c.activo} />
+              </td>
+              <td data-etiqueta="Clasificación">
+                <EtiquetaClasificacion valor={c.clasificacion} />
               </td>
               <td data-etiqueta="Modificado">
                 {formatearInstante(c.modificadoEn)} · {c.modificadoPor}
@@ -182,7 +190,7 @@ export function DetalleClientePantalla({
       titulo={cliente.nombre}
       subtitulo={
         <>
-          <Codigo>{cliente.codigo}</Codigo> · <EstadoRegistro activo={cliente.activo} /> · modificado {formatearInstante(cliente.modificadoEn)} por{" "}
+          <Codigo>{cliente.codigo}</Codigo> · <EstadoRegistro activo={cliente.activo} /> <EtiquetaClasificacion valor={cliente.clasificacion} /> · modificado {formatearInstante(cliente.modificadoEn)} por{" "}
           {cliente.modificadoPor}
         </>
       }
@@ -260,6 +268,8 @@ export function DetalleClientePantalla({
         </>
       ) : null}
       </section>
+
+      {accesos ? <ClasificarCliente servicios={servicios} cliente={cliente} alCambiar={recargar} /> : null}
 
       {accesos ? <AccesoCliente servicios={accesos} clienteId={cliente.id} clienteNombre={cliente.contactoNombre ?? cliente.nombre} clienteActivo={cliente.activo} /> : null}
 

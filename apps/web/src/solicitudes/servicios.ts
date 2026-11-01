@@ -19,6 +19,7 @@ import {
   type AccesoCliente,
   type DetalleSolicitudEquipo,
   type EstadoSolicitud,
+  type FiltroClasificacion,
   type RespuestaAltaAcceso,
   type RespuestaAtencion,
   type RespuestaReferencias,
@@ -27,7 +28,7 @@ import {
 import type { ClienteApi, ResultadoApi } from "../api/cliente.ts";
 
 export interface ServiciosSolicitudes {
-  listar(estados: readonly EstadoSolicitud[], signal?: AbortSignal): Promise<ResultadoApi<RespuestaSolicitudesEquipo>>;
+  listar(estados: readonly EstadoSolicitud[], signal?: AbortSignal, clasificacion?: FiltroClasificacion): Promise<ResultadoApi<RespuestaSolicitudesEquipo>>;
   detalle(id: string, signal?: AbortSignal): Promise<ResultadoApi<DetalleSolicitudEquipo>>;
   atender(id: string, revision: number, clave: string): Promise<ResultadoApi<RespuestaAtencion>>;
   // Acceso de clientes (Administrador del sistema)
@@ -46,9 +47,12 @@ const e = encodeURIComponent;
 
 export function crearServiciosSolicitudes(cliente: ClienteApi): ServiciosSolicitudes {
   return {
-    listar: (estados, signal) => {
-      const q = estados.length > 0 ? `?estado=${estados.join(",")}` : "";
-      return cliente.obtener(`/api/v1/solicitudes${q}`, EsquemaRespuestaSolicitudesEquipo, { signal });
+    listar: (estados, signal, clasificacion) => {
+      const q = new URLSearchParams();
+      if (estados.length > 0) q.set("estado", estados.join(","));
+      if (clasificacion) q.set("clasificacion", clasificacion);
+      const texto = q.toString();
+      return cliente.obtener(`/api/v1/solicitudes${texto ? `?${texto}` : ""}`, EsquemaRespuestaSolicitudesEquipo, { signal });
     },
     detalle: (id, signal) => cliente.obtener(`/api/v1/solicitudes/${e(id)}`, EsquemaDetalleSolicitudEquipo, { signal }),
     atender: (id, revision, clave) => cliente.enviar(`/api/v1/solicitudes/${e(id)}/atencion`, EsquemaRespuestaAtencion, { cuerpo: { revision }, cabeceras: conClave(clave) }),

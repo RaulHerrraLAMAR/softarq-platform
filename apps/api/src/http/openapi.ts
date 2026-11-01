@@ -25,6 +25,9 @@ import {
   EsquemaDesignarReferencia,
   EsquemaDetalleCotizacionCliente,
   EsquemaDetalleSolicitudEquipo,
+  EsquemaClasificarCliente,
+  EsquemaContadoresInicio,
+  EsquemaRespuestaExportaciones,
   EsquemaEstadoAccesoCliente,
   EsquemaEstimacionCliente,
   EsquemaGuardarSolicitudCliente,
@@ -1250,6 +1253,34 @@ export function construirDocumentoOpenApi(): Record<string, unknown> {
           responses: { "200": ok("RespuestaAtencion", "Ya atendida."), "201": ok("RespuestaAtencion", "Cotización creada."), ...errores(400, 401, 403, 404, 409, 413, 415, 422, 429, 503, 500) },
         },
       },
+      "/api/v1/cotizaciones/contadores": {
+        get: {
+          summary: "Contadores de la hoja 00 INICIO (borradores, en revisión, aprobadas por emitir, emitidas vigentes, vencidas, precios por vencer, último folio y avisos) con las reglas que aplican. Capacidad cotizaciones.consultar",
+          responses: { "200": ok("ContadoresInicio", "Contadores de la organización."), ...errores(401, 403, 429, 503, 500) },
+        },
+      },
+      "/api/v1/exportaciones": {
+        get: {
+          summary: "Tablas que la sesión puede exportar para migración (RF-26): maestros comerciales y personas con personas.administrar; catálogos con precios y tarifas internos con catalogos.administrar",
+          responses: { "200": ok("RespuestaExportaciones", "Tablas y columnas exportables."), ...errores(401, 403, 429, 503, 500) },
+        },
+      },
+      "/api/v1/exportaciones/{tabla}": {
+        get: {
+          summary: "CSV UTF-8 (RFC 4180, con BOM) de la tabla de la organización de la sesión. Sin contraseñas, hashes, sesiones ni tokens",
+          parameters: [{ name: "tabla", in: "path", required: true, schema: { type: "string", enum: ["clientes", "proyectos", "cotizaciones", "personas", "proveedores", "productos", "precios", "insumos", "tarifas"] } }],
+          responses: { "200": { description: "Archivo CSV (attachment).", content: { "text/csv": { schema: { type: "string" } } } }, ...errores(401, 403, 404, 429, 503, 500) },
+        },
+      },
+      "/api/v1/clientes/{id}/clasificacion": {
+        put: {
+          summary: "Clasifica al cliente como PRESENTACION, QA o HUMO (o, con categoria null, retira la clasificación) con un motivo. Capacidad personas.administrar: Administrador del sistema. Sus proyectos, cotizaciones y solicitudes heredan la categoría; no oculta nada",
+          security: CON_EFECTOS,
+          parameters: [PARAMETRO_ID],
+          requestBody: cuerpo("ClasificarCliente"),
+          responses: { "200": ok("Cliente", "Cliente con su clasificación."), ...errores(400, 401, 403, 404, 413, 415, 422, 429, 503, 500) },
+        },
+      },
       "/api/v1/clientes/{id}/acceso": {
         get: {
           summary: "Acceso del cliente a la app (capacidad personas.administrar: Administrador del sistema)",
@@ -1413,6 +1444,9 @@ export function construirDocumentoOpenApi(): Record<string, unknown> {
         AccesoCliente: json(EsquemaAccesoCliente, "output"),
         NuevoAccesoCliente: json(EsquemaNuevoAccesoCliente, "input"),
         RespuestaAltaAcceso: json(EsquemaRespuestaAltaAcceso, "output"),
+        ClasificarCliente: json(EsquemaClasificarCliente, "input"),
+        RespuestaExportaciones: json(EsquemaRespuestaExportaciones, "output"),
+        ContadoresInicio: json(EsquemaContadoresInicio, "output"),
         EstadoAccesoCliente: json(EsquemaEstadoAccesoCliente, "input"),
         RespuestaReferencias: json(EsquemaRespuestaReferencias, "output"),
         DesignarReferencia: json(EsquemaDesignarReferencia, "input"),

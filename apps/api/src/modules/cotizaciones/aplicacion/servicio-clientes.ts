@@ -9,6 +9,7 @@
 import {
   LIMITES_API,
   type Cliente,
+  type ClasificarCliente,
   type ConsultaClientes,
   type ConsultaProyectos,
   type DetalleCliente,
@@ -47,6 +48,7 @@ export class ServicioClientes {
     const clientes = await this.repo.listarClientes(ctx, {
       ...(c.buscar !== undefined ? { buscar: c.buscar } : {}),
       incluirInactivos: c.incluirInactivos ?? false,
+      ...(c.clasificacion !== undefined ? { clasificacion: c.clasificacion } : {}),
       limite,
     });
     return { clientes, limite };
@@ -87,6 +89,18 @@ export class ServicioClientes {
       await this.repo.editarCliente(ctx, autor, id, e.revision, cambiosDe(e));
     } catch (err) {
       throw await this.conflicto(err, () => this.repo.obtenerCliente(ctx, id));
+    }
+    const cliente = await this.repo.obtenerCliente(ctx, id);
+    if (!cliente) throw NO_ENCONTRADO();
+    return cliente;
+  }
+
+  /** Clasifica (o retira la clasificación de) un cliente. La base exige la función ADMIN_SISTEMA y deja la bitácora. */
+  async clasificarCliente(ctx: ContextoOrganizacion, adminId: string, id: string, c: ClasificarCliente): Promise<Cliente> {
+    try {
+      await this.repo.clasificarCliente(ctx, adminId, id, c.categoria, c.motivo);
+    } catch (err) {
+      throw traducirErrorBase(err);
     }
     const cliente = await this.repo.obtenerCliente(ctx, id);
     if (!cliente) throw NO_ENCONTRADO();

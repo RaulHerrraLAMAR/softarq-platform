@@ -18,7 +18,7 @@ const seleccion = {
   actualizadaEn: true,
   enviadaEn: true,
   proyecto: { select: { id: true, nombre: true, municipio: true, entidadFederativa: true, descripcion: true } },
-  cliente: { select: { nombre: true } },
+  cliente: { select: { nombre: true, clasificacion: { select: { categoria: true } } } },
   cotizacion: { select: { id: true, folio: true } },
 } as const;
 
@@ -33,11 +33,14 @@ type Fila = {
   actualizadaEn: Date;
   enviadaEn: Date | null;
   proyecto: ProyectoFila;
-  cliente: { nombre: string };
+  cliente: { nombre: string; clasificacion: { categoria: string } | null };
   cotizacion: { id: string; folio: string } | null;
 };
 
-function aFila(f: Fila): SolicitudFila {
+/** La fila de la solicitud más la clasificación de su cliente (solo la ve el equipo). */
+export type SolicitudFilaEquipo = SolicitudFila & { clasificacion: "PRESENTACION" | "QA" | "HUMO" | null };
+
+function aFila(f: Fila): SolicitudFilaEquipo {
   const c = EsquemaCapturaSolicitud.safeParse(f.captura);
   return {
     id: f.id,
@@ -53,15 +56,17 @@ function aFila(f: Fila): SolicitudFila {
     enviadaEn: f.enviadaEn,
     cotizacionId: f.cotizacion?.id ?? null,
     cotizacionFolio: f.cotizacion?.folio ?? null,
+    clasificacion: (f.cliente.clasificacion?.categoria as SolicitudFilaEquipo["clasificacion"]) ?? null,
   };
 }
 
 export class RepositorioEquipo {
   constructor(private readonly db: PrismaClient) {}
 
-  async listar(ctx: ContextoOrganizacion, estados: readonly string[], limite: number): Promise<SolicitudFila[]> {
+  async listar(ctx: ContextoOrganizacion, estados: readonly string[], limite: number, clasificacion?: string): Promise<SolicitudFilaEquipo[]> {
+    const dondeClasificacion = clasificacion === undefined ? {} : { cliente: { clasificacion: clasificacion === "SIN_CLASIFICAR" ? { is: null } : { is: { categoria: clasificacion } } } };
     const filas = await this.db.solicitudCliente.findMany({
-      where: { organizacionId: ctx.organizacionId, estado: { in: estados.filter((e) => e !== "BORRADOR") } },
+      where: { organizacionId: ctx.organizacionId, estado: { in: estados.filter((e) => e !== "BORRADOR") }, ...dondeClasificacion },
       orderBy: [{ enviadaEn: "asc" }, { creadaEn: "asc" }],
       take: limite,
       select: seleccion,
@@ -80,7 +85,7 @@ export class RepositorioEquipo {
     return new Set(filas.map((f) => f.cotizacionId));
   }
 
-  async obtener(ctx: ContextoOrganizacion, id: string): Promise<SolicitudFila | null> {
+  async obtener(ctx: ContextoOrganizacion, id: string): Promise<SolicitudFilaEquipo | null> {
     const f = await this.db.solicitudCliente.findFirst({ where: { organizacionId: ctx.organizacionId, id, estado: { not: "BORRADOR" } }, select: seleccion });
     return f ? aFila(f as unknown as Fila) : null;
   }

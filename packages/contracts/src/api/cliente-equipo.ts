@@ -7,6 +7,7 @@
  */
 import { z } from "zod";
 import { EsquemaCodigo, EsquemaDecimalTexto, EsquemaFechaISO } from "./comunes.js";
+import { EsquemaClasificacion } from "./cotizaciones.js";
 import {
   ESTADOS_SOLICITUD,
   EsquemaCapturaSolicitud,
@@ -122,6 +123,8 @@ export const EsquemaResumenSolicitudEquipo = z.strictObject({
   /** Total de la estimación del cliente, si existe; la API lo marca como preliminar en el detalle. */
   totalEstimado: EsquemaDecimalTexto.nullable(),
   cotizacionId: z.uuid().nullable(),
+  /** Clasificación del cliente (presentación, QA o humo); `null`/ausente = sin clasificar. */
+  clasificacion: EsquemaClasificacion.nullable().optional(),
 });
 export const EsquemaRespuestaSolicitudesEquipo = z.strictObject({ solicitudes: z.array(EsquemaResumenSolicitudEquipo) });
 export type RespuestaSolicitudesEquipo = z.infer<typeof EsquemaRespuestaSolicitudesEquipo>;

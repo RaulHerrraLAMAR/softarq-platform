@@ -520,6 +520,7 @@ model Membresia {
   accesosClienteCreados      AccesoCliente[]          @relation("AccesoClienteCreadoPor")
   trabajosClienteModificados TrabajoCliente[]         @relation("TrabajoClienteModificadoPor")
   referenciasDesignadas      ReferenciaEstimacion[]   @relation("ReferenciaDesignadaPor")
+  clasificaciones            ClasificacionCliente[]   @relation("ClasificadoPor")
   referenciasRetiradas       ReferenciaEstimacion[]   @relation("ReferenciaRetiradaPor")
   solicitudesCreadas         SolicitudCliente[]       @relation("SolicitudCreadaPor")
   solicitudesAtendidas       SolicitudCliente[]       @relation("SolicitudAtendidaPor")
@@ -587,6 +588,8 @@ model Cliente {
   proyectos    Proyecto[]
   acceso       AccesoCliente?
   solicitudes  SolicitudCliente[]
+  /// Clasificación explícita (presentación, QA o humo); sin fila = sin clasificar.
+  clasificacion ClasificacionCliente?
 
   @@unique([organizacionId, id])
   @@unique([organizacionId, codigo])
@@ -1162,4 +1165,24 @@ model EstimacionSolicitud {
 
   @@unique([solicitudId, numero])
   @@map("estimacion_solicitud")
+}
+
+/// Clasificación de un cliente (E3.8): decisión explícita del Administrador del sistema, con motivo. Solo se escribe con
+/// `softarq_clasificar_cliente`. Sus proyectos, cotizaciones y solicitudes heredan la categoría.
+model ClasificacionCliente {
+  id             String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organizacionId String   @map("organizacion_id") @db.Uuid
+  clienteId      String   @map("cliente_id") @db.Uuid
+  /// PRESENTACION | QA | HUMO
+  categoria      String
+  motivo         String
+  clasificadoPor String   @map("clasificado_por") @db.Uuid
+  clasificadoEn  DateTime @default(now()) @map("clasificado_en") @db.Timestamptz(3)
+
+  cliente Cliente   @relation(fields: [organizacionId, clienteId], references: [organizacionId, id], onDelete: Restrict, onUpdate: Restrict, map: "clasificacion_cliente_cliente_fkey")
+  autor   Membresia @relation("ClasificadoPor", fields: [organizacionId, clasificadoPor], references: [organizacionId, usuarioId], onDelete: Restrict, onUpdate: Restrict, map: "clasificacion_cliente_autor_fkey")
+
+  @@unique([organizacionId, clienteId])
+  @@index([organizacionId, categoria])
+  @@map("clasificacion_cliente")
 }

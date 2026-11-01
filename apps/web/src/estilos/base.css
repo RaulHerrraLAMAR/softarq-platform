@@ -2147,3 +2147,38 @@ h3,
 .tarjeta > .boton {
   justify-self: start;
 }
+
+/* ---------- Contadores de inicio, filtros y exportaciones (E3.8, RF-26) ---------- */
+.contadores-lista {
+  list-style: none;
+  padding-left: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: var(--esp-3);
+}
+
+.contador {
+  display: grid;
+  gap: var(--esp-1);
+  padding: var(--esp-3);
+  border: 1px solid var(--color-borde);
+  border-radius: var(--radio);
+  background: var(--color-superficie-suave);
+}
+
+.contador-valor {
+  font-family: var(--fuente-titulo);
+  font-weight: 800;
+  font-size: var(--texto-xl);
+  color: var(--color-primario);
+  font-variant-numeric: tabular-nums;
+}
+
+.contador-etiqueta {
+  font-size: var(--texto-sm);
+  color: var(--color-texto-atenuado);
+}
+
+.campo-filtro {
+  max-width: 260px;
+}

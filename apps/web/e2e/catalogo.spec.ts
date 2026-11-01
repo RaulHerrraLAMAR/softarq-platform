@@ -35,7 +35,7 @@ async function otraPersona(browser: Browser, cuenta: CuentaE2E, ancho = 1440): P
 
 async function irACatalogo(p: Page, vista: "Proveedores" | "Productos" | "Precios" | "Mano de obra" | "Conceptos y componentes"): Promise<void> {
   await p.getByRole("navigation", { name: "Secciones" }).getByRole("link", { name: "Catálogo" }).click();
-  await p.getByRole("navigation", { name: "Secciones del catálogo" }).getByRole("link", { name: vista }).click();
+  await p.getByRole("navigation", { name: "Secciones del catálogo" }).getByRole("link", { name: vista, exact: true }).click();
 }
 
 /** Selector con búsqueda (módulo 12): busca el código en el servidor y elige su resultado. */

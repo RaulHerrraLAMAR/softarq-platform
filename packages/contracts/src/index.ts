@@ -14,3 +14,5 @@ export * from "./api/administracion.js";
 export * from "./api/salidas-internas.js";
 export * from "./api/cliente.js";
 export * from "./api/cliente-equipo.js";
+export * from "./api/exportaciones.js";
+export * from "./api/inicio.js";

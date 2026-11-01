@@ -28,6 +28,7 @@ import { PantallaEmisor } from "./cotizaciones/emision.tsx";
 import { ListaCotizaciones, NuevaCotizacion, VistaVersion } from "./cotizaciones/PantallasCotizaciones.tsx";
 import { BandejaRevisiones, PantallaRevision } from "./cotizaciones/revisiones.tsx";
 import { MiTrabajo } from "./inicio/MiTrabajo.tsx";
+import { PantallaExportaciones } from "./administracion/PantallaExportaciones.tsx";
 import { BandejaSolicitudes, DetalleSolicitud } from "./solicitudes/PantallasSolicitudes.tsx";
 import type { ServiciosSolicitudes } from "./solicitudes/servicios.ts";
 import { PantallaSalidasInternas } from "./salidas-internas/PantallaSalidasInternas.tsx";
@@ -70,6 +71,9 @@ const SECCIONES: { ruta: Ruta; texto: string; seccion: NonNullable<ReturnType<ty
 /** Solo con `solicitudes.atender` (Preparador, módulo 17); la API lo exige de todos modos. */
 const SECCION_SOLICITUDES = { ruta: { pantalla: "solicitudes" } as Ruta, texto: "Solicitudes", seccion: "solicitudes" as const };
 
+/** Con `catalogos.administrar` o `personas.administrar` (RF-26): solo ven las tablas de su función; la API decide por tabla. */
+const SECCION_EXPORTACIONES = { ruta: { pantalla: "exportaciones" } as Ruta, texto: "Exportaciones", seccion: "exportaciones" as const };
+
 /** Solo con `catalogos.administrar` (Administrador del catálogo); la API lo exige de todos modos. */
 const SECCION_CATALOGO = { ruta: { pantalla: "catalogo", vista: "proveedores" } as Ruta, texto: "Catálogo", seccion: "catalogo" as const };
 
@@ -77,11 +81,12 @@ const SECCION_CATALOGO = { ruta: { pantalla: "catalogo", vista: "proveedores" } 
 const SECCION_ADMINISTRACION = { ruta: { pantalla: "administracion", vista: "parametros" } as Ruta, texto: "Administración", seccion: "administracion" as const };
 
 function Navegacion({ ruta, puedeAtender, puedeAdministrarCatalogo, puedeAdministrarSistema }: { ruta: Ruta; puedeAtender: boolean; puedeAdministrarCatalogo: boolean; puedeAdministrarSistema: boolean }) {
+  const puedeExportar = puedeAdministrarCatalogo || puedeAdministrarSistema;
   const actual = seccionDe(ruta);
   return (
     <nav className="navegacion" aria-label="Secciones">
       <ul>
-        {[SECCIONES[0]!, ...(puedeAtender ? [SECCION_SOLICITUDES] : []), ...SECCIONES.slice(1), ...(puedeAdministrarCatalogo ? [SECCION_CATALOGO] : []), ...(puedeAdministrarSistema ? [SECCION_ADMINISTRACION] : [])].map((s) => (
+        {[SECCIONES[0]!, ...(puedeAtender ? [SECCION_SOLICITUDES] : []), ...SECCIONES.slice(1), ...(puedeAdministrarCatalogo ? [SECCION_CATALOGO] : []), ...(puedeAdministrarSistema ? [SECCION_ADMINISTRACION] : []), ...(puedeExportar ? [SECCION_EXPORTACIONES] : [])].map((s) => (
           <li key={s.seccion}>
             <Enlace a={s.ruta} className="navegacion-enlace" actual={actual === s.seccion}>
               {s.texto}
@@ -132,6 +137,8 @@ function Contenido({ sesion, servicios, cotizaciones, catalogoAdmin, administrac
         return <MiTrabajo nombre={sesion.usuario.nombre} capacidades={sesion.capacidades} solicitudes={solicitudes} cotizaciones={cotizaciones} />;
       case "solicitudes":
         return puedeAtender ? <BandejaSolicitudes servicios={solicitudes} /> : <SinPermisoSolicitudes />;
+      case "exportaciones":
+        return puedeAdministrarCatalogo || puedeParametros || puedePersonas ? <PantallaExportaciones servicios={administracion} /> : <SinPermisoAdministracion />;
       case "solicitud":
         return puedeAtender ? <DetalleSolicitud servicios={solicitudes} id={ruta.id} puedeAtender={puedeAtender} /> : <SinPermisoSolicitudes />;
       case "cotizaciones":

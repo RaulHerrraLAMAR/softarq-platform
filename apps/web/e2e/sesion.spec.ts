@@ -26,7 +26,8 @@ async function sinAlmacenamiento(pagina: Page): Promise<void> {
 
 test("flujo completo: acceso, ejemplo, cálculo y cierre; después las rutas protegidas responden 401", async ({ page, context }, info) => {
   const { preparador } = cuentasE2E();
-  await page.goto("/");
+  // Desde E3.2 la dirección vacía abre «Mi trabajo»; este flujo recorre la calculadora, así que se abre directamente.
+  await page.goto("/#/calculadora");
   await expect(page.getByRole("heading", { name: "Iniciar sesión" })).toBeVisible();
   await expect(page.getByRole("button", { name: /Cargar ejemplo/ })).toHaveCount(0);
   await evidenciaM5(page, info, "01-acceso");

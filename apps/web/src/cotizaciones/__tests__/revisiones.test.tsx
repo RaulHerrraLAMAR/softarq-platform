@@ -94,6 +94,8 @@ function servicios(s: Partial<ServiciosCotizaciones>): ServiciosCotizaciones {
     // Módulo 11: verificación vigente de la última versión (sin cambios de catálogo por omisión).
     verificarVersion: () => ok({ fechaReferencia: "2026-10-01", bloqueos: [], avisos: [] }),
     listarClientes: noUsar,
+    clasificarCliente: noUsar,
+    contadoresInicio: noUsar,
     detalleCliente: noUsar,
     crearCliente: noUsar,
     editarCliente: noUsar,

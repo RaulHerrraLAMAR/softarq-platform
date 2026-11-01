@@ -215,7 +215,18 @@ const booleanoTexto = z
   .transform((v) => v === "true")
   .optional();
 
-export const EsquemaConsultaClientes = z.strictObject({ buscar, incluirInactivos: booleanoTexto, limite });
+/**
+ * Clasificación de un cliente (E3.8): decisión explícita del Administrador del sistema. Sus proyectos, cotizaciones y solicitudes
+ * heredan la categoría. Sin clasificación = «sin clasificar»: no se asume que lo [DEMO] sea desechable.
+ */
+export const CLASIFICACIONES = ["PRESENTACION", "QA", "HUMO"] as const;
+export type Clasificacion = (typeof CLASIFICACIONES)[number];
+export const EsquemaClasificacion = z.enum(CLASIFICACIONES);
+/** Filtro de las listas por clasificación (`SIN_CLASIFICAR` = clientes sin fila). Sin filtro se ve todo. */
+export const EsquemaFiltroClasificacion = z.enum([...CLASIFICACIONES, "SIN_CLASIFICAR"], { error: "Use PRESENTACION, QA, HUMO o SIN_CLASIFICAR." }).optional();
+export type FiltroClasificacion = z.infer<typeof EsquemaFiltroClasificacion>;
+
+export const EsquemaConsultaClientes = z.strictObject({ buscar, incluirInactivos: booleanoTexto, clasificacion: EsquemaFiltroClasificacion, limite });
 export type ConsultaClientes = z.infer<typeof EsquemaConsultaClientes>;
 
 export const EsquemaConsultaProyectos = z.strictObject({
@@ -230,6 +241,7 @@ export const EsquemaConsultaCotizaciones = z.strictObject({
   buscar,
   clienteId: EsquemaUuid.optional(),
   proyectoId: EsquemaUuid.optional(),
+  clasificacion: EsquemaFiltroClasificacion,
   limite,
 });
 export type ConsultaCotizaciones = z.infer<typeof EsquemaConsultaCotizaciones>;
@@ -444,8 +456,18 @@ export const EsquemaCliente = z.strictObject({
   creadoEn: EsquemaInstante,
   modificadoEn: EsquemaInstante,
   modificadoPor: z.string(),
+  /** Clasificación explícita del cliente (`null`/ausente = sin clasificar) y el motivo de quien la decidió. */
+  clasificacion: EsquemaClasificacion.nullable().optional(),
+  clasificacionMotivo: z.string().nullable().optional(),
 });
 export type Cliente = z.infer<typeof EsquemaCliente>;
+
+/** Clasifica (o, con `categoria: null`, retira la clasificación de) un cliente. Solo el Administrador del sistema. */
+export const EsquemaClasificarCliente = z.strictObject({
+  categoria: EsquemaClasificacion.nullable(),
+  motivo: z.string({ error: "Debe ser un texto." }).trim().min(3, { error: "Indique el motivo." }).max(200, { error: "Máximo 200 caracteres." }),
+});
+export type ClasificarCliente = z.infer<typeof EsquemaClasificarCliente>;
 
 export const EsquemaProyecto = z.strictObject({
   id: z.string(),
@@ -554,13 +576,15 @@ export const EsquemaResumenCotizacion = z.strictObject({
   estadoFolio: z.enum(ESTADOS_FOLIO),
   /** Descarte del folio (módulo 8); `null` si está activo. */
   descarte: z.strictObject({ por: z.string(), en: EsquemaInstante, motivo: z.string() }).nullable(),
-  cliente: z.strictObject({ id: z.string(), codigo: z.string(), nombre: z.string(), activo: z.boolean() }),
+  cliente: z.strictObject({ id: z.string(), codigo: z.string(), nombre: z.string(), activo: z.boolean(), clasificacion: EsquemaClasificacion.nullable().optional() }),
   proyecto: z.strictObject({ id: z.string(), codigo: z.string(), nombre: z.string(), activo: z.boolean() }),
   creadoEn: EsquemaInstante,
   creadoPor: z.string(),
   revisionBorrador: z.number().int().nonnegative(),
   borradorActualizadoEn: EsquemaInstante,
   ultimaVersion: EsquemaResumenVersion.nullable(),
+  /** Solicitud del cliente de la que nació (módulo 17); `null`/ausente si se preparó desde el panel. */
+  solicitud: z.strictObject({ id: z.string(), folio: z.string() }).nullable().optional(),
 });
 export type ResumenCotizacion = z.infer<typeof EsquemaResumenCotizacion>;
 

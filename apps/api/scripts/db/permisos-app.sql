@@ -232,3 +232,12 @@ BEGIN
     GRANT EXECUTE ON FUNCTION public.softarq_atender_solicitud(UUID, UUID, UUID, INTEGER, INTEGER, JSONB) TO softarq_app;
   END IF;
 END $$;
+-- Clasificación de clientes (E3.8): la aplicación solo LEE la tabla; la única escritura es la función SECURITY DEFINER, que exige
+-- la función ADMIN_SISTEMA en la base y deja la bitácora. Condicional para restaurar respaldos anteriores.
+DO $$
+BEGIN
+  IF to_regprocedure('public.softarq_clasificar_cliente(uuid,uuid,uuid,text,text)') IS NOT NULL THEN
+    REVOKE INSERT, UPDATE ON TABLE public.clasificacion_cliente FROM softarq_app;
+    GRANT EXECUTE ON FUNCTION public.softarq_clasificar_cliente(UUID, UUID, UUID, TEXT, TEXT) TO softarq_app;
+  END IF;
+END $$;

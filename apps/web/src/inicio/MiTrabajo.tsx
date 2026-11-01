@@ -10,6 +10,7 @@ import type { Capacidad } from "@softarq/contracts";
 import type { ReactNode } from "react";
 import type { ServiciosCotizaciones } from "../api/servicios-cotizaciones.ts";
 import { Pagina } from "../comunes/pagina.tsx";
+import { ContadoresInicio } from "./ContadoresInicio.tsx";
 import { useCarga } from "../comunes/usarCarga.ts";
 import { Enlace, type Ruta } from "../navegacion/ruta.tsx";
 import type { ServiciosSolicitudes } from "../solicitudes/servicios.ts";
@@ -93,6 +94,7 @@ export function MiTrabajo({ nombre, capacidades, solicitudes, cotizaciones }: { 
   return (
     <Pagina titulo="Mi trabajo" subtitulo={`${nombre}: lo que tiene por hacer según su función. El resto del panel sigue disponible en la navegación.`}>
       {tarjetas.length === 0 ? <p className="vacio">Su función no tiene bandejas propias. Use la navegación para consultar cotizaciones, clientes y proyectos.</p> : <div className="tarjetas">{tarjetas}</div>}
+      {puede("cotizaciones.consultar") ? <ContadoresInicio servicios={cotizaciones} /> : null}
     </Pagina>
   );
 }

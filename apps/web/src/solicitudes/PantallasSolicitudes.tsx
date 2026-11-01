@@ -7,7 +7,8 @@
  *   confirmarlos explícitamente (CR-07) antes de calcular.
  * - La API decide quién puede atender (`solicitudes.atender`); aquí solo se oculta el control. Atender es idempotente.
  */
-import { ROTULO_ESTIMACION, type DetalleSolicitudEquipo, type EstadoSolicitud, type RenglonCliente } from "@softarq/contracts";
+import { ROTULO_ESTIMACION, type DetalleSolicitudEquipo, type EstadoSolicitud, type FiltroClasificacion, type RenglonCliente } from "@softarq/contracts";
+import { EtiquetaClasificacion, FiltroClasificacionCampo } from "../comunes/clasificacion.tsx";
 import { useState } from "react";
 import { mensajeDeFallo, type FalloApi } from "../api/cliente.ts";
 import { Aviso, Boton, Insignia } from "../comunes/componentes.tsx";
@@ -41,7 +42,8 @@ export function InsigniaEstadoSolicitud({ estado }: { estado: EstadoSolicitud })
 
 export function BandejaSolicitudes({ servicios }: { servicios: ServiciosSolicitudes }) {
   const [filtro, setFiltro] = useState(FILTROS[0]!);
-  const { estado: carga, recargar } = useCarga((s) => servicios.listar(filtro.estados, s), [filtro.clave]);
+  const [clasificacion, setClasificacion] = useState<FiltroClasificacion | undefined>(undefined);
+  const { estado: carga, recargar } = useCarga((s) => servicios.listar(filtro.estados, s, clasificacion), [filtro.clave, clasificacion]);
   return (
     <Pagina
       titulo="Solicitudes de clientes"
@@ -55,6 +57,7 @@ export function BandejaSolicitudes({ servicios }: { servicios: ServiciosSolicitu
           </Boton>
         ))}
       </div>
+      <FiltroClasificacionCampo valor={clasificacion} alCambiar={setClasificacion} id="filtro-clasificacion-solicitudes" />
       {carga.fase === "cargando" ? <Cargando etiqueta="Cargando solicitudes…" /> : null}
       {carga.fase === "error" ? <CargaFallida fallo={carga.fallo} alReintentar={recargar} /> : null}
       {carga.fase === "listo" ? (
@@ -85,7 +88,7 @@ export function BandejaSolicitudes({ servicios }: { servicios: ServiciosSolicitu
                       </Enlace>
                     </td>
                     <td data-etiqueta="Cliente y proyecto">
-                      {s.cliente} · {s.proyecto}
+                      {s.cliente} <EtiquetaClasificacion valor={s.clasificacion} /> · {s.proyecto}
                     </td>
                     <td data-etiqueta="Trabajos">{s.trabajos.join(", ") || "—"}</td>
                     <td data-etiqueta="Estimación del cliente" className="numero">

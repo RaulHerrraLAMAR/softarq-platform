@@ -1074,6 +1074,20 @@
             }
           },
           {
+            "name": "clasificacion",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "PRESENTACION",
+                "QA",
+                "HUMO",
+                "SIN_CLASIFICAR"
+              ]
+            }
+          },
+          {
             "name": "limite",
             "in": "query",
             "required": false,
@@ -2045,6 +2059,20 @@
               "type": "string",
               "format": "uuid",
               "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            }
+          },
+          {
+            "name": "clasificacion",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "PRESENTACION",
+                "QA",
+                "HUMO",
+                "SIN_CLASIFICAR"
+              ]
             }
           },
           {
@@ -13363,6 +13391,382 @@
         }
       }
     },
+    "/api/v1/cotizaciones/contadores": {
+      "get": {
+        "summary": "Contadores de la hoja 00 INICIO (borradores, en revisión, aprobadas por emitir, emitidas vigentes, vencidas, precios por vencer, último folio y avisos) con las reglas que aplican. Capacidad cotizaciones.consultar",
+        "responses": {
+          "200": {
+            "description": "Contadores de la organización.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ContadoresInicio"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "NO_AUTENTICADO (sin cookie de sesión) o SESION_NO_VALIDA (vencida, revocada o desconocida; se borra la cookie).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "SIN_PERMISO (la función no concede la capacidad), CSRF_NO_VALIDO u ORIGEN_NO_PERMITIDO.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "DEMASIADAS_SOLICITUDES (cabecera Retry-After).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "ERROR_INTERNO, DOCUMENTO_NO_GENERADO (no se generó o guardó el PDF; no hay emisión y se puede reintentar) o DOCUMENTO_NO_DISPONIBLE (el archivo emitido falta o no coincide con su registro; nunca se regenera).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "SERVICIO_NO_DISPONIBLE: PostgreSQL no disponible.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/exportaciones": {
+      "get": {
+        "summary": "Tablas que la sesión puede exportar para migración (RF-26): maestros comerciales y personas con personas.administrar; catálogos con precios y tarifas internos con catalogos.administrar",
+        "responses": {
+          "200": {
+            "description": "Tablas y columnas exportables.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaExportaciones"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "NO_AUTENTICADO (sin cookie de sesión) o SESION_NO_VALIDA (vencida, revocada o desconocida; se borra la cookie).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "SIN_PERMISO (la función no concede la capacidad), CSRF_NO_VALIDO u ORIGEN_NO_PERMITIDO.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "DEMASIADAS_SOLICITUDES (cabecera Retry-After).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "ERROR_INTERNO, DOCUMENTO_NO_GENERADO (no se generó o guardó el PDF; no hay emisión y se puede reintentar) o DOCUMENTO_NO_DISPONIBLE (el archivo emitido falta o no coincide con su registro; nunca se regenera).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "SERVICIO_NO_DISPONIBLE: PostgreSQL no disponible.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/exportaciones/{tabla}": {
+      "get": {
+        "summary": "CSV UTF-8 (RFC 4180, con BOM) de la tabla de la organización de la sesión. Sin contraseñas, hashes, sesiones ni tokens",
+        "parameters": [
+          {
+            "name": "tabla",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "clientes",
+                "proyectos",
+                "cotizaciones",
+                "personas",
+                "proveedores",
+                "productos",
+                "precios",
+                "insumos",
+                "tarifas"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Archivo CSV (attachment).",
+            "content": {
+              "text/csv": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "NO_AUTENTICADO (sin cookie de sesión) o SESION_NO_VALIDA (vencida, revocada o desconocida; se borra la cookie).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "SIN_PERMISO (la función no concede la capacidad), CSRF_NO_VALIDO u ORIGEN_NO_PERMITIDO.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "NO_ENCONTRADO: ruta, id o códigos inexistentes en la organización (un id de otra organización responde igual).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "DEMASIADAS_SOLICITUDES (cabecera Retry-After).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "ERROR_INTERNO, DOCUMENTO_NO_GENERADO (no se generó o guardó el PDF; no hay emisión y se puede reintentar) o DOCUMENTO_NO_DISPONIBLE (el archivo emitido falta o no coincide con su registro; nunca se regenera).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "SERVICIO_NO_DISPONIBLE: PostgreSQL no disponible.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/clientes/{id}/clasificacion": {
+      "put": {
+        "summary": "Clasifica al cliente como PRESENTACION, QA o HUMO (o, con categoria null, retira la clasificación) con un motivo. Capacidad personas.administrar: Administrador del sistema. Sus proyectos, cotizaciones y solicitudes heredan la categoría; no oculta nada",
+        "security": [
+          {
+            "cookieSesion": [],
+            "tokenCsrf": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ClasificarCliente"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Cliente con su clasificación.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Cliente"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "SOLICITUD_INVALIDA: no cumple el contrato (campos con su ruta) o JSON mal formado.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "NO_AUTENTICADO (sin cookie de sesión) o SESION_NO_VALIDA (vencida, revocada o desconocida; se borra la cookie).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "SIN_PERMISO (la función no concede la capacidad), CSRF_NO_VALIDO u ORIGEN_NO_PERMITIDO.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "NO_ENCONTRADO: ruta, id o códigos inexistentes en la organización (un id de otra organización responde igual).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "CUERPO_DEMASIADO_GRANDE.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "TIPO_DE_CONTENIDO_NO_ADMITIDO: el cuerpo debe ser application/json.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "CALCULO_BLOQUEADO (códigos BL, sin importes), CAPTURA_INCOMPLETA (campos pendientes), REGISTRO_INACTIVO, REFERENCIA_NO_DISPONIBLE, ENVIO_BLOQUEADO / APROBACION_BLOQUEADA (bloqueos vigentes; el estado no cambió), DECISION_BLOQUEADA (BL-17: quien aprueba no puede ser el autor), EMISION_BLOQUEADA (BL-01 a BL-20 a la fecha de emisión; nada cambió), DESCARTE_BLOQUEADO (estado que no permite descartar), FECHA_RESPUESTA_INVALIDA (anterior a emisión o futura), RESPUESTA_FUERA_VIGENCIA (recepción después del último día), EXCEPCION_INVALIDA (excepción que no corresponde a la captura, al catálogo o fuera de rango; nada se guardó), PRODUCTO_CON_PRECIOS (campos técnicos bloqueados), UNIDAD_INCOMPATIBLE (BL-06), VIGENCIA_INVALIDA, VALOR_INVALIDO, TIPO_CON_CONCEPTOS (la familia no cambia), INSUMO_CON_REFERENCIAS (la unidad base no cambia), CONCEPTO_INCOMPLETO (concepto heredado: complete tipo y regla), REQUISITOS_INCOMPLETOS (`problemas` de aprobación), IDEMPOTENCIA_CONFLICTO o IDEMPOTENCIA_CADUCADA.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "DEMASIADAS_SOLICITUDES (cabecera Retry-After).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "ERROR_INTERNO, DOCUMENTO_NO_GENERADO (no se generó o guardó el PDF; no hay emisión y se puede reintentar) o DOCUMENTO_NO_DISPONIBLE (el archivo emitido falta o no coincide con su registro; nunca se regenera).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "SERVICIO_NO_DISPONIBLE: PostgreSQL no disponible.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/clientes/{id}/acceso": {
       "get": {
         "summary": "Acceso del cliente a la app (capacidad personas.administrar: Administrador del sistema)",
@@ -19243,6 +19647,27 @@
           },
           "modificadoPor": {
             "type": "string"
+          },
+          "clasificacion": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "PRESENTACION",
+                  "QA",
+                  "HUMO"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "clasificacionMotivo": {
+            "type": [
+              "string",
+              "null"
+            ]
           }
         },
         "required": [
@@ -19311,6 +19736,27 @@
                 },
                 "modificadoPor": {
                   "type": "string"
+                },
+                "clasificacion": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "enum": [
+                        "PRESENTACION",
+                        "QA",
+                        "HUMO"
+                      ]
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "clasificacionMotivo": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
                 }
               },
               "required": [
@@ -19390,6 +19836,27 @@
               },
               "modificadoPor": {
                 "type": "string"
+              },
+              "clasificacion": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "enum": [
+                      "PRESENTACION",
+                      "QA",
+                      "HUMO"
+                    ]
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "clasificacionMotivo": {
+                "type": [
+                  "string",
+                  "null"
+                ]
               }
             },
             "required": [
@@ -20324,6 +20791,21 @@
                     },
                     "activo": {
                       "type": "boolean"
+                    },
+                    "clasificacion": {
+                      "anyOf": [
+                        {
+                          "type": "string",
+                          "enum": [
+                            "PRESENTACION",
+                            "QA",
+                            "HUMO"
+                          ]
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
                     }
                   },
                   "required": [
@@ -20669,6 +21151,29 @@
                         "motivo",
                         "modoPrecios",
                         "versionOrigen"
+                      ],
+                      "additionalProperties": false
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "solicitud": {
+                  "anyOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "folio": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "folio"
                       ],
                       "additionalProperties": false
                     },
@@ -23016,6 +23521,21 @@
                       "type": "null"
                     }
                   ]
+                },
+                "clasificacion": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "enum": [
+                        "PRESENTACION",
+                        "QA",
+                        "HUMO"
+                      ]
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
                 }
               },
               "required": [
@@ -23094,6 +23614,21 @@
                 "type": "string",
                 "format": "uuid",
                 "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "clasificacion": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "PRESENTACION",
+                  "QA",
+                  "HUMO"
+                ]
               },
               {
                 "type": "null"
@@ -23679,6 +24214,154 @@
         ],
         "additionalProperties": false
       },
+      "ClasificarCliente": {
+        "type": "object",
+        "properties": {
+          "categoria": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "PRESENTACION",
+                  "QA",
+                  "HUMO"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "motivo": {
+            "type": "string",
+            "minLength": 3,
+            "maxLength": 200
+          }
+        },
+        "required": [
+          "categoria",
+          "motivo"
+        ],
+        "additionalProperties": false
+      },
+      "RespuestaExportaciones": {
+        "type": "object",
+        "properties": {
+          "tablas": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "tabla": {
+                  "type": "string"
+                },
+                "descripcion": {
+                  "type": "string"
+                },
+                "columnas": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                }
+              },
+              "required": [
+                "tabla",
+                "descripcion",
+                "columnas"
+              ],
+              "additionalProperties": false
+            }
+          }
+        },
+        "required": [
+          "tablas"
+        ],
+        "additionalProperties": false
+      },
+      "ContadoresInicio": {
+        "type": "object",
+        "properties": {
+          "fecha": {
+            "type": "string",
+            "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+          },
+          "borradores": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "enRevision": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "aprobadasPorEmitir": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "emitidasVigentes": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "vencidas": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "preciosPorVencer": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "ultimoFolio": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "avisos": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "codigo": {
+                  "type": "string"
+                },
+                "mensaje": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "codigo",
+                "mensaje"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "reglas": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "fecha",
+          "borradores",
+          "enRevision",
+          "aprobadasPorEmitir",
+          "emitidasVigentes",
+          "vencidas",
+          "preciosPorVencer",
+          "ultimoFolio",
+          "avisos",
+          "reglas"
+        ],
+        "additionalProperties": false
+      },
       "EstadoAccesoCliente": {
         "type": "object",
         "properties": {
@@ -24137,6 +24820,21 @@
                   },
                   "activo": {
                     "type": "boolean"
+                  },
+                  "clasificacion": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "enum": [
+                          "PRESENTACION",
+                          "QA",
+                          "HUMO"
+                        ]
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
                   }
                 },
                 "required": [
@@ -24482,6 +25180,29 @@
                       "motivo",
                       "modoPrecios",
                       "versionOrigen"
+                    ],
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "solicitud": {
+                "anyOf": [
+                  {
+                    "type": "object",
+                    "properties": {
+                      "id": {
+                        "type": "string"
+                      },
+                      "folio": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "id",
+                      "folio"
                     ],
                     "additionalProperties": false
                   },

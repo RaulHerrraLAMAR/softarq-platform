@@ -46,9 +46,9 @@ export class ServicioEquipo {
    * `COTIZADA` no se guarda: se deriva (igual que ve el cliente) de que la cotización de la solicitud ya tenga una emisión.
    * Pedir `EN_PREPARACION` devuelve solo las que todavía no se emitieron; `COTIZADA`, solo las emitidas.
    */
-  async listar(ctx: ContextoOrganizacion, estados: readonly ("ENVIADA" | "EN_PREPARACION" | "COTIZADA" | "RETIRADA")[], limite: number): Promise<RespuestaSolicitudesEquipo> {
+  async listar(ctx: ContextoOrganizacion, estados: readonly ("ENVIADA" | "EN_PREPARACION" | "COTIZADA" | "RETIRADA")[], limite: number, clasificacion?: string): Promise<RespuestaSolicitudesEquipo> {
     const deBase = [...new Set(estados.map((e) => (e === "COTIZADA" ? "EN_PREPARACION" : e)))];
-    const todas = await this.repo.listar(ctx, deBase, limite);
+    const todas = await this.repo.listar(ctx, deBase, limite, clasificacion);
     const emitidas = await this.repo.cotizacionesEmitidas(ctx, todas.flatMap((f) => (f.estado === "EN_PREPARACION" && f.cotizacionId ? [f.cotizacionId] : [])));
     const visible = (f: (typeof todas)[number]): "ENVIADA" | "EN_PREPARACION" | "COTIZADA" | "RETIRADA" =>
       f.estado === "EN_PREPARACION" && f.cotizacionId && emitidas.has(f.cotizacionId) ? "COTIZADA" : (f.estado as "ENVIADA" | "EN_PREPARACION" | "RETIRADA");
@@ -69,6 +69,7 @@ export class ServicioEquipo {
           enviadaEn: f.enviadaEn ? iso(f.enviadaEn) : null,
           totalEstimado: comercial?.success && comercial.data ? comercial.data.total : null,
           cotizacionId: f.cotizacionId,
+          clasificacion: f.clasificacion,
         };
       }),
     };
@@ -91,6 +92,7 @@ export class ServicioEquipo {
       enviadaEn: f.enviadaEn ? iso(f.enviadaEn) : null,
       totalEstimado: comercial?.success && comercial.data ? comercial.data.total : null,
       cotizacionId: f.cotizacionId,
+      clasificacion: f.clasificacion,
       revision: f.revision,
       captura: f.captura ?? CAPTURA_SOLICITUD_VACIA,
       ultimaEstimacion: est ? aEstimacionCliente(est, f.revision) : null,
