@@ -291,12 +291,50 @@ async function comprobarDestino(manifiesto) {
           (SELECT count(*)::int FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace
             WHERE n.nspname='public' AND p.prosecdef AND p.proname LIKE 'softarq\\_%') definer,
           (SELECT count(*)::int FROM pg_trigger t JOIN pg_class k ON k.oid=t.tgrelid WHERE k.relname='membresia' AND NOT t.tgisinternal) disparadores`)).rows[0];
+      // El número de funciones SECURITY DEFINER y de disparadores de `membresia` crece con cada módulo (en el 13 eran 6 y 1; con el
+      // cliente externo y la clasificación son más): lo que se exige es que la base RESTAURADA tenga exactamente los mismos que el origen.
+      const origenConteo = new pg.Client({ connectionString: urlRespaldo().cadena });
+      await origenConteo.connect();
+      let esperado;
+      try {
+        esperado = (await origenConteo.query(`SELECT
+          (SELECT count(*)::int FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace
+            WHERE n.nspname='public' AND p.prosecdef AND p.proname LIKE 'softarq\\_%') definer,
+          (SELECT count(*)::int FROM pg_trigger t JOIN pg_class k ON k.oid=t.tgrelid WHERE k.relname='membresia' AND NOT t.tgisinternal) disparadores`)).rows[0];
+      } finally {
+        await origenConteo.end();
+      }
       registrar(
         "parámetros y personas: sin escritura directa de identidad, columnas editables mínimas, funciones y disparador restaurados",
         !permisos.organizacion && !permisos.usuario && !permisos.alta_usuario && !permisos.membresia && !permisos.alta_membresia && !permisos.ambiente && !permisos.moneda
-          && permisos.textos && permisos.parametros && permisos.personas && permisos.definer === 6 && permisos.disparadores === 1,
-        JSON.stringify(permisos),
+          && permisos.textos && permisos.parametros && permisos.personas && permisos.definer >= 6 && permisos.definer === esperado.definer
+          && permisos.disparadores >= 1 && permisos.disparadores === esperado.disparadores,
+        `${JSON.stringify(permisos)} · origen: ${JSON.stringify(esperado)}`,
       );
+      // Clasificación de clientes (ADR-0023). Condicional: respaldos anteriores no tienen la tabla.
+      const conClasificacion = (await c.query("SELECT to_regclass('public.clasificacion_cliente') IS NOT NULL AS hay")).rows[0].hay;
+      if (conClasificacion) {
+        const huella = "SELECT count(*)::int n, coalesce(md5(string_agg(cliente_id::text || categoria || motivo || clasificado_por::text, ',' ORDER BY cliente_id)), '') h FROM clasificacion_cliente";
+        const o = new pg.Client({ connectionString: urlRespaldo().cadena });
+        await o.connect();
+        try {
+          const a = (await o.query(huella)).rows[0];
+          const b = (await c.query(huella)).rows[0];
+          const p = (await c.query(`SELECT
+              has_table_privilege('softarq_app','public.clasificacion_cliente','INSERT') ins,
+              has_table_privilege('softarq_app','public.clasificacion_cliente','UPDATE') upd,
+              has_table_privilege('softarq_app','public.clasificacion_cliente','DELETE') del,
+              has_table_privilege('softarq_app','public.clasificacion_cliente','SELECT') sel,
+              has_function_privilege('softarq_app','public.softarq_clasificar_cliente(uuid,uuid,uuid,text,text)','EXECUTE') fn,
+              (SELECT count(*)::int FROM pg_constraint WHERE conrelid='public.clasificacion_cliente'::regclass AND contype='c') cks,
+              (SELECT count(*)::int FROM pg_constraint WHERE conrelid='public.clasificacion_cliente'::regclass AND contype='f') fks`)).rows[0];
+          registrar(
+            "clasificación de clientes: filas, motivos y autoría idénticos al origen; permisos mínimos, función y restricciones restaurados",
+            a.n === b.n && a.h === b.h && !p.ins && !p.upd && !p.del && p.sel && p.fn && p.cks === 2 && p.fks === 2,
+            `${b.n} fila(s) comparadas con el origen (solo lectura) · ${JSON.stringify(p)}`,
+          );
+        } finally { await o.end(); }
+      }
       const origen = new pg.Client({ connectionString: urlRespaldo().cadena }); await origen.connect();
       try {
         // Comparación completa (también hashes y caducidades); solo se informa si coincide, nunca los valores.

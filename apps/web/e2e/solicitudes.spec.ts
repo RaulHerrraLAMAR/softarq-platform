@@ -130,6 +130,9 @@ test.describe("panel del equipo: solicitudes de clientes", () => {
     await expect(page.getByText("Estimación preliminar, no es una cotización")).toHaveCount(0);
     const folioCotizacion = /COT-2026-\d{5}/.exec((await titulo.textContent()) ?? "")![0];
     const idVersion = `${folioCotizacion}-v1`;
+    // La cotización enlaza a la solicitud de la que nació.
+    await expect(page.getByText("Solicitud de origen")).toBeVisible();
+    await expect(page.getByRole("link", { name: datos.folio })).toBeVisible();
 
     // La solicitud ya no está «por atender»: pasa a «En preparación» y enlaza a su cotización.
     await navegar(page, "Solicitudes");
