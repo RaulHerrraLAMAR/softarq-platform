@@ -68,7 +68,7 @@ describe("clasificar un cliente en su ficha", () => {
     await userEvent.type(screen.getByLabelText(/Motivo/), "Resto de humo");
     await userEvent.click(screen.getByRole("button", { name: "Guardar clasificación" }));
     await waitFor(() => expect(clasificarCliente).toHaveBeenCalledWith("f7e6f22e-0530-4000-8000-000000000061", "HUMO", "Resto de humo"));
-    expect(await screen.findByText("Clasificado como Humo.")).toBeTruthy();
+    await waitFor(() => expect(alCambiar).toHaveBeenCalledWith("Clasificado como Humo."));
     expect(alCambiar).toHaveBeenCalledTimes(1);
   });
 

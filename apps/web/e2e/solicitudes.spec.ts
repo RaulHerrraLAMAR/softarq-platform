@@ -225,7 +225,8 @@ test.describe("panel del equipo: solicitudes de clientes", () => {
     await expect(page.getByRole("heading", { level: 2, name: "Acceso a la app del cliente" })).toBeVisible();
     await page.getByRole("button", { name: "Crear acceso a la app" }).click();
     await page.getByLabel(/Correo del cliente/).fill(`qa.ficha.${nombre}@clientes.softarq.test`);
-    await page.getByLabel("Motivo (queda en la bitácora)").fill("Prueba automatizada de la ficha");
+    // La ficha tiene ahora dos formularios con «Motivo» (clasificación y acceso): se acota al del acceso.
+    await page.getByRole("form", { name: "Crear el acceso a la app" }).getByLabel("Motivo (queda en la bitácora)").fill("Prueba automatizada de la ficha");
     await page.getByRole("button", { name: "Crear el acceso a la app" }).click();
     const aviso = page.getByRole("alert").filter({ hasText: "entréguela al cliente ahora" });
     await expect(aviso).toBeVisible();

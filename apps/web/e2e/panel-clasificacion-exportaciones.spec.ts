@@ -99,7 +99,9 @@ test.describe("clasificación, contadores y exportaciones", () => {
     const texto = bytes.toString("utf8");
     expect(texto).toContain("correo,nombre,funciones,activa,es_demo,creada_en");
     expect(texto).toContain("administrador.demo@softarq.test");
-    expect(texto).not.toMatch(/argon2|hash|contrasena|temporal/i);
+    // Ningún secreto: ni hashes de contraseña ni columnas de credenciales. (El nombre de una persona puede contener la palabra «temporal»: es un dato, no un secreto.)
+    expect(texto).not.toMatch(/argon2|\$2[aby]\$/i);
+    expect(texto.split("\r\n")[0]).not.toMatch(/hash|contrasena|token|sesion/i);
     await evidencia(page, "10-exportaciones");
   });
 

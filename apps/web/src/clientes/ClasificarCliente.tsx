@@ -9,13 +9,12 @@ import type { ServiciosCotizaciones } from "../api/servicios-cotizaciones.ts";
 import { EtiquetaClasificacion, TEXTO_CLASIFICACION } from "../comunes/clasificacion.tsx";
 import { Aviso, Boton } from "../comunes/componentes.tsx";
 
-export function ClasificarCliente({ servicios, cliente, alCambiar }: { servicios: ServiciosCotizaciones; cliente: Cliente; alCambiar: () => void }) {
+export function ClasificarCliente({ servicios, cliente, alCambiar }: { servicios: ServiciosCotizaciones; cliente: Cliente; /** Avisa del cambio con el texto de confirmación: la ficha se recarga y lo muestra ella (este componente se vuelve a montar). */ alCambiar: (mensaje: string) => void }) {
   const actual = cliente.clasificacion ?? null;
   const [categoria, setCategoria] = useState<Clasificacion | "NINGUNA">(actual ?? "NINGUNA");
   const [motivo, setMotivo] = useState("");
   const [enviando, setEnviando] = useState(false);
   const [fallo, setFallo] = useState<FalloApi | null>(null);
-  const [aviso, setAviso] = useState<string | null>(null);
 
   const sinCambio = (categoria === "NINGUNA" ? null : categoria) === actual;
   const guardar = async (e: FormEvent) => {
@@ -29,8 +28,7 @@ export function ClasificarCliente({ servicios, cliente, alCambiar }: { servicios
       return;
     }
     setMotivo("");
-    setAviso(categoria === "NINGUNA" ? "Clasificación retirada: el cliente vuelve a «sin clasificar»." : `Clasificado como ${TEXTO_CLASIFICACION[categoria]}.`);
-    alCambiar();
+    alCambiar(categoria === "NINGUNA" ? "Clasificación retirada: el cliente vuelve a «sin clasificar»." : `Clasificado como ${TEXTO_CLASIFICACION[categoria]}.`);
   };
 
   return (
@@ -50,11 +48,10 @@ export function ClasificarCliente({ servicios, cliente, alCambiar }: { servicios
       <p className="ayuda">
         Presentación: lo que se enseña. QA: pruebas automatizadas. Humo: restos de pruebas de módulos anteriores. Sus proyectos, cotizaciones y solicitudes heredan la categoría; nada se oculta ni se borra.
       </p>
-      <div aria-live="polite">{aviso ? <Aviso tono="correcto" titulo={aviso} /> : null}</div>
       <form className="formulario" onSubmit={(e) => void guardar(e)} aria-label="Clasificar al cliente">
         <div className="campo">
           <label htmlFor="clasificacion-categoria">Categoría</label>
-          <select id="clasificacion-categoria" value={categoria} onChange={(e) => (setAviso(null), setCategoria(e.target.value as Clasificacion | "NINGUNA"))}>
+          <select id="clasificacion-categoria" value={categoria} onChange={(e) => setCategoria(e.target.value as Clasificacion | "NINGUNA")}>
             <option value="NINGUNA">Sin clasificar</option>
             <option value="PRESENTACION">Presentación</option>
             <option value="QA">QA</option>

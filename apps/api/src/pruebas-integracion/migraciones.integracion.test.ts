@@ -20,6 +20,8 @@ const DEFINER = [
   "softarq_restablecer_contrasena",
   // Módulo 17 (ADR-0021): cliente externo. Cada función comprueba la identidad en la base.
   "softarq_atender_solicitud",
+  // ADR-0023: exige ADMIN_SISTEMA en la base.
+  "softarq_clasificar_cliente",
   "softarq_cliente_crear_proyecto",
   "softarq_cliente_crear_solicitud",
   "softarq_cliente_enviar_solicitud",
@@ -271,6 +273,8 @@ describe("permisos del rol de la aplicación (softarq_app)", () => {
         // Módulo 13 (ADR-0017): parámetros y personas.
         "softarq_cambiar_contrasena_propia",
         "softarq_cerrar_vigencia_precio",
+        // ADR-0023: clasificación de clientes (presentación, QA o humo).
+        "softarq_clasificar_cliente",
         "softarq_cliente_crear_proyecto",
         "softarq_cliente_crear_solicitud",
         "softarq_cliente_enviar_solicitud",

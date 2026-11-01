@@ -269,7 +269,7 @@ export function DetalleClientePantalla({
       ) : null}
       </section>
 
-      {accesos ? <ClasificarCliente servicios={servicios} cliente={cliente} alCambiar={recargar} /> : null}
+      {accesos ? <ClasificarCliente servicios={servicios} cliente={cliente} alCambiar={(texto) => (setMensaje(texto), recargar())} /> : null}
 
       {accesos ? <AccesoCliente servicios={accesos} clienteId={cliente.id} clienteNombre={cliente.contactoNombre ?? cliente.nombre} clienteActivo={cliente.activo} /> : null}
 

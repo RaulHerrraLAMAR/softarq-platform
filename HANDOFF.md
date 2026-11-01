@@ -1750,3 +1750,19 @@ El propietario cambió el método: Claude diagnostica, corrige y verifica de for
 4. Ensayo con SOL-2026-00003 de Raul (reservada) o, como verificación previa por los canales normales, con una solicitud QA; luego el recorrido único de aceptación.
 
 **Procesos y ajustes:** mi API sigue en `127.0.0.1:3000` (una sola instancia, código actual); Metro, E2E y API de pruebas detenidos; `stay_on_while_plugged_in` restaurado a 0; sin túneles USB.
+
+### Jornada de cierre (01/11/2026): verificaciones completadas y lo que sigue pendiente
+
+**Pruebas realmente ejecutadas hoy (automatización; no sustituyen la revisión del propietario)**
+- **E2E Playwright escritorio, un worker, en tandas, con los cambios finales: los 18 archivos pasaron.** `sesion` 5/5 (incluye `:27`), `solicitudes` + `panel-clasificacion-exportaciones` 8/8, accesibilidad + administración + bloqueos 9/9, captura-propia + catálogo + catálogo-técnico 7/7, cotizaciones + duplicar + ejemplos 16/16, emisión + excepciones + respuestas 9/9, revisiones + robustez + salidas-internas 13/13.
+- **Pasada `--project=movil`: 13/13** (capturas en `_work\evidencias\e3`).
+- **Web unitarias, suite completa: 324/324.**
+- **Integración completa de la API (27 archivos, un worker, `softarq_test`): 441/442 en la corrida completa.** La única falla era una expectativa **obsoleta por un cambio intencionado**: la lista de funciones `softarq_*` de `migraciones.integracion.test.ts` no incluía `softarq_clasificar_cliente` (ADR-0023, SECURITY DEFINER). Se añadió a la lista y a `DEFINER`, sin debilitar nada; el archivo repetido pasa **18/18**. No se repitió la corrida completa.
+- Correcciones de hoy (causa real, no tiempos ni expectativas): aviso «Clasificado como QA.» perdido por la recarga de la ficha (defecto), spec RF-26 demasiado amplio, ambigüedad de «Motivo» en `solicitudes.spec`, y `dist-e2e` desactualizado (se reconstruyó).
+
+**No ejecutado hoy (sin marcar como hecho)**
+- **Automatización en Android** (I-02, C14, C17, C2, C4, C16, texto grande, temas, movimiento reducido, doble toque y retiro): no se lanzó en esta tanda para respetar los límites de memoria y de alcance. El teléfono estaba conectado; los túneles `adb reverse` no están activos.
+- **Ensayo de Raul desde SOL-2026-00003 hasta la emisión:** no se ejecutó sobre `softarq_dev` para no consumir la solicitud reservada ni emitir un documento inmutable sin el propietario. El mismo recorrido por canales normales sí pasó en `solicitudes.spec` (base de pruebas).
+- **Decisión pendiente (ADR-0023 §5):** presentar al propietario las reglas de RF-26 y de los contadores; **su aprobación no está registrada**.
+
+**Reanudar:** desde PowerShell, en `softarq-platform`: `pnpm --filter @softarq/api build; node apps/api/dist/main.js` (API), `adb reverse tcp:3000 tcp:3000; adb reverse tcp:8081 tcp:8081` y Metro; luego el conductor `scripts/qa/android.mjs` con la cuenta QA. Las tandas E2E se pueden correr también fuera de VS Code con el mismo comando de la sección anterior.
