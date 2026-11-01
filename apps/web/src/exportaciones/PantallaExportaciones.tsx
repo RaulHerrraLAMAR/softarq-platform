@@ -9,7 +9,7 @@ import { Aviso, Boton } from "../comunes/componentes.tsx";
 import { CargaFallida, Cargando, Pagina, SinResultados } from "../comunes/pagina.tsx";
 import { useCarga } from "../comunes/usarCarga.ts";
 import { guardarArchivo } from "../cotizaciones/emision.tsx";
-import type { ServiciosAdministracion } from "./servicios.ts";
+import type { ServiciosAdministracion } from "../administracion/servicios.ts";
 
 export function PantallaExportaciones({ servicios }: { servicios: ServiciosAdministracion }) {
   const { estado, recargar } = useCarga((s) => servicios.exportaciones(s), []);

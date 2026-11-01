@@ -14,6 +14,7 @@ import {
   EsquemaDetalleSolicitudEquipo,
   EsquemaRespuestaAltaAcceso,
   EsquemaRespuestaAtencion,
+  EsquemaRespuestaDefinicionesTrabajo,
   EsquemaRespuestaReferencias,
   EsquemaRespuestaSolicitudesEquipo,
   type AccesoCliente,
@@ -21,7 +22,9 @@ import {
   type EstadoSolicitud,
   type FiltroClasificacion,
   type RespuestaAltaAcceso,
+  type DefinicionTrabajo,
   type RespuestaAtencion,
+  type RespuestaDefinicionesTrabajo,
   type RespuestaReferencias,
   type RespuestaSolicitudesEquipo,
 } from "@softarq/contracts";
@@ -40,6 +43,9 @@ export interface ServiciosSolicitudes {
   referencias(signal?: AbortSignal): Promise<ResultadoApi<RespuestaReferencias>>;
   designarReferencia(insumoCodigo: string, precioCodigo: string, motivo: string, clave: string): Promise<ResultadoApi<RespuestaReferencias>>;
   retirarReferencia(insumoCodigo: string, motivo: string, clave: string): Promise<ResultadoApi<RespuestaReferencias>>;
+  // Trabajos que se ofrecen al cliente (Administrador del catálogo)
+  trabajosCliente(signal?: AbortSignal): Promise<ResultadoApi<RespuestaDefinicionesTrabajo>>;
+  guardarTrabajoCliente(definicion: DefinicionTrabajo, clave: string): Promise<ResultadoApi<RespuestaDefinicionesTrabajo>>;
 }
 
 const conClave = (clave: string) => ({ [CABECERA_IDEMPOTENCIA]: clave });
@@ -65,6 +71,9 @@ export function crearServiciosSolicitudes(cliente: ClienteApi): ServiciosSolicit
     referencias: (signal) => cliente.obtener("/api/v1/admin/referencias-estimacion", EsquemaRespuestaReferencias, { signal }),
     designarReferencia: (insumo, precioCodigo, motivo, clave) =>
       cliente.enviar(`/api/v1/admin/referencias-estimacion/${e(insumo)}`, EsquemaRespuestaReferencias, { metodo: "PUT", cuerpo: { precioCodigo, motivo }, cabeceras: conClave(clave) }),
+    trabajosCliente: (signal) => cliente.obtener("/api/v1/admin/trabajos-cliente", EsquemaRespuestaDefinicionesTrabajo, { signal }),
+    guardarTrabajoCliente: (definicion, clave) =>
+      cliente.enviar("/api/v1/admin/trabajos-cliente", EsquemaRespuestaDefinicionesTrabajo, { metodo: "PUT", cuerpo: definicion, cabeceras: conClave(clave) }),
     retirarReferencia: (insumo, motivo, clave) =>
       cliente.enviar(`/api/v1/admin/referencias-estimacion/${e(insumo)}/retiro`, EsquemaRespuestaReferencias, { cuerpo: { motivo }, cabeceras: conClave(clave) }),
   };

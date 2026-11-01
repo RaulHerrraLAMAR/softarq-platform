@@ -80,7 +80,7 @@ describe("bandeja de solicitudes", () => {
     const s = servicios();
     montar(<BandejaSolicitudes servicios={s} />);
     expect(await screen.findByText("SOL-2026-00003")).toBeTruthy();
-    expect(s.listar).toHaveBeenCalledWith(["ENVIADA"], expect.anything());
+    expect(s.listar).toHaveBeenCalledWith(["ENVIADA"], expect.anything(), undefined); // sin filtro de clasificación por omisión
     expect(screen.getByText("$37,835.35")).toBeTruthy();
     expect(screen.getByText("preliminar")).toBeTruthy();
     expect(screen.getByRole("link", { name: "SOL-2026-00003" }).getAttribute("href")).toBe(`#/solicitudes/${ID}`);
@@ -92,7 +92,7 @@ describe("bandeja de solicitudes", () => {
     await screen.findByText("SOL-2026-00003");
     await userEvent.click(screen.getByRole("button", { name: "Cotizadas" }));
     expect(await screen.findByText("No hay solicitudes en este estado.")).toBeTruthy();
-    expect(s.listar).toHaveBeenLastCalledWith(["COTIZADA"], expect.anything());
+    expect(s.listar).toHaveBeenLastCalledWith(["COTIZADA"], expect.anything(), undefined);
     expect(screen.queryByRole("table")).toBeNull();
   });
 

@@ -40,7 +40,7 @@ export const VISTAS_ADMINISTRACION_RUTA = ["parametros", "personas"] as const;
 export type VistaAdministracion = (typeof VISTAS_ADMINISTRACION_RUTA)[number];
 
 /** Vistas de la administración de catálogos (módulo 11). */
-export const VISTAS_CATALOGO_RUTA = ["proveedores", "productos", "precios", "mano-de-obra", "insumos", "tipos-estructura", "conceptos", "referencias"] as const;
+export const VISTAS_CATALOGO_RUTA = ["proveedores", "productos", "precios", "mano-de-obra", "insumos", "tipos-estructura", "conceptos", "referencias", "trabajos-cliente"] as const;
 export type VistaCatalogo = (typeof VISTAS_CATALOGO_RUTA)[number];
 
 const UUID = "[0-9a-fA-F-]{36}";

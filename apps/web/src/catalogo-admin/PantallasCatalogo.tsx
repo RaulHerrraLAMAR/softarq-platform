@@ -42,6 +42,7 @@ import { buscarInsumos, buscarProductos, buscarProveedores } from "./buscadores.
 import { VistaConceptosTecnicos, VistaInsumos, VistaTiposEstructura } from "../catalogo-tecnico/PantallasTecnicas.tsx";
 import { Acciones, Busqueda, Confirmacion, FormularioAsignacion, Historial, mxn, opcional, TEXTO_MODALIDAD, textoImporteTarifa, textoImpactoVersiones, useEnvio, vigencia } from "./piezas.tsx";
 import { VistaReferencias } from "../solicitudes/VistaReferencias.tsx";
+import { VistaTrabajosCliente } from "../solicitudes/VistaTrabajosCliente.tsx";
 import type { ServiciosSolicitudes } from "../solicitudes/servicios.ts";
 import { SelectorRegistro, type OpcionRegistro } from "./SelectorRegistro.tsx";
 
@@ -54,6 +55,7 @@ const TITULOS: Record<VistaCatalogo, string> = {
   "tipos-estructura": "Tipos de estructura",
   conceptos: "Conceptos y componentes",
   referencias: "Precios de referencia",
+  "trabajos-cliente": "Trabajos para clientes",
 };
 
 const TEXTO_ESTADO_PRECIO: Record<EstadoPrecio, string> = {
@@ -88,6 +90,7 @@ export function PantallaCatalogo({ servicios, vista, solicitudes }: { servicios:
       {vista === "tipos-estructura" ? <VistaTiposEstructura servicios={servicios} /> : null}
       {vista === "conceptos" ? <VistaConceptosTecnicos servicios={servicios} /> : null}
       {vista === "referencias" && solicitudes ? <VistaReferencias servicios={solicitudes} catalogo={servicios} /> : null}
+      {vista === "trabajos-cliente" && solicitudes ? <VistaTrabajosCliente servicios={solicitudes} /> : null}
     </Pagina>
   );
 }

@@ -28,7 +28,7 @@ import { PantallaEmisor } from "./cotizaciones/emision.tsx";
 import { ListaCotizaciones, NuevaCotizacion, VistaVersion } from "./cotizaciones/PantallasCotizaciones.tsx";
 import { BandejaRevisiones, PantallaRevision } from "./cotizaciones/revisiones.tsx";
 import { MiTrabajo } from "./inicio/MiTrabajo.tsx";
-import { PantallaExportaciones } from "./administracion/PantallaExportaciones.tsx";
+import { PantallaExportaciones } from "./exportaciones/PantallaExportaciones.tsx";
 import { BandejaSolicitudes, DetalleSolicitud } from "./solicitudes/PantallasSolicitudes.tsx";
 import type { ServiciosSolicitudes } from "./solicitudes/servicios.ts";
 import { PantallaSalidasInternas } from "./salidas-internas/PantallaSalidasInternas.tsx";

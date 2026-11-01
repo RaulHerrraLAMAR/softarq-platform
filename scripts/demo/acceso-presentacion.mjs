@@ -129,6 +129,14 @@ async function principal() {
       console.log(`Cliente creado: ${cliente.codigo}.`);
     }
 
+    // 1b) Clasificación explícita (E3.8): lo de Raul es presentación y lo de QA, QA. Solo si todavía no tiene una.
+    if (!cliente.clasificacion) {
+      const categoria = PERFIL === PERFILES.qa ? "QA" : "PRESENTACION";
+      const motivo = categoria === "QA" ? "Cuenta de pruebas automatizadas (no es de presentación)" : "Cuenta principal de la presentación del DEMO local";
+      esperar(await a.llamar("PUT", `/api/v1/clientes/${cliente.id}/clasificacion`, { categoria, motivo }), 200);
+      console.log(`Cliente clasificado como ${categoria}.`);
+    }
+
     // 2) Proyecto
     const proyectos = esperar(await p.llamar("GET", `/api/v1/proyectos?clienteId=${cliente.id}&incluirInactivos=true&limite=50`), 200);
     let proyecto = proyectos.proyectos.find((x) => x.nombre === NOMBRE_PROYECTO);
