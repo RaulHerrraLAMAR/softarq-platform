@@ -145,6 +145,7 @@ describe("OpenAPI", () => {
       "/api/v1/emisor",
       "/api/v1/excepciones/componentes",
       "/api/v1/exportaciones",
+      "/api/v1/exportaciones/manifiesto",
       "/api/v1/exportaciones/{tabla}",
       "/api/v1/openapi.json",
       "/api/v1/proyectos",
