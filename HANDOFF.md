@@ -1783,3 +1783,18 @@ El propietario cambió el método: Claude diagnostica, corrige y verifica de for
 2. Confirmar las reglas de RF-26 y contadores (ADR-0023 §5).
 3. Texto grande, tema claro y movimiento reducido recorridos en más pantallas que Inicio; rendimiento del croquis (`gfxinfo` no funciona en este Samsung).
 4. Siguen abiertos: PR-41 a PR-44 del Excel, datos reales y validaciones del capítulo 8, y la aceptación humana.
+
+### Cierre del 07/11/2026 (tarde): cuenta de Raul, hoja de envío y respaldo final
+
+**Corrección:** en la sección anterior se dijo que la contraseña de Raul estaba vencida; **era falso**: su acceso está activo y sin contraseña temporal (el vencimiento era el de la temporal anterior). El propietario inició sesión en el teléfono y se comprobó lo siguiente.
+
+**Verificado (automatizado/técnico; no es aceptación del propietario)**
+- **COT-2026-00056 desde la app con la sesión real de Raul:** visible en «Emitidas» y la solicitud como «Cotización lista»; el PDF de la caché privada tiene el **mismo SHA-256** (3bcf35489425239666b93eef6fc952eae34478b1eeb24e0660db4c61ac13bd75, 22,733 bytes) que el original en disco y el servido por la API. Nada enviado ni borradores tocados. Detalle en la guía móvil §10 «Cierre del 07/11/2026».
+- **Defecto corregido:** hoja «Solicitud enviada» huérfana al enviar desde la estimación (cambio de ruta con la hoja abierta); ahora se cierra antes de navegar (commit `ab2de5d`). I-02 verificado con QA; asistente revisado con texto 1.5, tema claro y movimiento reducido. App 268/268, tipos y `comprobar:bundle` limpios.
+- **Datos:** el ensayo y los borradores QA (SOL-2026-00007 a 00013, de la cuenta QA) son datos de uso en `softarq_dev`; SOL-2026-00013 queda sin enviar; los borradores de Raul (00004, 00005) intactos.
+
+**RF-26 sigue siendo una exportación PARCIAL**: 15 tablas de datos maestros más manifiesto (ADR-0023 §2), **no** equivalente a las 28 tablas del libro ni una migración completa; la recuperación completa es el respaldo. **El propietario no ha aprobado el ADR-0023 §5** (reglas de RF-26 y contadores): sigue pendiente; la decisión de 30 días del indicador sí está aprobada.
+
+**Pendiente real:** aceptación humana del DEMO (panel y app); C13, C9 y C5 formales; borrado de la caché de PDF al cerrar sesión de Raul; fluidez del croquis (sin herramienta de medición válida en este teléfono); PR-41 a PR-44 del Excel y datos reales del capítulo 8.
+
+**Estado de cierre:** teléfono restaurado a los ajustes iniciales, túneles USB retirados, API y Metro detenidos; sin servicios de SoftArq activos.

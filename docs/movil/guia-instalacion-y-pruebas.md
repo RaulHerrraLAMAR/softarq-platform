@@ -246,6 +246,17 @@ Ejecutada por Claude con `scripts/qa/escenarios-android.mjs` (adb + uiautomator)
 
 **Observaciones de desarrollo (no producción):** avisos de LogBox «REMOVE_ROUTES / ROUTE_NAMES_CHANGED … not handled by any navigator» al cerrar o reabrir sesión; el propio mensaje dice que son solo de desarrollo. Anotados, no corregidos. **Rendimiento del croquis:** `gfxinfo` sigue sin funcionar en este Samsung y no se midió: no se declara fluidez.
 
+### Cierre del 07/11/2026: cuenta de Raul, hoja «Solicitud enviada» y ajustes de accesibilidad
+
+Comprobaciones **automatizadas o técnicas de Claude**; la aceptación del propietario sigue pendiente. Corrige el registro anterior: la cuenta de Raul **no** tenía la contraseña vencida (`contrasenaTemporal: false`, acceso activo desde el 31/10); el vencimiento citado era el de la temporal anterior, de un archivo desactualizado.
+
+- **COT-2026-00056 con el acceso real de Raul (sesión iniciada por el propietario en el teléfono):** «Mis cotizaciones» muestra la solicitud de «Casa» como «Cotización lista» y la cotización en «Emitidas» ($37,835.35, emitida el 07/11/2026, vigente hasta el 22/11/2026, «Preparada a partir de tu solicitud SOL-2026-00003», marca DEMO). «Ver o descargar el PDF» abre el selector de Android. El archivo de la caché privada de la app (22,733 bytes, `%PDF-`) tiene el **mismo SHA-256 (3bcf3548…bd75)** que el original en disco y que el servido por la API. No se envió nada ni se tocaron los borradores de Raul. No se probó el borrado de la caché al cerrar sesión con esta cuenta.
+- **Defecto corregido (reproducido sin edición en caliente):** al enviar **desde la pantalla de estimación**, la hoja «Solicitud enviada» quedaba huérfana sobre el seguimiento y no respondía. Causa: se cambiaba de ruta con la hoja aún abierta. Corrección: la hoja se cierra primero y la navegación espera 400 ms (`HojaEnvio`, `estimacion.tsx`, `resumen.tsx`). Con apertura limpia, «enviar → Ver seguimiento → Atrás» llega al Inicio, con estimación y sin ella, sin errores JS (QA, SOL-2026-00011 a 00013; `scripts/qa/envio-con-estimacion.mjs`). **I-02 queda verificado con QA.** Se descartaron como causa el conflicto de edición, el movimiento reducido y el texto 1.5.
+- **Asistente con texto grande (1.5), tema claro y movimiento reducido** (`scripts/qa/recorrido-ajustes.mjs`, Resumen → Medidas con teclado → Estimación, sin enviar): ningún botón fuera de la zona visible ni sin etiqueta, y con teclado el campo y las acciones siguen a la vista. **Observación:** con texto 1.5 la barra de acciones ocupa cerca del 40 % de la pantalla y el contenido se desplaza en el resto. No se probaron otras pantallas (nueva cotización, seguimiento) con esos ajustes.
+- **Avisos de desarrollo:** los de LogBox («REMOVE_ROUTES», «ROUTE_NAMES_CHANGED») son solo de desarrollo y no se corrigieron; no se vieron en el defecto de la hoja.
+- **Límite de medición del croquis:** `gfxinfo` no funciona en este Samsung; solo hay `logcat` sin errores, que **no mide fluidez**. No se declara fluidez; haría falta otra herramienta de medición o el juicio del propietario.
+- **Pendiente real:** aceptación del propietario de la app; C13 (modo avión durante el envío), C9 y C5 formales; el borrado de la caché de PDF al cerrar sesión de Raul; fluidez del croquis.
+
 ### Registro de incidencias
 
 Se anota cada fallo en cuanto aparece y se corrige antes de pasar a E3. Una incidencia se cierra solo con una repetición del caso en el teléfono.
