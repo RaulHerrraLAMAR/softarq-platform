@@ -29,6 +29,12 @@
 | `cotizaciones` | `personas.administrar` | folio, cliente_codigo, proyecto_codigo, origen, estado_folio, ultima_version, solicitud_folio, creado_en |
 | `personas` | `personas.administrar` | correo, nombre, funciones, activa, es_demo, creada_en |
 | `proveedores`, `productos`, `precios`, `insumos`, `tarifas` | `catalogos.administrar` | ver `GET /exportaciones` (catálogos con sus importes internos, que esa función ya ve) |
+| `conversiones`, `tipos_estructura`, `conceptos`, `componentes`, `tipos_adicional` | `catalogos.administrar` | catálogo técnico con códigos como llaves (añadido el 07/11/2026: el libro exporta estas tablas) |
+| `parametros` | `parametros.administrar` | una fila: recargo, impuesto, vigencia y textos (añadido el 07/11/2026) |
+
+**Manifiesto (07/11/2026).** `GET /exportaciones/manifiesto` devuelve un CSV `tabla, archivo, filas, columnas` solo de lo que la sesión puede exportar, como el manifiesto con conteos del libro (Word §5.8).
+
+**Alcance, sin ambigüedad:** esta exportación cubre los **datos maestros** (15 tablas) con sus códigos para migrar. **No es una migración completa del sistema.** Quedan fuera, y la pantalla y `GET /exportaciones` lo declaran: versiones y todo su detalle, revisiones, excepciones y emisiones (inmutables, con huella), PDF emitidos, bitácora, solicitudes y accesos de clientes, y todo secreto. La recuperación completa es el respaldo de PostgreSQL y documentos (ADR-0012). El libro exporta además versiones, partidas, mediciones, consumos, compras, bitácora y casos; en el DEMO se dejan fuera por ser inmutables y recuperarse con el respaldo: si el propietario pide su CSV, es un cambio acotado en `servicio-exportaciones.ts`.
 
 - **API:** `GET /exportaciones` (tablas que la sesión puede exportar) y `GET /exportaciones/{tabla}` (CSV; 404 si no existe, 403 si falta la capacidad de esa tabla). Solo canal web. Sin caché.
 - **Aislamiento:** toda consulta filtra por la organización de la sesión, nunca por un parámetro del cliente.
@@ -43,7 +49,7 @@
 Reglas aplicadas (cada cotización con folio activo cuenta una sola vez, por el estado de su **última** versión):
 - **Borradores:** sin versión guardada o con la última versión aún sin enviar a revisión. **En revisión:** la última versión espera al Revisor. **Aprobadas por emitir:** aprobada y sin emisión.
 - **Emitidas vigentes / vencidas:** la última versión está emitida y su vigencia termina hoy o después / ya terminó (fecha del servidor).
-- **Precios por vencer:** precios no anulados cuya vigencia termina en los próximos 30 días. **Último folio:** el más alto asignado, incluidos los descartados.
+- **Precios por vencer:** precios no anulados cuya vigencia termina en los próximos 30 días (**adaptación aprobada por el propietario el 07/11/2026 frente a la referencia anterior de 7 días**: solo cambia la anticipación del indicador; no amplía la vigencia de ningún precio ni modifica cotizaciones históricas; constante `DIAS_PRECIOS_POR_VENCER` en `packages/contracts/src/api/inicio.ts`). **Último folio:** el más alto asignado, incluidos los descartados.
 - **Avisos:** INI-01 (aprobadas esperando emisión), INI-02 (emitidas vencidas) e INI-03 (precios por vencer).
 
 ## 4. Enlace cotización → solicitud de origen

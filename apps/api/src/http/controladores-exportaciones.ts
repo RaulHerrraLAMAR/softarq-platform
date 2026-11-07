@@ -9,7 +9,7 @@
 import { Controller, Get, Inject, Param, Req, Res } from "@nestjs/common";
 import { SkipThrottle } from "@nestjs/throttler";
 import type { Request, Response } from "express";
-import { DEFINICIONES, esTablaExportable, type ServicioExportaciones } from "../modules/exportaciones/servicio-exportaciones.js";
+import { DEFINICIONES, EXCLUIDAS, esTablaExportable, type ServicioExportaciones } from "../modules/exportaciones/servicio-exportaciones.js";
 import { organizacionDe, sesionDe } from "./contexto.js";
 import { ErrorApi } from "./errores.js";
 import { Requiere } from "./guardia-sesion.js";
@@ -22,8 +22,22 @@ export class ExportacionesController {
 
   @Get()
   @Requiere("sesion.propia")
-  listar(@Req() req: Request): { tablas: { tabla: string; descripcion: string; columnas: readonly string[] }[] } {
-    return { tablas: this.servicio.disponibles(sesionDe(req).capacidades) };
+  listar(@Req() req: Request): { tablas: { tabla: string; descripcion: string; columnas: readonly string[] }[]; excluidas: readonly { grupo: string; motivo: string }[] } {
+    return { tablas: this.servicio.disponibles(sesionDe(req).capacidades), excluidas: EXCLUIDAS };
+  }
+
+  /** Manifiesto con los conteos de las tablas que esta sesión puede exportar (como el del libro). Debe ir antes de `:tabla`. */
+  @Get("manifiesto")
+  @Requiere("sesion.propia")
+  async manifiesto(@Req() req: Request, @Res() res: Response): Promise<void> {
+    const r = await this.servicio.manifiesto(organizacionDe(req).organizacionId, sesionDe(req).capacidades);
+    res.status(200);
+    res.setHeader("Content-Type", "text/csv; charset=utf-8");
+    res.setHeader("Content-Disposition", 'attachment; filename="softarq-manifiesto.csv"');
+    res.setHeader("Cache-Control", "private, no-store");
+    res.setHeader("X-Content-Type-Options", "nosniff");
+    res.setHeader("X-Filas", String(r.filas));
+    res.send(Buffer.from(r.contenido, "utf8"));
   }
 
   @Get(":tabla")

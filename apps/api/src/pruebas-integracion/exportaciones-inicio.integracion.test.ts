@@ -86,8 +86,8 @@ describe("formato del CSV (unitario)", () => {
 describe("permisos por tabla y aislamiento", () => {
   it("cada función ve solo lo suyo: el Administrador del sistema, comerciales y personas; el del catálogo, los catálogos; el Preparador, nada", async () => {
     const lista = async (correo: string) => EsquemaRespuestaExportaciones.parse((await (await web(correo)).get("/api/v1/exportaciones")).cuerpo).tablas.map((t) => t.tabla).sort();
-    expect(await lista(SIS)).toEqual(["clientes", "cotizaciones", "personas", "proyectos"]);
-    expect(await lista(CAT)).toEqual(["insumos", "precios", "productos", "proveedores", "tarifas"]);
+    expect(await lista(SIS)).toEqual(["clientes", "cotizaciones", "parametros", "personas", "proyectos"]);
+    expect(await lista(CAT)).toEqual(["componentes", "conceptos", "conversiones", "insumos", "precios", "productos", "proveedores", "tarifas", "tipos_adicional", "tipos_estructura"]);
     expect(await lista(PREP)).toEqual([]);
   });
 
@@ -139,6 +139,62 @@ describe("permisos por tabla y aislamiento", () => {
     expect(filas[1]).toMatch(/^PRE-\d{6},/);
     const ids = new Set(filas.slice(1).map((f) => f.split(",")[0]));
     expect(ids.size).toBe(filas.length - 1);
+  });
+});
+
+describe("tablas técnicas, parámetros y manifiesto (RF-26)", () => {
+  const cuenta = async (correo: string, tabla: string): Promise<number> => (await descargar(correo, tabla)).texto.split("\r\n").filter(Boolean).length - 1;
+
+  it("conceptos, componentes, conversiones y tipos se exportan con sus códigos como llaves, completos y de su organización", async () => {
+    const cod = await migrador.$queryRaw<{ t: string; n: bigint }[]>`
+      SELECT 'conceptos' AS t, count(*) AS n FROM concepto WHERE organizacion_id = (SELECT id FROM organizacion WHERE codigo = 'DEMO-EXP')
+      UNION ALL SELECT 'componentes', count(*) FROM componente WHERE organizacion_id = (SELECT id FROM organizacion WHERE codigo = 'DEMO-EXP')
+      UNION ALL SELECT 'conversiones', count(*) FROM conversion WHERE organizacion_id = (SELECT id FROM organizacion WHERE codigo = 'DEMO-EXP')
+      UNION ALL SELECT 'tipos_estructura', count(*) FROM tipo_estructura WHERE organizacion_id = (SELECT id FROM organizacion WHERE codigo = 'DEMO-EXP')
+      UNION ALL SELECT 'tipos_adicional', count(*) FROM tipo_adicional WHERE organizacion_id = (SELECT id FROM organizacion WHERE codigo = 'DEMO-EXP')`;
+    for (const { t, n } of cod) {
+      expect(Number(n), t).toBeGreaterThan(0);
+      expect(await cuenta(CAT, t), t).toBe(Number(n));
+    }
+    const comp = (await descargar(CAT, "componentes")).texto.split("\r\n").filter(Boolean);
+    expect(comp[0]).toBe("﻿codigo,concepto_codigo,insumo_codigo,orden,rendimiento,unidad_rendimiento,desperdicio,factor_traslape,fuente,fecha,responsable,activo,creado_en,modificado_en");
+    expect(comp[1]).toMatch(/^[A-Z]+-[0-9]+,CON-[0-9]+,INS-[0-9]+,/);
+  });
+
+  it("parámetros: solo con parametros.administrar, una fila de su organización y sin datos de otras", async () => {
+    expect((await descargar(CAT, "parametros")).status).toBe(403);
+    expect((await descargar(PREP, "parametros")).status).toBe(403);
+    const r = await descargar(SIS, "parametros");
+    expect(r.status).toBe(200);
+    expect(r.texto.split("\r\n").filter(Boolean)).toHaveLength(2);
+    expect(r.texto).toContain("MXN");
+  });
+
+  it("el manifiesto cuenta exactamente las filas de lo que cada sesión puede exportar, y el Preparador solo recibe la cabecera", async () => {
+    const m = async (correo: string) => {
+      const c = await web(correo);
+      const r = await fetch(`${url}/api/v1/exportaciones/manifiesto`, { headers: { Cookie: `softarq_sesion=${c.cookie}` } });
+      return { status: r.status, texto: await bytes(r), cabeceras: r.headers };
+    };
+    const rs = await m(SIS);
+    expect(rs.status).toBe(200);
+    expect(rs.cabeceras.get("content-disposition")).toContain("softarq-manifiesto.csv");
+    const filas = rs.texto.split("\r\n").filter(Boolean);
+    expect(filas[0]).toBe("﻿tabla,archivo,filas,columnas");
+    for (const f of filas.slice(1)) {
+      const [tabla, archivo, n, cols] = f.split(",");
+      expect(archivo).toBe(`softarq-${tabla}.csv`);
+      expect(Number(n), tabla).toBe(await cuenta(SIS, tabla!));
+      expect(Number(cols)).toBe(DEFINICIONES[tabla as keyof typeof DEFINICIONES].columnas.length);
+    }
+    expect(filas.slice(1).map((f) => f.split(",")[0]).sort()).toEqual(["clientes", "cotizaciones", "parametros", "personas", "proyectos"]);
+    expect((await m(PREP)).texto.split("\r\n").filter(Boolean)).toEqual(["﻿tabla,archivo,filas,columnas"]);
+    expect((await fetch(`${url}/api/v1/exportaciones/manifiesto`)).status).toBe(401);
+  });
+
+  it("el listado declara lo que no se exporta", async () => {
+    const r = EsquemaRespuestaExportaciones.parse((await (await web(SIS)).get("/api/v1/exportaciones")).cuerpo);
+    expect(r.excluidas.map((e) => e.grupo).join(" ")).toMatch(/emisiones/);
   });
 });
 

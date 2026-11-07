@@ -1261,14 +1261,20 @@ export function construirDocumentoOpenApi(): Record<string, unknown> {
       },
       "/api/v1/exportaciones": {
         get: {
-          summary: "Tablas que la sesión puede exportar para migración (RF-26): maestros comerciales y personas con personas.administrar; catálogos con precios y tarifas internos con catalogos.administrar",
+          summary: "Tablas que la sesión puede exportar para migración (RF-26): maestros comerciales y personas con personas.administrar; catálogos técnicos, precios y tarifas internos con catalogos.administrar; parámetros con parametros.administrar. Incluye lo que no se exporta y por qué",
           responses: { "200": ok("RespuestaExportaciones", "Tablas y columnas exportables."), ...errores(401, 403, 429, 503, 500) },
+        },
+      },
+      "/api/v1/exportaciones/manifiesto": {
+        get: {
+          summary: "CSV con los conteos de filas y columnas de las tablas que la sesión puede exportar (equivale al manifiesto del libro)",
+          responses: { "200": { description: "Archivo CSV (attachment).", content: { "text/csv": { schema: { type: "string" } } } }, ...errores(401, 429, 503, 500) },
         },
       },
       "/api/v1/exportaciones/{tabla}": {
         get: {
           summary: "CSV UTF-8 (RFC 4180, con BOM) de la tabla de la organización de la sesión. Sin contraseñas, hashes, sesiones ni tokens",
-          parameters: [{ name: "tabla", in: "path", required: true, schema: { type: "string", enum: ["clientes", "proyectos", "cotizaciones", "personas", "proveedores", "productos", "precios", "insumos", "tarifas"] } }],
+          parameters: [{ name: "tabla", in: "path", required: true, schema: { type: "string", enum: ["clientes", "proyectos", "cotizaciones", "personas", "proveedores", "productos", "precios", "insumos", "tarifas", "conversiones", "tipos_estructura", "conceptos", "componentes", "tipos_adicional", "parametros"] } }],
           responses: { "200": { description: "Archivo CSV (attachment).", content: { "text/csv": { schema: { type: "string" } } } }, ...errores(401, 403, 404, 429, 503, 500) },
         },
       },

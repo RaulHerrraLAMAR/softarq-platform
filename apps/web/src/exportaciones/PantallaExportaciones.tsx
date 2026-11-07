@@ -62,8 +62,27 @@ export function PantallaExportaciones({ servicios }: { servicios: ServiciosAdmin
           </div>
         )
       ) : null}
+      {estado.fase === "listo" && estado.datos.tablas.length > 0 ? (
+        <section className="tarjeta" aria-label="Exportar manifiesto">
+          <h2 className="tarjeta-titulo">manifiesto</h2>
+          <p>Conteo de filas y columnas de las tablas que usted puede exportar, para comprobar una migración.</p>
+          <Boton variante="secundario" onClick={() => void descargar("manifiesto")} disabled={descargando !== null} aria-busy={descargando === "manifiesto"}>
+            {descargando === "manifiesto" ? "Preparando…" : "Descargar manifiesto.csv"}
+          </Boton>
+        </section>
+      ) : null}
       <Aviso tono="info" titulo="Qué no se exporta">
         <p>Contraseñas, hashes, sesiones, tokens, credenciales temporales, bitácora, versiones emitidas ni PDF: para eso está el respaldo.</p>
+        {estado.fase === "listo" && estado.datos.excluidas.length > 0 ? (
+          <ul>
+            {estado.datos.excluidas.map((e) => (
+              <li key={e.grupo}>
+                <strong>{e.grupo}.</strong> {e.motivo}
+              </li>
+            ))}
+          </ul>
+        ) : null}
+        <p>Esta exportación no es una migración completa: la recuperación completa es el respaldo de PostgreSQL y documentos.</p>
       </Aviso>
     </Pagina>
   );

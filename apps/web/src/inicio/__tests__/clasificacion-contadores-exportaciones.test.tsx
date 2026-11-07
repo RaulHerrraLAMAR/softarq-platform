@@ -149,7 +149,7 @@ describe("contadores de inicio", () => {
 describe("exportaciones CSV", () => {
   const servicios = (over: Partial<ServiciosAdministracion> = {}) =>
     ({
-      exportaciones: () => ok({ tablas: [{ tabla: "clientes", descripcion: "Clientes con su clasificación", columnas: ["codigo", "nombre", "clasificacion"] }] }),
+      exportaciones: () => ok({ tablas: [{ tabla: "clientes", descripcion: "Clientes con su clasificación", columnas: ["codigo", "nombre", "clasificacion"] }], excluidas: [{ grupo: "Versiones y emisiones", motivo: "Solo con el respaldo." }] }),
       descargarExportacion: vi.fn(() => ok(new Blob(["codigo\r\n"], { type: "text/csv" }))),
       ...over,
     }) as unknown as ServiciosAdministracion;
@@ -164,10 +164,20 @@ describe("exportaciones CSV", () => {
     expect(s.descargarExportacion).toHaveBeenCalledWith("clientes");
     expect(await screen.findByText("Se descargó softarq-clientes.csv")).toBeTruthy();
     expect(screen.getByText(/Contraseñas, hashes, sesiones, tokens/)).toBeTruthy();
+    expect(screen.getByText(/Versiones y emisiones./)).toBeTruthy();
+    expect(screen.getByText(/no es una migración completa/)).toBeTruthy();
+  });
+
+  it("descarga el manifiesto con su nombre", async () => {
+    const s = servicios();
+    montar(<PantallaExportaciones servicios={s} />);
+    await userEvent.click(await screen.findByRole("button", { name: "Descargar manifiesto.csv" }));
+    await waitFor(() => expect(guardarArchivo).toHaveBeenCalledWith(expect.any(Blob), "softarq-manifiesto.csv"));
+    expect(s.descargarExportacion).toHaveBeenCalledWith("manifiesto");
   });
 
   it("una función sin tablas lo dice, y un fallo de descarga se explica sin guardar nada", async () => {
-    montar(<PantallaExportaciones servicios={servicios({ exportaciones: () => ok({ tablas: [] }) })} />);
+    montar(<PantallaExportaciones servicios={servicios({ exportaciones: () => ok({ tablas: [], excluidas: [] }) })} />);
     expect(await screen.findByText("Su función no exporta tablas.")).toBeTruthy();
   });
 

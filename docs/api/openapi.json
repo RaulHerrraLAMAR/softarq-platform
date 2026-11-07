@@ -13460,7 +13460,7 @@
     },
     "/api/v1/exportaciones": {
       "get": {
-        "summary": "Tablas que la sesión puede exportar para migración (RF-26): maestros comerciales y personas con personas.administrar; catálogos con precios y tarifas internos con catalogos.administrar",
+        "summary": "Tablas que la sesión puede exportar para migración (RF-26): maestros comerciales y personas con personas.administrar; catálogos técnicos, precios y tarifas internos con catalogos.administrar; parámetros con parametros.administrar. Incluye lo que no se exporta y por qué",
         "responses": {
           "200": {
             "description": "Tablas y columnas exportables.",
@@ -13525,6 +13525,63 @@
         }
       }
     },
+    "/api/v1/exportaciones/manifiesto": {
+      "get": {
+        "summary": "CSV con los conteos de filas y columnas de las tablas que la sesión puede exportar (equivale al manifiesto del libro)",
+        "responses": {
+          "200": {
+            "description": "Archivo CSV (attachment).",
+            "content": {
+              "text/csv": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "NO_AUTENTICADO (sin cookie de sesión) o SESION_NO_VALIDA (vencida, revocada o desconocida; se borra la cookie).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "DEMASIADAS_SOLICITUDES (cabecera Retry-After).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "ERROR_INTERNO, DOCUMENTO_NO_GENERADO (no se generó o guardó el PDF; no hay emisión y se puede reintentar) o DOCUMENTO_NO_DISPONIBLE (el archivo emitido falta o no coincide con su registro; nunca se regenera).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "SERVICIO_NO_DISPONIBLE: PostgreSQL no disponible.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespuestaError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/exportaciones/{tabla}": {
       "get": {
         "summary": "CSV UTF-8 (RFC 4180, con BOM) de la tabla de la organización de la sesión. Sin contraseñas, hashes, sesiones ni tokens",
@@ -13544,7 +13601,13 @@
                 "productos",
                 "precios",
                 "insumos",
-                "tarifas"
+                "tarifas",
+                "conversiones",
+                "tipos_estructura",
+                "conceptos",
+                "componentes",
+                "tipos_adicional",
+                "parametros"
               ]
             }
           }
@@ -24272,10 +24335,30 @@
               ],
               "additionalProperties": false
             }
+          },
+          "excluidas": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "grupo": {
+                  "type": "string"
+                },
+                "motivo": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "grupo",
+                "motivo"
+              ],
+              "additionalProperties": false
+            }
           }
         },
         "required": [
-          "tablas"
+          "tablas",
+          "excluidas"
         ],
         "additionalProperties": false
       },

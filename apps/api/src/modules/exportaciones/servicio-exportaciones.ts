@@ -17,7 +17,7 @@
 import type { Capacidad } from "@softarq/contracts";
 import type { PrismaClient } from "../../generated/prisma/client.js";
 
-export const TABLAS_EXPORTABLES = ["clientes", "proyectos", "cotizaciones", "personas", "proveedores", "productos", "precios", "insumos", "tarifas"] as const;
+export const TABLAS_EXPORTABLES = ["clientes", "proyectos", "cotizaciones", "personas", "proveedores", "productos", "precios", "insumos", "tarifas", "conversiones", "tipos_estructura", "conceptos", "componentes", "tipos_adicional", "parametros"] as const;
 export type TablaExportable = (typeof TABLAS_EXPORTABLES)[number];
 
 interface Definicion {
@@ -36,7 +36,21 @@ export const DEFINICIONES: Record<TablaExportable, Definicion> = {
   precios: { descripcion: "Precios de proveedor con su vigencia (importes internos)", capacidad: "catalogos.administrar", columnas: ["codigo", "producto_codigo", "proveedor_codigo", "precio_unitario", "vigente_desde", "vigente_hasta", "anulado", "motivo_anulacion", "fuente", "registrado_en"] },
   insumos: { descripcion: "Insumos", capacidad: "catalogos.administrar", columnas: ["codigo", "descripcion", "unidad_base", "especificacion", "activo", "creado_en", "modificado_en"] },
   tarifas: { descripcion: "Tarifas de mano de obra (importes internos)", capacidad: "catalogos.administrar", columnas: ["codigo", "modalidad", "descripcion", "unidad", "importe", "rendimiento_jornada", "vigente_desde", "vigente_hasta", "activa", "fuente"] },
+  conversiones: { descripcion: "Conversiones de unidad por insumo", capacidad: "catalogos.administrar", columnas: ["insumo_codigo", "unidad_origen", "unidad_destino", "factor", "fuente", "registrado_en", "modificado_en"] },
+  tipos_estructura: { descripcion: "Tipos de estructura y su familia", capacidad: "catalogos.administrar", columnas: ["codigo", "familia", "nombre", "prioritario", "activo", "creado_en", "modificado_en"] },
+  conceptos: { descripcion: "Conceptos técnicos con su estado de aprobación", capacidad: "catalogos.administrar", columnas: ["codigo", "descripcion", "unidad", "tipo_formula", "permite_descuento", "clase", "estado", "tipo_codigo", "tarifa_codigo", "regla_medicion", "criterios", "heredado", "activo", "aprobado_en", "creado_en", "modificado_en"] },
+  componentes: { descripcion: "Componentes de los conceptos (rendimientos y desperdicios)", capacidad: "catalogos.administrar", columnas: ["codigo", "concepto_codigo", "insumo_codigo", "orden", "rendimiento", "unidad_rendimiento", "desperdicio", "factor_traslape", "fuente", "fecha", "responsable", "activo", "creado_en", "modificado_en"] },
+  tipos_adicional: { descripcion: "Tipos de costo adicional", capacidad: "catalogos.administrar", columnas: ["codigo", "categoria", "descripcion", "unidad", "regla", "activo"] },
+  parametros: { descripcion: "Parámetros de cálculo y textos de la organización (una fila)", capacidad: "parametros.administrar", columnas: ["ambiente", "moneda", "recargo_sobre_costo", "impuesto_tasa", "impuesto_base", "impuesto_tratamiento", "impuesto_nombre", "vigencia_dias", "texto_alcance", "texto_condiciones", "texto_exclusiones", "modificado_en"] },
 };
+
+/** Lo que NUNCA entra en el CSV y por qué (se muestra en el manifiesto y en la pantalla). */
+export const EXCLUIDAS: readonly { grupo: string; motivo: string }[] = [
+  { grupo: "Versiones, partidas, mediciones, consumos, compras, selecciones, excepciones, revisiones y emisiones", motivo: "Son registros inmutables con huella y documentos; se recuperan solo con el respaldo de PostgreSQL y documentos (ADR-0012), no con CSV." },
+  { grupo: "Documentos PDF emitidos", motivo: "Archivos binarios con SHA-256; viajan en el respaldo." },
+  { grupo: "Bitácora, solicitudes y estimaciones de clientes, accesos de clientes", motivo: "Historial y datos de terceros; fuera del alcance de la migración de maestros." },
+  { grupo: "Contraseñas, hashes, sesiones, tokens, idempotencia y secretos", motivo: "Nunca se exportan." },
+];
 
 export const esTablaExportable = (t: string): t is TablaExportable => (TABLAS_EXPORTABLES as readonly string[]).includes(t);
 
@@ -111,11 +125,53 @@ export class ServicioExportaciones {
       case "insumos":
         return this.db.$queryRaw<Fila[]>`
           SELECT codigo, descripcion, unidad_base, especificacion, activo, creado_en, modificado_en FROM insumo WHERE organizacion_id = ${org}::uuid ORDER BY codigo`;
+      case "conversiones":
+        return this.db.$queryRaw<Fila[]>`
+          SELECT i.codigo AS insumo_codigo, v.unidad_origen, v.unidad_destino, v.factor::text AS factor, v.fuente, v.registrado_en, v.modificado_en
+            FROM conversion v JOIN insumo i ON i.organizacion_id = v.organizacion_id AND i.id = v.insumo_id
+           WHERE v.organizacion_id = ${org}::uuid ORDER BY i.codigo, v.unidad_origen`;
+      case "tipos_estructura":
+        return this.db.$queryRaw<Fila[]>`
+          SELECT codigo, familia, nombre, prioritario, activo, creado_en, modificado_en FROM tipo_estructura WHERE organizacion_id = ${org}::uuid ORDER BY codigo`;
+      case "conceptos":
+        return this.db.$queryRaw<Fila[]>`
+          SELECT c.codigo, c.descripcion, c.unidad, c.tipo_formula, c.permite_descuento, c.clase, c.estado, t.codigo AS tipo_codigo, m.codigo AS tarifa_codigo,
+                 c.regla_medicion, c.criterios, c.heredado, c.activo, c.aprobado_en, c.creado_en, c.modificado_en
+            FROM concepto c
+            LEFT JOIN tipo_estructura t ON t.organizacion_id = c.organizacion_id AND t.id = c.tipo_id
+            LEFT JOIN tarifa_mano_obra m ON m.organizacion_id = c.organizacion_id AND m.id = c.tarifa_id
+           WHERE c.organizacion_id = ${org}::uuid ORDER BY c.codigo`;
+      case "componentes":
+        return this.db.$queryRaw<Fila[]>`
+          SELECT k.codigo, c.codigo AS concepto_codigo, i.codigo AS insumo_codigo, k.orden, k.rendimiento::text AS rendimiento, k.unidad_rendimiento,
+                 k.desperdicio::text AS desperdicio, k.factor_traslape::text AS factor_traslape, k.fuente, k.fecha, k.responsable, k.activo, k.creado_en, k.modificado_en
+            FROM componente k
+            JOIN concepto c ON c.organizacion_id = k.organizacion_id AND c.id = k.concepto_id
+            JOIN insumo i ON i.organizacion_id = k.organizacion_id AND i.id = k.insumo_id
+           WHERE k.organizacion_id = ${org}::uuid ORDER BY k.codigo`;
+      case "tipos_adicional":
+        return this.db.$queryRaw<Fila[]>`
+          SELECT codigo, categoria, descripcion, unidad, regla, activo FROM tipo_adicional WHERE organizacion_id = ${org}::uuid ORDER BY codigo`;
+      case "parametros":
+        return this.db.$queryRaw<Fila[]>`
+          SELECT ambiente, moneda, recargo_sobre_costo::text AS recargo_sobre_costo, impuesto_tasa::text AS impuesto_tasa, impuesto_base, impuesto_tratamiento, impuesto_nombre,
+                 vigencia_dias, texto_alcance, texto_condiciones, texto_exclusiones, modificado_en
+            FROM parametros_calculo WHERE organizacion_id = ${org}::uuid`;
       case "tarifas":
         return this.db.$queryRaw<Fila[]>`
           SELECT codigo, modalidad, descripcion, unidad, importe::text AS importe, rendimiento_jornada::text AS rendimiento_jornada, vigente_desde, vigente_hasta, activa, fuente
             FROM tarifa_mano_obra WHERE organizacion_id = ${org}::uuid ORDER BY codigo`;
     }
+  }
+
+  /** Manifiesto con los conteos de las tablas que la sesión puede exportar (como el del libro) y lo que queda fuera. */
+  async manifiesto(org: string, capacidades: readonly Capacidad[]): Promise<{ contenido: string; filas: number }> {
+    const columnas = ["tabla", "archivo", "filas", "columnas"] as const;
+    const lineas: Record<string, unknown>[] = [];
+    for (const d of this.disponibles(capacidades)) {
+      lineas.push({ tabla: d.tabla, archivo: `softarq-${d.tabla}.csv`, filas: (await this.filas(org, d.tabla)).length, columnas: d.columnas.length });
+    }
+    return { contenido: aCsv(columnas, lineas), filas: lineas.length };
   }
 
   async csv(org: string, tabla: TablaExportable): Promise<{ nombre: string; contenido: string; filas: number }> {

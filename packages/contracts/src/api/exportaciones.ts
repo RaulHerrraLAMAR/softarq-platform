@@ -7,5 +7,7 @@ import { z } from "zod";
 
 export const EsquemaRespuestaExportaciones = z.strictObject({
   tablas: z.array(z.strictObject({ tabla: z.string(), descripcion: z.string(), columnas: z.array(z.string()) })),
+  /** Lo que nunca entra en el CSV y por qué (la recuperación completa es el respaldo). */
+  excluidas: z.array(z.strictObject({ grupo: z.string(), motivo: z.string() })),
 });
 export type RespuestaExportaciones = z.infer<typeof EsquemaRespuestaExportaciones>;
