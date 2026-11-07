@@ -145,6 +145,72 @@ const escenarios = {
     informe("C14c", hoja, `hoja de conflicto visible: ${textos().filter((t) => /otro lugar|cambió|conserv|recarg|tus cambios|Usar/i.test(t)).join(" | ").slice(0, 260)} (acción tocada: ${avanzar ?? "ninguna"})`);
     await pedirHttp(`${API}/api/v1/auth/sesion`, { method: "DELETE", headers: h }).catch(() => {});
   },
+  /** I-02 y hoja «Solicitud enviada»: desde una apertura limpia, sin tocar el código mientras corre. */
+  async i02() {
+    adb("shell", "am", "force-stop", PAQUETE);
+    adb("logcat", "-c");
+    await esperar(1500);
+    await iniciarApp();
+    if (hay("Iniciar sesión")) await entrar(QA.correo, QA.contrasena);
+    informe("I02a", await esperarTexto("Nueva cotización", 25000), "apertura limpia con la cuenta QA");
+    tocar("Retomar el borrador");
+    informe("I02b", await esperarTexto("Paso", 15000), `borrador abierto: ${textos().find((t) => /^Paso/.test(t))}`);
+    const camino = ["Enviar sin estimación", "Enviar solicitud"].find((t) => buscar(t, { clase: "Button" }));
+    tocar(camino, { clase: "Button" });
+    informe("I02c", await esperarTexto("¿Enviar tu solicitud?", 8000), "aparece la confirmación");
+    tocar("Enviar solicitud", { clase: "Button" });
+    informe("I02d", await esperarTexto("Solicitud enviada", 25000), "aparece «Solicitud enviada»");
+    captura("i02-hoja");
+    await esperar(1500);
+    const b = buscar("Ver seguimiento", { clase: "Button" });
+    adb("shell", "input", "tap", String(b.cx), String(b.cy));
+    const cerro = await esperarSinTexto("¿Qué incluye", 1).catch(() => true);
+    await esperar(2500);
+    const sinHoja = !buscar("Ver seguimiento", { clase: "Button" });
+    captura("i02-tras-ver-seguimiento");
+    informe("I02e", sinHoja && hay("Seguimiento"), `«Ver seguimiento» cierra la hoja y muestra el seguimiento (hoja cerrada: ${sinHoja})`);
+    atras();
+    await esperar(2500);
+    captura("i02-tras-atras");
+    informe("I02f", hay("Nueva cotización") && !hay("Paso "), "«Atrás» desde el seguimiento lleva al Inicio");
+    const errores = adb("logcat", "-d", "-s", "ReactNativeJS:E", "AndroidRuntime:E").split(/\r?\n/).filter(Boolean).slice(-6);
+    console.log("logcat (errores JS/Runtime):", errores.length ? errores.join(" || ").slice(0, 600) : "sin errores");
+  },
+  /** Reproduce la ruta del bloqueo: conflicto de edición → «Usar la versión guardada» → enviar → hoja «Solicitud enviada». */
+  async hoja() {
+    const r = await pedirHttp(`${API}/api/v1/auth/movil/sesion`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ correo: QA.correo, contrasena: QA.contrasena }) });
+    const h = { Authorization: `Bearer ${(await r.json()).tokenSesion}`, "Content-Type": "application/json" };
+    adb("shell", "am", "force-stop", PAQUETE);
+    adb("logcat", "-c");
+    await esperar(1500);
+    await iniciarApp();
+    if (hay("Iniciar sesión")) await entrar(QA.correo, QA.contrasena);
+    await esperarTexto("Retomar el borrador", 25000);
+    tocar("Retomar el borrador");
+    informe("H1", await esperarTexto("Paso", 15000), "borrador abierto");
+    const lista = await (await pedirHttp(`${API}/api/v1/cliente/solicitudes`, { headers: h })).json();
+    const fila = lista.solicitudes.find((x) => x.estado === "BORRADOR");
+    const d = await (await pedirHttp(`${API}/api/v1/cliente/solicitudes/${fila.id}`, { headers: h })).json();
+    const put = await pedirHttp(`${API}/api/v1/cliente/solicitudes/${fila.id}`, { method: "PUT", headers: h, body: JSON.stringify({ revision: d.revision, captura: { ...d.captura, notas: "[QA] edición ajena" } }) });
+    informe("H2", put.status === 200, `edición desde otra sesión (HTTP ${put.status})`);
+    tocar("Enviar sin estimación", { clase: "Button" });
+    informe("H3", await esperarTexto("cambió en otro lugar", 20000), "hoja de conflicto");
+    tocar("Usar la versión guardada", { clase: "Button" });
+    await esperar(3500);
+    informe("H4", await esperarTexto("¿Enviar tu solicitud?", 15000), "tras elegir la versión guardada reaparece la confirmación");
+    tocar("Enviar solicitud", { clase: "Button" });
+    informe("H5", await esperarTexto("Solicitud enviada", 25000), "aparece «Solicitud enviada»");
+    await esperar(1500);
+    captura("hoja-tras-conflicto");
+    const b = buscar("Ver seguimiento", { clase: "Button" });
+    adb("shell", "input", "tap", String(b.cx), String(b.cy));
+    await esperar(3000);
+    const sigue = !!buscar("Ver seguimiento", { clase: "Button" });
+    informe("H6", !sigue, `«Ver seguimiento» ${sigue ? "NO responde: la hoja sigue" : "cierra la hoja"}`);
+    const errores = adb("logcat", "-d", "-s", "ReactNativeJS:E", "AndroidRuntime:E").split(String.fromCharCode(10)).filter(Boolean).slice(-6);
+    console.log("logcat:", errores.length ? errores.join(" || ").slice(0, 700) : "sin errores");
+    await pedirHttp(`${API}/api/v1/auth/sesion`, { method: "DELETE", headers: h }).catch(() => {});
+  },
   async c16() {
     await iniciarApp();
     if (hay("Iniciar sesión")) await entrar(QA.correo, QA.contrasena);

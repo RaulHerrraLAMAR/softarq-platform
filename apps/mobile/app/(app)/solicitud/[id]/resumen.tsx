@@ -2,7 +2,7 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import { useState } from "react";
 import { Text, View } from "react-native";
 import { mensajeDeFallo } from "../../../../src/api/errores";
-import { HojaEnvio } from "../../../../src/captura/HojaEnvio";
+import { ESPERA_CIERRE_HOJA_MS, HojaEnvio } from "../../../../src/captura/HojaEnvio";
 import { useSolicitud } from "../../../../src/captura/ProveedorSolicitud";
 import { cambiarNotas, quitarTrabajo } from "../../../../src/captura/modelo";
 import { indiceDeRuta, resumirTrabajos, textoDeAvance, trabajosCompletos } from "../../../../src/captura/resumen";
@@ -141,8 +141,10 @@ export default function Resumen() {
         alCerrar={() => setConfirmarEnvio(false)}
         alTerminar={() => {
           setConfirmarEnvio(false);
-          router.dismissAll();
-          router.push(rutas.seguimiento(id));
+          setTimeout(() => {
+            router.dismissAll();
+            router.push(rutas.seguimiento(id));
+          }, ESPERA_CIERRE_HOJA_MS);
         }}
       />
     </Pantalla>

@@ -10,6 +10,9 @@ import { Palomita } from "../ui/componentes-captura";
 import { ESP, FUENTE, TEXTO, useTema } from "../ui/tema";
 import { useSolicitud } from "./ProveedorSolicitud";
 
+/** Tiempo para que termine de cerrarse la hoja (animación «slide») antes de cambiar de pantalla. */
+export const ESPERA_CIERRE_HOJA_MS = 400;
+
 export function HojaEnvio({ visible, sinEstimacion = false, alCerrar, alTerminar }: { visible: boolean; sinEstimacion?: boolean; alCerrar: () => void; alTerminar: () => void }) {
   const t = useTema();
   const { controlador, estado } = useSolicitud();
@@ -18,7 +21,9 @@ export function HojaEnvio({ visible, sinEstimacion = false, alCerrar, alTerminar
 
   if (enviada) {
     return (
-      <Hoja visible etiqueta="Solicitud enviada">
+      // Respeta `visible`: el llamador la cierra ANTES de navegar; un diálogo nativo que sigue abierto mientras la pantalla se
+      // desmonta queda huérfano sobre el seguimiento y no responde (reproducido en el teléfono el 07/11/2026).
+      <Hoja visible={visible} etiqueta="Solicitud enviada">
         <View style={{ alignItems: "center", gap: ESP[3] }}>
           <Palomita />
           <Texto variante="titulo" centrado>

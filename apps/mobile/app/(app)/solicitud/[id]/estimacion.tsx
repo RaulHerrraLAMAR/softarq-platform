@@ -2,7 +2,7 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useState } from "react";
 import { Text, View } from "react-native";
 import { mensajeDeFallo } from "../../../../src/api/errores";
-import { HojaEnvio } from "../../../../src/captura/HojaEnvio";
+import { ESPERA_CIERRE_HOJA_MS, HojaEnvio } from "../../../../src/captura/HojaEnvio";
 import { useSolicitud } from "../../../../src/captura/ProveedorSolicitud";
 import { rutas } from "../../../../src/navegacion/rutas";
 import { Aviso, BarraAccion, Boton, Desplegable, Enlace, Esqueleto, Insignia, Pantalla, Texto } from "../../../../src/ui/componentes";
@@ -150,10 +150,12 @@ export default function Estimacion() {
         alCerrar={() => setConfirmando(false)}
         alTerminar={() => {
           setConfirmando(false);
-          // Se sale de todo el recorrido de captura (no solo de su pila): al volver desde el seguimiento no reaparecen las
-          // pantallas de edición de una solicitud que ya no se puede modificar.
-          router.dismissTo(rutas.inicio);
-          router.push(rutas.seguimiento(id));
+          // Primero se cierra la hoja y, cuando termina de cerrarse, se sale de todo el recorrido de captura (no solo de su
+          // pila): al volver desde el seguimiento no reaparecen las pantallas de edición de una solicitud ya enviada.
+          setTimeout(() => {
+            router.dismissTo(rutas.inicio);
+            router.push(rutas.seguimiento(id));
+          }, ESPERA_CIERRE_HOJA_MS);
         }}
       />
     </Pantalla>
