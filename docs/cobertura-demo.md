@@ -84,6 +84,8 @@ Hipótesis inicial: excepciones; administración de catálogos y parámetros; co
 | 6b | ~~Panel del equipo por tareas, clasificación de datos, RF-26 y contadores de inicio~~ (módulo 17, E3 y ADR-0023) | Hecho en código y pruebas automatizadas |
 | 7 | Cierre integral del DEMO: ejecución formal de la guía, recorrido completo y documentación | 1 módulo |
 
+**Actualización 07/11/2026:** integración completa de la API **442/442**; RF-26 ampliado (15 tablas más manifiesto, alcance declarado); indicador de precios por vencer a **30 días** (decisión aprobada por el propietario; ADR-0023 §3); ensayo de Raul con SOL-2026-00003 completado hasta la emisión de COT-2026-00056 (DEMO) por la API normal; pasada automatizada en el teléfono (guía móvil §10). La confirmación de las reglas de RF-26 y contadores (ADR-0023 §5) sigue siendo del propietario.
+
 **Lo que falta para cerrar el DEMO local (01/11/2026):** el bloque 7 (cierre integral: ejecución formal de la guía manual y PR-41 a PR-44 del Excel, recorrido de aceptación del propietario con app y panel juntos, y lo que no se pudo automatizar en el teléfono), la confirmación de las reglas de RF-26 y de los contadores (ADR-0023 §5) y los pendientes de datos reales (capítulo 8). La preparación para Railway (TLS, cookie `Secure`/`__Host-`, proxy, limitadores y documentos compartidos, variables y respaldo remoto) y el modelado 3D son aparte y no forman parte de este cierre.
 
 **Siguiente paso recomendado:** la revisión final conjunta del propietario con el recorrido de aceptación único (HANDOFF §30). Siguen fuera de los bloques: la identidad de las funciones SQL (ADR-0018 §7), los cinco conceptos heredados y P3 con el cliente.

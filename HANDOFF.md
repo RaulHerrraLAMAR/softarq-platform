@@ -1766,3 +1766,20 @@ El propietario cambió el método: Claude diagnostica, corrige y verifica de for
 - **Decisión pendiente (ADR-0023 §5):** presentar al propietario las reglas de RF-26 y de los contadores; **su aprobación no está registrada**.
 
 **Reanudar:** desde PowerShell, en `softarq-platform`: `pnpm --filter @softarq/api build; node apps/api/dist/main.js` (API), `adb reverse tcp:3000 tcp:3000; adb reverse tcp:8081 tcp:8081` y Metro; luego el conductor `scripts/qa/android.mjs` con la cuenta QA. Las tandas E2E se pueden correr también fuera de VS Code con el mismo comando de la sección anterior.
+
+### Jornada del 07/11/2026: integración completa, RF-26 ampliado, ensayo de Raul y pasada en Android
+
+**Decisión del propietario registrada:** indicador de «precios por vencer» a **30 días** (el código ya lo usaba; ahora consta como adaptación aprobada frente a la referencia anterior de 7 días en ADR-0023 §3). Solo cambia la anticipación; no amplía ninguna vigencia ni toca cotizaciones históricas.
+
+**Hecho y verificado (automatizado; no es aceptación humana)**
+- **Integración completa de la API: 27 archivos, 442/442** con el código previo a RF-26 (un worker, `softarq_test`); tras ampliar RF-26 se repitió `exportaciones-inicio` **14/14**.
+- **RF-26 ampliado (ADR-0023 §2):** además de los 9 maestros, `conversiones`, `tipos_estructura`, `conceptos`, `componentes`, `tipos_adicional` (`catalogos.administrar`) y `parametros` (`parametros.administrar`), más `GET /exportaciones/manifiesto` (conteos) y la lista de lo excluido y por qué. **No es una migración completa**: versiones, revisiones, excepciones, emisiones, PDF, bitácora, solicitudes y secretos quedan fuera; el respaldo es la recuperación completa. Contratos y OpenAPI regenerados.
+- **Ensayo de Raul (autorizado):** `scripts/demo/ensayo-solicitud.mjs SOL-2026-00003 --contacto-correo <correo>` por la API normal: atendida → COT-2026-00056 → precios elegidos explícitamente (INS-00007/8/9 → PRE-000012/13/14, consolidar compras) → calculada (**$37,835.35**, igual que la estimación) → enviada por el Preparador DEMO → aprobada por el Revisor DEMO (otra persona) → emitida. Un BL-01 real bloqueó la emisión (el cliente CLI-00047 no tenía medio de contacto): se completó el contacto DEMO del cliente con su propio correo de acceso por `PATCH /clientes`. SOL-2026-00003 queda **COTIZADA**. PDF descargado con la sesión del equipo: 200, `%PDF-`, 22,733 bytes. **Comprobar desde la sesión propia de Raul queda pendiente de él:** su contraseña temporal venció el 03/11 y su sesión guardada también; no se restableció nada (el listado y el PDF del cliente están cubiertos por `app-cliente.integracion` y `solicitudes.spec`).
+- **Android (cuenta QA, `scripts/qa/escenarios-android.mjs`):** C4, C16, C17, C2 y C14 observados; defecto real **corregido**: la barra de pestañas quedaba bajo los botones de navegación y partía «Mis cotizaciones» con texto grande. Detalle, límites y lo no concluyente (**I-02**, C20, rendimiento del croquis) en la guía móvil §10 «Pasada automatizada del 07/11/2026». Sin compilación EAS (solo JavaScript).
+- Pruebas ejecutadas hoy: API unitarias **543/543**, web **325/325**, app móvil **268/268** con tipos limpios, Playwright `panel-clasificacion-exportaciones` + `solicitudes` (escritorio) y la pasada `movil` del panel, todos verdes. Se reconstruyeron `dist-e2e` (web y API).
+
+**Pendiente (propietario o siguiente sesión)**
+1. Raul inicia sesión (app o API) y confirma que ve COT-2026-00056 y descarga su PDF; con la app recién abierta, repetir «enviar → Ver seguimiento → Atrás» (I-02) con SOL-2026-00004.
+2. Confirmar las reglas de RF-26 y contadores (ADR-0023 §5).
+3. Texto grande, tema claro y movimiento reducido recorridos en más pantallas que Inicio; rendimiento del croquis (`gfxinfo` no funciona en este Samsung).
+4. Siguen abiertos: PR-41 a PR-44 del Excel, datos reales y validaciones del capítulo 8, y la aceptación humana.

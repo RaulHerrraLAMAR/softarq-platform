@@ -226,6 +226,26 @@ A partir de esta sesión las comprobaciones repetitivas las ejecuta Claude con `
 - **I-04 verificado con automatización (SOL-2026-00006):** sin red y con la nota cambiada, a los ~3.6 s de pulsar «Calcular» aparece «No se pudo guardar tu solicitud… Tus cambios siguen en este teléfono…»; con la conexión restaurada, un toque en el botón produce un `PUT` 200 y un `POST` de estimación en ~1.5 s y aparece el resultado ($37,835.35). Base: la nota «sin red qb» se guardó una vez (revisión 5), 2 estimaciones, 0 envíos. Cuando la estimación sigue vigente, «Calcular» desde el resumen no vuelve a pedirla (comportamiento esperado).
 - **Límites y observaciones:** (1) en dos corridas del cliente de desarrollo ocurrió una recarga de JavaScript (la app volvió a «Sin conexión», perdiendo el estado en memoria) justo después de escribir en el campo de notas con el túnel retirado; no se reprodujo al repetir y su causa **no está determinada** (hay otras corridas sin recarga); (2) varias pulsaciones «sin efecto» coincidieron con la pantalla apagada o con un toque mío sobre el teclado, no con un defecto de la app; (3) el icono flotante de herramientas (engranaje) del cliente de desarrollo se superpone al botón Volver: solo existe en la *development build*.
 
+### Pasada automatizada del 07/11/2026 (cuenta QA, teléfono autorizado)
+
+Ejecutada por Claude con `scripts/qa/escenarios-android.mjs` (adb + uiautomator) sobre la *development build* ya instalada, Metro en 8081, API en 3000 y túneles USB. Son comprobaciones **automatizadas, no aceptación del propietario**. Capturas en `_work/tmp/ui`. Los ajustes del teléfono (`stay_on_while_plugged_in`, `font_scale`, animaciones, modo nocturno) se restauraron a lo guardado en `_work/tmp/ajustes-telefono.txt`; los túneles se retiraron.
+
+| Caso | Resultado observado |
+|---|---|
+| C4 | Con una cuenta del equipo (Preparador) aparece «Esta cuenta es del equipo… entra al panel web (http://localhost:5173)» y se queda en el acceso. |
+| C16 | Tras cerrar la app a la fuerza sin cerrar sesión y reabrirla, la sesión se restaura (SecureStore) sin pedir acceso. |
+| C17 | El Administrador desactiva el acceso QA con la app abierta (200): la siguiente acción (abrir el borrador) devuelve al acceso con «Su sesión venció o se cerró…»; el acceso se reactivó (200). |
+| C2 | Con la API detenida, iniciar sesión muestra «No hay conexión con el servidor. Revise la conexión e intente de nuevo.»; con la API de vuelta, un nuevo intento entra al inicio. (El «Sin conexión» con *Reintentar* de la restauración de sesión no se provocó aparte.) |
+| C14 | Sesión móvil segunda de la misma cuenta edita la solicitud (revisión 5 → 6); al enviar desde el teléfono aparece la hoja «Esta solicitud cambió en otro lugar» con «Usar la versión guardada» y «Conservar mis cambios». Se eligió la primera. Calcular sin cambios locales pendientes no mostró la hoja. |
+| C18 (texto grande 1.5) | Se encontró y corrigió un defecto: la barra de pestañas quedaba **debajo de los botones de navegación de Android** (altura y relleno fijos, sin área segura) y con texto grande «Mis cotizaciones» se partía en dos líneas. Corregido (`useSafeAreaInsets`, una línea con `adjustsFontSizeToFit` y tope de escala) y comprobado en el teléfono. No se recorrieron las demás pantallas con texto grande. |
+| C19 (tema claro) | Inicio legible con buen contraste, ilustración y cotas visibles. Solo se revisó Inicio. |
+| C20 (sin animaciones) | Se aplicaron las tres escalas en 0 y se capturó Inicio; no se recorrieron los pasos del asistente con ese ajuste, así que **no se declara verificado**. |
+| Atrás tras ver el seguimiento | Con la app limpia, Seguimiento → Atrás lleva al Inicio. |
+
+**No concluyente (I-02):** al enviar la solicitud QA, la hoja «Solicitud enviada» no respondió a los toques en esa ejecución; en Metro había una excepción de expo-router («Linking did not produce an initial navigation state») tras recargar con mi edición en caliente. Tras reiniciar la app el seguimiento y «Atrás» funcionan, pero **el recorrido exacto «enviar → Ver seguimiento → Atrás» no quedó comprobado**; repetirlo con el siguiente borrador (SOL-2026-00004 de Raul) con la app recién abierta, sin editar código en caliente.
+
+**Observaciones de desarrollo (no producción):** avisos de LogBox «REMOVE_ROUTES / ROUTE_NAMES_CHANGED … not handled by any navigator» al cerrar o reabrir sesión; el propio mensaje dice que son solo de desarrollo. Anotados, no corregidos. **Rendimiento del croquis:** `gfxinfo` sigue sin funcionar en este Samsung y no se midió: no se declara fluidez.
+
 ### Registro de incidencias
 
 Se anota cada fallo en cuanto aparece y se corrige antes de pasar a E3. Una incidencia se cierra solo con una repetición del caso en el teléfono.
