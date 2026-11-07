@@ -1798,3 +1798,13 @@ El propietario cambió el método: Claude diagnostica, corrige y verifica de for
 **Pendiente real:** aceptación humana del DEMO (panel y app); C13, C9 y C5 formales; borrado de la caché de PDF al cerrar sesión de Raul; fluidez del croquis (sin herramienta de medición válida en este teléfono); PR-41 a PR-44 del Excel y datos reales del capítulo 8.
 
 **Estado de cierre:** teléfono restaurado a los ajustes iniciales, túneles USB retirados, API y Metro detenidos; sin servicios de SoftArq activos.
+
+### Aceptación del propietario y cierre del DEMO local (07/11/2026)
+
+**Declaración del propietario (no una prueba ejecutada por Claude):** acepta el DEMO local —app y panel— y aprueba su funcionamiento; aprueba las reglas del ADR-0023: RF-26 como **exportación parcial de 15 tablas más manifiesto, sin equivalencia con las 28 tablas del Excel ni con una migración completa**, los contadores de 00 INICIO y el indicador de 30 días. La decisión de ADR-0023 §5 queda resuelta. Registrado en el ADR, `docs/cobertura-demo.md` y la guía móvil.
+
+**Estado: DEMO local aceptado con limitaciones conocidas.** Este cierre es solo documental: no se ejecutaron pruebas ni se cambiaron datos; el último respaldo verificado sigue siendo `softarq_dev-20261107T235324Z-771a30`.
+
+**Limitaciones y pendientes (no ejecutados, no atribuidos al propietario):** C13, C9 y C5 formales; borrado de la caché de PDF al cerrar sesión con Raul; texto grande, tema claro y movimiento reducido en otras pantallas; fluidez del croquis sin medir; PR-41 a PR-44 del Excel y datos reales/validaciones del capítulo 8; ejecución formal de la guía manual.
+
+**Fuera de esta etapa:** Railway (TLS, cookie `Secure`, proxy, limitadores, documentos compartidos, respaldo remoto), preparación para publicación y modelado 3D. Sin push ni despliegue.

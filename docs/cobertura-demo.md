@@ -91,3 +91,5 @@ Hipótesis inicial: excepciones; administración de catálogos y parámetros; co
 **Siguiente paso recomendado:** la revisión final conjunta del propietario con el recorrido de aceptación único (HANDOFF §30). Siguen fuera de los bloques: la identidad de las funciones SQL (ADR-0018 §7), los cinco conceptos heredados y P3 con el cliente.
 
 Con los módulos 11 y 12 ya se pueden capturar en la web precios, proveedores, tarifas, insumos, conversiones, conceptos y componentes reales cuando el cliente los entregue (capítulo 8). Siguen pendientes la política de vigencias (P3) y la carga real, que no se hace en el DEMO.
+
+**Aceptación del propietario (07/11/2026, declaración suya):** acepta el DEMO local (app y panel) y aprueba las reglas del ADR-0023 (RF-26 como exportación parcial de 15 tablas más manifiesto, sin equivalencia con las 28 tablas del Excel; contadores; 30 días). **No** es una validación comercial ni sustituye a PR-41 a PR-44 del Excel, a los datos reales del capítulo 8 ni a una ejecución formal de la guía. Railway, la preparación para publicación y el modelado 3D quedan para etapas posteriores.

@@ -65,3 +65,7 @@ El Word v1.3 cita RF-26 y la hoja 00 INICIO, pero no fija **cuáles tablas** se 
 - Migración aditiva aplicada a `softarq_dev` con respaldo previo creado y verificado por el procedimiento (`db:migrar`).
 - Capacidades nuevas: ninguna. Contratos: `Clasificacion`, `EsquemaClasificarCliente`, `EsquemaRespuestaExportaciones` y `EsquemaContadoresInicio` (índice completo; no entran en `@softarq/contracts/cliente`).
 - Pruebas: integración `clasificacion.integracion` (8) y `exportaciones-inicio.integracion` (10), unitarias de la web, y Playwright `panel-clasificacion-exportaciones.spec`.
+
+## Aceptación del propietario (07/11/2026)
+
+**Declaración del propietario** (registrada tal como la expresó; no es una prueba ejecutada por Claude): aprueba las reglas de este ADR, incluida RF-26 como **exportación parcial de 15 tablas más manifiesto**, **sin equivalencia con las 28 tablas del Excel ni con una migración completa** (la recuperación completa es el respaldo), y los contadores de 00 INICIO. Se mantiene aprobado el indicador de **30 días** de precios por vencer (§3). Con esto la decisión pendiente de §5 queda resuelta.

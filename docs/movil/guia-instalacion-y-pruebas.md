@@ -279,3 +279,7 @@ Se anota cada fallo en cuanto aparece y se corrige antes de pasar a E3. Una inci
 - **«Correo o contraseña incorrectos»:** las contraseñas están en `_work\secrets\accesos-clientes-demo-softarq_dev.json`. Tras cinco fallos en 15 minutos desde la misma cuenta, la API pide esperar (429).
 - **«La contraseña temporal caducó»:** ver §9.
 - **Pantalla «No hay conexión» solo en la APK `preview`:** recuerde que necesita la API y el túnel USB igual que la de desarrollo.
+
+### Aceptación del propietario (07/11/2026)
+
+**Declaración del propietario:** le gustan la app y el panel y aprueba el funcionamiento presentado. Es una **declaración suya**: no cuenta como ejecución formal de los casos C1–C20 ni se le atribuyen recorridos adicionales. Las comprobaciones del registro anterior siguen siendo automatizadas o técnicas de Claude. **Siguen sin ejecutarse:** C13 (modo avión durante el envío), C9 y C5 formales, el borrado de la caché de PDF al cerrar sesión con la cuenta de Raul, otras pantallas con texto grande, tema claro y movimiento reducido, y la fluidez del croquis (no medida: `gfxinfo` no funciona en este Samsung).
